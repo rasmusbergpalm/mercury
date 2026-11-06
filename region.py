@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from firm import LABOR, Firm
+from goods import GOODS, TRANSPORT
 from market import Market
+from needs import CONSUMER_GOODS
 from pop import Pop
 
 if TYPE_CHECKING:
@@ -13,18 +16,26 @@ if TYPE_CHECKING:
 
 
 class Region:
-    def __init__(self, name: str, firms: list[Firm], goods: list[str],
-                 consumer_goods: list[str], n_pops: int = 10, pop_size: float = 10.0,
-                 pop_cash: float = 100.0, price_speed: float = 0.1, wage_speed: float = 0.1):
+    def __init__(self, name: str, firms: list[Firm], n_pops: int = 10,
+                 pop_size: float = 10.0, pop_cash: float = 100.0,
+                 price_speed: float = 0.1, wage_speed: float = 0.1):
         self.name = name
         self.firms = firms
         self.pops = [Pop(i, pop_size, pop_cash) for i in range(n_pops)]
-        self.goods = goods
-        self.consumer_goods = consumer_goods
-        self.markets = {g: Market(g, 1.0, price_speed) for g in goods}
+        self.markets = {g: Market(g, 1.0, price_speed) for g in GOODS}
         self.wage = 1.0
         self.wage_speed = wage_speed
         self.plans: dict[str, dict[str, float]] = {}
+        self.outbound: dict[str, list["Trader"]] = defaultdict(list)  # by good bought here
+        self.inbound: dict[str, list["Trader"]] = defaultdict(list)   # by good sold here
+
+    def connect(self, traders: list["Trader"]) -> None:
+        for t in traders:
+            if t.origin is self:
+                self.outbound[t.good].append(t)
+                self.outbound[TRANSPORT].append(t)
+            if t.dest is self:
+                self.inbound[t.good].append(t)
 
     @property
     def prices(self) -> dict[str, float]:
@@ -52,7 +63,7 @@ class Region:
             f.labor = demand[f.name] * scale
             wage = min(self.wage, max(f.cash, 0.0) / f.labor) if f.labor > 0 else 0.0
             need = f.labor
-            while need > 1e-12:
+            while need > 1e-12 and pop is not None:
                 take = min(need, free)
                 pop.jobs[f.name] = pop.jobs.get(f.name, 0.0) + take
                 pop.cash += take * wage
@@ -61,28 +72,26 @@ class Region:
                 free -= take
                 if free <= 1e-12:
                     pop = next(pops, None)
-                    if pop is None:
-                        break
-                    free = pop.size
+                    free = pop.size if pop else 0.0
 
         excess = (total_d - supply) / supply
         self.wage *= math.exp(self.wage_speed * max(-1.0, min(1.0, excess)))
 
     # ---- goods ----------------------------------------------------------------
-    def goods_markets(self, outbound: list["Trader"], inbound: list["Trader"]) -> None:
+    def goods_markets(self) -> None:
         """Buyers: pops, firms (inputs), traders leaving from here.
         Sellers: local firms, traders arriving here."""
-        cons_prices = {g: self.markets[g].price for g in self.consumer_goods}
+        cons_prices = {g: self.markets[g].price for g in CONSUMER_GOODS}
         pop_orders = [(p, p.demand(cons_prices)) for p in self.pops]
         for p in self.pops:
             p.consumed = {}
 
         for g, market in self.markets.items():
-            bids = [(p, d[g]) for p, d in pop_orders if g in d]
-            bids += [(f, self.plans[f.name][g]) for f in self.firms if g in f.exponents]
-            bids += [(t, t.bid(g)) for t in outbound if t.bid(g) > 0]
+            bids = [(p, d[g]) for p, d in pop_orders if d.get(g, 0.0) > 0]
+            bids += [(f, self.plans[f.name][g]) for f in self.firms if g in self.plans[f.name]]
+            bids += [(t, q) for t in self.outbound[g] if (q := t.bid(g)) > 0]
             asks = [(f, f.inventory) for f in self.firms if f.output == g and f.inventory > 0]
-            asks += [(t, t.stock_dest) for t in inbound if t.good == g and t.stock_dest > 0]
+            asks += [(t, t.stock_dest) for t in self.inbound[g] if t.stock_dest > 0]
 
             bid_fills, ask_fills = market.clear(bids, asks)
 
@@ -99,22 +108,21 @@ class Region:
                 else:
                     agent.stock_dest -= sold
 
-    def produce(self, spoilage: float) -> None:
+    def produce(self) -> None:
         for f in self.firms:
-            f.inventory *= 1.0 - spoilage   # unsold stock decays; fresh output doesn't
+            f.inventory *= 1.0 - GOODS[f.output].spoilage   # unsold stock decays
             f.produce()
 
-    def pay_dividends(self, owner, base: float = 20.0, rate: float = 0.5,
-                      max_call: float = 0.1) -> None:
+    def pay_dividends(self, owner, rate: float = 0.5, max_call: float = 0.1) -> None:
         """Pops own the firm/trader. Cash is pulled toward a target that covers
         what the owner wants to spend: excess is paid out as dividends, a
         shortfall is met by the pops investing (at most `max_call` of their cash
         per tick). Money is conserved either way."""
-        target = base + 1.2 * owner.desired_spend
+        target = owner.cash_buffer + 1.2 * owner.desired_spend
         div = (owner.cash - target) * rate
-        if div < 0:
-            div = max(div, -max_call * sum(p.cash for p in self.pops))
         pop_cash = sum(p.cash for p in self.pops)
+        if div < 0:
+            div = max(div, -max_call * pop_cash)
         pop_size = sum(p.size for p in self.pops)
         owner.cash -= div
         for p in self.pops:
@@ -125,6 +133,9 @@ class Region:
     def money(self) -> float:
         return sum(p.cash for p in self.pops) + sum(f.cash for f in self.firms)
 
+    def population(self) -> float:
+        return sum(p.size for p in self.pops)
+
     def utility(self) -> float:
         """Average utility per person."""
-        return sum(p.utility() * p.size for p in self.pops) / sum(p.size for p in self.pops)
+        return sum(p.utility() * p.size for p in self.pops) / self.population()

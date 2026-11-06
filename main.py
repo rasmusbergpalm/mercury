@@ -1,64 +1,100 @@
-"""Run the baseline multi-region world, then sweep the transport cost."""
+"""Run the hex-map world and report; `python3 main.py --sweep` also sweeps transport cost."""
 from __future__ import annotations
 
 import math
+import sys
 from collections import defaultdict
 
-from scenarios import CONSUMER_GOODS, GOODS, build_world
+from needs import TIERS
+from scenarios import MAP, build_world
 from world import World
 
+TICKS = 1000
+AVG = 50
 
-def avg(history: list[dict], key, last: int = 50):
+
+def avg(history: list[dict], key, last: int = AVG):
     rows = history[-last:]
     return sum(key(r) for r in rows) / len(rows)
 
 
+def hex_map(world: World, cell) -> str:
+    """Render a value per region on the hex grid (odd rows shifted right)."""
+    by_coord = {r.coord: r for r in world.regions}
+    lines = []
+    for row in range(len(MAP)):
+        pad = "    " if row % 2 else ""
+        lines.append(pad + "  ".join(cell(by_coord[(row, c)]) for c in range(len(MAP[0]))))
+    return "\n".join(lines)
+
+
+def tier_shares(h, name):
+    spend = {t: avg(h, lambda x: x["tier_spend"][name].get(t, 0.0)) for t in TIERS}
+    total = sum(spend.values()) or 1.0
+    return {t: spend[t] / total for t in TIERS}
+
+
 def report(world: World) -> None:
     h = world.history
-    print(f"After {world.tick} ticks (averages over the last 50). Money in system: {h[-1]['money']:.1f}\n")
+    print(f"After {world.tick} ticks (averages over the last {AVG}). "
+          f"Money in system: {h[-1]['money']:.0f}\n")
 
-    print(f"{'region':<10} {'wage':>6} " + " ".join(f"{g:>9}" for g in GOODS) + f" {'utility':>8}")
+    print("Terrain  (P plains, F forest, H hills, M mountains, T tropical, C coast)")
+    print(hex_map(world, lambda r: f"{r.name}:{MAP[r.coord[0]][r.coord[1]]}  "))
+    print("\nUtility per person")
+    print(hex_map(world, lambda r: f"{avg(h, lambda x: x['utility'][r.name]):6.2f}"))
+    print("\nLuxury share of pop spending (%)")
+    print(hex_map(world, lambda r: f"{100 * tier_shares(h, r.name)['luxury']:6.1f}"))
+    for g in ["bread", "coal", "fish", "tea", "porcelain"]:
+        print(f"\nPrice of {g} relative to the local wage")
+        print(hex_map(world, lambda r, g=g: f"{avg(h, lambda x: x['prices'][r.name][g] / x['wages'][r.name]):6.2f}"))
+
+    print("\nBy terrain:")
+    print(f"  {'terrain':<10} {'n':>2} {'utility':>8} " + " ".join(f"{t:>12}" for t in TIERS))
+    groups = defaultdict(list)
     for r in world.regions:
-        n = r.name
-        print(f"{n:<10} {avg(h, lambda x: x['wages'][n]):>6.2f} " +
-              " ".join(f"{avg(h, lambda x: x['prices'][n][g]):>9.2f}" for g in GOODS) +
-              f" {avg(h, lambda x: x['utility'][n]):>8.3f}")
+        groups[r.terrain].append(r)
+    for t, rs in groups.items():
+        u = sum(avg(h, lambda x: x["utility"][r.name]) for r in rs) / len(rs)
+        sh = [sum(tier_shares(h, r.name)[k] for r in rs) / len(rs) for k in TIERS]
+        print(f"  {t:<10} {len(rs):>2} {u:>8.2f} " + " ".join(f"{100 * s:>11.1f}%" for s in sh))
 
-    print("\nWorkers by firm:")
-    firms = [f.name for f in world.regions[0].firms]
-    print(f"{'':<10} " + " ".join(f"{f:>9}" for f in firms))
+    print("\nEmployment by firm type (whole map, people):")
+    labor = defaultdict(float)
     for r in world.regions:
-        print(f"{r.name:<10} " + " ".join(f"{avg(h, lambda x: x['workers'][r.name][f]):>9.1f}" for f in firms))
+        for f in r.firms:
+            labor[f.name] += avg(h, lambda x: x["labor"][r.name][f.name])
+    for name, l in sorted(labor.items(), key=lambda kv: -kv[1]):
+        print(f"  {name:<18} {l:7.1f}")
 
-    print("\nTrade flows (units shipped per tick, > 0.05 shown):")
-    for t in sorted(world.traders, key=lambda t: -avg(h, lambda x: x["flows"][t.name])):
-        q = avg(h, lambda x: x["flows"][t.name])
-        if q > 0.05:
-            print(f"  {t.name:<28} {q:6.2f}   (tau={t.tau:.1f}, margin={t.margin:+.2f})")
+    print("\nBusiest trade links (units loaded per tick):")
+    flows = {t.name: avg(h, lambda x: x["flows"][t.name]) for t in world.traders}
+    for name, q in sorted(flows.items(), key=lambda kv: -kv[1])[:15]:
+        print(f"  {name:<26} {q:6.2f}")
 
 
-def sweep(ticks: int = 800) -> None:
-    print("\nTransport-cost sweep (tau = cost x distance):")
-    print(f"{'cost':>6} {'trade vol':>9} {'transp.workers':>14} {'bread price gap':>15} "
-          + " ".join(f"{'U_'+r:>11}" for r in ["Plains", "Highlands", "Coast"]) + f" {'U_avg':>7}")
-    for cost in [0.0, 0.25, 0.5, 1.0, 2.0, 4.0, math.inf]:
+def sweep() -> None:
+    print("\nTransport-cost sweep (multiplier on every hop):")
+    print(f"{'cost':>6} {'trade vol':>10} {'transport workers':>18} {'utility':>8} "
+          + " ".join(f"{t:>13}" for t in TIERS))
+    for cost in [0.25, 0.5, 1.0, 2.0, math.inf]:
         w = build_world(cost)
-        for _ in range(ticks):
+        for _ in range(TICKS):
             w.step()
         h = w.history
         vol = avg(h, lambda x: sum(x["flows"].values()))
-        tw = avg(h, lambda x: sum(x["workers"][r.name]["Transport"] for r in w.regions))
-        gap = avg(h, lambda x: max(p["bread"] for p in x["prices"].values())
-                  / min(p["bread"] for p in x["prices"].values()))
-        us = {r.name: avg(h, lambda x: x["utility"][r.name]) for r in w.regions}
+        tw = avg(h, lambda x: sum(x["labor"][r.name]["Transport"] for r in w.regions))
+        u = avg(h, lambda x: sum(x["utility"].values()) / len(w.regions))
+        sh = [sum(tier_shares(h, r.name)[k] for r in w.regions) / len(w.regions) for k in TIERS]
         label = "inf" if math.isinf(cost) else f"{cost:.2f}"
-        print(f"{label:>6} {vol:>9.2f} {tw:>14.1f} {gap:>15.2f} "
-              + " ".join(f"{us[r]:>11.3f}" for r in us) + f" {sum(us.values())/len(us):>7.3f}")
+        print(f"{label:>6} {vol:>10.1f} {tw:>18.1f} {u:>8.3f} "
+              + " ".join(f"{100 * s:>12.1f}%" for s in sh))
 
 
 if __name__ == "__main__":
-    world = build_world(transport_cost=1.0)
-    for _ in range(800):
+    world = build_world()
+    for _ in range(TICKS):
         world.step()
     report(world)
-    sweep()
+    if "--sweep" in sys.argv:
+        sweep()

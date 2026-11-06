@@ -6,8 +6,10 @@ from typing import Any
 
 
 class Market:
-    def __init__(self, good: str, price: float = 1.0, speed: float = 0.1):
+    def __init__(self, good: str, price: float = 1.0, speed: float = 0.1,
+                 min_volume: float = 0.1):
         self.good = good
+        self.min_volume = min_volume
         self.price = price
         self.speed = speed
         self.supply = 0.0
@@ -38,7 +40,9 @@ class Market:
             agent.cash += sold * price
             ask_fills.append(sold)
 
-        excess = (demand - supply) / max(supply, 1e-9)
-        self.price *= math.exp(self.speed * max(-1.0, min(1.0, excess)))
+        # relative excess demand in [-1, 1]; the floor keeps a trickle of demand
+        # for a good nobody sells from pushing its price up at full speed forever
+        excess = (demand - supply) / max(supply, demand, self.min_volume)
+        self.price *= math.exp(self.speed * excess)
         self.supply, self.demand = supply, demand
         return bid_fills, ask_fills
