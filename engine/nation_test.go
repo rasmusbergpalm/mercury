@@ -307,13 +307,15 @@ func TestMaintainedRoadsLast(t *testing.T) {
 }
 
 // Economic sanity: infrastructure raises trade and welfare. With migration,
-// a nation that paves attracts people, so its gain shows up as population
-// rather than utility per head.
+// tiles that pave attract people, so their gain shows up as population
+// rather than utility per head. (Inland tiles: on the coast, ships already
+// beat a paved road.)
 func TestInfrastructurePaysOff(t *testing.T) {
 	if testing.Short() {
 		t.Skip("long")
 	}
-	type result struct{ utility, volume, montaraPop float64 }
+	inland := map[string]bool{"22": true, "23": true, "32": true, "33": true}
+	type result struct{ utility, volume, inlandPop float64 }
 	run := func(paved func(r *Region) bool) (res result) {
 		w := newTestGame(t)
 		for _, r := range w.Regions {
@@ -321,7 +323,7 @@ func TestInfrastructurePaysOff(t *testing.T) {
 				w.SetInfra(r.ID, 2)
 			}
 		}
-		const ticks, window = 600, 50
+		const ticks, window = 1500, 200
 		for i := 0; i < ticks; i++ {
 			w.Step()
 			if i < ticks-window {
@@ -329,8 +331,8 @@ func TestInfrastructurePaysOff(t *testing.T) {
 			}
 			for _, r := range w.Regions { // population-weighted utility
 				res.utility += r.Utility() * r.Population() / w.Population() / window
-				if r.Nation != nil && r.Nation.Name == "Montara" {
-					res.montaraPop += r.Population() / window
+				if inland[r.Name] {
+					res.inlandPop += r.Population() / window
 				}
 			}
 			for _, tr := range w.Traders {
@@ -341,16 +343,15 @@ func TestInfrastructurePaysOff(t *testing.T) {
 	}
 	none := run(func(*Region) bool { return false })
 	all := run(func(*Region) bool { return true })
-	mont := run(func(r *Region) bool { return r.Nation != nil && r.Nation.Name == "Montara" })
-	t.Logf("none %+v\nall paved %+v\nMontara paved %+v", none, all, mont)
+	mid := run(func(r *Region) bool { return inland[r.Name] })
+	t.Logf("none %+v\nall paved %+v\ninland paved %+v", none, all, mid)
 	if !(all.utility > none.utility && all.volume > none.volume) {
 		t.Errorf("paving everything should raise welfare and trade")
 	}
-	if mont.montaraPop <= none.montaraPop {
-		t.Errorf("paving Montara should draw people to it: %v -> %v", none.montaraPop, mont.montaraPop)
+	if mid.inlandPop <= none.inlandPop {
+		t.Errorf("paving inland tiles should draw people to them: %v -> %v", none.inlandPop, mid.inlandPop)
 	}
-	// Paving one nation mostly relocates people: with every tile's industry
+	// Paving a few tiles mostly relocates people: with every tile's industry
 	// gaining from its size, the tiles they leave lose productivity that
-	// migrants don't weigh, so world welfare needn't rise (it fell 0.7% when
-	// Montara's coastal tiles, which ships already serve, left only tile 11).
+	// migrants don't weigh, so world welfare needn't rise.
 }

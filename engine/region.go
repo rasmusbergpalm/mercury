@@ -29,8 +29,9 @@ type Region struct {
 	claims               []claim   // what the nation buys here this tick
 	publicBid, publicGot []float64 // by good
 
-	outbound [][]*Trader // traders buying here, by good (transport: all of them)
-	inbound  [][]*Trader // traders selling here, by good
+	House    *TradingHouse // the tile's merchants
+	outbound [][]*Trader   // routes buying here, by good (transport: all of them)
+	inbound  [][]*Trader   // traders selling here, by good
 
 	prices, demandBuf []float64 // scratch
 	popDemand         [][]float64
@@ -53,8 +54,13 @@ func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash f
 }
 
 func (r *Region) connect(traders []*Trader) {
+	if r.House == nil {
+		r.House = &TradingHouse{Region: r}
+	}
 	for _, t := range traders {
 		if t.Origin == r {
+			t.House = r.House
+			r.House.Routes = append(r.House.Routes, t)
 			r.outbound[t.Good] = append(r.outbound[t.Good], t)
 			r.outbound[Transport] = append(r.outbound[Transport], t)
 		}
@@ -252,7 +258,7 @@ func (r *Region) GoodsMarkets() {
 		}
 		for i, t := range r.outbound[g] {
 			if q := t.Bid(gid); q > 0 {
-				bids = append(bids, Order{&t.Cash, q})
+				bids = append(bids, Order{&t.House.Cash, q})
 				bidRefs = append(bidRefs, agentRef{traderAgent, i})
 			}
 		}
@@ -276,7 +282,7 @@ func (r *Region) GoodsMarkets() {
 		}
 		for i, t := range r.inbound[g] {
 			if t.StockDest > 0 {
-				asks = append(asks, Order{&t.Cash, t.StockDest})
+				asks = append(asks, Order{&t.House.Cash, t.StockDest})
 				askRefs = append(askRefs, agentRef{traderAgent, i})
 			}
 		}
@@ -293,7 +299,9 @@ func (r *Region) GoodsMarkets() {
 				r.Firms[ref.idx].Inputs[g] += got
 				r.Firms[ref.idx].tickCost += got * price
 			case traderAgent:
-				r.outbound[g][ref.idx].Receive(gid, got)
+				t := r.outbound[g][ref.idx]
+				t.Receive(gid, got)
+				t.House.Spent += got * price
 			case nationAgent:
 				r.publicGot[g] = got
 				r.Nation.Spending += got * price
@@ -311,7 +319,8 @@ func (r *Region) GoodsMarkets() {
 				t.StockDest -= sold
 				if rate, _ := t.border(); rate > 0 { // import tariff, paid on sale
 					duty := sold * price * rate
-					t.Cash -= duty
+					t.House.Cash -= duty
+					t.House.Spent += duty
 					r.Nation.Treasury += duty
 					r.Nation.TariffRevenue += duty
 				}

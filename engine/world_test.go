@@ -76,8 +76,13 @@ func TestStateStaysValid(t *testing.T) {
 		}
 	}
 	for _, tr := range w.Traders {
-		if tr.StockDest < -1e-9 || tr.StockOrigin < -1e-9 || tr.Cash < -1e-9 {
-			t.Errorf("trader %s: stocks %v %v cash %v", tr.Name(), tr.StockOrigin, tr.StockDest, tr.Cash)
+		if tr.StockDest < -1e-9 || tr.StockOrigin < -1e-9 {
+			t.Errorf("trader %s: stocks %v %v", tr.Name(), tr.StockOrigin, tr.StockDest)
+		}
+	}
+	for _, r := range w.Regions {
+		if r.House.Cash < -1e-9 {
+			t.Errorf("trading house %s: cash %v", r.Name, r.House.Cash)
 		}
 	}
 }

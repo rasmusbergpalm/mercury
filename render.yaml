@@ -1,0 +1,20 @@
+# Render blueprint: https://render.com/docs/blueprint-spec
+# Root directory: the repository root (leave "Root Directory" empty).
+services:
+  - type: web
+    name: mercury
+    runtime: go
+    plan: free
+    buildCommand: go build -trimpath -ldflags="-s -w" -o mercury ./cmd/server
+    startCommand: ./mercury
+    healthCheckPath: /api/games
+    # Games live in memory and saves on local disk, which Render wipes on
+    # every deploy and restart (and the free plan sleeps when idle). To keep
+    # saves, use a paid plan with a disk and point MERCURY_DATA at it:
+    # disk:
+    #   name: saves
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    # envVars:
+    #   - key: MERCURY_DATA
+    #     value: /var/data/saves

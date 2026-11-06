@@ -1047,6 +1047,9 @@ function tilePanel() {
   html += `<h3>Market</h3><div class="table-scroll"><table><tr><th>good</th><th>price</th><th>÷ wage</th><th>supply</th><th>demand</th></tr>${markets}</table></div>`;
   const trade = (list, out) => list.sort((a, b) => flowValue(b) - flowValue(a)).slice(0, 8).map((f) =>
     `<tr><td>${G[f.good].name}</td><td>${out ? "→" : "←"} ${world.regions[out ? f.to : f.from].name}${f.sea ? " ⚓" : ""}</td><td>${fmt(f.qty)}</td><td>${fmt(flowValue(f))}</td></tr>`).join("") || `<tr class="dim"><td colspan="4">none</td></tr>`;
+  html += `<h3>The trading house</h3><p class="sub">The tile's merchants share one purse across ${d.house.routes} routes (one per good and destination, by land and sea); ${d.house.active} shipped today.
+    When money is short it goes to the best margins first. Profits go to the owners.</p>
+    <div class="stats">${stat(short(d.house.cash), "purse")}${stat(short(d.house.spent), "spent today")}${stat(`${d.house.active}/${d.house.routes}`, "routes in use")}</div>`;
   html += `<h3>Shipments today</h3><table><tr><th>exports</th><th>to</th><th>qty</th><th>value</th></tr>${trade(d.exports, true)}
     <tr><th>imports</th><th>from</th><th>qty</th><th>value</th></tr>${trade(d.imports, false)}</table>`;
   return html;

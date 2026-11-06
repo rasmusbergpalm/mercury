@@ -102,7 +102,7 @@ func TestEmbargoStopsCrossBorderTrade(t *testing.T) {
 		t.Fatal("no trade between the neighbours to begin with")
 	}
 	w.Nations[0].Embargo[1] = true // Alpha embargoes Beta: both directions close
-	for i := 0; i < 20; i++ { // stock bought before the embargo ships out first
+	for i := 0; i < 20; i++ {      // stock bought before the embargo ships out first
 		w.Step()
 	}
 	for _, tr := range tradersBetween(w, a, b) {

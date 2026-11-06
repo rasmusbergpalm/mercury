@@ -37,10 +37,17 @@ type Link struct {
 	Hop  float64
 }
 
-// NewWorld wires regions and traders together.
+// Each tile's trading house starts with this much cash per route.
+const houseCashPerRoute = 1.0
+
+// NewWorld wires regions and traders together: every route belongs to the
+// trading house of the tile it leaves from.
 func NewWorld(rows, cols int, regions []*Region, traders []*Trader, links []Link) *World {
 	for _, r := range regions {
 		r.connect(traders)
+		h := r.House
+		h.Cash = houseCashPerRoute * float64(len(h.Routes))
+		h.CashBuffer = h.Cash
 	}
 	w := &World{Rows: rows, Cols: cols, Regions: regions, Traders: traders, Links: links}
 	for _, r := range regions {
@@ -55,8 +62,8 @@ func (w *World) Money() float64 {
 	for _, r := range w.Regions {
 		s += r.Money()
 	}
-	for _, t := range w.Traders {
-		s += t.Cash
+	for _, r := range w.Regions {
+		s += r.House.Cash
 	}
 	for _, n := range w.Nations {
 		s += n.Treasury
@@ -85,8 +92,8 @@ func (w *World) Step() {
 			r.planInvestment()
 		}
 	}
-	for _, t := range w.Traders {
-		t.Plan()
+	for _, r := range w.Regions {
+		r.House.Plan()
 	}
 	for _, n := range w.Nations {
 		n.plan(w)
@@ -109,8 +116,11 @@ func (w *World) Step() {
 			r.PayDividends(&f.Cash, f.CashBuffer, math.Min(f.DesiredSpend, 2*f.tickCost+f.CashBuffer), r.owners())
 		}
 	}
-	for _, t := range w.Traders {
-		t.Origin.PayDividends(&t.Cash, t.CashBuffer, t.DesiredSpend, t.Origin.owners())
+	for _, r := range w.Regions {
+		// like firms: hold what today's plans need, but no more than the
+		// house can grow into (twice what it actually spent today)
+		h := r.House
+		r.PayDividends(&h.Cash, h.CashBuffer, math.Min(h.DesiredSpend, 2*h.Spent+h.CashBuffer), r.owners())
 	}
 	changed := false
 	for _, n := range w.Nations {
@@ -284,8 +294,7 @@ func (w *World) openPort(r *Region) {
 			for _, g := range GameTradable {
 				a := NewTrader(g, r, p, hop, w.Spec.TransportCost)
 				b := NewTrader(g, p, r, hop, w.Spec.TransportCost)
-				a.Sea, b.Sea = true, true
-				a.Cash, b.Cash = 0, 0 // money isn't created: owners fund new routes
+				a.Sea, b.Sea = true, true // the houses fund them from their purse
 				added = append(added, a, b)
 			}
 		}

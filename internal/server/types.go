@@ -253,8 +253,17 @@ type ClassState struct {
 	Utility float64 `json:"utility"`
 }
 
+// HouseState is a tile's trading house.
+type HouseState struct {
+	Cash   float64 `json:"cash"`
+	Spent  float64 `json:"spent"`  // today: goods, transport and duties
+	Routes int     `json:"routes"` // by land and sea, one per good and destination
+	Active int     `json:"active"` // routes that shipped today
+}
+
 // RegionDetail is everything about one region.
 type RegionDetail struct {
+	House   HouseState    `json:"house"`
 	Classes []ClassState  `json:"classes"`
 	GDP     float64       `json:"gdp"`
 	Info    RegionInfo    `json:"info"`
@@ -420,6 +429,13 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 	r := w.Regions[i]
 	d := RegionDetail{Info: RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain, r.Coastal}, State: regionState(w, i), GDP: r.GDP(),
 		Exports: []Flow{}, Imports: []Flow{}}
+	h := r.House
+	d.House = HouseState{Cash: h.Cash, Spent: h.Spent, Routes: len(h.Routes)}
+	for _, t := range h.Routes {
+		if t.Shipped > 0 {
+			d.House.Active++
+		}
+	}
 	for _, p := range r.Pops {
 		d.Pops = append(d.Pops, PopState{p.Size, p.Cash, p.Employed()})
 	}

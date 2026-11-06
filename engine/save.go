@@ -37,7 +37,7 @@ type SiegeSnap struct {
 }
 
 // SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 5
+const SnapshotVersion = 6
 
 type MarketSnap struct {
 	Price, Supply, Demand float64
@@ -58,6 +58,7 @@ type FirmSnap struct {
 
 type RegionSnap struct {
 	Wage, Neglect, UtilityEMA float64
+	HouseCash                 float64
 	Infra                     int
 	Port                      bool
 	Project                   *Project
@@ -68,7 +69,7 @@ type RegionSnap struct {
 }
 
 type TraderSnap struct {
-	Q, StockOrigin, StockDest, Cash, RelMargin, Shipped, Margin float64
+	Q, StockOrigin, StockDest, RelMargin, Shipped, Margin float64
 }
 
 type NationSnap struct {
@@ -98,7 +99,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	}
 	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick, Ports: append([]int(nil), w.Ports...)}
 	for _, r := range w.Regions {
-		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, Infra: r.Infra, Port: r.Port}
+		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Infra: r.Infra, Port: r.Port}
 		if r.Siege != nil {
 			rs.Siege = &SiegeSnap{r.Siege.Nation.ID, r.Siege.Progress}
 		}
@@ -129,7 +130,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 		s.Regions = append(s.Regions, rs)
 	}
 	for _, t := range w.Traders {
-		s.Traders = append(s.Traders, TraderSnap{t.Q, t.StockOrigin, t.StockDest, t.Cash, t.RelMargin, t.Shipped, t.Margin})
+		s.Traders = append(s.Traders, TraderSnap{t.Q, t.StockOrigin, t.StockDest, t.RelMargin, t.Shipped, t.Margin})
 	}
 	for _, n := range w.Nations {
 		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, Reserve: n.Reserve,
@@ -197,6 +198,7 @@ func Restore(s *Snapshot) (*World, error) {
 			return bad("port in " + r.Name)
 		}
 		r.Wage, r.Neglect, r.UtilityEMA, r.Infra, r.Project, r.Nation = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Infra, rs.Project, nil
+		r.House.Cash = rs.HouseCash
 		if r.Infra < 0 || r.Infra >= len(InfraLevels) || (r.Project != nil && !r.Project.Port && (r.Project.Target <= 0 || r.Project.Target >= len(InfraLevels))) {
 			return bad("infrastructure in " + r.Name)
 		}
@@ -226,7 +228,7 @@ func Restore(s *Snapshot) (*World, error) {
 	}
 	for i, ts := range s.Traders {
 		t := w.Traders[i]
-		t.Q, t.StockOrigin, t.StockDest, t.Cash, t.RelMargin, t.Shipped, t.Margin = ts.Q, ts.StockOrigin, ts.StockDest, ts.Cash, ts.RelMargin, ts.Shipped, ts.Margin
+		t.Q, t.StockOrigin, t.StockDest, t.RelMargin, t.Shipped, t.Margin = ts.Q, ts.StockOrigin, ts.StockDest, ts.RelMargin, ts.Shipped, ts.Margin
 	}
 	for i, ns := range s.Nations {
 		n := w.Nations[i]

@@ -1,8 +1,70 @@
 package engine
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
-// Trader is a merchant on one route (origin -> dest) for one good.
+// TradingHouse is a tile's merchants: one purse that funds every route
+// leaving the tile, by land and by sea. When money is short it goes to the
+// routes with the best margins first. Its profits go to the tile's owners.
+type TradingHouse struct {
+	Region       *Region
+	Routes       []*Trader
+	Cash         float64
+	CashBuffer   float64 // kept on hand beyond today's needs
+	DesiredSpend float64 // what today's plans would cost
+	Spent        float64 // what it actually paid today: goods, transport, duties
+}
+
+// Plan plans every route at current prices, then fits the orders to the
+// purse. If it can't pay for all of them, stock already bought is carried
+// first (as much as the purse allows), then routes are funded in order of
+// their margin, each up to what its market offered last tick: every order
+// the house places is paid for.
+func (h *TradingHouse) Plan() {
+	desired, full, carry := 0.0, 0.0, 0.0
+	h.Spent = 0
+	for _, t := range h.Routes {
+		t.Plan()
+		t.ship = 1
+		desired += t.DesiredSpend
+		full += t.bidCost() + t.carry
+		carry += t.carry
+	}
+	h.DesiredSpend = desired
+	budget := math.Max(0, 0.9*h.Cash)
+	if full <= budget {
+		return
+	}
+	if carry > budget {
+		for _, t := range h.Routes {
+			t.ship = budget / carry
+		}
+		budget = 0
+	} else {
+		budget -= carry
+	}
+	order := make([]int, len(h.Routes))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(a, b int) bool { return h.Routes[order[a]].RelMargin > h.Routes[order[b]].RelMargin })
+	for _, i := range order {
+		t := h.Routes[i]
+		if !t.Active || t.unit <= 0 {
+			continue
+		}
+		t.Q = math.Min(t.Q, t.Origin.Markets[t.Good].Supply)
+		if cost := t.Q * t.unit; cost <= budget {
+			budget -= cost
+		} else {
+			t.Q, budget = budget/t.unit, 0
+		}
+	}
+}
+
+// Trader is one route of a trading house (origin -> dest) for one good.
 //
 // It buys the good in the origin market, plus tau = cost * distance * bulk
 // units of the origin's transport good per unit shipped. A fraction of
@@ -19,8 +81,7 @@ type Trader struct {
 	Distance      float64
 	Tau           float64
 	Arriving      float64
-	Cash          float64
-	CashBuffer    float64
+	House         *TradingHouse // the origin's, which funds the route
 	Speed         float64
 	Damping       float64
 	QMin          float64
@@ -34,6 +95,9 @@ type Trader struct {
 	Margin        float64
 	RelMargin     float64
 	DesiredSpend  float64
+	carry         float64 // transport for stock already bought, part of DesiredSpend
+	ship          float64 // share of that stock the house can afford to ship today
+	unit          float64 // cost of buying and shipping one more unit today
 	spoilage      float64
 }
 
@@ -41,7 +105,7 @@ type Trader struct {
 func NewTrader(good GoodID, origin, dest *Region, distance, transportCost float64) *Trader {
 	t := &Trader{
 		Good: good, Origin: origin, Dest: dest, TransportCost: transportCost,
-		Cash: 1, CashBuffer: 1, Speed: 0.1, Damping: 10, QMin: 0.02, Q: 0.02,
+		Speed: 0.1, Damping: 10, QMin: 0.02, Q: 0.02,
 		spoilage: Goods[good].Spoilage,
 	}
 	t.SetDistance(distance)
@@ -80,13 +144,15 @@ func (t *Trader) Name() string {
 
 func clip(x float64) float64 { return math.Max(-1, math.Min(1, x)) }
 
-// Plan updates the quantity to buy this tick from current prices.
+// Plan updates the quantity to buy this tick from current prices (its house
+// then fits it to the purse).
 func (t *Trader) Plan() {
 	po, pd := t.Origin.Markets, t.Dest.Markets
 	pOrig, pDest, pT := po[t.Good].Price, pd[t.Good].Price, po[Transport].Price
 	tariff, blocked := t.border()
 	if blocked {
-		t.Q, t.Active, t.RelMargin, t.Margin, t.DesiredSpend = t.QMin, false, 0, 0, t.StockOrigin*t.Tau*pT
+		t.carry, t.unit = t.StockOrigin*t.Tau*pT, 0
+		t.Q, t.Active, t.RelMargin, t.Margin, t.DesiredSpend = t.QMin, false, 0, 0, t.carry
 		return
 	}
 	t.Margin = pDest*t.Arriving*(1-tariff) - pOrig - t.Tau*pT
@@ -100,11 +166,19 @@ func (t *Trader) Plan() {
 	if t.Active {
 		q = t.Q
 	}
-	cost := q*(pOrig+t.Tau*pT) + t.StockOrigin*t.Tau*pT
-	t.DesiredSpend = cost
-	if cost > 0.9*t.Cash {
-		t.Q *= 0.9 * t.Cash / cost
+	t.carry = t.StockOrigin * t.Tau * pT
+	t.unit = pOrig + t.Tau*pT
+	// it can't buy more than the market offered (a standing bid for a good
+	// nobody sells costs nothing and mustn't make the owners fund it)
+	t.DesiredSpend = math.Min(q, po[t.Good].Supply)*t.unit + t.carry
+}
+
+// bidCost is what today's order costs if it is filled in full.
+func (t *Trader) bidCost() float64 {
+	if !t.Active {
+		return 0
 	}
+	return t.Q * t.unit
 }
 
 // Bid is how much of good the trader wants to buy in its origin market.
@@ -117,7 +191,7 @@ func (t *Trader) Bid(good GoodID) float64 {
 	case t.Good:
 		return q
 	case Transport:
-		return t.Tau * (q + t.StockOrigin)
+		return t.Tau * (q + t.ship*t.StockOrigin)
 	}
 	return 0
 }
