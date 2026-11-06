@@ -4,6 +4,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/rasmusbergpalm/mercury/engine"
@@ -41,12 +42,19 @@ func main() {
 		}
 		cityPop := 0.0
 		for _, r := range w.Regions {
-			if r.City {
+			if w.IsCity(r) {
 				cityPop += r.Population()
 			}
 		}
 		fmt.Printf("%d pop %.0f (cities %.0f%%, soldiers %.0f) U %.2f labor primary %.0f%% industry %.0f%% service %.0f%%\n",
 			w.Date().Year(), pop+w.Soldiers(), 100*cityPop/pop, w.Soldiers(), u, 100*labor[1]/tot, 100*labor[0]/tot, 100*labor[2]/tot)
+		big := append([]*engine.Region(nil), w.Regions...)
+		sort.Slice(big, func(i, j int) bool { return big[i].Population() > big[j].Population() })
+		fmt.Print("   largest:")
+		for _, r := range big[:6] {
+			fmt.Printf(" %s %s %.0f (×%.2f)", r.Name, r.Terrain, r.Population(), r.SizeBonus())
+		}
+		fmt.Printf("  smallest: %.0f\n", big[len(big)-1].Population())
 		for _, n := range w.Nations {
 			known := 0
 			for _, k := range n.Known {

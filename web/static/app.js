@@ -3,8 +3,20 @@
 // ---- basics --------------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const fmt = (x, d = 2) => (Math.abs(x) >= 1000 ? Math.round(x).toLocaleString() : x.toFixed(d));
+const fmt = (x, d = 2) => (Math.abs(x) >= 1000 ? Math.round(x).toLocaleString("en") : x.toFixed(d));
 const pct = (x) => `${Math.round(100 * x)}%`;
+// compact numbers for axes and plaques: 950, 9.5k, 1.2M
+function short(x) {
+  const a = Math.abs(x);
+  if (a >= 1e9) return (x / 1e9).toFixed(a >= 1e10 ? 0 : 1) + "bn";
+  if (a >= 1e6) return (x / 1e6).toFixed(a >= 1e7 ? 0 : 1) + "M";
+  if (a >= 1e4) return (x / 1e3).toFixed(0) + "k";
+  if (a >= 1e3) return (x / 1e3).toFixed(1) + "k";
+  if (a >= 100 || a === 0) return x.toFixed(0);
+  if (a >= 1) return x.toFixed(a >= 10 ? 1 : 2);
+  return x.toPrecision(2);
+}
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 let gid = null;          // current game
 let world = null;        // its static description
@@ -14,8 +26,11 @@ let selected = null;     // selected tile id
 let selectedArmy = null; // selected army id
 let moving = false;      // next map tap orders the selected army to march there
 let tab = "tile";
+let viewNation = 0;      // the nation shown in the Nation and Trade tabs
 let pollTimer = null;
 let lastEventTick = -1;  // newest event seen, for auto-pause
+let hist = {};           // history cache: "nations/0" -> {at, data, loading}
+const chartPick = {};    // which chart each panel shows
 
 // seats (player tokens) are kept per game in this browser
 const seatKey = (g) => `mercury:seat:${g}`;
@@ -47,6 +62,31 @@ function say(where, msg, isError = true) {
 }
 const showError = (where, e) => say(where, e ? e.message || String(e) : "");
 
+// ---- theme ---------------------------------------------------------------------
+// Colours are validated for each mode (contrast against the parchment and
+// colour-blind separation); dark mode uses its own steps, not an inversion.
+const NATION_DARK = { "#b8322e": "#d0473f", "#2c5aa0": "#4f7fc8", "#c08a1e": "#b9861f" };
+const SERIES = { light: ["#7a4a8c", "#0f8a68", "#b0602a"], dark: ["#a77bbb", "#17a07a", "#cf7a3c"] };
+let dark = false;
+const readTheme = () => { dark = getComputedStyle(document.documentElement).getPropertyValue("--scheme").trim() === "dark"; };
+const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const UNOWNED = "#9a8f7c";
+const nationColor = (id) => (id < 0 ? UNOWNED : dark ? NATION_DARK[world.nations[id].color] || world.nations[id].color : world.nations[id].color);
+const series = (i) => SERIES[dark ? "dark" : "light"][i];
+function applyTheme() {
+  const t = pref("theme", null);
+  if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  readTheme();
+  terrainCache = null;
+}
+document.addEventListener("click", (ev) => {
+  if (!ev.target.closest(".theme")) return;
+  setPref("theme", dark ? "light" : "dark");
+  applyTheme();
+  if (state) render(true);
+});
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { applyTheme(); if (state) render(true); });
+
 // ---- routing -------------------------------------------------------------------
 function route() {
   const m = location.hash.match(/^#\/game\/([0-9a-f]+)$/);
@@ -67,9 +107,9 @@ async function openLobby() {
 
 async function refreshLobby() {
   const [games, saves] = await Promise.all([api("GET", "/api/games"), api("GET", "/api/saves")]);
-  $("games").innerHTML = games.length ? games.map(gameCard).join("") : `<p class="hint">No games yet. Create one below.</p>`;
+  $("games").innerHTML = games.length ? games.map(gameCard).join("") : `<p class="hint">No games yet. Found one below.</p>`;
   $("saves").innerHTML = saves.length
-    ? `<div class="table-scroll"><table><tr><th>slot</th><th>game</th><th>date</th><th>saved</th><th></th></tr>${saves.map((s) =>
+    ? `<div class="table-scroll"><table><tr><th>slot</th><th>game</th><th>day</th><th>saved</th><th></th></tr>${saves.map((s) =>
       `<tr><td>${esc(s.slot)}</td><td>${esc(s.name)}</td><td>${s.tick}</td><td>${new Date(s.saved_at).toLocaleString()}</td>
        <td><button data-load="${esc(s.slot)}">Load</button></td></tr>`).join("")}</table></div>`
     : `<p class="hint">No saves yet. Save a game from its top bar.</p>`;
@@ -133,7 +173,7 @@ $("import").addEventListener("change", async (ev) => {
 async function openGame(id) {
   stopPolling();
   gid = id;
-  selected = null; detail = null; selectedArmy = null; moving = false;
+  selected = null; detail = null; selectedArmy = null; moving = false; hist = {};
   world = await api("GET", `/api/games/${id}/world`);
   state = await api("GET", `/api/games/${id}/state`);
   const summary = (await api("GET", "/api/games")).find((g) => g.id === id);
@@ -148,8 +188,10 @@ async function openGame(id) {
   $("flow-good").innerHTML = `<option value="all">all goods (value)</option>${opts}`;
   $("speed").innerHTML = [1, 2, 3, 7, 15, 30].map((s) => `<option value="${s}">${s} day${s > 1 ? "s" : ""}/s</option>`).join("");
   if (state.you < 0 && getSeat(id)) setSeat(id, null); // the server no longer knows our seat
+  viewNation = state.you >= 0 ? state.you : 0;
   lastEventTick = state.events.length ? state.events[state.events.length - 1].tick : -1;
   setTab(state.you >= 0 ? "nation" : "world");
+  terrainCache = null;
   resize();
   render(true);
   startPolling();
@@ -187,10 +229,9 @@ const humans = () => state.nations.some((n) => n.controller === "human");
 const canClock = () => !state.turn && (!humans() || state.you >= 0);
 const me = () => (state.you >= 0 ? state.nations[state.you] : null);
 const owner = (id) => state.regions[id].nation;
-const neighbours = (id) => world.links.filter((l) => l.a === id || l.b === id).map((l) => (l.a === id ? l.b : l.a));
 const armyById = (id) => state.armies.find((a) => a.id === id);
 const nationName = (id) => (id >= 0 ? world.nations[id].name : "unowned");
-const chip = (id) => `<span class="chip" style="background:${id >= 0 ? world.nations[id].color : UNOWNED}"></span>`;
+const chip = (id) => `<span class="chip" style="background:${nationColor(id)}"></span>`;
 // the game's calendar has 365-day years (29 February is skipped), so any
 // common year maps its days to dates
 const dateOf = (tick) => {
@@ -198,6 +239,7 @@ const dateOf = (tick) => {
   const dt = new Date(Date.UTC(2001, 0, 1 + (tick % 365)));
   return `${dt.getUTCDate()} ${dt.toLocaleString("en", { month: "short", timeZone: "UTC" })} ${y}`;
 };
+const yearOf = (tick) => world.start_year + tick / 365;
 
 async function command(path, after) {
   try {
@@ -207,6 +249,21 @@ async function command(path, after) {
     render(true);
     return true;
   } catch (e) { showError("game-err", e); return false; }
+}
+
+// ---- history -------------------------------------------------------------------
+// History is sampled monthly; fetch a series when first shown and again once
+// a month has passed. The panel re-renders when it arrives.
+const HISTORY_EVERY = 30;
+function getHist(path) {
+  let h = hist[path];
+  if (!h || (!h.loading && state.tick - h.at >= HISTORY_EVERY)) {
+    h = hist[path] = { ...(h || {}), loading: true, at: state.tick };
+    api("GET", `/api/games/${gid}/history/${path}`)
+      .then((d) => { h.data = d; h.loading = false; renderPanel(true); })
+      .catch(() => { h.loading = false; });
+  }
+  return h.data || null;
 }
 
 // ---- top bar -------------------------------------------------------------------
@@ -232,9 +289,9 @@ function renderBar() {
   if (!n) return;
   const wars = n.at_war.map((w, i) => (w ? world.nations[i].name : null)).filter(Boolean);
   $("you").innerHTML = `<span>${chip(n.id)} <b>${esc(world.nations[n.id].name)}</b>${n.eliminated ? " (fallen)" : ""}</span>
-    <span>tiles <b>${n.tiles}</b></span><span>people <b>${fmt(n.population, 0)}</b></span>
-    <span>treasury <b>${fmt(n.treasury, 0)}</b></span><span>income <b>${fmt(n.income, 0)}</b>/day</span>
-    <span>soldiers <b>${fmt(n.soldiers, 0)}</b> / ${fmt(n.mobilize_cap, 0)}</span>
+    <span>tiles <b>${n.tiles}</b></span><span>people <b>${short(n.population)}</b></span>
+    <span>treasury <b>£${short(n.treasury)}</b></span><span>income <b>£${short(n.income)}</b>/day</span>
+    <span>soldiers <b>${short(n.soldiers)}</b> / ${short(n.mobilize_cap)}</span>
     ${wars.length ? `<span class="war">⚔ at war with <b>${wars.map(esc).join(", ")}</b></span>` : ""}`;
 }
 $("to-lobby").onclick = () => { location.hash = "#/"; };
@@ -254,7 +311,7 @@ $("save").onclick = async () => {
 };
 
 // ---- tabs ----------------------------------------------------------------------
-const TABS = ["tile", "nation", "armies", "world", "news"];
+const TABS = ["tile", "nation", "trade", "armies", "world", "news"];
 function setTab(t) {
   tab = t;
   for (const b of document.querySelectorAll(".tabs button")) b.classList.toggle("active", b.dataset.tab === t);
@@ -270,32 +327,171 @@ document.querySelector(".tabs").addEventListener("click", async (ev) => {
   render(true);
 });
 
-// is the user typing or dragging in this element? then don't redraw it
-const busy = (el) => el.contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName);
+// is the user typing, dragging or reading a chart in this element? then don't redraw it
+let chartHover = null;
+const busy = (el) => (el.contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName)) || (chartHover && el.contains(chartHover));
 
 function render(force) {
   if (!state || !world) return;
+  readTheme();
   renderBar();
   draw();
   const m = $("mode");
   const a = selectedArmy !== null && armyById(selectedArmy);
   m.hidden = !(moving && a);
   if (moving && a) m.innerHTML = `<span>Tap a tile to march army ${a.id} there</span><button id="cancel-move">Cancel</button>`;
+  renderPanel(force);
+}
+function renderPanel(force) {
   const el = $(`tab-${tab}`);
   if (!force && busy(el)) return;
-  const panels = { tile: tilePanel, nation: nationPanel, armies: armiesPanel, world: worldPanel, news: newsPanel };
+  if (chartHover && el.contains(chartHover)) return; // never pull a chart from under the pointer
+  const panels = { tile: tilePanel, nation: nationPanel, trade: tradePanel, armies: armiesPanel, world: worldPanel, news: newsPanel };
+  const scroll = el.scrollTop;
+  charts.clear();
   el.innerHTML = panels[tab]();
+  el.scrollTop = scroll;
+}
+
+// ---- charts --------------------------------------------------------------------
+// Hand-drawn SVG line charts: one y-axis, recessive grid, 2px lines, a legend
+// for two or more series plus direct labels at the line ends, and a crosshair
+// with a tooltip on hover or touch.
+const charts = new Map();
+let chartSeq = 0;
+const CW = 400, PAD = { l: 42, t: 10, b: 20 };
+
+function niceStep(span, n) {
+  const raw = span / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p;
+}
+
+// lineChart(ticks, [{name, color, values}], {f: formatter, h, share})
+function lineChart(ticks, list, o = {}) {
+  const f = o.f || short;
+  if (!ticks || ticks.length < 2) return `<div class="chart"><div class="empty">The ledger is written monthly; the first entries appear after two months.</div></div>`;
+  const h = o.h || 160, labels = list.length >= 2 && list.length <= 4, padR = labels ? 78 : 12;
+  const x0 = PAD.l, x1 = CW - padR, y0 = h - PAD.b, y1 = PAD.t;
+  const all = list.flatMap((s) => s.values).filter((v) => v !== null && isFinite(v));
+  let lo = Math.min(0, ...all), hi = Math.max(...all, 1e-9);
+  if (o.share) { lo = 0; hi = Math.max(hi, 0.001); }
+  const step = niceStep(hi - lo || 1, 3);
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const tx = (i) => x0 + (x1 - x0) * (ticks[i] - ticks[0]) / Math.max(1, ticks[ticks.length - 1] - ticks[0]);
+  const ty = (v) => y0 - (y0 - y1) * (v - lo) / (hi - lo || 1);
+  let svg = "";
+  for (let v = lo; v <= hi + step / 2; v += step) {
+    svg += `<line class="grid" x1="${x0}" x2="${x1}" y1="${ty(v)}" y2="${ty(v)}"/>`;
+    svg += `<text class="axis" x="${x0 - 5}" y="${ty(v) + 4}" text-anchor="end">${o.share ? pct(v) : f(v)}</text>`;
+  }
+  const ya = yearOf(ticks[0]), yb = yearOf(ticks[ticks.length - 1]);
+  const ys = Math.max(1, niceStep(yb - ya || 1, 4));
+  for (let y = Math.ceil(ya / ys) * ys; y <= yb; y += ys) {
+    const x = x0 + (x1 - x0) * (y - ya) / (yb - ya || 1);
+    svg += `<text class="axis" x="${x}" y="${h - 5}" text-anchor="middle">${Math.round(y)}</text>`;
+  }
+  const ends = [];
+  for (const s of list) {
+    let d = "", pen = false;
+    s.values.forEach((v, i) => {
+      if (v === null || !isFinite(v)) { pen = false; return; }
+      d += `${pen ? "L" : "M"}${tx(i).toFixed(1)},${ty(v).toFixed(1)}`;
+      pen = true;
+    });
+    svg += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const last = s.values[s.values.length - 1];
+    if (labels && last !== null) ends.push({ y: ty(last), name: s.name, color: s.color });
+  }
+  // direct labels, nudged apart so they don't collide
+  ends.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) ends[i].y = Math.max(ends[i].y, ends[i - 1].y + 13);
+  for (const e of ends) {
+    svg += `<rect x="${x1 + 4}" y="${e.y - 1}" width="8" height="2" fill="${e.color}"/><text class="lbl" x="${x1 + 15}" y="${e.y + 4}">${esc(e.name)}</text>`;
+  }
+  const id = ++chartSeq;
+  charts.set(String(id), { ticks, list, tx, ty, x0, x1, h, f: o.share ? pct : f });
+  svg += `<line class="cross" x1="0" x2="0" y1="${y1}" y2="${y0}" visibility="hidden"/>`;
+  svg += list.map((s) => `<circle r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`).join("");
+  const legend = list.length >= 2
+    ? `<div class="legend-inline">${list.map((s) => `<span><span class="swatch" style="background:${s.color};height:3px;vertical-align:4px"></span>${esc(s.name)}</span>`).join("")}</div>` : "";
+  return `${legend}<div class="chart" data-chart="${id}"><svg viewBox="0 0 ${CW} ${h}" role="img" aria-label="${esc(list.map((s) => s.name).join(", "))} over time">${svg}</svg></div>`;
+}
+
+function chartAt(ev) {
+  const el = ev.target.closest && ev.target.closest(".chart[data-chart]");
+  const c = el && charts.get(el.dataset.chart);
+  if (!c) return;
+  const svg = el.querySelector("svg"), rect = svg.getBoundingClientRect();
+  const sx = (ev.clientX - rect.left) * CW / rect.width;
+  let best = 0;
+  c.ticks.forEach((t, i) => { if (Math.abs(c.tx(i) - sx) < Math.abs(c.tx(best) - sx)) best = i; });
+  const x = c.tx(best);
+  const cross = svg.querySelector(".cross");
+  cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.setAttribute("visibility", "visible");
+  svg.querySelectorAll("circle").forEach((dot, k) => {
+    const v = c.list[k].values[best];
+    if (v === null || !isFinite(v)) { dot.setAttribute("visibility", "hidden"); return; }
+    dot.setAttribute("cx", x); dot.setAttribute("cy", c.ty(v)); dot.setAttribute("visibility", "visible");
+  });
+  let tip = el.querySelector(".chart-tip");
+  if (!tip) { tip = document.createElement("div"); tip.className = "chart-tip"; el.appendChild(tip); }
+  tip.innerHTML = `<b>${dateOf(c.ticks[best])}</b>` + c.list.map((s) => {
+    const v = s.values[best];
+    return `<br><span class="k" style="background:${s.color}"></span>${esc(s.name)}: ${v === null ? "–" : c.f(v)}`;
+  }).join("");
+  const px = x * rect.width / CW;
+  tip.style.top = "0px";
+  tip.style.left = px > rect.width / 2 ? "" : `${px + 12}px`;
+  tip.style.right = px > rect.width / 2 ? `${rect.width - px + 12}px` : "";
+}
+function chartLeave(el) {
+  const svg = el.querySelector("svg");
+  if (svg) { svg.querySelector(".cross").setAttribute("visibility", "hidden"); svg.querySelectorAll("circle").forEach((d) => d.setAttribute("visibility", "hidden")); }
+  const tip = el.querySelector(".chart-tip");
+  if (tip) tip.remove();
+}
+const side = document.querySelector(".side");
+side.addEventListener("pointermove", (ev) => {
+  const el = ev.target.closest(".chart[data-chart]");
+  if (chartHover && chartHover !== el) { chartLeave(chartHover); chartHover = null; }
+  if (el) { chartHover = el; chartAt(ev); }
+});
+side.addEventListener("pointerleave", () => { if (chartHover) chartLeave(chartHover); chartHover = null; });
+document.addEventListener("pointerdown", (ev) => { if (chartHover && !chartHover.contains(ev.target)) { chartLeave(chartHover); chartHover = null; } });
+
+// a row of choices: which chart to show
+function seg(key, options, fallback) {
+  const cur = options.some(([k]) => k === chartPick[key]) ? chartPick[key] : fallback;
+  return [cur, `<div class="seg">${options.map(([k, label]) => `<button data-pick="${key}" data-val="${esc(k)}" class="${k === cur ? "on" : ""}">${label}</button>`).join("")}</div>`];
+}
+const stat = (v, k, d = "") => `<div class="stat"><div class="v">${v}</div><div class="k">${k}</div>${d ? `<div class="d">${d}</div>` : ""}</div>`;
+// change over the last year of history, as a small coloured note
+function trend(h, key, sub) {
+  if (!h || !h.data) return "";
+  let s = h.data[key];
+  if (sub !== undefined) s = s && s[sub];
+  if (!s || s.length < 13) return "";
+  const a = s[s.length - 13], b = s[s.length - 1];
+  if (!(Math.abs(a) > 1e-9)) return "";
+  const r = b / a - 1;
+  return `<span class="${r >= 0 ? "good" : "bad"}">${r >= 0 ? "▲" : "▼"} ${Math.abs(100 * r).toFixed(r > -0.1 && r < 0.1 ? 1 : 0)}%/yr</span>`;
+}
+function shield(color, px = 30) {
+  return `<svg class="shield" viewBox="0 0 30 36" width="${px}" height="${px * 1.2}" aria-hidden="true"><path d="M2 2h26v14c0 10-7 15-13 18C9 31 2 26 2 16z" fill="${color}" stroke="${cssVar("--brass")}" stroke-width="2"/><path d="M15 6v24M6 14h18" stroke="rgba(255,255,255,.55)" stroke-width="2"/></svg>`;
 }
 
 // ---- map -----------------------------------------------------------------------
 const canvas = $("map");
 const ctx = canvas.getContext("2d");
-const TERRAIN_COLORS = { plains: "#c8d67a", forest: "#4f8a4a", hills: "#b89c69", mountains: "#8e8e93", tropical: "#2fa37b", coast: "#6db3dc" };
-const TIER_COLORS = { basic: "#7a9e4f", intermediate: "#d4a23c", luxury: "#9b5fc0" };
-const INFRA_COLORS = ["#d9d4c7", "#b07d48", "#5b3a1e", "#2b2b2b"];
-const UNOWNED = "#a3a3a3";
-const RAMP = ["#2a1b5c", "#26508f", "#1f8a8c", "#49b670", "#b5d84a", "#fde725"];
+const TERRAIN = {
+  light: { plains: "#e3d59b", forest: "#b9c28c", hills: "#d6bd8c", mountains: "#c9bdab", tropical: "#bcd194", coast: "#bcd6d0" },
+  dark: { plains: "#5c5434", forest: "#3e4a2f", hills: "#5b4b34", mountains: "#514b44", tropical: "#3d5234", coast: "#2f4a4d" },
+};
+const TIER_COLORS = () => [series(1), series(2), series(0)]; // basic, intermediate, luxury
+// a single warm hue, light to dark, for magnitudes
+const RAMP = ["#f6ecd0", "#ecd09a", "#d9a066", "#b5622f", "#7d2a17"];
 const hexRGB = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+const rgba = (c, a) => `rgba(${hexRGB(c).join(",")},${a})`;
 function rampColor(t) {
   t = Math.max(0, Math.min(1, t));
   const x = t * (RAMP.length - 1), i = Math.min(Math.floor(x), RAMP.length - 2), f = x - i;
@@ -304,37 +500,129 @@ function rampColor(t) {
 }
 
 let size = 40;
-const margin = 8;
+const margin = 16;
 function center(r) {
   const w = Math.sqrt(3) * size;
   return [margin + w / 2 + w * (r.col + 0.5 * (r.row & 1)), margin + size + 1.5 * size * r.row];
 }
-function hexPath(x, y, s) {
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const a = Math.PI / 180 * (60 * i - 30);
-    i ? ctx.lineTo(x + s * Math.cos(a), y + s * Math.sin(a)) : ctx.moveTo(x + s * Math.cos(a), y + s * Math.sin(a));
-  }
-  ctx.closePath();
+const corner = (x, y, s, i) => { const a = Math.PI / 180 * (60 * i - 30); return [x + s * Math.cos(a), y + s * Math.sin(a)]; };
+function hexPath(x, y, s, c = ctx) {
+  c.beginPath();
+  for (let i = 0; i < 6; i++) { const [px, py] = corner(x, y, s, i); i ? c.lineTo(px, py) : c.moveTo(px, py); }
+  c.closePath();
 }
+// the neighbour across each edge (edge i joins corners i and i+1): E, SE, SW, W, NW, NE
+function across(r, i) {
+  const odd = r.row & 1;
+  const d = [[0, 1], [1, odd ? 1 : 0], [1, odd ? 0 : -1], [0, -1], [-1, odd ? 0 : -1], [-1, odd ? 1 : 0]][i];
+  return grid[`${r.row + d[0]},${r.col + d[1]}`];
+}
+let grid = {};
 function resize() {
   if (!world || $("game").hidden) return;
+  grid = {};
+  for (const r of world.regions) grid[`${r.row},${r.col}`] = r;
   const wrap = canvas.parentElement;
-  const narrow = window.innerWidth <= 760;
+  const narrow = window.innerWidth <= 860;
   const availH = narrow ? Infinity : Math.max(320, window.innerHeight - wrap.getBoundingClientRect().top - 60);
   size = Math.min((wrap.clientWidth - 2 * margin) / (Math.sqrt(3) * (world.cols + 0.5)), (availH - 2 * margin) / (2 + 1.5 * (world.rows - 1)));
   const w = 2 * margin + Math.sqrt(3) * size * (world.cols + 0.5), h = 2 * margin + size * (2 + 1.5 * (world.rows - 1));
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = w * dpr; canvas.height = h * dpr;
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
   canvas.style.width = w + "px"; canvas.style.height = h + "px";
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  terrainCache = null;
   draw();
 }
 window.addEventListener("resize", resize);
 
+// deterministic scatter for terrain glyphs
+function rng(seed) { let s = seed * 2654435761 % 4294967296 || 1; return () => ((s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296); }
+
+// The terrain layer (parchment, washes and glyphs) only changes with the size
+// and theme, so it's drawn once onto an offscreen canvas.
+let terrainCache = null;
+function terrainLayer() {
+  const key = `${size}|${dark}|${canvas.width}`;
+  if (terrainCache && terrainCache.key === key) return terrainCache.canvas;
+  const dpr = window.devicePixelRatio || 1, c = document.createElement("canvas");
+  c.width = canvas.width; c.height = canvas.height;
+  const g = c.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = canvas.width / dpr, H = canvas.height / dpr;
+  // paper with a faint vignette and a double frame
+  g.fillStyle = cssVar("--paper"); g.fillRect(0, 0, W, H);
+  const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, dark ? "rgba(0,0,0,0.35)" : "rgba(120,80,30,0.18)");
+  g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  g.strokeStyle = cssVar("--rule"); g.lineWidth = 2; g.strokeRect(4, 4, W - 8, H - 8);
+  g.lineWidth = 0.75; g.strokeRect(8, 8, W - 16, H - 16);
+  const pal = TERRAIN[dark ? "dark" : "light"], ink = dark ? "rgba(225,205,160,0.55)" : "rgba(80,55,25,0.6)";
+  for (const r of world.regions) {
+    const [x, y] = center(r);
+    hexPath(x, y, size, g);
+    g.fillStyle = pal[r.terrain]; g.fill();
+    g.save(); hexPath(x, y, size * 0.96, g); g.clip();
+    terrainGlyphs(g, r, x, y, ink);
+    g.restore();
+    hexPath(x, y, size, g); g.lineWidth = 0.75; g.strokeStyle = cssVar("--hex-stroke"); g.stroke();
+  }
+  terrainCache = { key, canvas: c };
+  return c;
+}
+
+function terrainGlyphs(g, r, x, y, ink) {
+  const rand = rng(r.id + 7), s = size;
+  const spots = [];
+  for (let k = 0; spots.length < 9 && k < 80; k++) {
+    const a = rand() * 2 * Math.PI, d = (0.25 + 0.55 * Math.sqrt(rand())) * s;
+    const px = x + d * Math.cos(a), py = y + d * Math.sin(a) * 0.9;
+    if (Math.abs(py - (y + 0.62 * s)) < 0.14 * s && Math.abs(px - x) < 0.5 * s) continue; // keep the name clear
+    if (spots.some(([qx, qy]) => Math.hypot(qx - px, qy - py) < 0.26 * s)) continue;
+    spots.push([px, py]);
+  }
+  g.lineWidth = Math.max(0.8, s * 0.025); g.strokeStyle = ink; g.lineCap = "round"; g.lineJoin = "round";
+  const u = s * 0.1;
+  for (const [px, py] of spots) {
+    g.beginPath();
+    switch (r.terrain) {
+      case "plains": // tufts of grass and wheat
+        g.moveTo(px - u * 0.6, py); g.lineTo(px - u * 0.9, py - u * 0.9);
+        g.moveTo(px, py); g.lineTo(px, py - u * 1.2);
+        g.moveTo(px + u * 0.6, py); g.lineTo(px + u * 0.9, py - u * 0.9);
+        g.stroke(); break;
+      case "forest": { // a broadleaf: trunk and canopy
+        g.moveTo(px, py + u * 0.9); g.lineTo(px, py); g.stroke();
+        g.beginPath(); g.arc(px, py - u * 0.35, u * 0.75, 0, 2 * Math.PI);
+        g.fillStyle = dark ? "#55683c" : "#7d9455"; g.fill(); g.stroke(); break;
+      }
+      case "hills": // rounded humps with a shading stroke
+        g.arc(px, py + u * 0.4, u * 1.1, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+        g.beginPath(); g.moveTo(px + u * 0.2, py - u * 0.2); g.lineTo(px + u * 0.6, py + u * 0.3); g.stroke(); break;
+      case "mountains": { // a peak, shaded on one side, snow on top
+        const hgt = u * (1.6 + rand() * 0.6), wd = u * 1.3;
+        g.moveTo(px - wd, py + u * 0.6); g.lineTo(px, py + u * 0.6 - hgt); g.lineTo(px + wd, py + u * 0.6);
+        g.fillStyle = dark ? "#6a645b" : "#b0a28c"; g.fill(); g.stroke();
+        g.beginPath(); g.moveTo(px, py + u * 0.6 - hgt); g.lineTo(px + wd * 0.35, py + u * 0.6 - hgt * 0.65); g.lineTo(px - wd * 0.35, py + u * 0.6 - hgt * 0.65); g.closePath();
+        g.fillStyle = dark ? "#cfc8bb" : "#fbf7ee"; g.fill(); break;
+      }
+      case "tropical": // a palm
+        g.moveTo(px, py + u); g.quadraticCurveTo(px + u * 0.4, py, px + u * 0.2, py - u * 0.6); g.stroke();
+        for (const dx of [-1, -0.4, 0.5, 1.1]) {
+          g.beginPath(); g.moveTo(px + u * 0.2, py - u * 0.6);
+          g.quadraticCurveTo(px + u * (0.2 + dx * 0.6), py - u * 1.3, px + u * (0.2 + dx), py - u * 0.4); g.stroke();
+        }
+        break;
+      case "coast": // waves
+        g.strokeStyle = dark ? "rgba(150,200,210,0.7)" : "rgba(40,90,110,0.6)";
+        g.moveTo(px - u, py); g.quadraticCurveTo(px - u * 0.5, py - u * 0.6, px, py); g.quadraticCurveTo(px + u * 0.5, py - u * 0.6, px + u, py);
+        g.stroke(); g.strokeStyle = ink; break;
+    }
+  }
+}
+
 const CATEGORICAL = ["terrain", "nation", "infra"];
 const isShare = () => ["basic", "luxury"].includes($("overlay").value);
-const isPct = () => isShare() || $("overlay").value === "growth";
 function share(rs, tier) {
   const total = rs.tier_spend.reduce((a, b) => a + b, 0);
   return total > 0 ? rs.tier_spend[world.tiers.indexOf(tier)] / total : 0;
@@ -353,12 +641,14 @@ function overlayValue(id) {
   return 0;
 }
 const overlayLabel = () => ($("overlay").value === "price" ? `${world.goods[+$("good").value].name} price ÷ wage` : $("overlay").selectedOptions[0].textContent);
-const fmtOverlay = (v) => ($("overlay").value === "growth" ? `${(100 * v).toFixed(1)}%` : isShare() ? pct(v) : fmt(v, 1));
+const fmtOverlay = (v) => ($("overlay").value === "growth" ? `${(100 * v).toFixed(1)}%` : isShare() ? pct(v) : short(v));
 
 function draw() {
   if (!world || !state) return;
-  const css = getComputedStyle(document.documentElement);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const dpr = window.devicePixelRatio || 1;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(terrainLayer(), 0, 0);
+  ctx.restore();
   const kind = $("overlay").value;
   let sc = null;
   if (!CATEGORICAL.includes(kind)) {
@@ -370,99 +660,218 @@ function draw() {
   }
   for (const r of world.regions) {
     const rs = state.regions[r.id], [x, y] = center(r);
-    hexPath(x, y, size * 0.97);
-    if (sc) ctx.fillStyle = rampColor(sc.t(overlayValue(r.id)));
-    else if (kind === "nation") ctx.fillStyle = rs.nation >= 0 ? world.nations[rs.nation].color : UNOWNED;
-    else if (kind === "infra") ctx.fillStyle = INFRA_COLORS[rs.infra];
-    else ctx.fillStyle = TERRAIN_COLORS[r.terrain];
-    ctx.fill();
-    ctx.lineWidth = 1; ctx.strokeStyle = css.getPropertyValue("--hex-stroke"); ctx.stroke();
-    if (kind !== "terrain") { // terrain pip
-      ctx.beginPath(); ctx.arc(x, y - size * 0.62, size * 0.09, 0, 2 * Math.PI);
-      ctx.fillStyle = TERRAIN_COLORS[r.terrain]; ctx.fill(); ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.stroke();
+    if (sc) {
+      hexPath(x, y, size * 0.99); ctx.fillStyle = rampColor(sc.t(overlayValue(r.id))); ctx.globalAlpha = 0.88; ctx.fill(); ctx.globalAlpha = 1;
+    } else if (kind === "nation" && rs.nation >= 0) {
+      hexPath(x, y, size); ctx.fillStyle = rgba(nationColor(rs.nation), dark ? 0.3 : 0.28); ctx.fill();
+    } else if (kind === "infra") {
+      hexPath(x, y, size); ctx.fillStyle = dark ? "rgba(0,0,0,0.35)" : "rgba(244,234,210,0.55)"; ctx.fill();
     }
-    let label, dark;
-    if (sc) { const v = overlayValue(r.id); label = fmtOverlay(v); dark = sc.t(v) <= 0.6; }
-    else if (kind === "nation") { label = rs.nation >= 0 ? world.nations[rs.nation].name.slice(0, 3) : "–"; dark = rs.nation >= 0; }
-    else if (kind === "infra") { label = "×" + rs.move_cost.toFixed(2); dark = rs.infra >= 2; }
-    else { label = r.terrain[0].toUpperCase(); dark = false; }
-    ctx.fillStyle = dark ? "#fff" : "#1b1b1b";
-    ctx.font = `600 ${Math.max(10, size * 0.26)}px system-ui`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(rs.city ? `★ ${label}` : label, x, y - size * 0.22);
-    for (let i = 0; i < rs.infra; i++) { // one bar per road level
-      ctx.fillStyle = INFRA_COLORS[2]; ctx.strokeStyle = "#fff"; ctx.lineWidth = 1;
-      const bx = x - size * 0.37 + i * size * 0.27, by = y + size * 0.62;
-      ctx.fillRect(bx, by, size * 0.22, size * 0.07); ctx.strokeRect(bx, by, size * 0.22, size * 0.07);
-    }
-    if (rs.project) progressRing(x + size * 0.5, y - size * 0.38, rs.project.delivered / rs.project.required, "#e8590c");
-    if (rs.port) outlinedText("⚓", x - size * 0.52, y - size * 0.38, Math.max(11, size * 0.26));
-    if (rs.occupation) {
-      const c = world.nations[rs.occupation.nation].color;
-      ctx.setLineDash([6, 4]); hexPath(x, y, size * 0.82);
-      ctx.lineWidth = 3; ctx.strokeStyle = c; ctx.stroke(); ctx.setLineDash([]);
-      outlinedText(`⚑ ${pct(rs.occupation.progress)}`, x, y + size * 0.5, Math.max(10, size * 0.2));
-    }
+    if (rs.occupation) hatch(x, y, nationColor(rs.occupation.nation), rs.occupation.progress);
   }
-  if ($("show-flows").checked) drawFlows(css);
-  drawBorders();
+  drawBorders(kind !== "terrain");
+  drawRoads(kind === "infra");
+  const avg = state.regions.reduce((t, rs) => t + rs.population, 0) / state.regions.length;
+  for (const r of world.regions) {
+    const rs = state.regions[r.id], [x, y] = center(r);
+    drawSettlement(r, x, y - size * 0.12, rs.population, avg);
+    if (rs.port) drawAnchor(x - size * 0.55, y - size * 0.28);
+    if (rs.project) progressRing(x + size * 0.52, y - size * 0.34, rs.project.delivered / rs.project.required);
+    let label = `${r.name} · ${short(rs.population)}`;
+    if (sc) label = fmtOverlay(overlayValue(r.id));
+    else if (kind === "infra") label = `×${rs.move_cost.toFixed(2)}`;
+    plate(label, x, y + size * 0.62, Math.max(11, size * 0.21), !!sc || kind === "infra");
+    if (rs.occupation) plate(`⚑ ${pct(rs.occupation.progress)}`, x + size * 0.45, y + size * 0.3, Math.max(10, size * 0.18), true, nationColor(rs.occupation.nation));
+  }
+  if ($("show-flows").checked) drawFlows();
   drawPaths();
   drawArmies();
   if (selected !== null) {
     const [x, y] = center(world.regions[selected]);
-    hexPath(x, y, size * 0.92);
-    ctx.lineWidth = 3; ctx.strokeStyle = css.getPropertyValue("--select"); ctx.stroke();
+    hexPath(x, y, size * 0.93); ctx.lineWidth = 3; ctx.strokeStyle = cssVar("--select"); ctx.stroke();
+    hexPath(x, y, size * 0.84); ctx.lineWidth = 1; ctx.stroke();
   }
   drawLegend(sc);
 }
 
-function outlinedText(t, x, y, px) {
-  ctx.font = `700 ${px}px system-ui`;
+// a label on a small paper plate, legible over any terrain
+function plate(t, x, y, px, bold, color) {
+  ctx.font = `${bold ? "600 " : "italic "}${px}px ${cssVar("--serif") || "Georgia, serif"}`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.fillStyle = "#fff";
-  ctx.strokeText(t, x, y); ctx.fillText(t, x, y);
+  const w = ctx.measureText(t).width + px * 0.7, h = px * 1.25;
+  ctx.fillStyle = dark ? "rgba(33,27,21,0.85)" : "rgba(251,245,228,0.85)";
+  roundRect(x - w / 2, y - h / 2, w, h, h * 0.25); ctx.fill();
+  if (color) { ctx.lineWidth = 1.5; ctx.strokeStyle = color; ctx.stroke(); }
+  ctx.fillStyle = cssVar("--text");
+  ctx.fillText(t, x, y + 0.5);
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
 
-function progressRing(x, y, f, color) {
-  ctx.beginPath(); ctx.arc(x, y, size * 0.11, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * Math.min(1, f));
-  ctx.lineWidth = size * 0.06; ctx.strokeStyle = color; ctx.stroke();
-  ctx.beginPath(); ctx.arc(x, y, size * 0.11, 0, 2 * Math.PI);
-  ctx.lineWidth = 1; ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.stroke();
+// occupation: diagonal hatching in the occupier's colour, denser as it nears 100%
+function hatch(x, y, color, progress) {
+  ctx.save(); hexPath(x, y, size * 0.97); ctx.clip();
+  ctx.strokeStyle = rgba(color, 0.35 + 0.5 * progress); ctx.lineWidth = 2;
+  const gap = size * (0.32 - 0.16 * progress);
+  ctx.beginPath();
+  for (let d = -2 * size; d < 2 * size; d += gap) { ctx.moveTo(x + d - size, y + size); ctx.lineTo(x + d + size, y - size); }
+  ctx.stroke(); ctx.restore();
 }
 
-// borders: the shared hex edge between tiles of different owners
-function drawBorders() {
-  for (const l of world.links) {
-    if (owner(l.a) === owner(l.b)) continue;
-    const [x1, y1] = center(world.regions[l.a]), [x2, y2] = center(world.regions[l.b]);
-    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, len = Math.hypot(x2 - x1, y2 - y1);
-    const px = -(y2 - y1) / len * size / 2, py = (x2 - x1) / len * size / 2;
-    ctx.lineCap = "round";
-    for (const [w, c] of [[5, "rgba(255,255,255,0.85)"], [2.5, "#222"]]) {
-      ctx.lineWidth = w; ctx.strokeStyle = c;
-      ctx.beginPath(); ctx.moveTo(mx + px, my + py); ctx.lineTo(mx - px, my - py); ctx.stroke();
+// a brass ring that fills as a construction project is supplied
+function progressRing(x, y, f) {
+  const r = size * 0.11;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fillStyle = cssVar("--surface"); ctx.fill();
+  ctx.lineWidth = 1; ctx.strokeStyle = cssVar("--rule"); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * Math.min(1, f));
+  ctx.lineWidth = size * 0.06; ctx.strokeStyle = cssVar("--brass"); ctx.stroke();
+  // a little hammer: the project's mark
+  ctx.lineWidth = 1.2; ctx.strokeStyle = cssVar("--text");
+  ctx.beginPath(); ctx.moveTo(x - r * 0.4, y + r * 0.45); ctx.lineTo(x + r * 0.3, y - r * 0.25); ctx.moveTo(x, y - r * 0.5); ctx.lineTo(x + r * 0.55, y + 0.05 * r); ctx.stroke();
+}
+
+// borders: a band of the owner's colour inside each frontier, and an inked line on it
+function drawBorders(bands) {
+  for (const r of world.regions) {
+    const o = owner(r.id), [x, y] = center(r);
+    for (let i = 0; i < 6; i++) {
+      const nb = across(r, i), other = nb ? owner(nb.id) : -2;
+      if (other === o) continue;
+      const [ax, ay] = corner(x, y, size, i), [bx, by] = corner(x, y, size, i + 1);
+      if (o >= 0 && bands) {
+        const [cx, cy] = corner(x, y, size * 0.9, i), [dx, dy] = corner(x, y, size * 0.9, i + 1);
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(dx, dy); ctx.lineTo(cx, cy); ctx.closePath();
+        ctx.fillStyle = rgba(nationColor(o), 0.75); ctx.fill();
+      }
+      if (nb && nb.id < r.id) continue; // ink each shared edge once
+      if (!nb && o < 0) continue;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      ctx.setLineDash(nb ? [6, 3, 1.5, 3] : []); ctx.lineWidth = 1.5; ctx.strokeStyle = cssVar("--text"); ctx.stroke(); ctx.setLineDash([]);
     }
   }
 }
 
-// armies: a badge per army in its nation's colour with its size
+// roads, paved roads and railways run between neighbouring tiles that both have them
+function drawRoads(strong) {
+  ctx.lineCap = "round";
+  for (const l of world.links) {
+    const lvl = Math.min(state.regions[l.a].infra, state.regions[l.b].infra);
+    if (!lvl) continue;
+    const [x1, y1] = center(world.regions[l.a]), [x2, y2] = center(world.regions[l.b]);
+    road(x1, y1, x2, y2, lvl, strong);
+  }
+  for (const r of world.regions) {
+    const lvl = state.regions[r.id].infra;
+    if (!lvl) continue;
+    const [x, y] = center(r);
+    ctx.beginPath(); ctx.arc(x, y, 1 + lvl, 0, 2 * Math.PI);
+    ctx.fillStyle = lvl === 3 ? "#2b2420" : "#7a5630"; ctx.fill();
+  }
+}
+function road(x1, y1, x2, y2, lvl, strong) {
+  const k = strong ? 1.4 : 1;
+  ctx.setLineDash([]);
+  if (lvl === 1) {
+    ctx.setLineDash([4, 4]); ctx.lineWidth = 1.3 * k; ctx.strokeStyle = dark ? "rgba(196,154,98,0.8)" : "rgba(138,98,52,0.75)";
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
+  } else if (lvl === 2) {
+    ctx.lineWidth = 3 * k; ctx.strokeStyle = dark ? "#8a6a44" : "rgba(122,86,48,0.85)";
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.lineWidth = 1.5 * k; ctx.strokeStyle = dark ? "#d8c08e" : "#e7d3a3"; ctx.stroke();
+  } else {
+    const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len, w = 3.2 * k;
+    ctx.lineWidth = 1.2 * k; ctx.strokeStyle = dark ? "#e2d4b8" : "#2b2420";
+    ctx.beginPath();
+    for (let d = 3; d < len - 2; d += 5) { const px = x1 + ux * d, py = y1 + uy * d; ctx.moveTo(px - uy * w, py + ux * w); ctx.lineTo(px + uy * w, py - ux * w); }
+    ctx.stroke();
+    ctx.lineWidth = 1.6 * k;
+    for (const s of [-1.6, 1.6]) {
+      ctx.beginPath(); ctx.moveTo(x1 - uy * s * k, y1 + ux * s * k); ctx.lineTo(x2 - uy * s * k, y2 + ux * s * k); ctx.stroke();
+    }
+  }
+}
+
+// Settlements grow with population: a few farmsteads on a thin tile, a town
+// with a church spire around the average, and a city of roofs and mill
+// chimneys where people crowd in. Sizes are relative to the average tile.
+function drawSettlement(r, x, y, pop, avg) {
+  const rel = pop / Math.max(avg, 1e-9);
+  const n = Math.max(1, Math.min(18, Math.round(3 * Math.pow(rel, 1.2))));
+  const u = size * 0.08 * (n > 9 ? 0.85 : 1), ink = cssVar("--text");
+  const wall = dark ? "#cdbb98" : "#f3e6c8", roof = dark ? "#b0533e" : "#9c3b26", slate = dark ? "#7d8790" : "#5d6670";
+  const rand = rng(r.id * 31 + 5);
+  // the houses, on a loose spiral out from the centre
+  const spots = [];
+  for (let k = 0; k < n; k++) {
+    const a = k * 2.4 + rand() * 0.6, d = k === 0 ? 0 : u * (1.5 + 1.25 * Math.sqrt(k));
+    spots.push([x + d * Math.cos(a), y + d * Math.sin(a) * 0.7]);
+  }
+  if (n >= 5) { // trodden ground under a town
+    ctx.beginPath(); ctx.ellipse(x, y + u * 0.3, u * (2.2 + 1.3 * Math.sqrt(n)), u * (1.6 + 0.9 * Math.sqrt(n)), 0, 0, 2 * Math.PI);
+    ctx.fillStyle = dark ? "rgba(0,0,0,0.25)" : "rgba(120,90,50,0.16)"; ctx.fill();
+  }
+  ctx.lineWidth = 1; ctx.strokeStyle = ink; ctx.lineJoin = "round";
+  const chimneys = rel >= 2 ? Math.min(3, Math.floor(rel / 1.5)) : 0;
+  for (let c = 0; c < chimneys; c++) { // mills: a tall chimney with smoke
+    const [cx, cy] = spots[(c * 3 + 2) % n];
+    const hx = cx + u * 1.1, h = u * (3 + rand());
+    ctx.fillStyle = dark ? "#8a6a52" : "#7a4b35";
+    ctx.fillRect(hx, cy - h, u * 0.55, h); ctx.strokeRect(hx, cy - h, u * 0.55, h);
+    ctx.beginPath(); ctx.arc(hx + u * 0.5, cy - h - u * 0.5, u * 0.45, 0, 2 * Math.PI); ctx.arc(hx + u * 1.2, cy - h - u * 1.0, u * 0.65, 0, 2 * Math.PI);
+    ctx.fillStyle = dark ? "rgba(200,190,170,0.45)" : "rgba(90,80,70,0.3)"; ctx.fill();
+  }
+  spots.sort((a, b) => a[1] - b[1]); // paint back to front
+  spots.forEach(([hx, hy], k) => {
+    const w = u * (1.3 + rand() * 0.5), h = u * (1 + rand() * 0.5);
+    ctx.fillStyle = wall; ctx.fillRect(hx - w / 2, hy - h, w, h); ctx.strokeRect(hx - w / 2, hy - h, w, h);
+    ctx.beginPath(); ctx.moveTo(hx - w / 2 - u * 0.15, hy - h); ctx.lineTo(hx, hy - h - u * 0.8); ctx.lineTo(hx + w / 2 + u * 0.15, hy - h); ctx.closePath();
+    ctx.fillStyle = rel >= 2 && k % 2 ? slate : roof; ctx.fill(); ctx.stroke();
+  });
+  if (n >= 5) { // the church
+    const [hx, hy] = [x + u * 0.2, y - u * 0.4];
+    ctx.fillStyle = wall; ctx.fillRect(hx - u * 0.5, hy - u * 2.2, u, u * 2.2); ctx.strokeRect(hx - u * 0.5, hy - u * 2.2, u, u * 2.2);
+    ctx.beginPath(); ctx.moveTo(hx - u * 0.6, hy - u * 2.2); ctx.lineTo(hx, hy - u * 4.2); ctx.lineTo(hx + u * 0.6, hy - u * 2.2); ctx.closePath();
+    ctx.fillStyle = slate; ctx.fill(); ctx.stroke();
+  }
+}
+
+function drawAnchor(x, y) {
+  const u = size * 0.07;
+  ctx.beginPath(); ctx.arc(x, y, u * 2.1, 0, 2 * Math.PI); ctx.fillStyle = dark ? "rgba(33,27,21,0.85)" : "rgba(251,245,228,0.9)"; ctx.fill();
+  ctx.lineWidth = 1; ctx.strokeStyle = cssVar("--rule"); ctx.stroke();
+  ctx.strokeStyle = dark ? "#9cc6d4" : "#1f4a6b"; ctx.lineWidth = Math.max(1.2, u * 0.35); ctx.lineCap = "round";
+  ctx.beginPath(); ctx.arc(x, y - 1.2 * u, 0.35 * u, 0, 2 * Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y - 0.85 * u); ctx.lineTo(x, y + 1.3 * u);
+  ctx.moveTo(x - 0.8 * u, y - 0.4 * u); ctx.lineTo(x + 0.8 * u, y - 0.4 * u); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y + 0.2 * u, 1.1 * u, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+}
+
+// armies: a shield in the nation's colour with the number of men beneath
+const armySpot = (x, y, i, n) => [x + (i - (n - 1) / 2) * size * 0.42, y + size * 0.12];
 function drawArmies() {
   const byTile = {};
   for (const a of state.armies) (byTile[a.region] = byTile[a.region] || []).push(a);
   for (const [tile, armies] of Object.entries(byTile)) {
     const [x, y] = center(world.regions[+tile]);
     armies.forEach((a, i) => {
-      const bx = x + (i - (armies.length - 1) / 2) * size * 0.5, by = y + size * 0.12;
-      const r = size * 0.2;
-      ctx.beginPath(); ctx.arc(bx, by, r, 0, 2 * Math.PI);
-      ctx.fillStyle = world.nations[a.nation].color; ctx.fill();
-      ctx.lineWidth = a.id === selectedArmy ? 3 : 1.5;
-      ctx.strokeStyle = a.id === selectedArmy ? getComputedStyle(document.documentElement).getPropertyValue("--select") : "#fff";
-      ctx.stroke();
-      if (a.retreating) { ctx.setLineDash([3, 3]); ctx.strokeStyle = "#000"; ctx.stroke(); ctx.setLineDash([]); }
-      ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.max(9, size * 0.17)}px system-ui`;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(fmt(a.men, 0), bx, by);
+      const [bx, by] = armySpot(x, y, i, armies.length), w = size * 0.17, h = size * 0.21;
+      ctx.beginPath();
+      ctx.moveTo(bx - w, by - h); ctx.lineTo(bx + w, by - h); ctx.lineTo(bx + w, by);
+      ctx.quadraticCurveTo(bx + w, by + h * 0.8, bx, by + h * 1.15); ctx.quadraticCurveTo(bx - w, by + h * 0.8, bx - w, by); ctx.closePath();
+      ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
+      ctx.fillStyle = nationColor(a.nation); ctx.fill();
+      ctx.shadowColor = "transparent";
+      const sel = a.id === selectedArmy;
+      ctx.lineWidth = sel ? 3 : 1.6; ctx.strokeStyle = sel ? cssVar("--select") : "#e7c776";
+      if (a.retreating) ctx.setLineDash([3, 2]);
+      ctx.stroke(); ctx.setLineDash([]);
+      // crossed sabres
+      ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = Math.max(1, size * 0.025);
+      ctx.beginPath(); ctx.moveTo(bx - w * 0.55, by - h * 0.6); ctx.lineTo(bx + w * 0.55, by + h * 0.55);
+      ctx.moveTo(bx + w * 0.55, by - h * 0.6); ctx.lineTo(bx - w * 0.55, by + h * 0.55); ctx.stroke();
+      plate(short(a.men), bx, by + h * 1.55, Math.max(9, size * 0.16), true);
     });
   }
 }
@@ -472,14 +881,17 @@ function drawPaths() {
   for (const a of state.armies) {
     if (!a.path.length || (a.id !== selectedArmy && a.nation !== state.you)) continue;
     const pts = [a.region, ...a.path].map((id) => center(world.regions[id]));
-    ctx.setLineDash([5, 5]); ctx.lineWidth = a.id === selectedArmy ? 3 : 1.5;
-    ctx.strokeStyle = world.nations[a.nation].color;
+    ctx.setLineDash([2, 5]); ctx.lineCap = "round"; ctx.lineWidth = a.id === selectedArmy ? 3.5 : 2;
+    ctx.strokeStyle = nationColor(a.nation);
     ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + size * 0.12) : ctx.moveTo(x, y + size * 0.12))); ctx.stroke();
     ctx.setLineDash([]);
+    const [ex, ey] = pts[pts.length - 1];
+    ctx.font = `${Math.max(12, size * 0.3)}px serif`; ctx.fillStyle = nationColor(a.nation); ctx.textAlign = "center";
+    ctx.fillText("✕", ex, ey + size * 0.2);
   }
 }
 
-function drawFlows(css) {
+function drawFlows() {
   const fg = $("flow-good").value, agg = new Map();
   for (const f of state.flows) {
     if (fg !== "all" && f.good !== +fg) continue;
@@ -488,7 +900,7 @@ function drawFlows(css) {
     agg.set(k, (agg.get(k) || 0) + v);
   }
   const max = Math.max(1e-9, ...agg.values());
-  ctx.strokeStyle = ctx.fillStyle = css.getPropertyValue("--flow");
+  ctx.strokeStyle = ctx.fillStyle = cssVar("--flow");
   for (const [key, v] of agg) {
     if (v < max * 0.03) continue;
     const sea = key >= 1e6, k = key % 1e6;
@@ -509,13 +921,14 @@ function drawFlows(css) {
 function drawLegend(sc) {
   const kind = $("overlay").value, el = $("legend");
   const sw = (c) => `<span class="swatch" style="background:${c}"></span>`;
-  const marks = `<span>★ city</span><span>⚓ port</span><span>● army</span><span>⚑ occupation</span>`;
+  const marks = `<span>⌂ towns grow with their people</span><span>⚓ port</span><span>⛨ army</span><span>▨ occupied</span><span>┄ road · ═ paved · ╫ railway</span>`;
+  const pal = TERRAIN[dark ? "dark" : "light"];
   if (kind === "nation") {
-    el.innerHTML = world.nations.map((n) => `<span>${sw(n.color)}${esc(n.name)}</span>`).join("") + `<span>${sw(UNOWNED)}unowned</span>${marks}`;
+    el.innerHTML = world.nations.map((n) => `<span>${sw(nationColor(n.id))}${esc(n.name)}</span>`).join("") + marks;
   } else if (kind === "infra") {
-    el.innerHTML = world.infra_levels.map((l, i) => `<span>${sw(INFRA_COLORS[i])}${l.name} (×${l.move_mult})</span>`).join("") + `<span>labels: movement cost</span>`;
+    el.innerHTML = world.infra_levels.map((l) => `<span>${esc(l.name)} ×${l.move_mult}</span>`).join(" · ") + `<span>labels: cost of moving through</span>`;
   } else if (kind === "terrain") {
-    el.innerHTML = world.terrains.map((t) => `<span>${sw(TERRAIN_COLORS[t.name])}${t.name}${t.move_cost < 1 ? ` (move ×${t.move_cost})` : ""}</span>`).join("") + marks;
+    el.innerHTML = world.terrains.map((t) => `<span>${sw(pal[t.name])}${t.name}${t.move_cost < 1 ? ` (carriage ×${t.move_cost})` : ""}</span>`).join("") + marks;
   } else {
     el.innerHTML = `<span>${esc(overlayLabel())}</span><span>${fmtOverlay(sc.lo)}</span><span class="ramp" style="background:linear-gradient(90deg,${RAMP.join(",")})"></span><span>${fmtOverlay(sc.hi)}</span>`;
   }
@@ -535,7 +948,7 @@ function armyAt(ev, region) {
   const here = state.armies.filter((a) => a.region === region.id);
   const [cx, cy] = center(region);
   for (let i = 0; i < here.length; i++) {
-    const bx = cx + (i - (here.length - 1) / 2) * size * 0.5, by = cy + size * 0.12;
+    const [bx, by] = armySpot(cx, cy, i, here.length);
     if (Math.hypot(bx - x, by - y) < size * 0.24) return here[i];
   }
   return null;
@@ -559,14 +972,14 @@ canvas.addEventListener("click", async (ev) => {
   setTab("tile");
   try { detail = await api("GET", `/api/games/${gid}/regions/${r.id}`); } catch (e) { showError("game-err", e); }
   render(true);
-  if (window.innerWidth <= 760) document.querySelector(".tabs").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (window.innerWidth <= 860) document.querySelector(".tabs").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 canvas.addEventListener("mousemove", (ev) => {
   const r = regionAt(ev), tip = $("tooltip");
   if (!r || !state) { tip.hidden = true; return; }
   const rs = state.regions[r.id];
   const v = CATEGORICAL.includes($("overlay").value) ? "" : ` · ${overlayLabel()}: ${fmtOverlay(overlayValue(r.id))}`;
-  tip.textContent = `${r.name} ${r.terrain}${rs.city ? " city" : ""} · ${nationName(rs.nation)}${v}`;
+  tip.textContent = `${r.name}, ${r.terrain}${rs.city ? " city" : ""} · ${nationName(rs.nation)} · ${short(rs.population)} people${v}`;
   const rect = canvas.getBoundingClientRect();
   tip.style.left = ev.clientX - rect.left + 12 + "px"; tip.style.top = ev.clientY - rect.top + 12 + "px";
   tip.hidden = false;
@@ -579,56 +992,88 @@ for (const id of ["overlay", "good", "show-flows", "flow-good"]) {
     draw();
   });
 }
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
 
 // ---- tile panel ----------------------------------------------------------------
+const flowValue = (f) => f.qty * state.regions[f.from].prices[f.good];
 function tilePanel() {
-  if (selected === null || !detail || detail.info.id !== selected) return `<p class="hint">Tap a tile on the map.</p>`;
+  if (selected === null || !detail || detail.info.id !== selected) return `<p class="hint">Choose a tile on the map to open its ledger.</p>`;
   const d = detail, s = state.regions[selected], G = world.goods;
   const mine = state.you >= 0 && s.nation === state.you;
-  const total = s.tier_spend.reduce((a, b) => a + b, 0) || 1;
-  const bar = world.tiers.map((t, i) => `<span style="width:${(100 * s.tier_spend[i] / total).toFixed(1)}%;background:${TIER_COLORS[t]}"></span>`).join("");
-  let html = `<h2>${s.city ? "★ City" : "Tile"} ${esc(d.info.name)}</h2>
-    <p class="sub">${d.info.terrain} · ${chip(s.nation)} ${esc(nationName(s.nation))}${s.city ? ` · industry and services ×${s.city_bonus.toFixed(2)} from its size` : ""}</p>
+  const h = getHist(`regions/${selected}`);
+  const exp = d.exports.reduce((t, f) => t + flowValue(f), 0), imp = d.imports.reduce((t, f) => t + flowValue(f), 0);
+  let html = `<div class="crest">${shield(nationColor(s.nation))}<div><h2>${esc(d.info.name)}${s.city ? " <span class=\"sub\">· city</span>" : ""}</h2>
+    <p class="sub">${cap(d.info.terrain)} · ${esc(nationName(s.nation))} · its size makes industry and services ×${s.city_bonus.toFixed(2)} as productive</p></div></div>
     <div class="stats">
-      <div class="stat"><div class="v">${fmt(s.population, 0)}</div><div class="k">people (${s.growth >= 0 ? "+" : ""}${(100 * s.growth).toFixed(1)}%/yr)</div></div>
-      <div class="stat"><div class="v">${fmt(s.utility)}</div><div class="k">utility / person</div></div>
-      <div class="stat"><div class="v">${fmt(s.wage)}</div><div class="k">wage</div></div>
+      ${stat(short(s.population), "people", `<span class="${s.growth >= 0 ? "good" : "bad"}">${s.growth >= 0 ? "+" : ""}${(100 * s.growth).toFixed(1)}%/yr</span>`)}
+      ${stat(fmt(s.wage), "daily wage", trend(h, "wage"))}
+      ${stat(fmt(s.utility), "living standard", trend(h, "utility"))}
+      ${stat(short(d.gdp), "output / day", trend(h, "gdp"))}
+      ${stat(short(exp), "exports / day")}
+      ${stat(short(imp), "imports / day")}
     </div>`;
+  html += `<h3>Over time</h3>` + tileChart(h);
+  html += classesBlock(d);
   html += armiesHere(s, mine);
-  html += `<h3>Infrastructure</h3>${infraBlock(s, mine)}`;
-  html += `<h3>Spending by need tier</h3><div class="bar-stack">${bar}</div>
-    <p class="sub">${world.tiers.map((t, i) => `${t} ${pct(s.tier_spend[i] / total)}`).join(" · ")}</p>`;
+  html += `<h3>Roads and harbour</h3>${infraBlock(s, mine)}`;
+  const total = s.tier_spend.reduce((a, b) => a + b, 0) || 1, tc = TIER_COLORS();
+  html += `<h3>What people buy</h3><div class="bar-stack">${world.tiers.map((t, i) => `<span style="width:${(100 * s.tier_spend[i] / total).toFixed(1)}%;background:${tc[i]}"></span>`).join("")}</div>
+    <div class="legend-inline">${world.tiers.map((t, i) => `<span><span class="swatch" style="background:${tc[i]}"></span>${t} ${pct(s.tier_spend[i] / total)}</span>`).join("")}</div>`;
   const firms = d.firms.map((f, i) => ({ ...f, i })).filter((f) => !f.enabled || f.labor > 0.05 || f.produced > 0.05 || f.levels > 1)
     .sort((a, b) => (b.enabled - a.enabled) || (b.labor - a.labor)).map((f) => {
-      if (!f.enabled) return `<tr class="dim"><td>🔒 ${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="4">needs ${esc(f.requires)}</td></tr>`;
+      if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="4">needs ${esc(f.requires)}</td></tr>`;
       let grow = "";
       if (f.expansion) grow = `${pct(f.expansion.delivered / world.level_cost)}${f.expansion.public ? " ★" : ""}`;
       else if (mine && f.levels < f.max_levels) grow = `<button data-cmd="/regions/${selected}/firms/${f.i}/expand" title="Your nation pays ${world.level_cost} construction for a level">+1</button>`;
-      return `<tr><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td>${f.levels}/${f.max_levels}</td><td>${fmt(f.labor, 1)}</td><td>${fmt(f.profit, 1)}</td><td>${grow}</td></tr>`;
+      return `<tr><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td>${f.levels}/${f.max_levels}</td><td>${fmt(f.labor, 1)}</td><td class="${f.profit < 0 ? "bad" : ""}">${fmt(f.profit, 1)}</td><td>${grow}</td></tr>`;
     }).join("");
-  html += `<h3>Firms</h3><div class="table-scroll"><table><tr><th>firm</th><th>makes</th><th>levels</th><th>workers</th><th>profit</th><th></th></tr>${firms}</table></div>
-    <p class="sub">★ state-funded expansion; the rest are private.</p>`;
+  html += `<h3>Works and farms</h3><div class="table-scroll"><table><tr><th>firm</th><th>makes</th><th>levels</th><th>workers</th><th>profit</th><th></th></tr>${firms}</table></div>
+    <p class="sub">★ expansion paid by the state; the rest by owners.</p>`;
   const markets = d.markets.filter((m) => m.supply > 1e-3 || m.demand > 1e-3).map((m) =>
     `<tr class="${G[m.good].tier ? "" : "dim"}"><td>${G[m.good].name}</td><td>${fmt(m.price)}</td><td>${fmt(m.price / s.wage)}</td><td>${fmt(m.supply)}</td><td>${fmt(m.demand)}</td></tr>`).join("");
-  html += `<h3>Markets</h3><div class="table-scroll"><table><tr><th>good</th><th>price</th><th>÷ wage</th><th>supply</th><th>demand</th></tr>${markets}</table></div>`;
-  const trade = (list, out) => list.sort((a, b) => b.qty - a.qty).slice(0, 8).map((f) =>
-    `<tr><td>${G[f.good].name}</td><td>${out ? "→" : "←"} ${world.regions[out ? f.to : f.from].name}${f.sea ? " ⚓" : ""}</td><td>${fmt(f.qty)}</td></tr>`).join("") || `<tr class="dim"><td colspan="3">none</td></tr>`;
-  html += `<h3>Exports</h3><table>${trade(d.exports, true)}</table><h3>Imports</h3><table>${trade(d.imports, false)}</table>`;
+  html += `<h3>Market</h3><div class="table-scroll"><table><tr><th>good</th><th>price</th><th>÷ wage</th><th>supply</th><th>demand</th></tr>${markets}</table></div>`;
+  const trade = (list, out) => list.sort((a, b) => flowValue(b) - flowValue(a)).slice(0, 8).map((f) =>
+    `<tr><td>${G[f.good].name}</td><td>${out ? "→" : "←"} ${world.regions[out ? f.to : f.from].name}${f.sea ? " ⚓" : ""}</td><td>${fmt(f.qty)}</td><td>${fmt(flowValue(f))}</td></tr>`).join("") || `<tr class="dim"><td colspan="4">none</td></tr>`;
+  html += `<h3>Shipments today</h3><table><tr><th>exports</th><th>to</th><th>qty</th><th>value</th></tr>${trade(d.exports, true)}
+    <tr><th>imports</th><th>from</th><th>qty</th><th>value</th></tr>${trade(d.imports, false)}</table>`;
   return html;
+}
+
+function tileChart(h) {
+  const [k, row] = seg("tile", [["population", "People"], ["wage", "Wage"], ["utility", "Living"], ["gdp", "Output"], ["trade", "Trade"], ["classes", "Classes"], ["prices", "Prices"]], "population");
+  if (!h || !h.data) return row + lineChart(null, []);
+  const d = h.data, T = h.ticks;
+  const one = (name, values, f) => lineChart(T, [{ name, color: series(0), values }], { f });
+  let chart;
+  if (k === "trade") chart = lineChart(T, [{ name: "exports", color: series(1), values: d.exports }, { name: "imports", color: series(2), values: d.imports }]);
+  else if (k === "classes") chart = lineChart(T, world.classes.map((c, i) => ({ name: c, color: series(i), values: d.class_income[i] })), { f: (v) => fmt(v) }) + `<p class="sub">Income per head per day.</p>`;
+  else if (k === "prices") {
+    const [g, prow] = seg("tile-price", world.consumer_goods.map((g) => [String(g), world.goods[g].name]), String(world.consumer_goods[0]));
+    const idx = world.consumer_goods.indexOf(+g);
+    chart = prow + lineChart(T, [{ name: `${world.goods[+g].name} price`, color: series(0), values: d.prices[idx] }], { f: (v) => fmt(v) });
+  } else chart = one({ population: "people", wage: "wage", utility: "living standard", gdp: "output per day" }[k], d[k], k === "population" || k === "gdp" ? short : (v) => fmt(v));
+  return row + chart;
+}
+
+function classesBlock(d) {
+  if (!d.classes || !d.classes.length) return "";
+  const total = d.classes.reduce((t, c) => t + c.size, 0) || 1;
+  const rows = d.classes.map((c, i) => `<tr><td><span class="swatch" style="background:${series(i)}"></span>${cap(c.class)}</td>
+    <td>${short(c.size)}</td><td>${pct(c.size / total)}</td><td>${fmt(c.income)}</td><td>${fmt(c.utility)}</td><td>${short(c.cash)}</td></tr>`).join("");
+  return `<h3>Society</h3><div class="table-scroll"><table><tr><th>class</th><th>people</th><th>share</th><th>income/head</th><th>living</th><th>savings</th></tr>${rows}</table></div>
+    <p class="sub">Workers earn wages; capitalists own the works and trading houses; landowners own the farms, mines and forests.</p>`;
 }
 
 function armiesHere(s, mine) {
   const here = state.armies.filter((a) => a.region === selected);
   let html = "";
   if (s.occupation) {
-    html += `<h3>Occupation</h3><div class="progress"><span style="width:${pct(s.occupation.progress)};background:${world.nations[s.occupation.nation].color}"></span></div>
+    html += `<h3>Occupation</h3><div class="progress"><span style="width:${pct(s.occupation.progress)};background:${nationColor(s.occupation.nation)}"></span></div>
       <p class="sub">${esc(nationName(s.occupation.nation))} holds ${pct(s.occupation.progress)}: it grows each day their army stands here unopposed, and falls back otherwise. At 100% the tile changes hands.</p>`;
   }
   if (here.length) {
     html += `<h3>Armies here</h3>` + here.map((a) =>
-      `<div class="row">${chip(a.nation)} <span>${esc(nationName(a.nation))}: ${fmt(a.men, 0)} men, ${world.doctrines[a.doctrine].name}${a.retreating ? " (retreating)" : ""}</span>
-       <button data-army="${a.id}">Select</button></div>`).join("");
+      `<div class="row">${chip(a.nation)} <span>${esc(nationName(a.nation))}: ${short(a.men)} men, ${world.doctrines[a.doctrine].name}${a.retreating ? " (retreating)" : ""}</span>
+       <button data-army="${a.id}">Inspect</button></div>`).join("");
   }
   const n = me();
   if (mine && n) {
@@ -636,7 +1081,7 @@ function armiesHere(s, mine) {
     html += `<h3>Raise an army here</h3>
       <div class="row"><label>Soldiers <input id="raise-men" type="number" min="0" step="1" value="${Math.floor(room)}" class="num"></label>
       <button class="primary" id="raise">Raise</button></div>
-      <p class="sub">They are drafted from this tile's people over the coming weeks. Room for ${fmt(room, 0)} more within your mobilization cap (${pct(n.mobilization)} of your people).</p>`;
+      <p class="sub">Drafted from this tile's workers over the coming weeks. Room for ${short(room)} more within your mobilisation cap (${pct(n.mobilization)} of your people).</p>`;
   }
   return html;
 }
@@ -648,7 +1093,7 @@ const portTech = () => (world.techs.find((t) => t.ports) || {}).name;
 function infraBlock(s, mine) {
   const lvl = world.infra_levels[s.infra], next = world.infra_levels[s.infra + 1];
   const coast = world.regions[selected].terrain === "coast";
-  let html = `<p class="sub">${lvl.name} · moving through costs ×${s.move_cost.toFixed(2)}${lvl.upkeep ? ` · upkeep ${lvl.upkeep}/day` : ""}</p>`;
+  let html = `<p class="sub">${cap(lvl.name)} · moving through costs ×${s.move_cost.toFixed(2)}${lvl.upkeep ? ` · upkeep ${lvl.upkeep}/day` : ""}</p>`;
   if (coast) html += `<p class="sub">${s.port ? "⚓ Port: ships sail straight to every other port." : "No port."}</p>`;
   if (s.project) {
     const what = s.project.port ? "port" : world.infra_levels[s.project.target].name;
@@ -667,40 +1112,78 @@ function infraBlock(s, mine) {
     const mats = Object.entries(next.materials || {}).map(([g, q]) => ` + ${q} ${g}`).join("");
     html += knows(state.you, next.tech)
       ? `<div class="row"><button class="primary" data-cmd="/regions/${selected}/build">Build ${next.name}</button><span class="sub">${next.cost} construction${mats}</span></div>`
-      : `<p class="sub">${next.name} needs ${next.tech}.</p>`;
+      : `<p class="sub">${cap(next.name)} needs ${next.tech}.</p>`;
   }
   return html;
 }
 
 // ---- nation panel --------------------------------------------------------------
+function nationPicker() {
+  return `<div class="seg">${world.nations.map((o) => `<button data-view-nation="${o.id}" class="${o.id === viewNation ? "on" : ""}">${chip(o.id)} ${esc(o.name)}${o.id === state.you ? " (you)" : ""}</button>`).join("")}</div>`;
+}
+
 function nationPanel() {
-  const n = me();
-  if (!n) return `<p class="hint">You are watching. To play, go back to the games list and pick a nation marked “Play”.</p>`;
-  const info = world.nations[n.id];
-  if (n.eliminated) return `<h2>${esc(info.name)} has fallen</h2><p class="hint">All your tiles were taken.</p>`;
+  const n = state.nations[viewNation], info = world.nations[n.id];
+  const mine = n.id === state.you;
+  const h = getHist(`nations/${n.id}`);
+  const who = mine ? "your nation" : n.controller === "ai" ? "a computer nation" : "another player's nation";
+  const wars = n.at_war.map((w, i) => (w ? world.nations[i].name : null)).filter(Boolean);
+  let html = nationPicker() + `<div class="crest">${shield(nationColor(n.id), 34)}<div><h2>${esc(info.name)}</h2>
+    <p class="sub">${who}${n.eliminated ? " · fallen" : ""} · ${wars.length ? `<span class="bad">at war with ${wars.map(esc).join(", ")}</span>` : "at peace"}</p></div></div>`;
+  if (n.eliminated) return html + `<p class="hint">All its tiles were taken.</p>`;
+  const known = n.known.filter(Boolean).length;
+  html += `<div class="stats four">
+    ${stat(short(n.population), "people", trend(h, "population"))}
+    ${stat(short(n.gdp), "output / day", trend(h, "gdp"))}
+    ${stat("£" + short(n.income), "state income / day", trend(h, "income"))}
+    ${stat("£" + short(n.treasury), "treasury")}
+    ${stat(fmt(n.utility), "living standard", trend(h, "utility"))}
+    ${stat(short(n.soldiers), "soldiers", `cap ${short(n.mobilize_cap)}`)}
+    ${stat(`${known}/${world.techs.length}`, "techs known")}
+    ${stat(n.tiles, "tiles")}
+  </div>`;
+  html += `<h3>The national ledger</h3>` + nationChart(h, n);
+  html += societyBlock(n);
+  if (mine) html += budgetBlock(n) + researchBlock(n);
+  else html += `<h3>Research</h3><p class="sub">Researching ${n.researching >= 0 ? `${world.techs[n.researching].name} (${pct(Math.min(1, n.research_points / n.tech_costs[n.researching]))})` : "nothing"}.</p>`;
+  return html;
+}
+
+function nationChart(h, n) {
+  const [k, row] = seg("nation", [["population", "People"], ["gdp", "Output"], ["income", "Revenue"], ["treasury", "Treasury"], ["utility", "Living"],
+    ["classes", "Classes"], ["labor", "Labour"], ["soldiers", "Soldiers"], ["strength", "Might"], ["techs", "Techs"], ["tiles", "Tiles"]], "population");
+  if (!h || !h.data) return row + lineChart(null, []);
+  const d = h.data, T = h.ticks, c = nationColor(n.id);
+  const names = { population: "people", gdp: "output per day", income: "state income per day", treasury: "treasury", utility: "living standard",
+    soldiers: "soldiers", strength: "military strength", techs: "techs known", tiles: "tiles" };
+  if (k === "classes") return row + lineChart(T, world.classes.map((cl, i) => ({ name: cl, color: series(i), values: d.class_income[i] })), { f: (v) => fmt(v) }) + `<p class="sub">Income per head per day.</p>`;
+  if (k === "labor") return row + lineChart(T, world.sectors.map((s, i) => ({ name: s, color: series(i), values: d.labor[i] })), { share: true }) + `<p class="sub">Share of workers by sector: the march from the fields into the mills.</p>`;
+  return row + lineChart(T, [{ name: names[k], color: c, values: d[k] }], { f: k === "utility" ? (v) => fmt(v) : short });
+}
+
+function societyBlock(n) {
+  const sc = n.labor.map((v, i) => [world.sectors[i], v, series(i)]);
+  const base = n.class_income[0] || 1e-9;
+  return `<h3>Society</h3>
+    <table><tr><th>class</th><th>income / head</th><th>× workers</th></tr>
+    ${world.classes.map((c, i) => `<tr><td><span class="swatch" style="background:${series(i)}"></span>${cap(c)}</td><td>${fmt(n.class_income[i])}</td><td>${(n.class_income[i] / base).toFixed(1)}</td></tr>`).join("")}</table>
+    <p class="sub" style="margin-top:10px">Where people work</p>
+    <div class="bar-stack">${sc.map(([, v, col]) => `<span style="width:${(100 * v).toFixed(1)}%;background:${col}"></span>`).join("")}</div>
+    <div class="legend-inline">${sc.map(([s, v, col]) => `<span><span class="swatch" style="background:${col}"></span>${s} ${pct(v)}</span>`).join("")}</div>`;
+}
+
+function budgetBlock(n) {
   const kept = Math.max(0, 1 - n.budget.reduce((a, b) => a + b, 0));
   const sliders = world.budgets.map((name, i) =>
-    `<label>${name}<input type="range" min="0" max="100" step="5" value="${Math.round(100 * n.budget[i])}" data-budget="${i}" aria-label="${name} budget"><span class="pct" id="pct-${i}">${pct(n.budget[i])}</span></label>`).join("");
-  const tradable = world.goods.map((g, i) => i).filter((i) => !["transport", "construction", "research"].includes(world.goods[i].name));
-  const tariff = Math.max(...tradable.map((i) => n.tariff[i]));
-  const others = world.nations.filter((o) => o.id !== n.id).map((o) =>
-    `<label class="check"><input type="checkbox" data-embargo="${o.id}" ${n.embargo[o.id] ? "checked" : ""}> ${esc(o.name)}</label>`).join("");
-  return `<h2>${chip(n.id)} ${esc(info.name)}</h2>
-    <div class="stats">
-      <div class="stat"><div class="v">${fmt(n.income, 0)}</div><div class="k">income / day</div></div>
-      <div class="stat"><div class="v">${fmt(n.treasury, 0)}</div><div class="k">treasury</div></div>
-      <div class="stat"><div class="v">${fmt(n.soldiers, 0)}</div><div class="k">soldiers (cap ${fmt(n.mobilize_cap, 0)})</div></div>
-    </div>
-    <h3>Budget (share of income)</h3>
+    `<label>${cap(name)}<input type="range" min="0" max="100" step="5" value="${Math.round(100 * n.budget[i])}" data-budget="${i}" aria-label="${name} budget"><span class="pct" id="pct-${i}">${pct(n.budget[i])}</span></label>`).join("");
+  return `<h3>The budget</h3>
     <div class="budget">${sliders}</div>
     <div class="row"><span class="sub" id="kept">${pct(kept)} kept in the treasury</span><button class="primary" id="apply-budget">Apply</button></div>
-    <p class="sub">Economy pays for roads, upkeep and firm expansions; science buys research; military buys your armies' food, clothing and equipment. Armies short of supplies fight worse and lose men.</p>
-    <h3>Taxes and trade</h3>
+    <p class="sub">Economy pays for roads, upkeep and firm expansions; science buys research; military buys your armies' food, clothing and equipment.</p>
     <div class="row"><label>Tax <input id="tax" type="number" min="0" max="90" step="1" value="${Math.round(100 * n.tax_rate)}" class="num">%</label><button data-input="tax">Set</button></div>
-    <div class="row"><label>Import tariff <input id="tariff" type="number" min="0" max="500" step="5" value="${Math.round(100 * tariff)}" class="num">%</label><button data-input="tariff">Set</button></div>
-    <div class="row"><span class="sub">Embargo:</span> ${others}</div>
-    <p class="sub">Tax ${fmt(n.revenue, 1)} + tariffs ${fmt(n.tariff_revenue, 1)} a day · spending ${fmt(n.spending, 1)} · returned to your people ${fmt(n.rebate, 1)}</p>
-    ${researchBlock(n)}`;
+    <table style="margin-top:8px"><tr><td>Tax</td><td>£${fmt(n.revenue, 1)}</td></tr><tr><td>Tariffs</td><td>£${fmt(n.tariff_revenue, 1)}</td></tr>
+    <tr><td>Spent</td><td>−£${fmt(n.spending, 1)}</td></tr><tr><td>Returned to the people</td><td>−£${fmt(n.rebate, 1)}</td></tr>
+    <tr class="total"><td>Treasury</td><td>£${fmt(n.treasury, 0)}</td></tr></table>`;
 }
 
 function researchBlock(n) {
@@ -719,7 +1202,7 @@ function researchBlock(n) {
       const q = n.queue.includes(i) ? "" : `<button data-queue="${i}">Queue</button>`;
       action = `${now}${q}`;
     }
-    const cost = n.tech_costs[i] < t.cost - 1 ? `${fmt(n.tech_costs[i], 0)} <span class="sub">(−${pct(1 - n.tech_costs[i] / t.cost)})</span>` : fmt(t.cost, 0);
+    const cost = n.tech_costs[i] < t.cost - 1 ? `${short(n.tech_costs[i])} <span class="sub">(−${pct(1 - n.tech_costs[i] / t.cost)})</span>` : short(t.cost);
     const needs = !n.known[i] && !available(t) ? `<br><span class="sub">needs ${t.requires.join(", ")}</span>` : "";
     return `<tr class="${n.known[i] ? "dim" : ""}"><td>${t.name}<br><span class="sub">${world.eras[t.era].split(" (")[0]}</span></td><td>${t.effect}${needs}</td><td>${cost}</td><td>${action}</td></tr>`;
   }).join("");
@@ -727,8 +1210,10 @@ function researchBlock(n) {
     const all = world.techs.filter((t) => t.branch === b).length, known = world.techs.filter((t, i) => t.branch === b && n.known[i]).length;
     return `<tr class="branch"><th colspan="4">${b} · ${known}/${all}</th></tr>${rows(b)}`;
   }).join("");
+  const prog = n.researching >= 0 ? Math.min(1, n.research_points / n.tech_costs[n.researching]) : 0;
   return `<h3>Research</h3>
     <p class="sub">Researching ${current}. Techs your trade partners know are cheaper: ideas travel with trade.</p>
+    <div class="progress"><span style="width:${pct(prog)}"></span></div>
     <div class="row">${queue}</div>
     <div class="table-scroll"><table>${branches}</table></div>`;
 }
@@ -749,6 +1234,58 @@ $("tab-nation").addEventListener("input", (ev) => {
   $("kept").textContent = `${100 - ranges.reduce((a, r) => a + +r.value, 0)}% kept in the treasury`;
 });
 
+// ---- trade panel ---------------------------------------------------------------
+function tradePanel() {
+  const n = state.nations[viewNation], mine = n.id === state.you;
+  const h = getHist(`nations/${n.id}`);
+  const exp = n.exports.reduce((a, b) => a + b, 0), imp = n.imports.reduce((a, b) => a + b, 0);
+  let html = nationPicker() + `<h2>Trade of ${esc(world.nations[n.id].name)}</h2>
+    <p class="sub">Goods crossing its frontiers, valued at the prices where they were loaded.</p>
+    <div class="stats">
+      ${stat(short(exp), "exports / day", trend(h, "exports"))}
+      ${stat(short(imp), "imports / day", trend(h, "imports"))}
+      ${stat(`<span class="${exp >= imp ? "good" : "bad"}">${exp >= imp ? "+" : "−"}${short(Math.abs(exp - imp))}</span>`, "balance / day")}
+    </div>`;
+  // partners today, from the shipments on the map
+  const partners = {};
+  for (const f of state.flows) {
+    const a = owner(f.from), b = owner(f.to);
+    if (a === b || (a !== n.id && b !== n.id)) continue;
+    const other = a === n.id ? b : a, p = partners[other] = partners[other] || { out: 0, in: 0 };
+    p[a === n.id ? "out" : "in"] += flowValue(f);
+  }
+  const plist = Object.entries(partners).sort((x, y) => (y[1].out + y[1].in) - (x[1].out + x[1].in));
+  html += `<h3>Partners today</h3>` + (plist.length
+    ? `<table><tr><th>with</th><th>exports</th><th>imports</th></tr>${plist.map(([o, p]) => `<tr><td>${chip(+o)} ${esc(nationName(+o))}</td><td>${fmt(p.out, 1)}</td><td>${fmt(p.in, 1)}</td></tr>`).join("")}</table>`
+    : `<p class="hint">No goods cross its frontiers today.</p>`);
+  // by good
+  const goods = world.goods.map((g, i) => i).filter((i) => n.exports[i] > 1e-6 || n.imports[i] > 1e-6)
+    .sort((a, b) => (n.exports[b] + n.imports[b]) - (n.exports[a] + n.imports[a]));
+  const max = Math.max(1e-9, ...goods.map((i) => Math.max(n.exports[i], n.imports[i])));
+  const pick = goods.includes(+chartPick.tradeGood) ? +chartPick.tradeGood : null;
+  html += `<h3>Over time</h3>`;
+  if (!h || !h.data) html += lineChart(null, []);
+  else if (pick === null) html += lineChart(h.ticks, [{ name: "exports", color: series(1), values: h.data.exports }, { name: "imports", color: series(2), values: h.data.imports }]);
+  else html += `<div class="row" style="margin:0"><span class="sub">${esc(world.goods[pick].name)} only</span><button data-pick="tradeGood" data-val="">All goods</button></div>` +
+    lineChart(h.ticks, [{ name: "exports", color: series(1), values: h.data.exports_by_good[pick] }, { name: "imports", color: series(2), values: h.data.imports_by_good[pick] }]);
+  html += `<h3>By good, today</h3>` + (goods.length ? `<table><tr><th>good</th><th>exports</th><th></th><th>imports</th><th></th></tr>${goods.map((i) =>
+    `<tr><td><button data-pick="tradeGood" data-val="${i}" title="Chart ${esc(world.goods[i].name)}" class="${pick === i ? "primary" : ""}">${esc(world.goods[i].name)}</button></td>
+     <td>${fmt(n.exports[i], 1)}</td><td><div class="hbar"><span style="width:${pct(n.exports[i] / max)};background:${series(1)}"></span></div></td>
+     <td>${fmt(n.imports[i], 1)}</td><td><div class="hbar"><span style="width:${pct(n.imports[i] / max)};background:${series(2)}"></span></div></td></tr>`).join("")}</table>
+     <p class="sub">Tap a good to chart it.</p>` : `<p class="hint">Nothing today.</p>`);
+  if (mine) {
+    const tradable = world.goods.map((g, i) => i).filter((i) => !["transport", "construction", "research"].includes(world.goods[i].name));
+    const tariff = Math.max(...tradable.map((i) => n.tariff[i]));
+    const others = world.nations.filter((o) => o.id !== n.id).map((o) =>
+      `<label class="check"><input type="checkbox" data-embargo="${o.id}" ${n.embargo[o.id] ? "checked" : ""}> ${esc(o.name)}</label>`).join("");
+    html += `<h3>Customs</h3>
+      <div class="row"><label>Import tariff <input id="tariff" type="number" min="0" max="500" step="5" value="${Math.round(100 * tariff)}" class="num">%</label><button data-input="tariff">Set</button></div>
+      <div class="row"><span class="sub">Embargo:</span> ${others}</div>
+      <p class="sub">Tariffs earned £${fmt(n.tariff_revenue, 1)} today. Trade also spreads knowledge: techs your partners know cost less.</p>`;
+  }
+  return html;
+}
+
 // ---- armies panel --------------------------------------------------------------
 function armiesPanel() {
   const n = me();
@@ -757,8 +1294,8 @@ function armiesPanel() {
   let html = "";
   if (n) {
     html += `<h2>Your armies</h2>
-      <p class="sub">${fmt(n.soldiers, 0)} soldiers of ${fmt(n.mobilize_cap, 0)} allowed (${pct(n.mobilization)} of your people). Best doctrine: ${world.doctrines[n.best_doctrine].name}.
-      Raise armies from a tile of yours (Tile tab).</p>`;
+      <p class="sub">${short(n.soldiers)} soldiers of ${short(n.mobilize_cap)} allowed (${pct(n.mobilization)} of your people). Best doctrine: ${world.doctrines[n.best_doctrine].name}.
+      Raise armies from a tile of yours.</p>`;
     html += mine.length ? mine.map((a) => armyCard(a, true)).join("") : `<p class="hint">You have no armies.</p>`;
   }
   html += `<h3>Other armies</h3>` + (others.length ? others.map((a) => armyCard(a, false)).join("") : `<p class="hint">None.</p>`);
@@ -769,25 +1306,53 @@ function armyCard(a, mine) {
   const d = world.doctrines[a.doctrine];
   const where = world.regions[a.region];
   const dest = a.path.length ? ` → marching to ${world.regions[a.path[a.path.length - 1]].name}` : "";
-  const supply = Object.entries(d.needs).map(([g]) => {
+  const open = a.id === selectedArmy;
+  let html = `<div class="army-card ${open ? "selected" : ""}" data-select-army="${a.id}">
+    <div class="title"><b>${chip(a.nation)} ${esc(nationName(a.nation))} army ${a.id}</b><span class="sub">${short(a.men)} / ${short(a.target)} men</span></div>
+    <p class="sub">${d.name} · strength ${short(a.strength)} · at ${where.name}${dest}${a.retreating ? ` · <span class="bad">retreating</span>` : ""}</p>`;
+  if (!open) return html + `</div>`;
+  const supply = Object.keys(d.needs).map((g) => {
     const v = a.supply[g] ?? 0;
-    const color = v > 0.8 ? "#4caf50" : v > 0.4 ? "#e0a020" : "#d9480f";
+    const color = v > 0.8 ? cssVar("--good") : v > 0.4 ? cssVar("--brass") : cssVar("--danger");
     return `<span>${g}</span><span class="meter"><span style="width:${pct(v)};background:${color}"></span></span><span>${pct(v)}</span>`;
   }).join("");
-  let actions = "";
+  // strength: the doctrine's base power times each factor
+  const mult = (v) => `<span class="${v > 1.0001 ? "good" : v < 0.9999 ? "bad" : ""}">×${v.toFixed(2)}</span>`;
+  let per = 1;
+  const att = (a.attack || []).map((m, i) => {
+    per *= m.value;
+    return `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td><td>${i === 0 ? m.value.toFixed(2) : mult(m.value)}</td></tr>`;
+  }).join("");
+  let home = 1;
+  const def = (a.defense || []).map((m) => { home *= m.value; return `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td><td>${mult(m.value)}</td></tr>`; }).join("");
+  let add = 0, by = 1;
+  const attr = (a.attrition || []).map((m, i) => {
+    if (i < 2) { add += m.value; return `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td><td>${(100 * m.value).toFixed(2)}%</td></tr>`; }
+    by *= m.value; return `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td><td>${mult(m.value)}</td></tr>`;
+  }).join("");
+  const depot = a.depot >= 0 ? `bought at ${world.regions[a.depot].name}${a.depot === a.region ? " (here)" : ""}, using ${fmt(a.transport, 1)} transport today` : `<span class="bad">cut off: no friendly market can reach it</span>`;
+  html += `<h3>Supplies</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">Supplies ${depot}.</p>
+    <h3>Strength in battle</h3>
+    <table class="mods"><tr><th>factor</th><th>effect</th></tr>${att}
+      <tr class="total"><td>Per soldier</td><td>${per.toFixed(2)}</td></tr>
+      <tr><td>× ${short(a.men)} men</td><td>${a.retreating ? "0 while retreating" : short(a.strength)}</td></tr></table>
+    <p class="sub" style="margin-top:8px">When defending its own nation's soil:</p>
+    <table class="mods">${def}<tr class="total"><td>Defending</td><td>×${home.toFixed(2)}</td></tr></table>
+    <p class="sub" style="margin-top:8px">Daily losses outside battle:</p>
+    <table class="mods">${attr}<tr class="total"><td>Men lost a day</td><td>${(100 * add * by).toFixed(2)}% ≈ ${fmt(a.men * add * by, 1)}</td></tr></table>`;
+  const h = getHist(`armies/${a.id}`);
+  const [k, row] = seg("army", [["men", "Men"], ["strength", "Strength"], ["effectiveness", "Per soldier"]], "men");
+  html += `<h3>Its campaign</h3>${row}` + (h && h.data ? lineChart(h.ticks, [{ name: { men: "men", strength: "strength", effectiveness: "strength per soldier" }[k], color: nationColor(a.nation), values: h.data[k] }], { f: k === "effectiveness" ? (v) => fmt(v) : short }) : lineChart(null, []));
   if (mine) {
     const n = me();
-    actions = `<div class="row">
-      <button class="primary" data-move="${a.id}">Move…</button>
+    html += `<div class="row">
+      <button class="primary" data-move="${a.id}">March…</button>
       <label>Size <input type="number" min="0" step="1" value="${Math.round(a.target)}" class="num" data-target-for="${a.id}"></label><button data-set-target="${a.id}">Set</button>
       ${n.best_doctrine > a.doctrine ? `<button data-cmd="/armies/${a.id}/upgrade">Upgrade to ${world.doctrines[n.best_doctrine].name}</button>` : ""}
       ${state.regions[a.region].nation === a.nation ? `<button class="danger" data-cmd="/armies/${a.id}/disband">Disband</button>` : ""}
     </div>`;
   }
-  return `<div class="army-card ${a.id === selectedArmy ? "selected" : ""}" data-select-army="${a.id}">
-    <div class="title"><b>${chip(a.nation)} ${esc(nationName(a.nation))} army ${a.id}</b><span class="sub">${fmt(a.men, 0)} / ${fmt(a.target, 0)} men</span></div>
-    <p class="sub">${d.name} · strength ${fmt(a.strength, 1)} (effectiveness ${fmt(a.effectiveness)} of ${d.power}) · at ${where.name}${dest}${a.retreating ? " · retreating" : ""}</p>
-    <div class="supply">${supply}</div>${actions}</div>`;
+  return html + `</div>`;
 }
 
 // ---- world panel ---------------------------------------------------------------
@@ -806,38 +1371,45 @@ function worldPanel() {
       }
     }
     const war = o.at_war.map((w, i) => (w ? world.nations[i].name : null)).filter(Boolean);
-    return `<tr><td>${chip(o.id)} ${esc(info.name)}</td><td>${who}</td><td>${o.eliminated ? "fallen" : o.tiles}</td>
-      <td>${fmt(o.population, 0)}</td><td>${fmt(o.income, 0)}</td><td>${fmt(o.soldiers, 0)}</td><td>${o.known.filter(Boolean).length}/${world.techs.length}</td>
-      <td>${war.length ? `⚔ ${war.map(esc).join(", ")}` : "peace"}</td><td>${diplo}</td></tr>`;
+    return `<tr><td>${chip(o.id)} ${esc(info.name)}<br><span class="sub">${who}</span></td><td>${o.eliminated ? "fallen" : o.tiles}</td>
+      <td>${short(o.population)}</td><td>${short(o.gdp)}</td><td>${short(o.soldiers)}</td><td>${o.known.filter(Boolean).length}</td>
+      <td>${war.length ? `<span class="bad">⚔ ${war.map(esc).join(", ")}</span>` : "peace"}${diplo ? `<br>${diplo}` : ""}</td></tr>`;
   }).join("");
-  return `<h2>Nations</h2><div class="table-scroll"><table>
-    <tr><th>nation</th><th>who</th><th>tiles</th><th>people</th><th>income</th><th>soldiers</th><th>techs</th><th>wars</th><th></th></tr>${rows}</table></div>
-    <p class="sub">You can only go to war with a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless.</p>
-    <p class="sub">Money in the world: ${fmt(state.money, 0)} (conserved).</p>`;
+  const hs = world.nations.map((o) => getHist(`nations/${o.id}`));
+  const [k, row] = seg("world", [["population", "People"], ["gdp", "Output"], ["utility", "Living"], ["soldiers", "Soldiers"], ["strength", "Might"], ["techs", "Techs"], ["tiles", "Tiles"]], "gdp");
+  const ready = hs.every((h) => h && h.data);
+  const chart = ready ? lineChart(hs[0].ticks, world.nations.map((o, i) => ({ name: o.name, color: nationColor(o.id), values: hs[i].data[k] })), { f: k === "utility" ? (v) => fmt(v) : short }) : lineChart(null, []);
+  return `<h2>The powers</h2><div class="table-scroll"><table>
+    <tr><th>nation</th><th>tiles</th><th>people</th><th>output</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
+    <h3>The race</h3>${row}${chart}
+    <p class="sub" style="margin-top:8px">You can only go to war with a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless.</p>
+    <p class="sub">Money in the world: ${short(state.money)} (conserved).</p>`;
 }
 
 // ---- news panel ----------------------------------------------------------------
 function newsPanel() {
   const items = [...state.events].reverse().map((e) =>
     `<li class="${e.kind}"><span class="when">${dateOf(e.tick)}</span>${esc(e.text)}</li>`).join("");
-  return `<h2>News</h2>
+  return `<h2>The Gazette</h2>
     <label class="check"><input type="checkbox" id="autopause" ${pref("autopause", true) ? "checked" : ""}> Pause when war, battle or occupation news concerns me</label>
     <div class="news"><ul>${items || `<li class="sub">Nothing yet.</li>`}</ul></div>`;
 }
 
 // ---- panel actions -------------------------------------------------------------
-document.querySelector(".side").addEventListener("click", (ev) => {
+side.addEventListener("click", (ev) => {
   const b = ev.target.closest("button");
   if (b && b.id === "cancel-move") { moving = false; render(true); return; }
   if (!b) {
     const card = ev.target.closest("[data-select-army]");
-    if (card) { selectedArmy = +card.dataset.selectArmy; render(true); }
+    if (card && +card.dataset.selectArmy !== selectedArmy) { selectedArmy = +card.dataset.selectArmy; render(true); }
     return;
   }
+  if (b.dataset.pick) { chartPick[b.dataset.pick] = b.dataset.val; renderPanel(true); return; }
+  if (b.dataset.viewNation !== undefined) { viewNation = +b.dataset.viewNation; renderPanel(true); return; }
   if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
   if (b.dataset.cmd) command(b.dataset.cmd);
   if (b.dataset.army) { selectedArmy = +b.dataset.army; setTab("armies"); render(true); }
-  if (b.dataset.move) { selectedArmy = +b.dataset.move; moving = true; render(true); if (window.innerWidth <= 760) canvas.scrollIntoView({ behavior: "smooth" }); }
+  if (b.dataset.move) { selectedArmy = +b.dataset.move; moving = true; render(true); if (window.innerWidth <= 860) canvas.scrollIntoView({ behavior: "smooth" }); }
   if (b.dataset.setTarget) command(`/armies/${b.dataset.setTarget}/target?men=${+document.querySelector(`[data-target-for="${b.dataset.setTarget}"]`).value}`);
   if (b.id === "raise") command(`/nations/${state.you}/armies?region=${selected}&target=${+$("raise-men").value}`);
   if (b.dataset.queue !== undefined) command(`/nations/${state.you}/queue?techs=${[...me().queue, +b.dataset.queue].join(",")}`);
@@ -852,10 +1424,12 @@ document.querySelector(".side").addEventListener("click", (ev) => {
   if (b.dataset.input === "tax") command(`/nations/${state.you}/tax?rate=${(+$("tax").value / 100).toFixed(3)}`);
   if (b.dataset.input === "tariff") command(`/nations/${state.you}/tariff?rate=${(+$("tariff").value / 100).toFixed(3)}`);
 });
-document.querySelector(".side").addEventListener("change", (ev) => {
+side.addEventListener("change", (ev) => {
   const t = ev.target.dataset.embargo;
   if (t !== undefined) command(`/nations/${state.you}/embargo?target=${t}&on=${ev.target.checked}`);
   if (ev.target.id === "autopause") setPref("autopause", ev.target.checked);
 });
 
+applyTheme();
+if (document.fonts) document.fonts.ready.then(() => { terrainCache = null; if (state) draw(); });
 route();

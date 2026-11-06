@@ -18,7 +18,7 @@ type Region struct {
 	BaseMove float64  // terrain's movement cost
 	Infra    int      // index into InfraLevels
 	Port     bool     // has a port: trades by sea with every other port
-	City     bool     // a city: non-primary firms gain from its size
+	Urban    bool     // industry and services gain from the tile's size (game worlds)
 	Project  *Project // infrastructure under construction, or nil
 	Neglect  float64  // accumulated unmet upkeep
 	Siege    *Siege   // a foreign army working to take the tile, or nil
@@ -84,7 +84,7 @@ func (r *Region) Plan() {
 	for _, p := range r.Pops {
 		p.Income = 0
 	}
-	if r.City {
+	if r.Urban {
 		r.updateAgglomeration()
 	}
 	prices := r.refreshPrices()
@@ -378,25 +378,28 @@ func (r *Region) PayDividends(cash *float64, cashBuffer, desiredSpend float64, o
 	}
 }
 
-// City agglomeration: in a city, industry and services are more productive
-// the bigger it is: cityBonus * (people / cityBonusPop)^cityBonusExp.
+// Agglomeration: on every tile, industry and services are more productive the
+// more people live there: (people / sizeBonusPop)^sizeBonusExp. Busy tiles pay
+// better, draw migrants and grow further, so cities emerge where trade and
+// resources concentrate people; thin tiles stay rural.
 const (
-	cityBonus    = 1.25
-	cityBonusPop = 200.0
-	cityBonusExp = 0.3
+	sizeBonusPop = 100.0 // a starting tile's people: bonus 1
+	sizeBonusExp = 0.45
+	// a tile is a city when it has this many times the average tile's people
+	cityMult = 2.0
 )
 
-// CityBonus is the productivity multiplier the tile's size gives its
-// non-primary firms (1 outside cities).
-func (r *Region) CityBonus() float64 {
-	if !r.City {
+// SizeBonus is the productivity multiplier the tile's size gives its
+// non-primary firms (1 outside game worlds).
+func (r *Region) SizeBonus() float64 {
+	if !r.Urban {
 		return 1
 	}
-	return cityBonus * math.Pow(r.Population()/cityBonusPop, cityBonusExp)
+	return math.Pow(math.Max(r.Population(), 1)/sizeBonusPop, sizeBonusExp)
 }
 
 func (r *Region) updateAgglomeration() {
-	b := r.CityBonus()
+	b := r.SizeBonus()
 	for _, f := range r.Firms {
 		if f.Sector != Primary {
 			f.Agglom = b

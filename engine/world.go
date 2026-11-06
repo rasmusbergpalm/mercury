@@ -482,3 +482,13 @@ func (w *World) GrantTech(nation int, tech string) {
 	n.applyTech()
 	w.refreshAllHops()
 }
+
+// IsCity reports whether a tile has grown into a city: it holds at least
+// cityMult times the people of the average tile.
+func (w *World) IsCity(r *Region) bool {
+	pop := 0.0
+	for _, x := range w.Regions {
+		pop += x.Population()
+	}
+	return r.Population() >= cityMult*pop/float64(len(w.Regions))
+}

@@ -77,6 +77,9 @@ type WorldInfo struct {
 	Eras      []string       `json:"eras"`
 	Doctrines []DoctrineInfo `json:"doctrines"`
 	StartYear int            `json:"start_year"`
+	Consumer  []int          `json:"consumer_goods"` // the order of RegionHistory.Prices
+	Classes   []string       `json:"classes"`
+	Sectors   []string       `json:"sectors"`
 }
 
 type DoctrineInfo struct {
@@ -269,6 +272,15 @@ func worldInfo(w *engine.World) WorldInfo {
 	for g, q := range engine.PortMaterials {
 		info.Port.Materials[engine.Goods[g].Name] = q
 	}
+	for _, g := range engine.ConsumerGoods {
+		info.Consumer = append(info.Consumer, int(g))
+	}
+	for c := engine.Class(0); c < engine.NumClasses; c++ {
+		info.Classes = append(info.Classes, c.String())
+	}
+	for sc := engine.Sector(0); sc < 3; sc++ {
+		info.Sectors = append(info.Sectors, sc.String())
+	}
 	for g, good := range engine.Goods {
 		tier := ""
 		if t := engine.TierOf[g]; t >= 0 {
@@ -324,7 +336,7 @@ func regionState(w *engine.World, i int) RegionState {
 	}
 	st := RegionState{ID: r.ID, Wage: r.Wage, Utility: r.Utility(), Population: r.Population(),
 		Employed: employed, TierSpend: ts[:], Prices: r.Prices(), Nation: -1, Infra: r.Infra,
-		MoveCost: r.MoveCost(), Port: r.Port, City: r.City, CityBonus: r.CityBonus(), Growth: r.GrowthRate()}
+		MoveCost: r.MoveCost(), Port: r.Port, City: w.IsCity(r), CityBonus: r.SizeBonus(), Growth: r.GrowthRate()}
 	if r.Nation != nil {
 		st.Nation = r.Nation.ID
 	}

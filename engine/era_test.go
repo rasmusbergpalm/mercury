@@ -5,29 +5,30 @@ import (
 	"testing"
 )
 
-func TestCityBonusGrowsWithPopulation(t *testing.T) {
+// Every tile gains from its size: no tile starts as a city, and a tile that
+// fills with people becomes more productive in industry and services.
+func TestSizeBonusGrowsWithPopulation(t *testing.T) {
 	w := newTestGame(t)
-	city, village := regionByName(w, "11"), regionByName(w, "10")
-	if !city.City || village.City {
-		t.Fatal("tile 11 should be Montara's capital, 10 not a city")
+	r := regionByName(w, "11")
+	for _, x := range w.Regions {
+		if !x.Urban || w.IsCity(x) {
+			t.Fatalf("tile %s: urban %v, city %v at the start", x.Name, x.Urban, w.IsCity(x))
+		}
 	}
-	if village.CityBonus() != 1 {
-		t.Errorf("village bonus %v", village.CityBonus())
+	if b := r.SizeBonus(); math.Abs(b-math.Pow(r.Population()/sizeBonusPop, sizeBonusExp)) > 1e-9 {
+		t.Errorf("bonus %v for %v people", b, r.Population())
 	}
-	if got := city.Population(); math.Abs(got-cityPopMult*100) > 1e-9 {
-		t.Errorf("capital starts with %v people", got)
+	small := r.SizeBonus()
+	addPeople(r, 600)
+	r.updateAgglomeration()
+	if big := r.SizeBonus(); big <= small {
+		t.Errorf("bigger tile, bonus %v <= %v", big, small)
 	}
-	if b := city.CityBonus(); math.Abs(b-cityBonus) > 1e-9 {
-		t.Errorf("capital of %v people: bonus %v, want %v", city.Population(), b, cityBonus)
+	if !w.IsCity(r) {
+		t.Errorf("%v people is not a city", r.Population())
 	}
-	small := city.CityBonus()
-	addPeople(city, 600)
-	city.updateAgglomeration()
-	if big := city.CityBonus(); big <= small {
-		t.Errorf("bigger city, bonus %v <= %v", big, small)
-	}
-	for _, f := range city.Firms {
-		want := city.CityBonus()
+	for _, f := range r.Firms {
+		want := r.SizeBonus()
 		if f.Sector == Primary {
 			want = 1
 		}

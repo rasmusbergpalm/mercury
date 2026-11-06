@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1f2328">
+  <meta name="theme-color" content="#3a2618">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IM+Fell+English+SC&display=swap">
   <title>Mercury</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -12,7 +15,8 @@
   <section id="lobby" hidden>
     <header class="bar">
       <h1>Mercury</h1>
-      <span class="sub">Build a nation: balance economy, science and armies on a map where moving goods costs.</span>
+      <span class="sub">Build a nation, 1820–1920: balance commerce, science and arms on a map where every mile of carriage costs.</span>
+      <div class="menu"><button class="theme" title="Day or night">◐</button></div>
     </header>
     <main class="lobby">
       <section class="card">
@@ -64,6 +68,7 @@
         <button id="save">Save</button>
         <a id="export" class="button" download>Export</a>
         <button id="leave" hidden>Leave</button>
+        <button class="theme" title="Day or night">◐</button>
       </div>
     </header>
     <div id="you" class="you" hidden></div>
@@ -73,8 +78,8 @@
         <div class="overlay-bar">
           <select id="overlay" aria-label="Map overlay">
             <option value="nation">Nations</option>
-          <option value="growth">Population growth</option>
             <option value="terrain">Terrain</option>
+            <option value="growth">Population growth</option>
             <option value="infra">Infrastructure</option>
             <option value="population">Population</option>
             <option value="utility">Utility per person</option>
@@ -94,6 +99,7 @@
         <nav class="tabs" role="tablist">
           <button data-tab="tile" class="active">Tile</button>
           <button data-tab="nation">Nation</button>
+          <button data-tab="trade">Trade</button>
           <button data-tab="armies">Armies</button>
           <button data-tab="world">World</button>
           <button data-tab="news">News</button>
@@ -101,6 +107,7 @@
         <div id="mode" class="mode" hidden></div>
         <div id="tab-tile" class="tab"><p class="hint">Tap a tile on the map.</p></div>
         <div id="tab-nation" class="tab" hidden></div>
+        <div id="tab-trade" class="tab" hidden></div>
         <div id="tab-armies" class="tab" hidden></div>
         <div id="tab-world" class="tab" hidden></div>
         <div id="tab-news" class="tab" hidden></div>

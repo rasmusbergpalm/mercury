@@ -270,7 +270,6 @@ type NationSpec struct {
 type GameSpec struct {
 	Map           []string
 	NationMap     []string // same shape as Map; '.' = unowned
-	Cities        [][2]int // (row, col) of city tiles
 	Nations       []NationSpec
 	TransportCost float64
 	TaxRate       float64
@@ -290,12 +289,10 @@ var DefaultGame = GameSpec{
 		"...CC.",
 	},
 	Nations: []NationSpec{
-		{'A', "Montara", "#c0392b"},
-		{'B', "Verdania", "#2e6fd8"},
-		{'C', "Thalassa", "#17a589"},
+		{'A', "Montara", "#b8322e"},
+		{'B', "Verdania", "#2c5aa0"},
+		{'C', "Thalassa", "#c08a1e"},
 	},
-	// a capital for each nation, and a free city in the middle
-	Cities:        [][2]int{{1, 1}, {1, 4}, {4, 4}, {3, 2}},
 	TransportCost: 1,
 	TaxRate:       0.1,
 }
@@ -317,11 +314,9 @@ func BuildGame(spec GameSpec) (*World, error) {
 	}
 	w.Investment, w.Migration, w.Demography = true, true, true
 	w.Spec = &spec
-	for _, c := range spec.Cities {
-		if c[0] < 0 || c[0] >= w.Rows || c[1] < 0 || c[1] >= w.Cols {
-			return nil, fmt.Errorf("city %v is off the map", c)
-		}
-		makeCity(w.Regions[c[0]*w.Cols+c[1]])
+	for _, r := range w.Regions {
+		r.Urban = true
+		r.updateAgglomeration()
 	}
 	bySymbol := map[byte]*Nation{}
 	for i, ns := range spec.Nations {
@@ -353,27 +348,6 @@ func BuildGame(spec GameSpec) (*World, error) {
 	}
 	w.refreshAllHops()
 	return w, nil
-}
-
-// Cities start with this many times the people of other tiles, and their
-// land-bound producers are capped at this many levels (there's little land).
-const (
-	cityPopMult      = 2.0
-	cityRawMaxLevels = 2
-)
-
-func makeCity(r *Region) {
-	r.City = true
-	for _, p := range r.Pops {
-		p.Size *= cityPopMult
-		p.Cash *= cityPopMult
-	}
-	for _, f := range r.Firms {
-		if f.Sector == Primary {
-			f.MaxLevels = cityRawMaxLevels
-		}
-	}
-	r.updateAgglomeration()
 }
 
 // Owner classes in game worlds: each is this share of a tile's people and
