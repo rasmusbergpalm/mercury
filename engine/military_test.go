@@ -431,3 +431,32 @@ func TestBrokeFirmsDontHire(t *testing.T) {
 		t.Errorf("a broke firm hired %v workers", f.Labor)
 	}
 }
+
+// Losses take equipment as well as men: battles drain the stock three times
+// as fast as the ranks; other losses keep the days of stock per man.
+func TestLossesTakeEquipment(t *testing.T) {
+	w := newNeighbourGame(t)
+	w.DeclareWar(0, 1)
+	field := regionByName(w, "02")
+	x, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
+	y, _ := w.RaiseArmy(1, regionByName(w, "01").ID, 0)
+	x.Men, y.Men = 30, 25
+	x.Region, y.Region = field.ID, field.ID
+	bread := G("bread")
+	x.Stock[bread] = 30 * x.Men * Doctrines[x.Doctrine].Needs[bread]
+	days := x.StockDays(bread)
+	men, stock := x.Men, x.Stock[bread]
+	w.battles()
+	lostMen, lostStock := 1-x.Men/men, 1-x.Stock[bread]/stock
+	if lostMen <= 0 || math.Abs(lostStock-battleKitLoss*lostMen) > 1e-9 {
+		t.Errorf("battle: lost %.1f%% of men and %.1f%% of stock", 100*lostMen, 100*lostStock)
+	}
+	if x.StockDays(bread) >= days {
+		t.Errorf("battle didn't cut days of stock: %v -> %v", days, x.StockDays(bread))
+	}
+	before := x.StockDays(bread)
+	x.lose(0.1, 1)
+	if math.Abs(x.StockDays(bread)-before) > 1e-9 {
+		t.Errorf("attrition changed days of stock: %v -> %v", before, x.StockDays(bread))
+	}
+}

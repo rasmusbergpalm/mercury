@@ -1369,7 +1369,7 @@ function armyCard(a, mine) {
     <table class="mods"><tr><th>factor</th><th>effect</th></tr>${att}
       <tr class="total"><td>Per soldier</td><td>${per.toFixed(2)}</td></tr>
       <tr><td>× ${short(a.men)} men</td><td>${short(a.strength)}</td></tr></table>
-    <p class="sub" style="margin-top:4px">In battle each side loses men in proportion to the other's strength; an army that falls below 30% of its enemy's strength is destroyed.</p>
+    <p class="sub" style="margin-top:4px">In battle each side loses men in proportion to the other's strength, and three times that share of its stock (ammunition spent, guns abandoned), so long fights drain supplies fast; an army that falls below 30% of its enemy's strength is destroyed.</p>
     <p class="sub" style="margin-top:8px">When defending its own nation's soil:</p>
     <table class="mods">${def}<tr class="total"><td>Defending</td><td>×${home.toFixed(2)}</td></tr></table>
     <p class="sub" style="margin-top:8px">Daily losses outside battle:</p>

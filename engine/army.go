@@ -97,6 +97,10 @@ const (
 	siegeLossOwned = 0.51
 	siegeLossFree  = 0.16
 	survivorsHome  = 0.5 // share of a destroyed army's men who find their way home
+	// In battle an army loses this many times as large a share of its stock
+	// as of its men (ammunition spent, guns and wagons abandoned); otherwise
+	// the men lost take their own kit with them.
+	battleKitLoss = 3.0
 )
 
 // Army errors.
@@ -583,6 +587,17 @@ func (a *Army) settleSupply() {
 	}
 }
 
+// lose takes a share of the army's men, and kit times that share of its
+// stock (at most all of it).
+func (a *Army) lose(share, kit float64) {
+	share = math.Max(0, math.Min(1, share))
+	a.Men *= 1 - share
+	keep := math.Max(0, 1-kit*share)
+	for g := range a.Stock {
+		a.Stock[g] *= keep
+	}
+}
+
 // StockDays is how many days of a good the army carries at its current size.
 func (a *Army) StockDays(g GoodID) float64 {
 	need := a.Men * Doctrines[a.Doctrine].Needs[g]
@@ -599,7 +614,7 @@ func (w *World) armies() {
 		w.recruit(a)
 		hunger := 1 - a.Supply[G("bread")]
 		loss := a.Men * (baseAttrition + hungerAttrition*hunger) * a.Nation.desertionMult()
-		a.Men -= loss
+		a.lose(loss/math.Max(a.Men, 1e-12), 1)
 		w.march(a)
 	}
 	w.battles()
@@ -730,7 +745,7 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army) {
 			return
 		}
 		for _, a := range armies {
-			a.Men -= losses * a.Men / men
+			a.lose(losses/men, battleKitLoss)
 		}
 	}
 	lose(ax, mx, math.Min(mx, battleRate*py))
@@ -790,7 +805,7 @@ func (w *World) sieges() {
 		loss := math.Exp(-siegeLoss(r) * rate)
 		for _, a := range w.Armies {
 			if a.Region == r.ID && a.Nation == occupier && len(a.Path) == 0 {
-				a.Men *= loss
+				a.lose(1-loss, 1)
 			}
 		}
 		r.Siege.Progress = math.Min(1, r.Siege.Progress+rate)
