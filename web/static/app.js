@@ -90,6 +90,14 @@ function overlayLabel() {
   return $("overlay").selectedOptions[0].textContent;
 }
 const isShare = () => ["basic", "luxury"].includes($("overlay").value);
+const CATEGORICAL = ["terrain", "nation", "infra"];
+const INFRA_COLORS = ["#d9d4c7", "#b07d48", "#5b3a1e"];
+const nationColor = (r) => (r.nation >= 0 ? world.nations[r.nation].color : "#9a9a9a");
+function categoryColor(kind, r) {
+  if (kind === "nation") return nationColor(r);
+  if (kind === "infra") return INFRA_COLORS[state.regions[r.id].infra];
+  return TERRAIN_COLORS[r.terrain];
+}
 const useLog = () => $("overlay").value === "price";
 
 function scale(vals) {
@@ -106,13 +114,13 @@ function draw() {
   const css = getComputedStyle(document.documentElement);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const kind = $("overlay").value;
-  const vals = kind === "terrain" ? null : overlayValues();
+  const vals = CATEGORICAL.includes(kind) ? null : overlayValues();
   const sc = vals && scale(vals);
 
   for (const r of world.regions) {
     const [x, y] = center(r);
     hexPath(x, y, size * 0.97);
-    ctx.fillStyle = vals ? rampColor(sc.t(vals[r.id])) : TERRAIN_COLORS[r.terrain];
+    ctx.fillStyle = vals ? rampColor(sc.t(vals[r.id])) : categoryColor(kind, r);
     ctx.fill();
     ctx.lineWidth = 1; ctx.strokeStyle = css.getPropertyValue("--hex-stroke"); ctx.stroke();
     // terrain pip, so terrain stays visible under data overlays
@@ -121,12 +129,20 @@ function draw() {
       ctx.fillStyle = TERRAIN_COLORS[r.terrain]; ctx.fill();
       ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.stroke();
     }
-    ctx.fillStyle = vals && sc.t(vals[r.id]) > 0.6 ? "#111" : (vals ? "#fff" : "#1b1b1b");
+    const rs = state.regions[r.id];
+    const dark = vals ? sc.t(vals[r.id]) <= 0.6 : (kind === "nation" || (kind === "infra" && rs.infra === 2));
+    ctx.fillStyle = dark ? "#fff" : "#1b1b1b";
     ctx.font = `600 ${Math.max(10, size * 0.28)}px system-ui`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const label = vals ? (isShare() ? (100 * vals[r.id]).toFixed(0) + "%" : fmt(vals[r.id], 1)) : r.terrain[0].toUpperCase();
+    let label;
+    if (vals) label = isShare() ? (100 * vals[r.id]).toFixed(0) + "%" : fmt(vals[r.id], 1);
+    else if (kind === "nation") label = r.nation >= 0 ? world.nations[r.nation].name.slice(0, 3) : "–";
+    else if (kind === "infra") label = "×" + rs.move_cost.toFixed(2);
+    else label = r.terrain[0].toUpperCase();
     ctx.fillText(label, x, y + size * 0.05);
+    drawInfra(r, rs, x, y);
   }
+  drawBorders();
   if ($("show-flows").checked) drawFlows(css);
   if (selected !== null) {
     const [x, y] = center(world.regions[selected]);
@@ -134,6 +150,39 @@ function draw() {
     ctx.lineWidth = 3; ctx.strokeStyle = css.getPropertyValue("--select"); ctx.stroke();
   }
   drawLegend(sc);
+}
+
+// roads: a small bar under the label, one segment per level; projects: a progress arc
+function drawInfra(r, rs, x, y) {
+  const by = y + size * 0.42;
+  for (let i = 0; i < rs.infra; i++) {
+    ctx.fillStyle = INFRA_COLORS[2]; ctx.strokeStyle = "#fff"; ctx.lineWidth = 1;
+    ctx.fillRect(x - size * 0.25 + i * size * 0.27, by, size * 0.22, size * 0.08);
+    ctx.strokeRect(x - size * 0.25 + i * size * 0.27, by, size * 0.22, size * 0.08);
+  }
+  if (rs.project) {
+    const f = rs.project.delivered / rs.project.required;
+    ctx.beginPath(); ctx.arc(x + size * 0.45, y - size * 0.45, size * 0.12, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * f);
+    ctx.lineWidth = size * 0.06; ctx.strokeStyle = "#e8590c"; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x + size * 0.45, y - size * 0.45, size * 0.12, 0, 2 * Math.PI);
+    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.stroke();
+  }
+}
+
+// borders: the shared hex edge between tiles of different nations
+function drawBorders() {
+  for (const l of world.links) {
+    const a = world.regions[l.a], b = world.regions[l.b];
+    if (a.nation === b.nation) continue;
+    const [x1, y1] = center(a), [x2, y2] = center(b);
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, len = Math.hypot(x2 - x1, y2 - y1);
+    const px = -(y2 - y1) / len * size / 2, py = (x2 - x1) / len * size / 2;
+    ctx.lineCap = "round";
+    ctx.lineWidth = 5; ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.beginPath(); ctx.moveTo(mx + px, my + py); ctx.lineTo(mx - px, my - py); ctx.stroke();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = "#222";
+    ctx.beginPath(); ctx.moveTo(mx + px, my + py); ctx.lineTo(mx - px, my - py); ctx.stroke();
+  }
 }
 
 function drawFlows(css) {
@@ -168,6 +217,17 @@ function drawFlows(css) {
 
 function drawLegend(sc) {
   const el = $("legend");
+  const kind = $("overlay").value;
+  if (!sc && kind === "nation") {
+    el.innerHTML = world.nations.map((n) => `<span><span class="swatch" style="background:${n.color}"></span>${n.name}</span>`).join("");
+    return;
+  }
+  if (!sc && kind === "infra") {
+    el.innerHTML = world.infra_levels.map((l, i) =>
+      `<span><span class="swatch" style="background:${INFRA_COLORS[i]}"></span>${l.name} (move ×${l.move_mult})</span>`).join("") +
+      `<span>· labels show the tile's movement cost</span>`;
+    return;
+  }
   if (!sc) {
     el.innerHTML = world.terrains.map((t) =>
       `<span><span class="swatch" style="background:${TERRAIN_COLORS[t.name]}"></span>${t.name}${t.move_cost < 1 ? ` (move ×${t.move_cost})` : ""}</span>`).join("");
@@ -200,9 +260,30 @@ async function showRegion(id) {
     }).join("");
     return rows || `<tr class="dim"><td colspan="3">none</td></tr>`;
   };
+  const nation = d.info.nation >= 0 ? world.nations[d.info.nation] : null;
+  const ns = nation && state.nations[nation.id];
+  const lvl = world.infra_levels[s.infra], next = world.infra_levels[s.infra + 1];
+  const cPrice = d.markets[world.goods.findIndex((g) => g.name === "construction")].price;
+  let infra = `<p class="sub">${lvl.name} · moving through costs ×${s.move_cost.toFixed(2)}${lvl.upkeep ? ` · upkeep ${lvl.upkeep} construction/tick` : ""}</p>`;
+  if (s.project) {
+    const f = s.project.delivered / s.project.required;
+    infra += `<div class="progress"><span style="width:${(100 * f).toFixed(1)}%"></span></div>
+      <div class="row"><span class="sub">Building ${world.infra_levels[s.project.target].name}: ${fmt(s.project.delivered, 0)} / ${s.project.required} construction</span>
+      <button id="cancel">Cancel</button></div>`;
+  } else if (next && nation) {
+    infra += `<div class="row"><button id="build" class="primary">Build ${next.name}</button>
+      <span class="sub">${next.cost} construction (≈ ${fmt(next.cost * cPrice, 0)} at today's price ${fmt(cPrice)})</span></div>`;
+  }
+  infra += `<div id="act-err" class="err"></div>`;
+  const nationHtml = nation ? `
+    <h3>Nation</h3>
+    <p><span class="chip" style="background:${nation.color}"></span><b>${nation.name}</b> · treasury ${fmt(ns.treasury, 0)}</p>
+    <div class="row"><label>Tax rate <input id="tax" type="number" min="0" max="90" step="1" value="${(100 * ns.tax_rate).toFixed(0)}" style="width:64px">%</label>
+      <button id="set-tax">Set</button></div>
+    <p class="sub">tax ${fmt(ns.revenue, 1)}/tick · building ${fmt(ns.spending, 1)}/tick · rebate ${fmt(ns.rebate, 1)}/tick</p>` : "";
   $("panel").innerHTML = `
     <h2>Region ${d.info.name}</h2>
-    <p class="sub">${d.info.terrain} · row ${d.info.row}, col ${d.info.col} · tick ${state.tick}</p>
+    <p class="sub">${d.info.terrain} · ${nation ? nation.name : "unowned"} · row ${d.info.row}, col ${d.info.col} · tick ${state.tick}</p>
     <div class="stats">
       <div class="stat"><div class="v">${fmt(s.utility)}</div><div class="k">utility / person</div></div>
       <div class="stat"><div class="v">${fmt(s.wage)}</div><div class="k">wage</div></div>
@@ -211,12 +292,32 @@ async function showRegion(id) {
     <h3>Spending by need tier</h3>
     <div class="bar">${bar}</div>
     <p class="sub">${world.tiers.map((t, i) => `${t} ${(100 * s.tier_spend[i] / total).toFixed(0)}%`).join(" · ")}</p>
+    ${nationHtml}
+    <h3>Infrastructure</h3>${infra}
     <h3>Firms</h3>
     <table><tr><th>firm</th><th>makes</th><th>workers</th><th>output</th></tr>${firms}</table>
     <h3>Markets</h3>
     <table><tr><th>good</th><th>price</th><th>÷ wage</th><th>supply</th><th>demand</th><th>eaten/p</th></tr>${markets}</table>
     <h3>Exports</h3><table><tr><th>good</th><th>to</th><th>units</th></tr>${trade(d.exports, "out")}</table>
     <h3>Imports</h3><table><tr><th>good</th><th>from</th><th>units</th></tr>${trade(d.imports, "in")}</table>`;
+  wirePanel(id, nation);
+}
+
+async function command(path) {
+  try {
+    const r = await fetch(path, { method: "POST" });
+    if (!r.ok) throw new Error((await r.text()).trim());
+    setState(await r.json());
+    if (selected !== null) await showRegion(selected);
+  } catch (e) {
+    const el = $("act-err");
+    if (el) el.textContent = e.message;
+  }
+}
+function wirePanel(id, nation) {
+  if ($("build")) $("build").onclick = () => command(`/api/regions/${id}/build`);
+  if ($("cancel")) $("cancel").onclick = () => command(`/api/regions/${id}/cancel`);
+  if ($("set-tax")) $("set-tax").onclick = () => command(`/api/nations/${nation.id}/tax?rate=${(+$("tax").value / 100).toFixed(3)}`);
 }
 
 // ---- interaction -------------------------------------------------------------
@@ -237,7 +338,10 @@ canvas.addEventListener("mousemove", (ev) => {
   if (!r) { tip.hidden = true; return; }
   const kind = $("overlay").value;
   let v = "";
-  if (kind !== "terrain") {
+  if (kind === "nation" || kind === "infra") {
+    const rs = state.regions[r.id];
+    v = ` · ${r.nation >= 0 ? world.nations[r.nation].name : "unowned"} · ${world.infra_levels[rs.infra].name}`;
+  } else if (kind !== "terrain") {
     const x = overlayValues()[r.id];
     v = ` · ${overlayLabel()}: ${isShare() ? (100 * x).toFixed(1) + "%" : fmt(x)}`;
   }
@@ -248,10 +352,25 @@ canvas.addEventListener("mousemove", (ev) => {
 });
 canvas.addEventListener("mouseleave", () => { $("tooltip").hidden = true; });
 
+function drawNations() {
+  const rows = world.nations.map((n) => {
+    const ns = state.nations[n.id];
+    const tiles = world.regions.filter((r) => r.nation === n.id);
+    const u = tiles.reduce((a, r) => a + state.regions[r.id].utility, 0) / tiles.length;
+    const roads = tiles.reduce((a, r) => a + state.regions[r.id].infra, 0);
+    return `<tr><td><span class="chip" style="background:${n.color}"></span>${n.name}</td><td>${tiles.length}</td>
+      <td>${fmt(u)}</td><td>${(100 * ns.tax_rate).toFixed(0)}%</td><td>${fmt(ns.treasury, 0)}</td>
+      <td>${fmt(ns.revenue, 1)}</td><td>${fmt(ns.spending, 1)}</td><td>${fmt(ns.rebate, 1)}</td><td>${roads}</td></tr>`;
+  }).join("");
+  $("nations").innerHTML = `<tr><th>nation</th><th>tiles</th><th>utility</th><th>tax</th><th>treasury</th>
+    <th>tax/tick</th><th>building/tick</th><th>rebate/tick</th><th>road levels</th></tr>${rows}`;
+}
+
 function setState(s) {
   state = s;
   $("tick").textContent = s.tick;
   draw();
+  drawNations();
   if (selected !== null && !playing) showRegion(selected);
 }
 async function step(n) { setState(await api.post(`/api/step?n=${n}`)); }

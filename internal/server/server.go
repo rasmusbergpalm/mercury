@@ -3,6 +3,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"math"
@@ -35,6 +36,9 @@ func New(transportCost float64, static fs.FS) (*Server, error) {
 	s.mux.HandleFunc("GET /api/regions/{id}", s.handleRegion)
 	s.mux.HandleFunc("POST /api/step", s.handleStep)
 	s.mux.HandleFunc("POST /api/reset", s.handleReset)
+	s.mux.HandleFunc("POST /api/regions/{id}/build", s.handleBuild)
+	s.mux.HandleFunc("POST /api/regions/{id}/cancel", s.handleCancel)
+	s.mux.HandleFunc("POST /api/nations/{id}/tax", s.handleTax)
 	if static != nil {
 		s.mux.Handle("GET /", http.FileServerFS(static))
 	}
@@ -44,7 +48,9 @@ func New(transportCost float64, static fs.FS) (*Server, error) {
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.mux.ServeHTTP(w, r) }
 
 func (s *Server) reset(cost float64) error {
-	w, err := engine.BuildWorld(cost, engine.DefaultMap)
+	spec := engine.DefaultGame
+	spec.TransportCost = cost
+	w, err := engine.BuildGame(spec)
 	if err != nil {
 		return err
 	}
@@ -73,6 +79,20 @@ type RegionInfo struct {
 	Row     int    `json:"row"`
 	Col     int    `json:"col"`
 	Terrain string `json:"terrain"`
+	Nation  int    `json:"nation"` // -1 if unowned
+}
+
+type NationInfo struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+type InfraInfo struct {
+	Name     string  `json:"name"`
+	MoveMult float64 `json:"move_mult"`
+	Cost     float64 `json:"cost"`
+	Upkeep   float64 `json:"upkeep"`
 }
 
 type LinkInfo struct {
@@ -90,6 +110,8 @@ type WorldInfo struct {
 	Terrains []TerrainInfo `json:"terrains"`
 	Regions  []RegionInfo  `json:"regions"`
 	Links    []LinkInfo    `json:"links"`
+	Nations  []NationInfo  `json:"nations"`
+	Infra    []InfraInfo   `json:"infra_levels"`
 }
 
 type RegionState struct {
@@ -100,6 +122,24 @@ type RegionState struct {
 	Employed   float64   `json:"employed"`
 	TierSpend  []float64 `json:"tier_spend"`
 	Prices     []float64 `json:"prices"`
+	Infra      int       `json:"infra"`
+	MoveCost   float64   `json:"move_cost"`
+	Project    *Project  `json:"project"` // null if nothing is being built
+}
+
+type Project struct {
+	Target    int     `json:"target"`
+	Delivered float64 `json:"delivered"`
+	Required  float64 `json:"required"`
+}
+
+type NationState struct {
+	ID       int     `json:"id"`
+	Treasury float64 `json:"treasury"`
+	TaxRate  float64 `json:"tax_rate"`
+	Revenue  float64 `json:"revenue"`
+	Rebate   float64 `json:"rebate"`
+	Spending float64 `json:"spending"`
 }
 
 type Flow struct {
@@ -117,6 +157,8 @@ type State struct {
 	Autarky       bool          `json:"autarky"`
 	Regions       []RegionState `json:"regions"`
 	Flows         []Flow        `json:"flows"`
+	Nations       []NationState `json:"nations"`
+	Hops          []float64     `json:"hops"` // aligned with WorldInfo.Links
 }
 
 type PopState struct {
@@ -176,11 +218,21 @@ func (s *Server) worldInfo() WorldInfo {
 	for _, l := range s.w.Links {
 		info.Links = append(info.Links, LinkInfo{l.A, l.B, l.Hop})
 	}
+	for _, n := range s.w.Nations {
+		info.Nations = append(info.Nations, NationInfo{n.ID, n.Name, n.Color})
+	}
+	for _, l := range engine.InfraLevels {
+		info.Infra = append(info.Infra, InfraInfo{l.Name, l.MoveMult, l.Cost, l.Upkeep})
+	}
 	return info
 }
 
 func regionInfo(r *engine.Region) RegionInfo {
-	return RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain}
+	nation := -1
+	if r.Nation != nil {
+		nation = r.Nation.ID
+	}
+	return RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain, nation}
 }
 
 func (s *Server) regionState(i int) RegionState {
@@ -190,8 +242,12 @@ func (s *Server) regionState(i int) RegionState {
 	for _, p := range r.Pops {
 		employed += p.Employed()
 	}
-	return RegionState{ID: r.ID, Wage: r.Wage, Utility: r.Utility(), Population: r.Population(),
-		Employed: employed, TierSpend: ts[:], Prices: r.Prices()}
+	st := RegionState{ID: r.ID, Wage: r.Wage, Utility: r.Utility(), Population: r.Population(),
+		Employed: employed, TierSpend: ts[:], Prices: r.Prices(), Infra: r.Infra, MoveCost: r.MoveCost()}
+	if p := r.Project; p != nil {
+		st.Project = &Project{p.Target, p.Delivered, p.Required()}
+	}
+	return st
 }
 
 const minFlow = 1e-3
@@ -210,6 +266,12 @@ func (s *Server) state() State {
 		if t.Shipped > minFlow {
 			st.Flows = append(st.Flows, Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped})
 		}
+	}
+	for _, n := range s.w.Nations {
+		st.Nations = append(st.Nations, NationState{n.ID, n.Treasury, n.TaxRate, n.Revenue, n.Rebate, n.Spending})
+	}
+	for _, l := range s.w.Links {
+		st.Hops = append(st.Hops, l.Hop)
 	}
 	return st
 }
@@ -268,15 +330,68 @@ func (s *Server) handleState(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, s.state())
 }
 
+// pathID parses the {id} path value as an index below n.
+func pathID(r *http.Request, n int) (int, bool) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	return id, err == nil && id >= 0 && id < n
+}
+
 func (s *Server) handleRegion(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil || id < 0 || id >= len(s.w.Regions) {
+	id, ok := pathID(r, len(s.w.Regions))
+	if !ok {
 		http.Error(w, "no such region", http.StatusNotFound)
 		return
 	}
 	writeJSON(w, s.regionDetail(id))
+}
+
+// act runs a game command on a region and replies with the new state, or
+// 409 Conflict if the game refuses it.
+func (s *Server) act(w http.ResponseWriter, r *http.Request, do func(id int) error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	id, ok := pathID(r, len(s.w.Regions))
+	if !ok {
+		http.Error(w, "no such region", http.StatusNotFound)
+		return
+	}
+	if err := do(id); err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	writeJSON(w, s.state())
+}
+
+func (s *Server) handleBuild(w http.ResponseWriter, r *http.Request) {
+	s.act(w, r, func(id int) error { return s.w.Build(id) })
+}
+
+func (s *Server) handleCancel(w http.ResponseWriter, r *http.Request) {
+	s.act(w, r, func(id int) error { return s.w.CancelBuild(id) })
+}
+
+func (s *Server) handleTax(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	id, ok := pathID(r, len(s.w.Nations))
+	if !ok {
+		http.Error(w, "no such nation", http.StatusNotFound)
+		return
+	}
+	rate, err := strconv.ParseFloat(r.URL.Query().Get("rate"), 64)
+	if err == nil {
+		err = s.w.Nations[id].SetTaxRate(rate)
+	}
+	if err != nil {
+		if !errors.Is(err, engine.ErrBadTaxRate) {
+			err = engine.ErrBadTaxRate
+		}
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, s.state())
 }
 
 func (s *Server) handleStep(w http.ResponseWriter, r *http.Request) {

@@ -14,6 +14,15 @@ type Region struct {
 	Wage      float64
 	WageSpeed float64
 
+	Nation   *Nation  // owner, or nil
+	BaseMove float64  // terrain's movement cost
+	Infra    int      // index into InfraLevels
+	Project  *Project // infrastructure under construction, or nil
+	Neglect  float64  // accumulated unmet upkeep
+
+	upkeepWant, projectWant float64 // construction the nation wants here this tick
+	publicBid, publicGot    float64
+
 	outbound [][]*Trader // traders buying here, by good (transport: all of them)
 	inbound  [][]*Trader // traders selling here, by good
 
@@ -23,7 +32,7 @@ type Region struct {
 
 // NewRegion makes a region with n identical pops.
 func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash float64) *Region {
-	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1,
+	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1, BaseMove: 1,
 		outbound: make([][]*Trader, NumGoods), inbound: make([][]*Trader, NumGoods),
 		prices: make([]float64, NumGoods)}
 	for i := 0; i < nPops; i++ {
@@ -105,7 +114,7 @@ func (r *Region) LaborMarket() {
 			} else {
 				pop.Jobs = append(pop.Jobs, Job{fi, take})
 			}
-			pop.Cash += take * wage
+			r.payIncome(pop, take*wage)
 			f.Cash -= take * wage
 			need -= take
 			free -= take
@@ -129,6 +138,7 @@ const (
 	popAgent agentKind = iota
 	firmAgent
 	traderAgent
+	nationAgent
 )
 
 type agentRef struct {
@@ -169,6 +179,10 @@ func (r *Region) GoodsMarkets() {
 				bidRefs = append(bidRefs, agentRef{traderAgent, i})
 			}
 		}
+		if gid == Construction && r.publicBid > 0 {
+			bids = append(bids, Order{&r.Nation.Treasury, r.publicBid})
+			bidRefs = append(bidRefs, agentRef{nationAgent, 0})
+		}
 		for i, f := range r.Firms {
 			if f.Output == gid && f.Inventory > 0 {
 				asks = append(asks, Order{&f.Cash, f.Inventory})
@@ -182,6 +196,7 @@ func (r *Region) GoodsMarkets() {
 			}
 		}
 
+		price := market.Price // what trade happens at; Clear then moves the price
 		bidFills, askFills := market.Clear(bids, asks)
 
 		for i, ref := range bidRefs {
@@ -193,6 +208,9 @@ func (r *Region) GoodsMarkets() {
 				r.Firms[ref.idx].Inputs[g] += got
 			case traderAgent:
 				r.outbound[g][ref.idx].Receive(gid, got)
+			case nationAgent:
+				r.publicGot = got
+				r.Nation.Spending += got * price
 			}
 		}
 		for i, ref := range askRefs {
@@ -232,13 +250,16 @@ func (r *Region) PayDividends(cash *float64, cashBuffer, desiredSpend float64) {
 	popSize := r.Population()
 	*cash -= div
 	for _, p := range r.Pops {
-		share := p.Size / popSize
 		if div < 0 {
-			share = p.Cash / popCash
+			p.Cash += div * (p.Cash / popCash) // investment is not taxed
+		} else {
+			r.payIncome(p, div*(p.Size/popSize))
 		}
-		p.Cash += div * share
 	}
 }
+
+// MoveCost is the cost of moving through the tile, given its infrastructure.
+func (r *Region) MoveCost() float64 { return r.BaseMove * InfraLevels[r.Infra].MoveMult }
 
 // Money is the cash held by the region's pops and firms.
 func (r *Region) Money() float64 {

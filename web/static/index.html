@@ -29,6 +29,8 @@
       <div class="overlay-bar">
         <label>Overlay <select id="overlay">
           <option value="terrain">Terrain</option>
+          <option value="nation">Nation</option>
+          <option value="infra">Infrastructure</option>
           <option value="utility">Utility per person</option>
           <option value="wage">Wage</option>
           <option value="price" selected>Price ÷ wage</option>
@@ -41,6 +43,8 @@
       </div>
       <div class="canvas-wrap"><canvas id="map"></canvas><div id="tooltip" hidden></div></div>
       <div id="legend"></div>
+      <h3 class="section">Nations</h3>
+      <table id="nations"></table>
     </section>
     <aside id="panel">
       <p class="hint">Click a tile to inspect it.</p>

@@ -47,6 +47,10 @@ var ProcessingRecipes = []Recipe{
 	{"Transport", "transport", 2.0, []Factor{Labor(0.6)}},
 }
 
+// ConstructionRecipe makes building work for infrastructure. Only game worlds
+// (with nations) have it.
+var ConstructionRecipe = Recipe{"Construction", "construction", 1.5, []Factor{Labor(0.5), Input("wood", 0.2)}}
+
 // Bonus is a raw producer available on a terrain, with a TFP multiplier.
 type Bonus struct {
 	Firm string
@@ -114,7 +118,7 @@ func HexNeighbors(r, c, rows, cols int) [][2]int {
 	return out
 }
 
-func makeFirms(t Terrain) []*Firm {
+func makeFirms(t Terrain, construction bool) []*Firm {
 	var firms []*Firm
 	for _, rc := range RawRecipes {
 		for _, b := range t.Raw {
@@ -123,19 +127,31 @@ func makeFirms(t Terrain) []*Firm {
 			}
 		}
 	}
-	for _, rc := range ProcessingRecipes {
+	recipes := ProcessingRecipes
+	if construction {
+		recipes = append(append([]Recipe(nil), recipes...), ConstructionRecipe)
+	}
+	for _, rc := range recipes {
 		firms = append(firms, NewFirm(rc.Firm, G(rc.Output), rc.TFP, rc.Factors, 50))
 	}
 	return firms
 }
 
-// BuildWorld builds the world for a hex map. transportCost scales every hop;
-// +Inf means autarky (no trade).
-//
-// The cost of a hop between neighbouring tiles is the average of the two
-// tiles' movement costs (land 1, coast 1/4). Traders only run between
-// neighbours; longer trade happens by re-export along a chain of tiles.
+// BuildWorld builds the world for a hex map without nations (the model the
+// Python reference specifies). transportCost scales every hop; +Inf means
+// autarky (no trade).
 func BuildWorld(transportCost float64, gameMap []string) (*World, error) {
+	return buildWorld(transportCost, gameMap, false)
+}
+
+// The cost of a hop between neighbouring tiles is the average of the two
+// tiles' movement costs (land 1, coast 1/4, less with infrastructure). Traders
+// only run between neighbours; longer trade happens by re-export along a chain
+// of tiles.
+func buildWorld(transportCost float64, gameMap []string, construction bool) (*World, error) {
+	if len(gameMap) == 0 {
+		return nil, fmt.Errorf("empty map")
+	}
 	rows, cols := len(gameMap), len(gameMap[0])
 	grid := make([][]*Region, rows)
 	var regions []*Region
@@ -149,19 +165,11 @@ func BuildWorld(transportCost float64, gameMap []string) (*World, error) {
 			if err != nil {
 				return nil, err
 			}
-			reg := NewRegion(len(regions), fmt.Sprintf("%d%d", r, c), makeFirms(t), 2, 50, 500)
-			reg.Row, reg.Col, reg.Terrain = r, c, t.Name
+			reg := NewRegion(len(regions), fmt.Sprintf("%d%d", r, c), makeFirms(t, construction), 2, 50, 500)
+			reg.Row, reg.Col, reg.Terrain, reg.BaseMove = r, c, t.Name, t.MoveCost
 			grid[r][c] = reg
 			regions = append(regions, reg)
 		}
-	}
-	moveCost := func(reg *Region) float64 {
-		for _, t := range Terrains {
-			if t.Name == reg.Terrain {
-				return t.MoveCost
-			}
-		}
-		panic("unreachable")
 	}
 
 	var traders []*Trader
@@ -169,7 +177,7 @@ func BuildWorld(transportCost float64, gameMap []string) (*World, error) {
 	for _, a := range regions {
 		for _, nb := range HexNeighbors(a.Row, a.Col, rows, cols) {
 			b := grid[nb[0]][nb[1]]
-			hop := (moveCost(a) + moveCost(b)) / 2
+			hop := (a.MoveCost() + b.MoveCost()) / 2
 			if a.ID < b.ID {
 				links = append(links, Link{a.ID, b.ID, hop})
 			}
@@ -181,4 +189,79 @@ func BuildWorld(transportCost float64, gameMap []string) (*World, error) {
 		}
 	}
 	return NewWorld(rows, cols, regions, traders, links), nil
+}
+
+// NationSpec describes a nation in a game scenario.
+type NationSpec struct {
+	Symbol byte // marks its tiles in the nation map
+	Name   string
+	Color  string
+}
+
+// GameSpec is a game scenario: a terrain map plus who owns which tile.
+type GameSpec struct {
+	Map           []string
+	NationMap     []string // same shape as Map; '.' = unowned
+	Nations       []NationSpec
+	TransportCost float64
+	TaxRate       float64
+}
+
+// DefaultGame is the default game scenario on DefaultMap.
+var DefaultGame = GameSpec{
+	Map: DefaultMap,
+	NationMap: []string{
+		"AAABBB",
+		"AAABBB",
+		"AABBBD",
+		"CCCCCD",
+		"DCCCDD",
+		"DDDDDD",
+	},
+	Nations: []NationSpec{
+		{'A', "Montara", "#c0392b"},
+		{'B', "Verdania", "#2e6fd8"},
+		{'C', "Sudoria", "#e0a020"},
+		{'D', "Thalassa", "#17a589"},
+	},
+	TransportCost: 1,
+	TaxRate:       0.1,
+}
+
+// BuildGame builds a game world: regions owned by nations that tax their pops
+// and build infrastructure, with a Construction firm on every tile.
+func BuildGame(spec GameSpec) (*World, error) {
+	w, err := buildWorld(spec.TransportCost, spec.Map, true)
+	if err != nil {
+		return nil, err
+	}
+	if len(spec.NationMap) != w.Rows {
+		return nil, fmt.Errorf("nation map has %d rows, want %d", len(spec.NationMap), w.Rows)
+	}
+	bySymbol := map[byte]*Nation{}
+	for i, ns := range spec.Nations {
+		n := &Nation{ID: i, Name: ns.Name, Color: ns.Color, TaxRate: spec.TaxRate,
+			Reserve: 1000, RebateRate: 0.1, MaxBuildRate: 5}
+		if err := n.SetTaxRate(spec.TaxRate); err != nil {
+			return nil, err
+		}
+		bySymbol[ns.Symbol] = n
+		w.Nations = append(w.Nations, n)
+	}
+	for _, r := range w.Regions {
+		row := spec.NationMap[r.Row]
+		if len(row) != w.Cols {
+			return nil, fmt.Errorf("nation map row %d has %d columns, want %d", r.Row, len(row), w.Cols)
+		}
+		if row[r.Col] == '.' {
+			continue
+		}
+		n, ok := bySymbol[row[r.Col]]
+		if !ok {
+			return nil, fmt.Errorf("unknown nation symbol %q", row[r.Col])
+		}
+		r.Nation = n
+		n.Regions = append(n.Regions, r)
+	}
+	return w, nil
 }

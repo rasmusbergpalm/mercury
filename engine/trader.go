@@ -12,39 +12,47 @@ import "math"
 //
 //	p_dest * arriving - p_origin - tau * p_transport_origin
 type Trader struct {
-	Good         GoodID
-	Origin, Dest *Region
-	Distance     float64
-	Tau          float64
-	Arriving     float64
-	Cash         float64
-	CashBuffer   float64
-	Speed        float64
-	Damping      float64
-	QMin         float64
-	Q            float64 // target purchase per tick
-	Active       bool    // false: at the floor with no margin, so don't buy at all
-	StockOrigin  float64 // bought earlier, still waiting for transport
-	Bought       float64 // bought this tick
-	StockDest    float64 // arrived, for sale in dest
-	TransportQty float64 // transport units bought this tick
-	Shipped      float64 // last tick's shipment (as loaded)
-	Margin       float64
-	RelMargin    float64
-	DesiredSpend float64
-	spoilage     float64
+	Good          GoodID
+	Origin, Dest  *Region
+	TransportCost float64 // multiplier on every hop
+	Distance      float64
+	Tau           float64
+	Arriving      float64
+	Cash          float64
+	CashBuffer    float64
+	Speed         float64
+	Damping       float64
+	QMin          float64
+	Q             float64 // target purchase per tick
+	Active        bool    // false: at the floor with no margin, so don't buy at all
+	StockOrigin   float64 // bought earlier, still waiting for transport
+	Bought        float64 // bought this tick
+	StockDest     float64 // arrived, for sale in dest
+	TransportQty  float64 // transport units bought this tick
+	Shipped       float64 // last tick's shipment (as loaded)
+	Margin        float64
+	RelMargin     float64
+	DesiredSpend  float64
+	spoilage      float64
 }
 
 // NewTrader makes a trader.
 func NewTrader(good GoodID, origin, dest *Region, distance, transportCost float64) *Trader {
-	g := Goods[good]
-	return &Trader{
-		Good: good, Origin: origin, Dest: dest, Distance: distance,
-		Tau:      transportCost * distance * g.Bulk,
-		Arriving: math.Pow(1-g.Spoilage, distance),
-		Cash:     1, CashBuffer: 1, Speed: 0.1, Damping: 10, QMin: 0.02, Q: 0.02,
-		spoilage: g.Spoilage,
+	t := &Trader{
+		Good: good, Origin: origin, Dest: dest, TransportCost: transportCost,
+		Cash: 1, CashBuffer: 1, Speed: 0.1, Damping: 10, QMin: 0.02, Q: 0.02,
+		spoilage: Goods[good].Spoilage,
 	}
+	t.SetDistance(distance)
+	return t
+}
+
+// SetDistance changes the route's length (e.g. after a road is built): the
+// transport needed per unit and the share of perishables that arrives.
+func (t *Trader) SetDistance(d float64) {
+	t.Distance = d
+	t.Tau = t.TransportCost * d * Goods[t.Good].Bulk
+	t.Arriving = math.Pow(1-t.spoilage, d)
 }
 
 // Name is "good:origin->dest".

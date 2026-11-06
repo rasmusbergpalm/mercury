@@ -105,6 +105,40 @@ func TestReset(t *testing.T) {
 	call(t, ts, "POST", "/api/reset?cost=-1", 400, nil)
 }
 
+func TestNationsAndInfrastructure(t *testing.T) {
+	ts := newTestServer(t)
+	var info WorldInfo
+	call(t, ts, "GET", "/api/world", 200, &info)
+	if len(info.Nations) != 4 || len(info.Infra) != len(engine.InfraLevels) || info.Regions[0].Nation != 0 {
+		t.Fatalf("world: %d nations, %d infra levels, tile 0 nation %d", len(info.Nations), len(info.Infra), info.Regions[0].Nation)
+	}
+	var st State
+	call(t, ts, "POST", "/api/step?n=20", 200, &st)
+	if len(st.Nations) != 4 || len(st.Hops) != len(info.Links) {
+		t.Fatalf("state: %d nations, %d hops for %d links", len(st.Nations), len(st.Hops), len(info.Links))
+	}
+
+	call(t, ts, "POST", "/api/regions/9/build", 200, &st)
+	if p := st.Regions[9].Project; p == nil || p.Target != 1 || p.Required != engine.InfraLevels[1].Cost {
+		t.Fatalf("project after build: %+v", st.Regions[9].Project)
+	}
+	call(t, ts, "POST", "/api/regions/9/build", 409, nil) // already building
+	call(t, ts, "POST", "/api/regions/9/cancel", 200, &st)
+	if st.Regions[9].Project != nil {
+		t.Error("project survived cancel")
+	}
+	call(t, ts, "POST", "/api/regions/9/cancel", 409, nil)
+	call(t, ts, "POST", "/api/regions/99/build", 404, nil)
+
+	call(t, ts, "POST", "/api/nations/1/tax?rate=0.25", 200, &st)
+	if st.Nations[1].TaxRate != 0.25 {
+		t.Errorf("tax rate %v, want 0.25", st.Nations[1].TaxRate)
+	}
+	call(t, ts, "POST", "/api/nations/1/tax?rate=2", 400, nil)
+	call(t, ts, "POST", "/api/nations/1/tax?rate=x", 400, nil)
+	call(t, ts, "POST", "/api/nations/7/tax?rate=0.1", 404, nil)
+}
+
 func TestServesStaticFiles(t *testing.T) {
 	ts := newTestServer(t)
 	resp, err := http.Get(ts.URL + "/")

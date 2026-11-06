@@ -1,17 +1,20 @@
 package engine
 
-// World is a set of regions linked by traders that pay transport costs.
+// World is a set of regions linked by traders that pay transport costs, and
+// optionally nations that own the regions.
 type World struct {
 	Rows, Cols int
 	Regions    []*Region
 	Traders    []*Trader
 	Links      []Link
+	Nations    []*Nation
 	Tick       int
 	// TradePrices are the prices trade happened at in the last tick, per region.
 	TradePrices [][]float64
 }
 
-// Link is a pair of neighbouring regions and the cost of one hop between them.
+// Link is a pair of neighbouring regions and the cost of one hop between them:
+// the average of the two tiles' movement costs.
 type Link struct {
 	A, B int
 	Hop  float64
@@ -38,6 +41,9 @@ func (w *World) Money() float64 {
 	for _, t := range w.Traders {
 		s += t.Cash
 	}
+	for _, n := range w.Nations {
+		s += n.Treasury
+	}
 	return s
 }
 
@@ -51,6 +57,9 @@ func (w *World) Step() {
 	}
 	for _, t := range w.Traders {
 		t.Plan()
+	}
+	for _, n := range w.Nations {
+		n.plan()
 	}
 	for _, r := range w.Regions {
 		r.LaborMarket()
@@ -70,5 +79,57 @@ func (w *World) Step() {
 	for _, t := range w.Traders {
 		t.Origin.PayDividends(&t.Cash, t.CashBuffer, t.DesiredSpend)
 	}
+	for _, n := range w.Nations {
+		for _, r := range n.settle() {
+			w.refreshHops(r)
+		}
+		n.rebate()
+	}
 	w.Tick++
+}
+
+// Build starts the next infrastructure level on a tile, paid for by its nation.
+func (w *World) Build(region int) error {
+	r := w.Regions[region]
+	switch {
+	case r.Nation == nil:
+		return ErrNoNation
+	case r.Project != nil:
+		return ErrBuilding
+	case r.Infra+1 >= len(InfraLevels):
+		return ErrMaxLevel
+	}
+	r.Project = &Project{Target: r.Infra + 1}
+	return nil
+}
+
+// CancelBuild abandons a tile's project; what was delivered is lost.
+func (w *World) CancelBuild(region int) error {
+	r := w.Regions[region]
+	if r.Project == nil {
+		return ErrNoProject
+	}
+	r.Project = nil
+	return nil
+}
+
+// SetInfra sets a tile's infrastructure level directly (scenarios, tests).
+func (w *World) SetInfra(region, level int) {
+	w.Regions[region].Infra = level
+	w.refreshHops(w.Regions[region])
+}
+
+// refreshHops recomputes the hop cost of every link and route touching r.
+func (w *World) refreshHops(r *Region) {
+	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
+	for i, l := range w.Links {
+		if l.A == r.ID || l.B == r.ID {
+			w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
+		}
+	}
+	for _, t := range w.Traders {
+		if t.Origin == r || t.Dest == r {
+			t.SetDistance(hop(t.Origin, t.Dest))
+		}
+	}
 }

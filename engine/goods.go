@@ -51,6 +51,8 @@ var Goods = []Good{
 	{"clay", 2.0, 0.00},
 	// a service: whatever isn't used in the tick it's produced is lost
 	{"transport", 0.0, 1.00},
+	// building work, bought by nations for infrastructure; local and perishable
+	{"construction", 0.0, 1.00},
 }
 
 // NumGoods is len(Goods).
@@ -76,11 +78,14 @@ func G(name string) GoodID {
 // Transport is the transport service good.
 var Transport = G("transport")
 
-// Tradable lists every good that traders can ship (all but transport).
+// Construction is building work; nations buy it to build infrastructure.
+var Construction = G("construction")
+
+// Tradable lists every good that traders can ship (all but the services).
 var Tradable = func() []GoodID {
 	var out []GoodID
 	for i := range Goods {
-		if GoodID(i) != Transport {
+		if GoodID(i) != Transport && GoodID(i) != Construction {
 			out = append(out, GoodID(i))
 		}
 	}
