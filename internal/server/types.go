@@ -135,38 +135,39 @@ type Flow struct {
 }
 
 type NationState struct {
-	ID            int       `json:"id"`
-	Controller    string    `json:"controller"` // "ai" or "human"
-	Eliminated    bool      `json:"eliminated"`
-	Tiles         int       `json:"tiles"`
-	Population    float64   `json:"population"`
-	Treasury      float64   `json:"treasury"`
-	TaxRate       float64   `json:"tax_rate"`
-	Income        float64   `json:"income"` // moving average, tax and tariffs
-	Revenue       float64   `json:"revenue"`
-	TariffRevenue float64   `json:"tariff_revenue"`
-	Rebate        float64   `json:"rebate"`
-	Spending      float64   `json:"spending"`
-	Budget        []float64 `json:"budget"` // economy, science, military
-	Tariff        []float64 `json:"tariff"` // per good
-	Embargo       []bool    `json:"embargo"`
-	Researching   int       `json:"researching"`
-	Points        float64   `json:"research_points"`
-	Known         []bool    `json:"known"`
-	Queue         []int     `json:"queue"`
-	TechCosts     []float64 `json:"tech_costs"` // after the discount from trade partners
-	AtWar         []bool    `json:"at_war"`
-	PeaceOffer    []bool    `json:"peace_offer"` // this nation has offered peace to
-	Soldiers      float64   `json:"soldiers"`
-	MobilizeCap   float64   `json:"mobilize_cap"`
-	Mobilization  float64   `json:"mobilization"` // share of people who may serve
-	BestDoctrine  int       `json:"best_doctrine"`
-	GDP           float64   `json:"gdp"`
-	Utility       float64   `json:"utility"`
-	ClassIncome   []float64 `json:"class_income"` // per head, by class
-	Labor         []float64 `json:"labor"`        // share of workers by sector (industry, primary, service)
-	Exports       []float64 `json:"exports"`      // value per good, today
-	Imports       []float64 `json:"imports"`
+	ID             int       `json:"id"`
+	Controller     string    `json:"controller"` // "ai" or "human"
+	Eliminated     bool      `json:"eliminated"`
+	Tiles          int       `json:"tiles"`
+	Population     float64   `json:"population"`
+	Treasury       float64   `json:"treasury"`
+	TaxRate        float64   `json:"tax_rate"`
+	Income         float64   `json:"income"` // moving average, tax and tariffs
+	Revenue        float64   `json:"revenue"`
+	TariffRevenue  float64   `json:"tariff_revenue"`
+	Rebate         float64   `json:"rebate"`
+	Spending       float64   `json:"spending"`
+	Budget         []float64 `json:"budget"` // economy, science, military
+	Tariff         []float64 `json:"tariff"` // per good
+	Embargo        []bool    `json:"embargo"`
+	Researching    int       `json:"researching"`
+	Points         float64   `json:"research_points"`
+	Known          []bool    `json:"known"`
+	Queue          []int     `json:"queue"`
+	ChooseResearch bool      `json:"choose_research"` // a tech finished: ask the player for the next
+	TechCosts      []float64 `json:"tech_costs"`      // after the discount from trade partners
+	AtWar          []bool    `json:"at_war"`
+	PeaceOffer     []bool    `json:"peace_offer"` // this nation has offered peace to
+	Soldiers       float64   `json:"soldiers"`
+	MobilizeCap    float64   `json:"mobilize_cap"`
+	Mobilization   float64   `json:"mobilization"` // share of people who may serve
+	BestDoctrine   int       `json:"best_doctrine"`
+	GDP            float64   `json:"gdp"`
+	Utility        float64   `json:"utility"`
+	ClassIncome    []float64 `json:"class_income"` // per head, by class
+	Labor          []float64 `json:"labor"`        // share of workers by sector (industry, primary, service)
+	Exports        []float64 `json:"exports"`      // value per good, today
+	Imports        []float64 `json:"imports"`
 }
 
 type ArmyState struct {
@@ -391,7 +392,7 @@ func worldState(w *engine.World) State {
 			Budget: append([]float64(nil), n.Budget[:]...), Tariff: n.Tariff, Embargo: n.Embargo,
 			Researching: n.Researching, Points: n.ResearchPoints, Known: n.Known,
 			Queue: append([]int{}, n.Queue...), AtWar: n.AtWar, PeaceOffer: n.PeaceOffer,
-			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization()}
+			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch}
 		ns.Soldiers, _ = w.Mobilized(n)
 		ns.BestDoctrine = bestDoctrine(n)
 		ns.Exports, ns.Imports = trade.NationOut[n.ID], trade.NationIn[n.ID]

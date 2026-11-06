@@ -399,3 +399,45 @@ func TestCoastMovementTakesTheCheaperWay(t *testing.T) {
 		t.Errorf("coast after Navigation: %v", got)
 	}
 }
+
+// When a player's research finishes with nothing queued, the next tech is
+// picked provisionally and the player is asked to choose; a queue, the
+// computer, or the player's choice means no question.
+func TestFinishedResearchAsksThePlayer(t *testing.T) {
+	w := newTestGame(t)
+	finish := func(n *Nation) {
+		n.pickResearch()
+		n.ResearchPoints = n.TechCost(n.Researching, w.Nations)
+		w.Step()
+	}
+	human, ai := w.Nations[0], w.Nations[1]
+	human.AI, ai.AI = false, true
+	finish(human)
+	if !human.ChooseResearch || human.Researching < 0 {
+		t.Fatalf("no question after a finished tech (researching %d)", human.Researching)
+	}
+	next := -1
+	for i := range Techs {
+		if human.CanResearch(i) && i != human.Researching {
+			next = i
+			break
+		}
+	}
+	if err := human.SetResearch(next); err != nil || human.ChooseResearch {
+		t.Fatalf("choosing didn't answer the question: %v", err)
+	}
+	for i := range Techs {
+		if human.CanResearch(i) && i != human.Researching {
+			human.SetQueue([]int{i})
+			break
+		}
+	}
+	finish(human)
+	if human.ChooseResearch {
+		t.Error("asked although the queue had the next tech")
+	}
+	finish(ai)
+	if ai.ChooseResearch {
+		t.Error("asked the computer")
+	}
+}

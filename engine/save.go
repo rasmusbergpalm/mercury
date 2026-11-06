@@ -85,7 +85,7 @@ type NationSnap struct {
 	TradeWith                                         []float64
 	AtWar, PeaceOffer                                 []bool
 	WarSince                                          []int
-	AI                                                bool
+	AI, ChooseResearch                                bool
 	Revenue, TariffRevenue, Rebate, Spending          float64
 }
 
@@ -137,7 +137,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 			RebateRate: n.RebateRate, BuildRate: n.MaxBuildRate,
 			Tariff: append([]float64(nil), n.Tariff...), Embargo: append([]bool(nil), n.Embargo...),
 			Budget: n.Budget, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints,
-			Researching: n.Researching, Known: append([]bool(nil), n.Known...), AI: n.AI,
+			Researching: n.Researching, Known: append([]bool(nil), n.Known...), AI: n.AI, ChooseResearch: n.ChooseResearch,
 			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
 			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
 			PeaceOffer: append([]bool(nil), n.PeaceOffer...),
@@ -250,6 +250,7 @@ func Restore(s *Snapshot) (*World, error) {
 			return bad("research")
 		}
 		n.Researching, n.Known, n.AI, n.Queue = ns.Researching, ns.Known, ns.AI, ns.Queue
+		n.ChooseResearch = ns.ChooseResearch
 		n.TradeWith, n.AtWar, n.WarSince, n.PeaceOffer = ns.TradeWith, ns.AtWar, ns.WarSince, ns.PeaceOffer
 		n.Revenue, n.TariffRevenue, n.Rebate, n.Spending = ns.Revenue, ns.TariffRevenue, ns.Rebate, ns.Spending
 		for _, id := range ns.Regions {

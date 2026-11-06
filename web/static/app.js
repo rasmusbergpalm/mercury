@@ -99,6 +99,7 @@ window.addEventListener("hashchange", route);
 async function openLobby() {
   stopPolling();
   gid = null;
+  $("dialog").hidden = true; prompted = false; resumeAfter = false;
   $("game").hidden = true;
   $("lobby").hidden = false;
   document.title = "Mercury";
@@ -335,6 +336,7 @@ function render(force) {
   if (!state || !world) return;
   readTheme();
   renderBar();
+  researchPrompt();
   draw();
   const m = $("mode");
   const a = selectedArmy !== null && armyById(selectedArmy);
@@ -1411,6 +1413,59 @@ function newsPanel() {
     <label class="check"><input type="checkbox" id="autopause" ${pref("autopause", true) ? "checked" : ""}> Pause when war, battle or occupation news concerns me</label>
     <div class="news"><ul>${items || `<li class="sub">Nothing yet.</li>`}</ul></div>`;
 }
+
+// ---- research prompt -----------------------------------------------------------
+// When one of your techs is finished and nothing is queued, the game pauses
+// (if you hold the clock) and asks what to study next. The engine has picked
+// one provisionally, so no research is lost while you decide.
+let prompted = false;      // the dialog is open
+let resumeAfter = false;   // we paused the game to ask, so play on after
+function researchPrompt() {
+  const n = me(), dlg = $("dialog");
+  if (!n || n.eliminated || !n.choose_research) {
+    if (prompted) { dlg.hidden = true; prompted = false; }
+    return;
+  }
+  if (prompted) return;
+  prompted = true;
+  if (state.running && canClock()) { resumeAfter = true; command("/clock?running=false"); }
+  const done = [...state.events].reverse().find((e) => e.kind === "tech" && e.nation === n.id);
+  const available = world.techs.map((t, i) => [t, i]).filter(([t, i]) => !n.known[i] && t.requires.every((r) => n.known[world.techs.findIndex((x) => x.name === r)]));
+  const rows = world.branches.map((b) => {
+    const list = available.filter(([t]) => t.branch === b).sort((x, y) => n.tech_costs[x[1]] - n.tech_costs[y[1]]);
+    if (!list.length) return "";
+    return `<h3>${cap(b)}</h3>` + list.map(([t, i]) => {
+      const cut = n.tech_costs[i] < t.cost - 1 ? ` <span class="good">(−${pct(1 - n.tech_costs[i] / t.cost)} from trade)</span>` : "";
+      return `<div class="tech-choice ${i === n.researching ? "now" : ""}"><b>${esc(t.name)}${i === n.researching ? ` <span class="sub">· picked for now</span>` : ""}</b>
+        <button class="${i === n.researching ? "" : "primary"}" data-study="${i}">Study</button>
+        <span class="sub">${esc(t.effect)} · ${short(n.tech_costs[i])} points${cut} · ${world.eras[t.era].split(" (")[0]}</span></div>`;
+    }).join("");
+  }).join("");
+  dlg.querySelector(".dialog-card").innerHTML = `<header><p class="sub">${done ? esc(dateOf(done.tick)) : ""}</p>
+      <h2 id="dialog-title">${done ? esc(done.text.replace(world.nations[n.id].name + " discovers ", "Your scholars discover ")) : "A discovery"}</h2>
+      <p class="sub">What should they study next? Points carry over, so nothing is lost while you decide.</p></header>
+    <div class="body">${rows || `<p class="hint">Every tech is known.</p>`}</div>
+    <footer><button data-plan>Plan a queue…</button><button class="primary" data-study="${n.researching}">Keep ${esc(world.techs[n.researching].name)}</button></footer>`;
+  dlg.hidden = false;
+  const first = dlg.querySelector("button.primary");
+  if (first) first.focus();
+}
+async function answerPrompt(tech, plan) {
+  const ok = await command(`/nations/${state.you}/research?tech=${tech}`);
+  if (!ok) return;
+  $("dialog").hidden = true; prompted = false;
+  if (plan) { setTab("nation"); render(true); }
+  else if (resumeAfter && canClock() && !state.running) command("/clock?running=true");
+  resumeAfter = false;
+}
+$("dialog").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button");
+  if (b && b.dataset.study !== undefined) answerPrompt(+b.dataset.study, false);
+  if (b && b.dataset.plan !== undefined) answerPrompt(me().researching, true);
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && prompted && me()) answerPrompt(me().researching, false);
+});
 
 // ---- panel actions -------------------------------------------------------------
 side.addEventListener("click", (ev) => {

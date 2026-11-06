@@ -106,6 +106,9 @@ type Nation struct {
 	WarSince   []int  // per nation: tick the current war began
 	PeaceOffer []bool // per nation: this nation has offered it peace
 	AI         bool   // run by the computer
+	// ChooseResearch: a tech finished with nothing queued, so the next one
+	// was picked automatically and the player should be asked to choose.
+	ChooseResearch bool
 
 	// last tick's flows
 	Revenue, TariffRevenue, Rebate, Spending float64
@@ -233,6 +236,7 @@ func (n *Nation) SetQueue(q []int) error {
 		}
 	}
 	n.Queue = append([]int(nil), q...)
+	n.ChooseResearch = false
 	return nil
 }
 
@@ -258,6 +262,7 @@ func (n *Nation) SetResearch(i int) error {
 		return ErrBadTech
 	}
 	n.Researching = i
+	n.ChooseResearch = false
 	return nil
 }
 
@@ -450,7 +455,12 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 		n.ResearchPoints -= n.TechCost(i, w.Nations)
 		n.Known[i] = true
 		n.Researching = -1
+		queued := false
+		for _, q := range n.Queue {
+			queued = queued || n.CanResearch(q)
+		}
 		n.pickResearch()
+		n.ChooseResearch = !n.AI && !queued && n.Researching >= 0
 		n.applyTech()
 		hopsChanged = true
 		w.emit(n.ID, "tech", -1, "%s discovers %s", n.Name, Techs[i].Name)
