@@ -29,16 +29,22 @@ func Comp(name string, exp float64) Factor {
 // Firm turns labor and inputs into one output good with a decreasing-returns
 // Cobb-Douglas technology q = A * prod f_i^a_i, sum a_i < 1.
 type Firm struct {
-	Name       string
-	Output     GoodID
-	TFP        float64
-	Factors    []Factor
-	Cash       float64
-	CashBuffer float64   // cash kept beyond what the plan needs
-	Inventory  float64   // stock of own output, for sale
-	Inputs     []float64 // goods bought this tick, indexed by good
-	Labor      float64   // labor employed this tick
-	LastOutput float64
+	Name   string
+	Output GoodID
+	// TFP is productivity per building level, including technology; BaseTFP
+	// is without technology.
+	TFP, BaseTFP float64
+	Factors      []Factor
+	// Levels of buildings. Output is constant-returns in levels and the
+	// variable factors together: q = TFP * Levels^(1-s) * prod f_i^a_i.
+	Levels, MaxLevels int
+	Expansion         *Expansion // a level under construction, or nil
+	Cash              float64
+	CashBuffer        float64   // cash kept beyond what the plan needs
+	Inventory         float64   // stock of own output, for sale
+	Inputs            []float64 // goods bought this tick, indexed by good
+	Labor             float64   // labor employed this tick
+	LastOutput        float64
 	// DesiredSpend is the unconstrained cost of the optimal plan.
 	DesiredSpend float64
 
@@ -46,11 +52,40 @@ type Firm struct {
 	PlanLabor float64
 	PlanQty   []float64
 	PlanHas   []bool
+
+	// ProfitEMA is a moving average of profit per tick; it drives investment.
+	ProfitEMA             float64
+	lossTicks, age        int
+	tickRevenue, tickCost float64
+	investWant            float64 // construction to buy this tick for a private expansion
+}
+
+// Expansion is a building level under construction for a firm.
+type Expansion struct {
+	Delivered float64 // construction units delivered so far
+	Public    bool    // paid for by the nation (else by the firm's owners)
+}
+
+// LevelCost is the construction units one building level costs.
+const LevelCost = 120.0
+
+func (f *Firm) exponentSum() float64 {
+	s := 0.0
+	for _, fc := range f.Factors {
+		s += fc.Exp
+	}
+	return s
+}
+
+// effectiveTFP is TFP * Levels^(1-s): productivity of the firm's variable factors.
+func (f *Firm) effectiveTFP() float64 {
+	return f.TFP * math.Pow(float64(f.Levels), 1-f.exponentSum())
 }
 
 // NewFirm makes a firm.
 func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash float64) *Firm {
-	return &Firm{Name: name, Output: output, TFP: tfp, Factors: factors, Cash: cash,
+	return &Firm{Name: name, Output: output, TFP: tfp, BaseTFP: tfp, Factors: factors, Cash: cash,
+		Levels: 1, MaxLevels: 8,
 		CashBuffer: 20, Inputs: make([]float64, NumGoods),
 		PlanQty: make([]float64, NumGoods), PlanHas: make([]bool, NumGoods)}
 }
@@ -80,7 +115,7 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 	n := len(f.Factors)
 	cost := make([]float64, n)
 	s := 0.0
-	k := f.TFP
+	k := f.effectiveTFP()
 	for i, fc := range f.Factors {
 		cost[i] = f.unitCost(fc, prices, wage)
 		s += fc.Exp
@@ -139,7 +174,7 @@ func (f *Firm) FactorAmount(fc Factor) float64 {
 
 // Produce turns this tick's labor and inputs into output.
 func (f *Firm) Produce() float64 {
-	q := f.TFP
+	q := f.effectiveTFP()
 	for _, fc := range f.Factors {
 		q *= math.Pow(f.FactorAmount(fc), fc.Exp)
 	}

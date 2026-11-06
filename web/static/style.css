@@ -60,3 +60,6 @@ h3.section { margin: 16px 0 6px; font-size: 13px; text-transform: uppercase; let
 .progress { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-top: 6px; }
 .progress span { display: block; height: 100%; background: var(--accent); }
 .err { color: #d9480f; font-size: 12px; }
+#nations { max-width: none; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+td button { padding: 1px 8px; font-size: 12px; }

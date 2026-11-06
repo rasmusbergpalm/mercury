@@ -39,6 +39,12 @@ func New(transportCost float64, static fs.FS) (*Server, error) {
 	s.mux.HandleFunc("POST /api/regions/{id}/build", s.handleBuild)
 	s.mux.HandleFunc("POST /api/regions/{id}/cancel", s.handleCancel)
 	s.mux.HandleFunc("POST /api/nations/{id}/tax", s.handleTax)
+	s.mux.HandleFunc("POST /api/nations/{id}/tariff", s.handleTariff)
+	s.mux.HandleFunc("POST /api/nations/{id}/embargo", s.handleEmbargo)
+	s.mux.HandleFunc("POST /api/nations/{id}/research", s.handleResearch)
+	s.mux.HandleFunc("POST /api/nations/{id}/funding", s.handleFunding)
+	s.mux.HandleFunc("POST /api/regions/{id}/annex", s.handleAnnex)
+	s.mux.HandleFunc("POST /api/regions/{id}/firms/{firm}/expand", s.handleExpand)
 	if static != nil {
 		s.mux.Handle("GET /", http.FileServerFS(static))
 	}
@@ -89,10 +95,19 @@ type NationInfo struct {
 }
 
 type InfraInfo struct {
-	Name     string  `json:"name"`
-	MoveMult float64 `json:"move_mult"`
-	Cost     float64 `json:"cost"`
-	Upkeep   float64 `json:"upkeep"`
+	Name      string             `json:"name"`
+	MoveMult  float64            `json:"move_mult"`
+	Cost      float64            `json:"cost"`
+	Upkeep    float64            `json:"upkeep"`
+	Tech      string             `json:"tech"`
+	Materials map[string]float64 `json:"materials"`
+}
+
+type TechInfo struct {
+	Name     string   `json:"name"`
+	Cost     float64  `json:"cost"`
+	Requires []string `json:"requires"`
+	Effect   string   `json:"effect"`
 }
 
 type LinkInfo struct {
@@ -112,6 +127,9 @@ type WorldInfo struct {
 	Links    []LinkInfo    `json:"links"`
 	Nations  []NationInfo  `json:"nations"`
 	Infra    []InfraInfo   `json:"infra_levels"`
+	Techs    []TechInfo    `json:"techs"`
+	// LevelCost is the construction one firm building level costs.
+	LevelCost float64 `json:"level_cost"`
 }
 
 type RegionState struct {
@@ -122,8 +140,10 @@ type RegionState struct {
 	Employed   float64   `json:"employed"`
 	TierSpend  []float64 `json:"tier_spend"`
 	Prices     []float64 `json:"prices"`
+	Nation     int       `json:"nation"` // -1 if unowned
 	Infra      int       `json:"infra"`
 	MoveCost   float64   `json:"move_cost"`
+	AnnexCost  float64   `json:"annex_cost"`
 	Project    *Project  `json:"project"` // null if nothing is being built
 }
 
@@ -134,12 +154,20 @@ type Project struct {
 }
 
 type NationState struct {
-	ID       int     `json:"id"`
-	Treasury float64 `json:"treasury"`
-	TaxRate  float64 `json:"tax_rate"`
-	Revenue  float64 `json:"revenue"`
-	Rebate   float64 `json:"rebate"`
-	Spending float64 `json:"spending"`
+	ID            int       `json:"id"`
+	Treasury      float64   `json:"treasury"`
+	TaxRate       float64   `json:"tax_rate"`
+	Revenue       float64   `json:"revenue"`
+	TariffRevenue float64   `json:"tariff_revenue"`
+	Rebate        float64   `json:"rebate"`
+	Spending      float64   `json:"spending"`
+	Tariff        []float64 `json:"tariff"`  // per good
+	Embargo       []bool    `json:"embargo"` // per nation
+	Funding       float64   `json:"research_funding"`
+	Researching   int       `json:"researching"` // -1: none
+	Points        float64   `json:"research_points"`
+	Known         []bool    `json:"known"` // per tech
+	Population    float64   `json:"population"`
 }
 
 type Flow struct {
@@ -168,12 +196,21 @@ type PopState struct {
 }
 
 type FirmState struct {
-	Name      string  `json:"name"`
-	Output    int     `json:"output"`
-	Labor     float64 `json:"labor"`
-	Produced  float64 `json:"produced"`
-	Inventory float64 `json:"inventory"`
-	Cash      float64 `json:"cash"`
+	Name      string     `json:"name"`
+	Output    int        `json:"output"`
+	Labor     float64    `json:"labor"`
+	Produced  float64    `json:"produced"`
+	Inventory float64    `json:"inventory"`
+	Cash      float64    `json:"cash"`
+	Levels    int        `json:"levels"`
+	MaxLevels int        `json:"max_levels"`
+	Profit    float64    `json:"profit"` // moving average per tick
+	Expansion *Expansion `json:"expansion"`
+}
+
+type Expansion struct {
+	Delivered float64 `json:"delivered"`
+	Public    bool    `json:"public"`
 }
 
 type MarketState struct {
@@ -222,8 +259,20 @@ func (s *Server) worldInfo() WorldInfo {
 		info.Nations = append(info.Nations, NationInfo{n.ID, n.Name, n.Color})
 	}
 	for _, l := range engine.InfraLevels {
-		info.Infra = append(info.Infra, InfraInfo{l.Name, l.MoveMult, l.Cost, l.Upkeep})
+		mats := map[string]float64{}
+		for g, q := range l.Materials {
+			mats[engine.Goods[g].Name] = q
+		}
+		info.Infra = append(info.Infra, InfraInfo{l.Name, l.MoveMult, l.Cost, l.Upkeep, l.Tech, mats})
 	}
+	for _, t := range engine.Techs {
+		req := t.Requires
+		if req == nil {
+			req = []string{}
+		}
+		info.Techs = append(info.Techs, TechInfo{t.Name, t.Cost, req, t.Effect})
+	}
+	info.LevelCost = engine.LevelCost
 	return info
 }
 
@@ -242,8 +291,13 @@ func (s *Server) regionState(i int) RegionState {
 	for _, p := range r.Pops {
 		employed += p.Employed()
 	}
+	nation := -1
+	if r.Nation != nil {
+		nation = r.Nation.ID
+	}
 	st := RegionState{ID: r.ID, Wage: r.Wage, Utility: r.Utility(), Population: r.Population(),
-		Employed: employed, TierSpend: ts[:], Prices: r.Prices(), Infra: r.Infra, MoveCost: r.MoveCost()}
+		Employed: employed, TierSpend: ts[:], Prices: r.Prices(), Nation: nation, Infra: r.Infra,
+		MoveCost: r.MoveCost(), AnnexCost: s.w.AnnexCost(i)}
 	if p := r.Project; p != nil {
 		st.Project = &Project{p.Target, p.Delivered, p.Required()}
 	}
@@ -268,7 +322,13 @@ func (s *Server) state() State {
 		}
 	}
 	for _, n := range s.w.Nations {
-		st.Nations = append(st.Nations, NationState{n.ID, n.Treasury, n.TaxRate, n.Revenue, n.Rebate, n.Spending})
+		pop := 0.0
+		for _, r := range n.Regions {
+			pop += r.Population()
+		}
+		st.Nations = append(st.Nations, NationState{n.ID, n.Treasury, n.TaxRate, n.Revenue, n.TariffRevenue,
+			n.Rebate, n.Spending, n.Tariff, n.Embargo, n.ResearchFunding, n.Researching, n.ResearchPoints,
+			n.Known, pop})
 	}
 	for _, l := range s.w.Links {
 		st.Hops = append(st.Hops, l.Hop)
@@ -284,7 +344,12 @@ func (s *Server) regionDetail(i int) RegionDetail {
 		d.Pops = append(d.Pops, PopState{p.Size, p.Cash, p.Employed()})
 	}
 	for _, f := range r.Firms {
-		d.Firms = append(d.Firms, FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash})
+		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil}
+		if e := f.Expansion; e != nil {
+			fs.Expansion = &Expansion{e.Delivered, e.Public}
+		}
+		d.Firms = append(d.Firms, fs)
 	}
 	pop := r.Population()
 	for g, m := range r.Markets {
@@ -429,4 +494,113 @@ func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, s.state())
+}
+
+// nationAct runs a command on a nation and replies with the new state:
+// 404 for an unknown nation, 400 for a bad argument, 409 if the game refuses.
+func (s *Server) nationAct(w http.ResponseWriter, r *http.Request, do func(n *engine.Nation) (status int, err error)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	id, ok := pathID(r, len(s.w.Nations))
+	if !ok {
+		http.Error(w, "no such nation", http.StatusNotFound)
+		return
+	}
+	if status, err := do(s.w.Nations[id]); err != nil {
+		http.Error(w, err.Error(), status)
+		return
+	}
+	writeJSON(w, s.state())
+}
+
+func queryFloat(r *http.Request, key string) (float64, error) {
+	v, err := strconv.ParseFloat(r.URL.Query().Get(key), 64)
+	if err != nil || math.IsNaN(v) {
+		return 0, fmt.Errorf("%s must be a number", key)
+	}
+	return v, nil
+}
+
+func (s *Server) handleTariff(w http.ResponseWriter, r *http.Request) {
+	s.nationAct(w, r, func(n *engine.Nation) (int, error) {
+		rate, err := queryFloat(r, "rate")
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		good := engine.GoodID(-1)
+		if name := r.URL.Query().Get("good"); name != "" {
+			found := false
+			for _, g := range engine.Tradable {
+				if engine.Goods[g].Name == name {
+					good, found = g, true
+				}
+			}
+			if !found {
+				return http.StatusBadRequest, fmt.Errorf("no tradable good %q", name)
+			}
+		}
+		if err := n.SetTariff(good, rate); err != nil {
+			return http.StatusBadRequest, err
+		}
+		return 0, nil
+	})
+}
+
+func (s *Server) handleEmbargo(w http.ResponseWriter, r *http.Request) {
+	s.nationAct(w, r, func(n *engine.Nation) (int, error) {
+		target, err := strconv.Atoi(r.URL.Query().Get("target"))
+		if err != nil || target < 0 || target >= len(s.w.Nations) {
+			return http.StatusBadRequest, fmt.Errorf("target must be a nation id")
+		}
+		if target == n.ID {
+			return http.StatusConflict, engine.ErrSelf
+		}
+		n.Embargo[target] = r.URL.Query().Get("on") != "false"
+		return 0, nil
+	})
+}
+
+func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
+	s.nationAct(w, r, func(n *engine.Nation) (int, error) {
+		tech, err := strconv.Atoi(r.URL.Query().Get("tech"))
+		if err != nil {
+			return http.StatusBadRequest, fmt.Errorf("tech must be a tech id")
+		}
+		if err := n.SetResearch(tech); err != nil {
+			return http.StatusConflict, err
+		}
+		return 0, nil
+	})
+}
+
+func (s *Server) handleFunding(w http.ResponseWriter, r *http.Request) {
+	s.nationAct(w, r, func(n *engine.Nation) (int, error) {
+		amount, err := queryFloat(r, "amount")
+		if err == nil {
+			err = n.SetResearchFunding(amount)
+		}
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		return 0, nil
+	})
+}
+
+func (s *Server) handleAnnex(w http.ResponseWriter, r *http.Request) {
+	nation, err := strconv.Atoi(r.URL.Query().Get("nation"))
+	if err != nil || nation < 0 || nation >= len(s.w.Nations) {
+		http.Error(w, "nation must be a nation id", http.StatusBadRequest)
+		return
+	}
+	s.act(w, r, func(id int) error { return s.w.Annex(id, nation) })
+}
+
+func (s *Server) handleExpand(w http.ResponseWriter, r *http.Request) {
+	s.act(w, r, func(id int) error {
+		firm, err := strconv.Atoi(r.PathValue("firm"))
+		if err != nil || firm < 0 || firm >= len(s.w.Regions[id].Firms) {
+			return fmt.Errorf("no such firm")
+		}
+		return s.w.Expand(id, firm)
+	})
 }

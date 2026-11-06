@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -109,12 +110,12 @@ func TestNationsAndInfrastructure(t *testing.T) {
 	ts := newTestServer(t)
 	var info WorldInfo
 	call(t, ts, "GET", "/api/world", 200, &info)
-	if len(info.Nations) != 4 || len(info.Infra) != len(engine.InfraLevels) || info.Regions[0].Nation != 0 {
+	if len(info.Nations) != 3 || len(info.Infra) != len(engine.InfraLevels) || info.Regions[0].Nation != 0 {
 		t.Fatalf("world: %d nations, %d infra levels, tile 0 nation %d", len(info.Nations), len(info.Infra), info.Regions[0].Nation)
 	}
 	var st State
 	call(t, ts, "POST", "/api/step?n=20", 200, &st)
-	if len(st.Nations) != 4 || len(st.Hops) != len(info.Links) {
+	if len(st.Nations) != 3 || len(st.Hops) != len(info.Links) {
 		t.Fatalf("state: %d nations, %d hops for %d links", len(st.Nations), len(st.Hops), len(info.Links))
 	}
 
@@ -137,6 +138,80 @@ func TestNationsAndInfrastructure(t *testing.T) {
 	call(t, ts, "POST", "/api/nations/1/tax?rate=2", 400, nil)
 	call(t, ts, "POST", "/api/nations/1/tax?rate=x", 400, nil)
 	call(t, ts, "POST", "/api/nations/7/tax?rate=0.1", 404, nil)
+}
+
+func TestTradePolicyResearchAndGrowth(t *testing.T) {
+	ts := newTestServer(t)
+	var info WorldInfo
+	call(t, ts, "GET", "/api/world", 200, &info)
+	if len(info.Techs) != len(engine.Techs) || info.LevelCost <= 0 {
+		t.Fatalf("world: %d techs, level cost %v", len(info.Techs), info.LevelCost)
+	}
+	var st State
+	call(t, ts, "POST", "/api/step?n=5", 200, &st)
+
+	call(t, ts, "POST", "/api/nations/1/tariff?rate=0.3", 200, &st)
+	if st.Nations[1].Tariff[0] != 0.3 {
+		t.Errorf("tariff on bread %v", st.Nations[1].Tariff[0])
+	}
+	call(t, ts, "POST", "/api/nations/1/tariff?rate=0.5&good=tea", 200, &st)
+	if st.Nations[1].Tariff[engine.G("tea")] != 0.5 || st.Nations[1].Tariff[0] != 0.3 {
+		t.Error("per-good tariff not applied")
+	}
+	call(t, ts, "POST", "/api/nations/1/tariff?rate=0.5&good=transport", 400, nil)
+	call(t, ts, "POST", "/api/nations/1/tariff?rate=-1", 400, nil)
+
+	call(t, ts, "POST", "/api/nations/0/embargo?target=2", 200, &st)
+	if !st.Nations[0].Embargo[2] {
+		t.Error("embargo not set")
+	}
+	call(t, ts, "POST", "/api/nations/0/embargo?target=2&on=false", 200, &st)
+	if st.Nations[0].Embargo[2] {
+		t.Error("embargo not lifted")
+	}
+	call(t, ts, "POST", "/api/nations/0/embargo?target=0", 409, nil)
+
+	call(t, ts, "POST", "/api/nations/0/research?tech=1", 200, &st)
+	if st.Nations[0].Researching != 1 {
+		t.Errorf("researching %d, want 1", st.Nations[0].Researching)
+	}
+	call(t, ts, "POST", "/api/nations/0/research?tech=3", 409, nil) // needs Wagons
+	call(t, ts, "POST", "/api/nations/0/funding?amount=80", 200, &st)
+	if st.Nations[0].Funding != 80 {
+		t.Errorf("funding %v", st.Nations[0].Funding)
+	}
+	call(t, ts, "POST", "/api/nations/0/funding?amount=-5", 400, nil)
+
+	// tile 02 borders Montara (nation 0)
+	call(t, ts, "POST", "/api/step?n=100", 200, &st)
+	call(t, ts, "POST", "/api/regions/2/annex?nation=0", 200, &st)
+	if st.Regions[2].Nation != 0 {
+		t.Errorf("tile 02 owned by %d after annexing", st.Regions[2].Nation)
+	}
+	call(t, ts, "POST", "/api/regions/2/annex?nation=1", 409, nil)
+	call(t, ts, "POST", "/api/regions/20/annex?nation=1", 409, nil) // not adjacent
+	call(t, ts, "POST", "/api/regions/2/annex?nation=x", 400, nil)
+
+	var d RegionDetail
+	call(t, ts, "GET", "/api/regions/2", 200, &d)
+	fi := -1
+	for i, f := range d.Firms {
+		if f.Expansion == nil && f.Levels < f.MaxLevels {
+			fi = i
+			break
+		}
+	}
+	if fi < 0 {
+		t.Fatal("no firm free to expand")
+	}
+	path := fmt.Sprintf("/api/regions/2/firms/%d/expand", fi)
+	call(t, ts, "POST", path, 200, &st)
+	call(t, ts, "GET", "/api/regions/2", 200, &d)
+	if e := d.Firms[fi].Expansion; e == nil || !e.Public {
+		t.Errorf("firm %d expansion %+v", fi, d.Firms[fi].Expansion)
+	}
+	call(t, ts, "POST", path, 409, nil)
+	call(t, ts, "POST", "/api/regions/2/firms/99/expand", 409, nil)
 }
 
 func TestServesStaticFiles(t *testing.T) {

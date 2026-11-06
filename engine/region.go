@@ -20,8 +20,10 @@ type Region struct {
 	Project  *Project // infrastructure under construction, or nil
 	Neglect  float64  // accumulated unmet upkeep
 
-	upkeepWant, projectWant float64 // construction the nation wants here this tick
-	publicBid, publicGot    float64
+	UtilityEMA float64 // smoothed utility per person; migration follows it
+
+	claims               []claim   // what the nation buys here this tick
+	publicBid, publicGot []float64 // by good
 
 	outbound [][]*Trader // traders buying here, by good (transport: all of them)
 	inbound  [][]*Trader // traders selling here, by good
@@ -34,7 +36,8 @@ type Region struct {
 func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash float64) *Region {
 	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1, BaseMove: 1,
 		outbound: make([][]*Trader, NumGoods), inbound: make([][]*Trader, NumGoods),
-		prices: make([]float64, NumGoods)}
+		prices: make([]float64, NumGoods), publicBid: make([]float64, NumGoods),
+		publicGot: make([]float64, NumGoods)}
 	for i := 0; i < nPops; i++ {
 		r.Pops = append(r.Pops, NewPop(popSize, popCash))
 		r.popDemand = append(r.popDemand, make([]float64, NumGoods))
@@ -77,7 +80,61 @@ func (r *Region) refreshPrices() []float64 {
 func (r *Region) Plan() {
 	prices := r.refreshPrices()
 	for _, f := range r.Firms {
+		f.tickRevenue, f.tickCost, f.investWant = 0, 0, 0
 		f.Plan(prices, r.Wage)
+	}
+}
+
+// Investment rules (game worlds only).
+const (
+	investPayback = 50  // ticks of profit a new level must repay its cost in
+	investMinAge  = 100 // ticks before a firm's profit record counts
+	investRate    = 3.0 // construction units a private expansion buys per tick at most
+	disinvestAt   = 100 // ticks of losses before a firm closes a level
+)
+
+// planInvestment starts private expansions where a level would repay itself,
+// and sets what expanding firms buy this tick.
+func (r *Region) planInvestment() {
+	price := r.Markets[Construction].Price
+	for _, f := range r.Firms {
+		if f.Expansion == nil && f.Levels < f.MaxLevels && f.age > investMinAge {
+			perLevel := f.ProfitEMA / float64(f.Levels)
+			if perLevel > 0 && perLevel*investPayback > LevelCost*price {
+				f.Expansion = &Expansion{}
+			}
+		}
+		if e := f.Expansion; e != nil && !e.Public {
+			want := math.Min(investRate, LevelCost-e.Delivered)
+			f.DesiredSpend += want * price
+			planned := f.PlanLabor * r.Wage
+			for g, q := range f.PlanQty {
+				planned += q * r.prices[g]
+			}
+			f.investWant = math.Max(0, math.Min(want, (0.9*f.Cash-planned)/price))
+		}
+	}
+}
+
+// settleFirms updates profit records, finishes expansions and closes levels
+// that keep losing money.
+func (r *Region) settleFirms() {
+	for _, f := range r.Firms {
+		f.age++
+		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.tickRevenue-f.tickCost)
+		if e := f.Expansion; e != nil && e.Delivered >= LevelCost-1e-9 {
+			f.Levels++
+			f.Expansion = nil
+		}
+		if f.ProfitEMA < 0 && f.Levels > 1 {
+			f.lossTicks++
+			if f.lossTicks > disinvestAt {
+				f.Levels--
+				f.lossTicks = 0
+			}
+		} else {
+			f.lossTicks = 0
+		}
 	}
 }
 
@@ -116,6 +173,7 @@ func (r *Region) LaborMarket() {
 			}
 			r.payIncome(pop, take*wage)
 			f.Cash -= take * wage
+			f.tickCost += take * wage
 			need -= take
 			free -= take
 			if free <= 1e-12 {
@@ -139,6 +197,7 @@ const (
 	firmAgent
 	traderAgent
 	nationAgent
+	investAgent
 )
 
 type agentRef struct {
@@ -179,8 +238,16 @@ func (r *Region) GoodsMarkets() {
 				bidRefs = append(bidRefs, agentRef{traderAgent, i})
 			}
 		}
-		if gid == Construction && r.publicBid > 0 {
-			bids = append(bids, Order{&r.Nation.Treasury, r.publicBid})
+		if gid == Construction {
+			for i, f := range r.Firms {
+				if f.investWant > 0 {
+					bids = append(bids, Order{&f.Cash, f.investWant})
+					bidRefs = append(bidRefs, agentRef{investAgent, i})
+				}
+			}
+		}
+		if r.Nation != nil && r.publicBid[g] > 0 {
+			bids = append(bids, Order{&r.Nation.Treasury, r.publicBid[g]})
 			bidRefs = append(bidRefs, agentRef{nationAgent, 0})
 		}
 		for i, f := range r.Firms {
@@ -206,19 +273,30 @@ func (r *Region) GoodsMarkets() {
 				r.Pops[ref.idx].Consumed[g] = got
 			case firmAgent:
 				r.Firms[ref.idx].Inputs[g] += got
+				r.Firms[ref.idx].tickCost += got * price
 			case traderAgent:
 				r.outbound[g][ref.idx].Receive(gid, got)
 			case nationAgent:
-				r.publicGot = got
+				r.publicGot[g] = got
 				r.Nation.Spending += got * price
+			case investAgent:
+				r.Firms[ref.idx].Expansion.Delivered += got
 			}
 		}
 		for i, ref := range askRefs {
 			sold := askFills[i]
 			if ref.kind == firmAgent {
 				r.Firms[ref.idx].Inventory -= sold
+				r.Firms[ref.idx].tickRevenue += sold * price
 			} else {
-				r.inbound[g][ref.idx].StockDest -= sold
+				t := r.inbound[g][ref.idx]
+				t.StockDest -= sold
+				if rate, _ := t.border(); rate > 0 { // import tariff, paid on sale
+					duty := sold * price * rate
+					t.Cash -= duty
+					r.Nation.Treasury += duty
+					r.Nation.TariffRevenue += duty
+				}
 			}
 		}
 	}
@@ -258,8 +336,15 @@ func (r *Region) PayDividends(cash *float64, cashBuffer, desiredSpend float64) {
 	}
 }
 
-// MoveCost is the cost of moving through the tile, given its infrastructure.
-func (r *Region) MoveCost() float64 { return r.BaseMove * InfraLevels[r.Infra].MoveMult }
+// MoveCost is the cost of moving through the tile, given its infrastructure
+// and its owner's technology.
+func (r *Region) MoveCost() float64 {
+	m := r.BaseMove * InfraLevels[r.Infra].MoveMult
+	if r.Nation != nil && r.Terrain == "coast" {
+		m *= r.Nation.coastMult()
+	}
+	return m
+}
 
 // Money is the cash held by the region's pops and firms.
 func (r *Region) Money() float64 {

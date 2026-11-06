@@ -76,6 +76,7 @@ function overlayValues() {
   return state.regions.map((rs) => {
     switch (kind) {
       case "utility": return rs.utility;
+      case "population": return rs.population;
       case "wage": return rs.wage;
       case "price": return rs.prices[g] / rs.wage;
       case "basic": return share(rs, "basic");
@@ -92,7 +93,8 @@ function overlayLabel() {
 const isShare = () => ["basic", "luxury"].includes($("overlay").value);
 const CATEGORICAL = ["terrain", "nation", "infra"];
 const INFRA_COLORS = ["#d9d4c7", "#b07d48", "#5b3a1e"];
-const nationColor = (r) => (r.nation >= 0 ? world.nations[r.nation].color : "#9a9a9a");
+const owner = (r) => state.regions[r.id].nation; // ownership changes when tiles are annexed
+const nationColor = (r) => (owner(r) >= 0 ? world.nations[owner(r)].color : "#9a9a9a");
 function categoryColor(kind, r) {
   if (kind === "nation") return nationColor(r);
   if (kind === "infra") return INFRA_COLORS[state.regions[r.id].infra];
@@ -136,7 +138,7 @@ function draw() {
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     let label;
     if (vals) label = isShare() ? (100 * vals[r.id]).toFixed(0) + "%" : fmt(vals[r.id], 1);
-    else if (kind === "nation") label = r.nation >= 0 ? world.nations[r.nation].name.slice(0, 3) : "–";
+    else if (kind === "nation") label = owner(r) >= 0 ? world.nations[owner(r)].name.slice(0, 3) : "–";
     else if (kind === "infra") label = "×" + rs.move_cost.toFixed(2);
     else label = r.terrain[0].toUpperCase();
     ctx.fillText(label, x, y + size * 0.05);
@@ -173,7 +175,7 @@ function drawInfra(r, rs, x, y) {
 function drawBorders() {
   for (const l of world.links) {
     const a = world.regions[l.a], b = world.regions[l.b];
-    if (a.nation === b.nation) continue;
+    if (owner(a) === owner(b)) continue;
     const [x1, y1] = center(a), [x2, y2] = center(b);
     const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, len = Math.hypot(x2 - x1, y2 - y1);
     const px = -(y2 - y1) / len * size / 2, py = (x2 - x1) / len * size / 2;
@@ -248,9 +250,14 @@ async function showRegion(id) {
   const total = s.tier_spend.reduce((a, b) => a + b, 0) || 1;
   const bar = world.tiers.map((t, i) =>
     `<span style="width:${(100 * s.tier_spend[i] / total).toFixed(1)}%;background:${TIER_COLORS[t]}" title="${t} ${(100 * s.tier_spend[i] / total).toFixed(1)}%"></span>`).join("");
-  const firms = d.firms.filter((f) => f.labor > 0.05 || f.produced > 0.05)
+  const firms = d.firms.map((f, i) => ({ ...f, i })).filter((f) => f.labor > 0.05 || f.produced > 0.05 || f.levels > 1)
     .sort((a, b) => b.labor - a.labor)
-    .map((f) => `<tr><td>${f.name}</td><td>${G[f.output].name}</td><td>${fmt(f.labor, 1)}</td><td>${fmt(f.produced)}</td></tr>`).join("");
+    .map((f) => {
+      let grow = "";
+      if (f.expansion) grow = `${(100 * f.expansion.delivered / world.level_cost).toFixed(0)}%${f.expansion.public ? " (state)" : ""}`;
+      else if (s.nation >= 0 && f.levels < f.max_levels) grow = `<button class="expand" data-firm="${f.i}" title="Nation pays ${world.level_cost} construction for one more level">+1</button>`;
+      return `<tr><td>${f.name}</td><td>${G[f.output].name}</td><td>${f.levels}/${f.max_levels}</td><td>${fmt(f.labor, 1)}</td><td>${fmt(f.produced)}</td><td>${fmt(f.profit, 1)}</td><td>${grow}</td></tr>`;
+    }).join("");
   const markets = d.markets.filter((m) => m.supply > 1e-3 || m.demand > 1e-3)
     .map((m) => `<tr class="${G[m.good].tier ? "" : "dim"}"><td>${G[m.good].name}</td><td>${fmt(m.price)}</td><td>${fmt(m.price / s.wage)}</td><td>${fmt(m.supply)}</td><td>${fmt(m.demand)}</td><td>${m.consumed_per_person > 0 ? fmt(m.consumed_per_person, 3) : ""}</td></tr>`).join("");
   const trade = (list, dir) => {
@@ -260,7 +267,7 @@ async function showRegion(id) {
     }).join("");
     return rows || `<tr class="dim"><td colspan="3">none</td></tr>`;
   };
-  const nation = d.info.nation >= 0 ? world.nations[d.info.nation] : null;
+  const nation = s.nation >= 0 ? world.nations[s.nation] : null;
   const ns = nation && state.nations[nation.id];
   const lvl = world.infra_levels[s.infra], next = world.infra_levels[s.infra + 1];
   const cPrice = d.markets[world.goods.findIndex((g) => g.name === "construction")].price;
@@ -271,16 +278,15 @@ async function showRegion(id) {
       <div class="row"><span class="sub">Building ${world.infra_levels[s.project.target].name}: ${fmt(s.project.delivered, 0)} / ${s.project.required} construction</span>
       <button id="cancel">Cancel</button></div>`;
   } else if (next && nation) {
-    infra += `<div class="row"><button id="build" class="primary">Build ${next.name}</button>
-      <span class="sub">${next.cost} construction (≈ ${fmt(next.cost * cPrice, 0)} at today's price ${fmt(cPrice)})</span></div>`;
+    const mats = Object.entries(next.materials || {}).map(([g, q]) => ` + ${q} ${g}`).join("");
+    const locked = next.tech && !state.nations[nation.id].known[world.techs.findIndex((t) => t.name === next.tech)];
+    infra += locked
+      ? `<p class="sub">${next.name} needs ${next.tech}.</p>`
+      : `<div class="row"><button id="build" class="primary">Build ${next.name}</button>
+      <span class="sub">${next.cost} construction${mats} (≈ ${fmt(next.cost * cPrice, 0)} at today's construction price ${fmt(cPrice)})</span></div>`;
   }
   infra += `<div id="act-err" class="err"></div>`;
-  const nationHtml = nation ? `
-    <h3>Nation</h3>
-    <p><span class="chip" style="background:${nation.color}"></span><b>${nation.name}</b> · treasury ${fmt(ns.treasury, 0)}</p>
-    <div class="row"><label>Tax rate <input id="tax" type="number" min="0" max="90" step="1" value="${(100 * ns.tax_rate).toFixed(0)}" style="width:64px">%</label>
-      <button id="set-tax">Set</button></div>
-    <p class="sub">tax ${fmt(ns.revenue, 1)}/tick · building ${fmt(ns.spending, 1)}/tick · rebate ${fmt(ns.rebate, 1)}/tick</p>` : "";
+  const nationHtml = nation ? nationPanel(nation, ns) : annexPanel(d);
   $("panel").innerHTML = `
     <h2>Region ${d.info.name}</h2>
     <p class="sub">${d.info.terrain} · ${nation ? nation.name : "unowned"} · row ${d.info.row}, col ${d.info.col} · tick ${state.tick}</p>
@@ -295,12 +301,53 @@ async function showRegion(id) {
     ${nationHtml}
     <h3>Infrastructure</h3>${infra}
     <h3>Firms</h3>
-    <table><tr><th>firm</th><th>makes</th><th>workers</th><th>output</th></tr>${firms}</table>
+    <table><tr><th>firm</th><th>makes</th><th>levels</th><th>workers</th><th>output</th><th>profit</th><th>grow</th></tr>${firms}</table>
     <h3>Markets</h3>
     <table><tr><th>good</th><th>price</th><th>÷ wage</th><th>supply</th><th>demand</th><th>eaten/p</th></tr>${markets}</table>
     <h3>Exports</h3><table><tr><th>good</th><th>to</th><th>units</th></tr>${trade(d.exports, "out")}</table>
     <h3>Imports</h3><table><tr><th>good</th><th>from</th><th>units</th></tr>${trade(d.imports, "in")}</table>`;
   wirePanel(id, nation);
+}
+
+function nationPanel(nation, ns) {
+  const others = world.nations.filter((o) => o.id !== nation.id).map((o) =>
+    `<label><input type="checkbox" class="embargo" data-target="${o.id}" ${ns.embargo[o.id] ? "checked" : ""}> ${o.name}</label>`).join(" ");
+  const tradable = world.goods.map((g, i) => i).filter((i) => !["transport", "construction", "research"].includes(world.goods[i].name));
+  const tariff = Math.max(...tradable.map((i) => ns.tariff[i]));
+  const techs = world.techs.map((t, i) => {
+    let status;
+    if (ns.known[i]) status = "✓ known";
+    else if (ns.researching === i) status = `researching ${(100 * Math.min(1, ns.research_points / t.cost)).toFixed(0)}%`;
+    else if (t.requires.every((r) => ns.known[world.techs.findIndex((x) => x.name === r)])) status = `<button class="research" data-tech="${i}">Research</button>`;
+    else status = `needs ${t.requires.join(", ")}`;
+    return `<tr class="${ns.known[i] ? "dim" : ""}"><td>${t.name}</td><td title="${t.effect}">${t.effect}</td><td>${t.cost}</td><td>${status}</td></tr>`;
+  }).join("");
+  return `
+    <h3>Nation</h3>
+    <p><span class="chip" style="background:${nation.color}"></span><b>${nation.name}</b> · ${fmt(ns.population, 0)} people · treasury ${fmt(ns.treasury, 0)}</p>
+    <div class="row"><label>Tax <input id="tax" type="number" min="0" max="90" step="1" value="${(100 * ns.tax_rate).toFixed(0)}" style="width:60px">%</label>
+      <button id="set-tax">Set</button>
+      <label>Import tariff <input id="tariff" type="number" min="0" max="500" step="5" value="${(100 * tariff).toFixed(0)}" style="width:60px">%</label>
+      <button id="set-tariff">Set</button></div>
+    <div class="row"><span class="sub">Embargo:</span> ${others}</div>
+    <p class="sub">tax ${fmt(ns.revenue, 1)} + tariffs ${fmt(ns.tariff_revenue, 1)}/tick · spending ${fmt(ns.spending, 1)}/tick · rebate ${fmt(ns.rebate, 1)}/tick</p>
+    <h3>Research</h3>
+    <div class="row"><label>Funding <input id="funding" type="number" min="0" step="10" value="${fmt(ns.research_funding, 0)}" style="width:70px">/tick</label>
+      <button id="set-funding">Set</button></div>
+    <table><tr><th>tech</th><th>effect</th><th>cost</th><th></th></tr>${techs}</table>`;
+}
+
+function annexPanel(d) {
+  const nbs = world.links.filter((l) => l.a === d.info.id || l.b === d.info.id).map((l) => (l.a === d.info.id ? l.b : l.a));
+  const ids = [...new Set(nbs.map((id) => state.regions[id].nation).filter((n) => n >= 0))];
+  const cost = d.state.annex_cost;
+  const buttons = ids.map((n) => {
+    const ns = state.nations[n];
+    return `<button class="annex" data-nation="${n}" ${ns.treasury < cost ? "disabled" : ""}>Annex for ${world.nations[n].name}</button>`;
+  }).join(" ");
+  return `<h3>Unowned</h3>
+    <p class="sub">${ids.length ? `Annexing costs ${fmt(cost, 0)} (${fmt(d.state.population, 0)} people), paid to them.` : "No nation borders this tile yet."}</p>
+    <div class="row">${buttons}</div>`;
 }
 
 async function command(path) {
@@ -315,9 +362,18 @@ async function command(path) {
   }
 }
 function wirePanel(id, nation) {
+  const panel = $("panel");
   if ($("build")) $("build").onclick = () => command(`/api/regions/${id}/build`);
   if ($("cancel")) $("cancel").onclick = () => command(`/api/regions/${id}/cancel`);
-  if ($("set-tax")) $("set-tax").onclick = () => command(`/api/nations/${nation.id}/tax?rate=${(+$("tax").value / 100).toFixed(3)}`);
+  for (const b of panel.querySelectorAll("button.expand")) b.onclick = () => command(`/api/regions/${id}/firms/${b.dataset.firm}/expand`);
+  for (const b of panel.querySelectorAll("button.annex")) b.onclick = () => command(`/api/regions/${id}/annex?nation=${b.dataset.nation}`);
+  if (!nation) return;
+  const n = nation.id;
+  $("set-tax").onclick = () => command(`/api/nations/${n}/tax?rate=${(+$("tax").value / 100).toFixed(3)}`);
+  $("set-tariff").onclick = () => command(`/api/nations/${n}/tariff?rate=${(+$("tariff").value / 100).toFixed(3)}`);
+  $("set-funding").onclick = () => command(`/api/nations/${n}/funding?amount=${+$("funding").value}`);
+  for (const c of panel.querySelectorAll("input.embargo")) c.onchange = () => command(`/api/nations/${n}/embargo?target=${c.dataset.target}&on=${c.checked}`);
+  for (const b of panel.querySelectorAll("button.research")) b.onclick = () => command(`/api/nations/${n}/research?tech=${b.dataset.tech}`);
 }
 
 // ---- interaction -------------------------------------------------------------
@@ -340,7 +396,7 @@ canvas.addEventListener("mousemove", (ev) => {
   let v = "";
   if (kind === "nation" || kind === "infra") {
     const rs = state.regions[r.id];
-    v = ` · ${r.nation >= 0 ? world.nations[r.nation].name : "unowned"} · ${world.infra_levels[rs.infra].name}`;
+    v = ` · ${owner(r) >= 0 ? world.nations[owner(r)].name : "unowned"} · ${world.infra_levels[rs.infra].name}`;
   } else if (kind !== "terrain") {
     const x = overlayValues()[r.id];
     v = ` · ${overlayLabel()}: ${isShare() ? (100 * x).toFixed(1) + "%" : fmt(x)}`;
@@ -355,15 +411,22 @@ canvas.addEventListener("mouseleave", () => { $("tooltip").hidden = true; });
 function drawNations() {
   const rows = world.nations.map((n) => {
     const ns = state.nations[n.id];
-    const tiles = world.regions.filter((r) => r.nation === n.id);
-    const u = tiles.reduce((a, r) => a + state.regions[r.id].utility, 0) / tiles.length;
+    const tiles = world.regions.filter((r) => owner(r) === n.id);
+    const u = tiles.reduce((a, r) => a + state.regions[r.id].utility * state.regions[r.id].population, 0) / ns.population;
     const roads = tiles.reduce((a, r) => a + state.regions[r.id].infra, 0);
+    const known = ns.known.filter(Boolean).length;
+    const res = ns.researching >= 0
+      ? `${world.techs[ns.researching].name} ${(100 * Math.min(1, ns.research_points / world.techs[ns.researching].cost)).toFixed(0)}%`
+      : (known === world.techs.length ? "all known" : "—");
+    const tariffs = ns.tariff.filter((x) => x > 0);
+    const tariff = tariffs.length ? `${(100 * Math.max(...tariffs)).toFixed(0)}%` : "0%";
     return `<tr><td><span class="chip" style="background:${n.color}"></span>${n.name}</td><td>${tiles.length}</td>
-      <td>${fmt(u)}</td><td>${(100 * ns.tax_rate).toFixed(0)}%</td><td>${fmt(ns.treasury, 0)}</td>
-      <td>${fmt(ns.revenue, 1)}</td><td>${fmt(ns.spending, 1)}</td><td>${fmt(ns.rebate, 1)}</td><td>${roads}</td></tr>`;
+      <td>${fmt(ns.population, 0)}</td><td>${fmt(u)}</td><td>${(100 * ns.tax_rate).toFixed(0)}%</td><td>${tariff}</td>
+      <td>${fmt(ns.treasury, 0)}</td><td>${fmt(ns.revenue + ns.tariff_revenue, 1)}</td><td>${fmt(ns.spending, 1)}</td>
+      <td>${roads}</td><td>${known}/${world.techs.length}</td><td>${res}</td></tr>`;
   }).join("");
-  $("nations").innerHTML = `<tr><th>nation</th><th>tiles</th><th>utility</th><th>tax</th><th>treasury</th>
-    <th>tax/tick</th><th>building/tick</th><th>rebate/tick</th><th>road levels</th></tr>${rows}`;
+  $("nations").innerHTML = `<tr><th>nation</th><th>tiles</th><th>people</th><th>utility</th><th>tax</th><th>tariff</th>
+    <th>treasury</th><th>income/tick</th><th>spending/tick</th><th>road levels</th><th>techs</th><th>researching</th></tr>${rows}`;
 }
 
 function setState(s) {

@@ -47,9 +47,15 @@ var ProcessingRecipes = []Recipe{
 	{"Transport", "transport", 2.0, []Factor{Labor(0.6)}},
 }
 
-// ConstructionRecipe makes building work for infrastructure. Only game worlds
-// (with nations) have it.
-var ConstructionRecipe = Recipe{"Construction", "construction", 1.5, []Factor{Labor(0.5), Input("wood", 0.2)}}
+// GameRecipes exist only in game worlds (with nations): building work for
+// infrastructure and firm expansions, and research for technology.
+var GameRecipes = []Recipe{
+	{"Construction", "construction", 1.5, []Factor{Labor(0.5), Input("wood", 0.2)}},
+	{"University", "research", 1.0, []Factor{Labor(0.6)}},
+}
+
+// RawMaxLevels caps building levels of land-bound producers (land is scarce).
+const RawMaxLevels = 4
 
 // Bonus is a raw producer available on a terrain, with a TFP multiplier.
 type Bonus struct {
@@ -118,18 +124,20 @@ func HexNeighbors(r, c, rows, cols int) [][2]int {
 	return out
 }
 
-func makeFirms(t Terrain, construction bool) []*Firm {
+func makeFirms(t Terrain, game bool) []*Firm {
 	var firms []*Firm
 	for _, rc := range RawRecipes {
 		for _, b := range t.Raw {
 			if b.Firm == rc.Firm {
-				firms = append(firms, NewFirm(rc.Firm, G(rc.Output), rc.TFP*b.Mult, rc.Factors, 50))
+				f := NewFirm(rc.Firm, G(rc.Output), rc.TFP*b.Mult, rc.Factors, 50)
+				f.MaxLevels = RawMaxLevels
+				firms = append(firms, f)
 			}
 		}
 	}
 	recipes := ProcessingRecipes
-	if construction {
-		recipes = append(append([]Recipe(nil), recipes...), ConstructionRecipe)
+	if game {
+		recipes = append(append([]Recipe(nil), recipes...), GameRecipes...)
 	}
 	for _, rc := range recipes {
 		firms = append(firms, NewFirm(rc.Firm, G(rc.Output), rc.TFP, rc.Factors, 50))
@@ -207,29 +215,31 @@ type GameSpec struct {
 	TaxRate       float64
 }
 
-// DefaultGame is the default game scenario on DefaultMap.
+// DefaultGame is the default game scenario on DefaultMap: three nations of
+// four tiles each; the rest of the map is unowned and can be annexed.
 var DefaultGame = GameSpec{
 	Map: DefaultMap,
 	NationMap: []string{
-		"AAABBB",
-		"AAABBB",
-		"AABBBD",
-		"CCCCCD",
-		"DCCCDD",
-		"DDDDDD",
+		"AA..BB",
+		"AA.BB.",
+		"......",
+		"......",
+		"...CC.",
+		"...CC.",
 	},
 	Nations: []NationSpec{
 		{'A', "Montara", "#c0392b"},
 		{'B', "Verdania", "#2e6fd8"},
-		{'C', "Sudoria", "#e0a020"},
-		{'D', "Thalassa", "#17a589"},
+		{'C', "Thalassa", "#17a589"},
 	},
 	TransportCost: 1,
 	TaxRate:       0.1,
 }
 
-// BuildGame builds a game world: regions owned by nations that tax their pops
-// and build infrastructure, with a Construction firm on every tile.
+// BuildGame builds a game world: regions owned by nations that tax their pops,
+// trade under tariffs, research technology and build infrastructure, with
+// Construction and University firms on every tile, investing firms and
+// migrating people.
 func BuildGame(spec GameSpec) (*World, error) {
 	w, err := buildWorld(spec.TransportCost, spec.Map, true)
 	if err != nil {
@@ -238,10 +248,10 @@ func BuildGame(spec GameSpec) (*World, error) {
 	if len(spec.NationMap) != w.Rows {
 		return nil, fmt.Errorf("nation map has %d rows, want %d", len(spec.NationMap), w.Rows)
 	}
+	w.Investment, w.Migration = true, true
 	bySymbol := map[byte]*Nation{}
 	for i, ns := range spec.Nations {
-		n := &Nation{ID: i, Name: ns.Name, Color: ns.Color, TaxRate: spec.TaxRate,
-			Reserve: 1000, RebateRate: 0.1, MaxBuildRate: 5}
+		n := newNation(i, ns.Name, ns.Color, len(spec.Nations), spec.TaxRate)
 		if err := n.SetTaxRate(spec.TaxRate); err != nil {
 			return nil, err
 		}
@@ -263,5 +273,6 @@ func BuildGame(spec GameSpec) (*World, error) {
 		r.Nation = n
 		n.Regions = append(n.Regions, r)
 	}
+	w.refreshAllHops()
 	return w, nil
 }

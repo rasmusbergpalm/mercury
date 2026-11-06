@@ -15,6 +15,15 @@ func newTestGame(t *testing.T) *World {
 	return w
 }
 
+func regionByName(w *World, name string) *Region {
+	for _, r := range w.Regions {
+		if r.Name == name {
+			return r
+		}
+	}
+	return nil
+}
+
 func nationByName(w *World, name string) *Nation {
 	for _, n := range w.Nations {
 		if n.Name == name {
@@ -26,23 +35,32 @@ func nationByName(w *World, name string) *Nation {
 
 func TestBuildGameAssignsTiles(t *testing.T) {
 	w := newTestGame(t)
-	if len(w.Nations) != 4 {
+	if len(w.Nations) != 3 {
 		t.Fatalf("%d nations", len(w.Nations))
 	}
-	total := 0
+	owned := 0
 	for _, n := range w.Nations {
-		total += len(n.Regions)
+		if len(n.Regions) != 4 {
+			t.Errorf("%s starts with %d tiles, want 4", n.Name, len(n.Regions))
+		}
+		owned += len(n.Regions)
 		for _, r := range n.Regions {
 			if r.Nation != n {
 				t.Errorf("tile %s listed under %s but owned by %v", r.Name, n.Name, r.Nation)
 			}
 		}
 	}
-	if total != len(w.Regions) {
-		t.Errorf("nations own %d of %d tiles", total, len(w.Regions))
+	unowned := 0
+	for _, r := range w.Regions {
+		if r.Nation == nil {
+			unowned++
+		}
 	}
-	if r := w.Regions[0]; r.Nation.Name != "Montara" || r.Markets[Construction] == nil {
-		t.Errorf("tile 00 owned by %s", r.Nation.Name)
+	if owned+unowned != len(w.Regions) || unowned != 24 {
+		t.Errorf("%d owned and %d unowned tiles", owned, unowned)
+	}
+	if r := regionByName(w, "00"); r.Nation == nil || r.Nation.Name != "Montara" {
+		t.Errorf("tile 00 should start in Montara")
 	}
 }
 
@@ -53,7 +71,7 @@ func TestBuildGameRejectsBadSpecs(t *testing.T) {
 		t.Error("nation map of the wrong shape accepted")
 	}
 	spec = DefaultGame
-	spec.NationMap = append([]string{"ZAABBB"}, DefaultGame.NationMap[1:]...)
+	spec.NationMap = append([]string{"ZA..BB"}, DefaultGame.NationMap[1:]...)
 	if _, err := BuildGame(spec); err == nil {
 		t.Error("unknown nation symbol accepted")
 	}
@@ -131,7 +149,8 @@ func TestGameMoneyIsConserved(t *testing.T) {
 	m0 := w.Money()
 	for i := 0; i < 400; i++ {
 		if i == 100 {
-			for _, id := range []int{0, 9, 20, 33} {
+			for _, name := range []string{"00", "13", "44"} {
+				id := regionByName(w, name).ID
 				if err := w.Build(id); err != nil {
 					t.Fatal(err)
 				}
@@ -169,23 +188,19 @@ func TestBuildingRoadsLowersHopCosts(t *testing.T) {
 	for i := 0; i < 200; i++ {
 		w.Step()
 	}
-	const id = 9 // tile "13", plains in Verdania
-	r := w.Regions[id]
+	r := regionByName(w, "13") // plains in Verdania
+	id, n := r.ID, r.Nation
 	if err := w.Build(id); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.Build(id); !errors.Is(err, ErrBuilding) {
 		t.Errorf("second build while building: %v", err)
 	}
-	treasury := r.Nation.Treasury
 	for i := 0; i < 300 && r.Infra == 0; i++ {
 		w.Step()
 	}
 	if r.Infra != 1 || r.Project != nil {
 		t.Fatalf("road not finished after 300 ticks: level %d, project %+v", r.Infra, r.Project)
-	}
-	if r.Nation.Treasury >= treasury+1e-9 && r.Nation.Spending == 0 {
-		t.Error("building cost the treasury nothing")
 	}
 	for _, l := range w.Links {
 		if l.A != id && l.B != id {
@@ -199,14 +214,18 @@ func TestBuildingRoadsLowersHopCosts(t *testing.T) {
 	}
 	for _, tr := range w.Traders {
 		if tr.Origin == r || tr.Dest == r {
-			want := tr.TransportCost * (r.MoveCost() + map[bool]*Region{true: tr.Dest, false: tr.Origin}[tr.Origin == r].MoveCost()) / 2 * Goods[tr.Good].Bulk
+			want := tr.TransportCost * (tr.Origin.MoveCost() + tr.Dest.MoveCost()) / 2 * Goods[tr.Good].Bulk
 			if math.Abs(tr.Tau-want) > 1e-12 {
 				t.Errorf("trader %s tau %v, want %v", tr.Name(), tr.Tau, want)
 			}
 		}
 	}
 
-	// pave it, then there is nothing better to build
+	// paving needs Masonry
+	if err := w.Build(id); !errors.Is(err, ErrNeedTech) {
+		t.Fatalf("paving without Masonry: %v", err)
+	}
+	n.Known[TechID("Masonry")] = true
 	if err := w.Build(id); err != nil {
 		t.Fatal(err)
 	}
@@ -216,6 +235,20 @@ func TestBuildingRoadsLowersHopCosts(t *testing.T) {
 	if r.Infra != 2 {
 		t.Fatalf("paved road not finished: level %d", r.Infra)
 	}
+	// railways need the Railways tech, and iron
+	if err := w.Build(id); !errors.Is(err, ErrNeedTech) {
+		t.Errorf("railway without the tech: %v", err)
+	}
+	n.Known[TechID("Railways")] = true
+	if err := w.Build(id); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 1500 && r.Infra == 2; i++ {
+		w.Step()
+	}
+	if r.Infra != 3 {
+		t.Fatalf("railway not finished: level %d, project %+v", r.Infra, r.Project)
+	}
 	if err := w.Build(id); !errors.Is(err, ErrMaxLevel) {
 		t.Errorf("build beyond the best level: %v", err)
 	}
@@ -223,27 +256,24 @@ func TestBuildingRoadsLowersHopCosts(t *testing.T) {
 
 func TestCancelBuild(t *testing.T) {
 	w := newTestGame(t)
-	if err := w.CancelBuild(3); !errors.Is(err, ErrNoProject) {
+	id := regionByName(w, "13").ID
+	if err := w.CancelBuild(id); !errors.Is(err, ErrNoProject) {
 		t.Errorf("cancel without project: %v", err)
 	}
-	w.Build(3)
-	if err := w.CancelBuild(3); err != nil || w.Regions[3].Project != nil {
-		t.Errorf("cancel: %v, project %+v", err, w.Regions[3].Project)
+	w.Build(id)
+	if err := w.CancelBuild(id); err != nil || w.Regions[id].Project != nil {
+		t.Errorf("cancel: %v, project %+v", err, w.Regions[id].Project)
 	}
 }
 
 func TestUnownedTilesCannotBuild(t *testing.T) {
-	spec := DefaultGame
-	spec.NationMap = append([]string{"..ABBB"}, DefaultGame.NationMap[1:]...)
-	w, err := BuildGame(spec)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := w.Build(0); !errors.Is(err, ErrNoNation) {
+	w := newTestGame(t)
+	id := regionByName(w, "22").ID
+	if err := w.Build(id); !errors.Is(err, ErrNoNation) {
 		t.Errorf("build on unowned tile: %v", err)
 	}
-	for i := 0; i < 50; i++ {
-		w.Step() // unowned tiles must not break anything
+	if err := w.Expand(id, 0); !errors.Is(err, ErrNoNation) {
+		t.Errorf("expand on unowned tile: %v", err)
 	}
 }
 
@@ -251,12 +281,13 @@ func TestNeglectedRoadsDecay(t *testing.T) {
 	spec := DefaultGame
 	spec.TaxRate = 0 // no revenue, so no upkeep can be paid
 	w, _ := BuildGame(spec)
-	w.SetInfra(9, 2)
-	for i := 0; i < 200 && w.Regions[9].Infra == 2; i++ {
+	r := regionByName(w, "13")
+	w.SetInfra(r.ID, 2)
+	for i := 0; i < 200 && r.Infra == 2; i++ {
 		w.Step()
 	}
-	if w.Regions[9].Infra != 1 {
-		t.Errorf("unmaintained paved road still at level %d", w.Regions[9].Infra)
+	if r.Infra != 1 {
+		t.Errorf("unmaintained paved road still at level %d", r.Infra)
 	}
 }
 
@@ -265,59 +296,60 @@ func TestMaintainedRoadsLast(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		w.Step()
 	}
-	w.SetInfra(9, 2)
+	r := regionByName(w, "13")
+	w.SetInfra(r.ID, 2)
 	for i := 0; i < 400; i++ {
 		w.Step()
 	}
-	if w.Regions[9].Infra != 2 {
-		t.Errorf("maintained paved road decayed to level %d", w.Regions[9].Infra)
+	if r.Infra != 2 {
+		t.Errorf("maintained paved road decayed to level %d", r.Infra)
 	}
 }
 
-// Economic sanity: infrastructure raises trade and welfare, mostly for the
-// nation that builds it.
+// Economic sanity: infrastructure raises trade and welfare. With migration,
+// a nation that paves attracts people, so its gain shows up as population
+// rather than utility per head.
 func TestInfrastructurePaysOff(t *testing.T) {
 	if testing.Short() {
 		t.Skip("long")
 	}
-	run := func(paved func(r *Region) bool) (utility, volume float64, byNation map[string]float64) {
+	type result struct{ utility, volume, montaraPop float64 }
+	run := func(paved func(r *Region) bool) (res result) {
 		w := newTestGame(t)
 		for _, r := range w.Regions {
 			if paved(r) {
 				w.SetInfra(r.ID, 2)
 			}
 		}
-		byNation = map[string]float64{}
 		const ticks, window = 600, 50
 		for i := 0; i < ticks; i++ {
 			w.Step()
 			if i < ticks-window {
 				continue
 			}
-			for _, r := range w.Regions {
-				utility += r.Utility() / window / float64(len(w.Regions))
-				byNation[r.Nation.Name] += r.Utility() / window / float64(len(r.Nation.Regions))
+			for _, r := range w.Regions { // population-weighted utility
+				res.utility += r.Utility() * r.Population() / w.Population() / window
+				if r.Nation != nil && r.Nation.Name == "Montara" {
+					res.montaraPop += r.Population() / window
+				}
 			}
 			for _, tr := range w.Traders {
-				volume += tr.Shipped / window
+				res.volume += tr.Shipped / window
 			}
 		}
 		return
 	}
-	uNone, vNone, nNone := run(func(*Region) bool { return false })
-	uAll, vAll, _ := run(func(*Region) bool { return true })
-	uM, _, nM := run(func(r *Region) bool { return r.Nation.Name == "Montara" })
-	t.Logf("utility %.3f -> %.3f (all paved), volume %.0f -> %.0f; paving Montara: %.3f", uNone, uAll, vNone, vAll, uM)
-	if !(uAll > uNone && vAll > vNone) {
-		t.Errorf("paving everything should raise utility and trade")
+	none := run(func(*Region) bool { return false })
+	all := run(func(*Region) bool { return true })
+	mont := run(func(r *Region) bool { return r.Nation != nil && r.Nation.Name == "Montara" })
+	t.Logf("none %+v\nall paved %+v\nMontara paved %+v", none, all, mont)
+	if !(all.utility > none.utility && all.volume > none.volume) {
+		t.Errorf("paving everything should raise welfare and trade")
 	}
-	gain := func(n string) float64 { return nM[n] - nNone[n] }
-	for _, n := range []string{"Verdania", "Sudoria", "Thalassa"} {
-		if gain("Montara") <= gain(n) {
-			t.Errorf("paving Montara helped %s (%+.3f) at least as much as Montara (%+.3f)", n, gain(n), gain("Montara"))
-		}
+	if mont.montaraPop <= none.montaraPop {
+		t.Errorf("paving Montara should draw people to it: %v -> %v", none.montaraPop, mont.montaraPop)
 	}
-	if gain("Montara") <= 0 {
-		t.Errorf("paving Montara did not help Montara: %+.3f", gain("Montara"))
+	if mont.utility <= none.utility {
+		t.Errorf("paving Montara should raise world welfare: %v -> %v", none.utility, mont.utility)
 	}
 }

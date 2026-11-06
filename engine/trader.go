@@ -52,7 +52,24 @@ func NewTrader(good GoodID, origin, dest *Region, distance, transportCost float6
 func (t *Trader) SetDistance(d float64) {
 	t.Distance = d
 	t.Tau = t.TransportCost * d * Goods[t.Good].Bulk
-	t.Arriving = math.Pow(1-t.spoilage, d)
+	spoil := t.spoilage
+	if n := t.Origin.Nation; n != nil {
+		spoil *= n.spoilageMult()
+	}
+	t.Arriving = math.Pow(1-spoil, d)
+}
+
+// border returns the import tariff the route pays and whether an embargo
+// closes it. Tariffs apply when goods enter a nation from outside it.
+func (t *Trader) border() (tariff float64, blocked bool) {
+	on, dn := t.Origin.Nation, t.Dest.Nation
+	if dn == nil || dn == on {
+		return 0, false
+	}
+	if on != nil && (dn.Embargo[on.ID] || on.Embargo[dn.ID]) {
+		return 0, true
+	}
+	return dn.Tariff[t.Good], false
 }
 
 // Name is "good:origin->dest".
@@ -66,7 +83,12 @@ func clip(x float64) float64 { return math.Max(-1, math.Min(1, x)) }
 func (t *Trader) Plan() {
 	po, pd := t.Origin.Markets, t.Dest.Markets
 	pOrig, pDest, pT := po[t.Good].Price, pd[t.Good].Price, po[Transport].Price
-	t.Margin = pDest*t.Arriving - pOrig - t.Tau*pT
+	tariff, blocked := t.border()
+	if blocked {
+		t.Q, t.Active, t.RelMargin, t.Margin, t.DesiredSpend = t.QMin, false, 0, 0, t.StockOrigin*t.Tau*pT
+		return
+	}
+	t.Margin = pDest*t.Arriving*(1-tariff) - pOrig - t.Tau*pT
 	rel := clip(t.Margin / pDest)
 	// grow with the margin, but brake when the margin is shrinking (damps cycles)
 	signal := rel + t.Damping*(rel-t.RelMargin)
