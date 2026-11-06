@@ -13,7 +13,7 @@ func TestTilesHaveOwnerClasses(t *testing.T) {
 		size[p.Class] += p.Size
 	}
 	pop := r.Population()
-	if math.Abs(size[Capitalists]-ownerPeopleShare*pop) > 1e-9 || math.Abs(size[Landowners]-ownerPeopleShare*pop) > 1e-9 {
+	if math.Abs(size[Owners]-ownerPeopleShare*pop) > 1e-9 {
 		t.Errorf("class sizes %v of %v", size, pop)
 	}
 	classic := newTestWorld(t, 1)
@@ -24,8 +24,7 @@ func TestTilesHaveOwnerClasses(t *testing.T) {
 	}
 }
 
-// Workers work; owners live off dividends, landowners from the land and
-// capitalists from industry, services and trade.
+// Workers work; owners live off dividends from land, works and trade.
 func TestOwnersLiveOffDividends(t *testing.T) {
 	w := newQuietGame(t)
 	for i := 0; i < 200; i++ {
@@ -42,8 +41,8 @@ func TestOwnersLiveOffDividends(t *testing.T) {
 		}
 	}
 	perHead := func(c Class) float64 { return income[c] / size[c] }
-	t.Logf("income per head: workers %.2f, capitalists %.2f, landowners %.2f", perHead(Workers), perHead(Capitalists), perHead(Landowners))
-	if perHead(Capitalists) <= perHead(Workers) || perHead(Landowners) <= perHead(Workers) {
+	t.Logf("income per head: workers %.2f, owners %.2f", perHead(Workers), perHead(Owners))
+	if perHead(Owners) <= perHead(Workers) {
 		t.Error("owners should earn more per head than workers")
 	}
 }
@@ -52,7 +51,7 @@ func TestOnlyWorkersAreDraftedAndMove(t *testing.T) {
 	w := newQuietGame(t)
 	r := regionByName(w, "11")
 	owners := func(r *Region) float64 {
-		return sizeOf(r.ClassPops(Capitalists)) + sizeOf(r.ClassPops(Landowners))
+		return sizeOf(r.ClassPops(Owners))
 	}
 	before := owners(r)
 	removePeople(r, 10)

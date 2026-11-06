@@ -316,7 +316,7 @@ func TestHistoryAndBreakdown(t *testing.T) {
 		} `json:"data"`
 	}
 	e.do("GET", "/api/games/"+g.ID+"/history/nations/0", "", nil, 200, &h)
-	if len(h.Ticks) == 0 || len(h.Data.GDP) != len(h.Ticks) || len(h.Data.ClassIncome) != 3 {
+	if len(h.Ticks) == 0 || len(h.Data.GDP) != len(h.Ticks) || len(h.Data.ClassIncome) != int(engine.NumClasses) {
 		t.Fatalf("nation history: %d ticks, %d gdp", len(h.Ticks), len(h.Data.GDP))
 	}
 	e.do("GET", "/api/games/"+g.ID+"/history/regions/7", "", nil, 200, nil)
@@ -328,7 +328,7 @@ func TestHistoryAndBreakdown(t *testing.T) {
 	e.do("GET", "/api/games/"+g.ID+"/history/armies/999", "", nil, 404, nil)
 	var d RegionDetail
 	e.do("GET", "/api/games/"+g.ID+"/regions/7", "", nil, 200, &d)
-	if len(d.Classes) != 3 || d.GDP <= 0 {
+	if len(d.Classes) != int(engine.NumClasses) || d.GDP <= 0 {
 		t.Errorf("region detail: %d classes, gdp %v", len(d.Classes), d.GDP)
 	}
 }

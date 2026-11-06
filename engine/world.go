@@ -106,11 +106,11 @@ func (w *World) Step() {
 		for _, f := range r.Firms {
 			// keep cash for what the firm wants to spend, but no more than it
 			// can grow into: twice what it actually spent today
-			r.PayDividends(&f.Cash, f.CashBuffer, math.Min(f.DesiredSpend, 2*f.tickCost+f.CashBuffer), r.owners(f.Sector))
+			r.PayDividends(&f.Cash, f.CashBuffer, math.Min(f.DesiredSpend, 2*f.tickCost+f.CashBuffer), r.owners())
 		}
 	}
 	for _, t := range w.Traders {
-		t.Origin.PayDividends(&t.Cash, t.CashBuffer, t.DesiredSpend, t.Origin.owners(Industry))
+		t.Origin.PayDividends(&t.Cash, t.CashBuffer, t.DesiredSpend, t.Origin.owners())
 	}
 	changed := false
 	for _, n := range w.Nations {

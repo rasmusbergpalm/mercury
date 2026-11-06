@@ -1108,7 +1108,7 @@ function classesBlock(d) {
   const rows = d.classes.map((c, i) => `<tr><td><span class="swatch" style="background:${series(i)}"></span>${cap(c.class)}</td>
     <td>${short(c.size)}</td><td>${pct(c.size / total)}</td><td>${fmt(c.income)}</td><td>${fmt(c.utility)}</td><td>${short(c.cash)}</td></tr>`).join("");
   return `<h3>Society</h3><div class="table-scroll"><table><tr><th>class</th><th>people</th><th>share</th><th>income/head</th><th>living</th><th>savings</th></tr>${rows}</table></div>
-    <p class="sub">Workers earn wages; capitalists own the works and trading houses; landowners own the farms, mines and forests.</p>`;
+    <p class="sub">Workers earn wages; owners hold the land and the means of production (farms, mines, works and trading houses) and live off their profits.</p>`;
 }
 
 function armiesHere(s, mine) {

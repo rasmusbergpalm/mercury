@@ -338,15 +338,10 @@ func (r *Region) ClassPops(c Class) []*Pop {
 	return out
 }
 
-// owners are the pops that own firms of a sector: landowners for land-bound
-// producers, capitalists for the rest (and for traders). Where that class
-// is missing (as in the classic world) everyone owns a share.
-func (r *Region) owners(s Sector) []*Pop {
-	c := Capitalists
-	if s == Primary {
-		c = Landowners
-	}
-	if o := r.ClassPops(c); len(o) > 0 {
+// owners are the pops that own the tile's firms and trading house. Where
+// there is no owner class (as in the classic world) everyone owns a share.
+func (r *Region) owners() []*Pop {
+	if o := r.ClassPops(Owners); len(o) > 0 {
 		return o
 	}
 	return r.Pops

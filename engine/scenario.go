@@ -353,25 +353,22 @@ func BuildGame(spec GameSpec) (*World, error) {
 // Owner classes in game worlds: each is this share of a tile's people and
 // starts with this share of its cash (so owners are much richer per head).
 const (
-	ownerPeopleShare = 0.02
-	ownerCashShare   = 0.05
+	ownerPeopleShare = 0.04
+	ownerCashShare   = 0.10
 )
 
-// addOwnerClasses turns part of a tile's people into a capitalist and a
-// landowner pop.
+// addOwnerClasses turns part of a tile's people into an owner pop.
 func addOwnerClasses(r *Region) {
 	pop, cash := r.Population(), 0.0
 	for _, p := range r.Pops {
 		cash += p.Cash
 	}
 	for _, p := range r.Pops {
-		p.Size *= 1 - 2*ownerPeopleShare
-		p.Cash *= 1 - 2*ownerCashShare
+		p.Size *= 1 - ownerPeopleShare
+		p.Cash *= 1 - ownerCashShare
 	}
-	for _, c := range []Class{Capitalists, Landowners} {
-		p := NewPop(ownerPeopleShare*pop, ownerCashShare*cash)
-		p.Class = c
-		r.Pops = append(r.Pops, p)
-		r.popDemand = append(r.popDemand, make([]float64, NumGoods))
-	}
+	p := NewPop(ownerPeopleShare*pop, ownerCashShare*cash)
+	p.Class = Owners
+	r.Pops = append(r.Pops, p)
+	r.popDemand = append(r.popDemand, make([]float64, NumGoods))
 }

@@ -12,14 +12,13 @@ type Class int
 const (
 	// Workers sell their labor (and fill the armies).
 	Workers Class = iota
-	// Capitalists own industry, services and trading houses.
-	Capitalists
-	// Landowners own farms, mines, forests and plantations.
-	Landowners
+	// Owners own the land and the means of production: farms, mines, works,
+	// services and trading houses. They live off dividends.
+	Owners
 	NumClasses
 )
 
-var classNames = [...]string{"workers", "capitalists", "landowners"}
+var classNames = [...]string{"workers", "owners"}
 
 func (c Class) String() string { return classNames[c] }
 
