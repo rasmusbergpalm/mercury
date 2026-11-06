@@ -1,0 +1,317 @@
+// Package server exposes a running Mercury world over a JSON HTTP API.
+package server
+
+import (
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"math"
+	"net/http"
+	"strconv"
+	"sync"
+
+	"github.com/rasmusbergpalm/mercury/engine"
+)
+
+// Server owns one world and serializes access to it.
+type Server struct {
+	mu   sync.Mutex
+	w    *engine.World
+	cost float64
+	mux  *http.ServeMux
+}
+
+// MaxStep is the most ticks one /api/step call may advance.
+const MaxStep = 1000
+
+// New builds a server around a fresh world. static, if non-nil, is served at /.
+func New(transportCost float64, static fs.FS) (*Server, error) {
+	s := &Server{mux: http.NewServeMux()}
+	if err := s.reset(transportCost); err != nil {
+		return nil, err
+	}
+	s.mux.HandleFunc("GET /api/world", s.handleWorld)
+	s.mux.HandleFunc("GET /api/state", s.handleState)
+	s.mux.HandleFunc("GET /api/regions/{id}", s.handleRegion)
+	s.mux.HandleFunc("POST /api/step", s.handleStep)
+	s.mux.HandleFunc("POST /api/reset", s.handleReset)
+	if static != nil {
+		s.mux.Handle("GET /", http.FileServerFS(static))
+	}
+	return s, nil
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.mux.ServeHTTP(w, r) }
+
+func (s *Server) reset(cost float64) error {
+	w, err := engine.BuildWorld(cost, engine.DefaultMap)
+	if err != nil {
+		return err
+	}
+	s.w, s.cost = w, cost
+	return nil
+}
+
+// ---- JSON types ------------------------------------------------------------
+
+type GoodInfo struct {
+	Name     string  `json:"name"`
+	Bulk     float64 `json:"bulk"`
+	Spoilage float64 `json:"spoilage"`
+	Tier     string  `json:"tier"` // "" for goods pops don't consume
+}
+
+type TerrainInfo struct {
+	Name     string  `json:"name"`
+	Symbol   string  `json:"symbol"`
+	MoveCost float64 `json:"move_cost"`
+}
+
+type RegionInfo struct {
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Row     int    `json:"row"`
+	Col     int    `json:"col"`
+	Terrain string `json:"terrain"`
+}
+
+type LinkInfo struct {
+	A   int     `json:"a"`
+	B   int     `json:"b"`
+	Hop float64 `json:"hop"`
+}
+
+// WorldInfo is the static description of the world.
+type WorldInfo struct {
+	Rows     int           `json:"rows"`
+	Cols     int           `json:"cols"`
+	Goods    []GoodInfo    `json:"goods"`
+	Tiers    []string      `json:"tiers"`
+	Terrains []TerrainInfo `json:"terrains"`
+	Regions  []RegionInfo  `json:"regions"`
+	Links    []LinkInfo    `json:"links"`
+}
+
+type RegionState struct {
+	ID         int       `json:"id"`
+	Wage       float64   `json:"wage"`
+	Utility    float64   `json:"utility"`
+	Population float64   `json:"population"`
+	Employed   float64   `json:"employed"`
+	TierSpend  []float64 `json:"tier_spend"`
+	Prices     []float64 `json:"prices"`
+}
+
+type Flow struct {
+	From int     `json:"from"`
+	To   int     `json:"to"`
+	Good int     `json:"good"`
+	Qty  float64 `json:"qty"`
+}
+
+// State is the dynamic state of the world.
+type State struct {
+	Tick          int           `json:"tick"`
+	Money         float64       `json:"money"`
+	TransportCost float64       `json:"transport_cost"` // null for autarky
+	Autarky       bool          `json:"autarky"`
+	Regions       []RegionState `json:"regions"`
+	Flows         []Flow        `json:"flows"`
+}
+
+type PopState struct {
+	Size     float64 `json:"size"`
+	Cash     float64 `json:"cash"`
+	Employed float64 `json:"employed"`
+}
+
+type FirmState struct {
+	Name      string  `json:"name"`
+	Output    int     `json:"output"`
+	Labor     float64 `json:"labor"`
+	Produced  float64 `json:"produced"`
+	Inventory float64 `json:"inventory"`
+	Cash      float64 `json:"cash"`
+}
+
+type MarketState struct {
+	Good      int     `json:"good"`
+	Price     float64 `json:"price"`
+	Supply    float64 `json:"supply"`
+	Demand    float64 `json:"demand"`
+	PerPerson float64 `json:"consumed_per_person"`
+}
+
+// RegionDetail is everything about one region.
+type RegionDetail struct {
+	Info    RegionInfo    `json:"info"`
+	State   RegionState   `json:"state"`
+	Pops    []PopState    `json:"pops"`
+	Firms   []FirmState   `json:"firms"`
+	Markets []MarketState `json:"markets"`
+	Exports []Flow        `json:"exports"`
+	Imports []Flow        `json:"imports"`
+}
+
+// ---- building responses ----------------------------------------------------
+
+func (s *Server) worldInfo() WorldInfo {
+	info := WorldInfo{Rows: s.w.Rows, Cols: s.w.Cols}
+	for g, good := range engine.Goods {
+		tier := ""
+		if t := engine.TierOf[g]; t >= 0 {
+			tier = t.String()
+		}
+		info.Goods = append(info.Goods, GoodInfo{good.Name, good.Bulk, good.Spoilage, tier})
+	}
+	for t := engine.Tier(0); t < engine.NumTiers; t++ {
+		info.Tiers = append(info.Tiers, t.String())
+	}
+	for _, t := range engine.Terrains {
+		info.Terrains = append(info.Terrains, TerrainInfo{t.Name, string(t.Symbol), t.MoveCost})
+	}
+	for _, r := range s.w.Regions {
+		info.Regions = append(info.Regions, regionInfo(r))
+	}
+	for _, l := range s.w.Links {
+		info.Links = append(info.Links, LinkInfo{l.A, l.B, l.Hop})
+	}
+	return info
+}
+
+func regionInfo(r *engine.Region) RegionInfo {
+	return RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain}
+}
+
+func (s *Server) regionState(i int) RegionState {
+	r := s.w.Regions[i]
+	ts := r.TierSpend(s.w.TradePrices[i])
+	employed := 0.0
+	for _, p := range r.Pops {
+		employed += p.Employed()
+	}
+	return RegionState{ID: r.ID, Wage: r.Wage, Utility: r.Utility(), Population: r.Population(),
+		Employed: employed, TierSpend: ts[:], Prices: r.Prices()}
+}
+
+const minFlow = 1e-3
+
+func (s *Server) state() State {
+	st := State{Tick: s.w.Tick, Money: s.w.Money(), TransportCost: s.cost,
+		Autarky: math.IsInf(s.cost, 1)}
+	if st.Autarky {
+		st.TransportCost = 0
+	}
+	for i := range s.w.Regions {
+		st.Regions = append(st.Regions, s.regionState(i))
+	}
+	st.Flows = []Flow{}
+	for _, t := range s.w.Traders {
+		if t.Shipped > minFlow {
+			st.Flows = append(st.Flows, Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped})
+		}
+	}
+	return st
+}
+
+func (s *Server) regionDetail(i int) RegionDetail {
+	r := s.w.Regions[i]
+	d := RegionDetail{Info: regionInfo(r), State: s.regionState(i),
+		Exports: []Flow{}, Imports: []Flow{}}
+	for _, p := range r.Pops {
+		d.Pops = append(d.Pops, PopState{p.Size, p.Cash, p.Employed()})
+	}
+	for _, f := range r.Firms {
+		d.Firms = append(d.Firms, FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash})
+	}
+	pop := r.Population()
+	for g, m := range r.Markets {
+		consumed := 0.0
+		for _, p := range r.Pops {
+			consumed += p.Consumed[g]
+		}
+		d.Markets = append(d.Markets, MarketState{g, m.Price, m.Supply, m.Demand, consumed / pop})
+	}
+	for _, t := range s.w.Traders {
+		if t.Shipped <= minFlow {
+			continue
+		}
+		f := Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped}
+		if t.Origin == r {
+			d.Exports = append(d.Exports, f)
+		}
+		if t.Dest == r {
+			d.Imports = append(d.Imports, f)
+		}
+	}
+	return d
+}
+
+// ---- handlers --------------------------------------------------------------
+
+func writeJSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) handleWorld(w http.ResponseWriter, _ *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	writeJSON(w, s.worldInfo())
+}
+
+func (s *Server) handleState(w http.ResponseWriter, _ *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	writeJSON(w, s.state())
+}
+
+func (s *Server) handleRegion(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id < 0 || id >= len(s.w.Regions) {
+		http.Error(w, "no such region", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, s.regionDetail(id))
+}
+
+func (s *Server) handleStep(w http.ResponseWriter, r *http.Request) {
+	n := 1
+	if v := r.URL.Query().Get("n"); v != "" {
+		var err error
+		if n, err = strconv.Atoi(v); err != nil || n < 1 || n > MaxStep {
+			http.Error(w, fmt.Sprintf("n must be an integer in [1, %d]", MaxStep), http.StatusBadRequest)
+			return
+		}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := 0; i < n; i++ {
+		s.w.Step()
+	}
+	writeJSON(w, s.state())
+}
+
+func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) {
+	cost := 1.0
+	if v := r.URL.Query().Get("cost"); v != "" {
+		var err error
+		if v == "inf" {
+			cost = math.Inf(1)
+		} else if cost, err = strconv.ParseFloat(v, 64); err != nil || cost < 0 || math.IsNaN(cost) {
+			http.Error(w, "cost must be a non-negative number or inf", http.StatusBadRequest)
+			return
+		}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.reset(cost); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, s.state())
+}
