@@ -14,6 +14,8 @@ type World struct {
 	// Game rules, off in the classic world: firms invest in building levels,
 	// and people migrate between neighbouring tiles.
 	Investment, Migration bool
+	// Spec is the scenario a game world was built from (nil for the classic world).
+	Spec *GameSpec
 	// TradePrices are the prices trade happened at in the last tick, per region.
 	TradePrices [][]float64
 }
@@ -54,6 +56,7 @@ func (w *World) Money() float64 {
 
 // Step advances the world one tick.
 func (w *World) Step() {
+	w.runAI()
 	for i, r := range w.Regions {
 		copy(w.TradePrices[i], r.refreshPrices())
 	}
@@ -95,6 +98,7 @@ func (w *World) Step() {
 	if changed {
 		w.refreshAllHops()
 	}
+	w.campaigns()
 	if w.Investment {
 		for _, r := range w.Regions {
 			r.settleFirms()
@@ -139,40 +143,119 @@ func (w *World) Expand(region, firm int) error {
 	return nil
 }
 
-// Annex makes an unowned tile bordering a nation part of it. The nation pays
-// AnnexCostPerHead per inhabitant, to the inhabitants.
-func (w *World) Annex(region, nation int) error {
-	r, n := w.Regions[region], w.Nations[nation]
-	if r.Nation != nil {
-		return ErrOwned
-	}
-	adjacent := false
-	for _, nb := range HexNeighbors(r.Row, r.Col, w.Rows, w.Cols) {
-		adjacent = adjacent || w.Regions[nb[0]*w.Cols+nb[1]].Nation == n
-	}
-	if !adjacent {
+// Occupation rules.
+const (
+	occupyRate        = 0.01 // progress per tick at full strength: 100 ticks per tile
+	occupyNeedPerHead = 0.5  // army needed per inhabitant to occupy at full speed
+	defenderAdvantage = 1.5  // a defended tile counts its garrison this many times
+	attrition         = 0.005
+)
+
+// StartCampaign sends a nation's army to occupy a tile that borders it.
+// Unowned tiles have no defenders and fall slowly to any army; owned tiles
+// are defended by their owner's army, spread over its tiles.
+func (w *World) StartCampaign(nation, region int) error {
+	n, r := w.Nations[nation], w.Regions[region]
+	switch {
+	case n.Eliminated():
+		return ErrEliminated
+	case r.Nation == n:
+		return ErrOwnTile
+	case !w.borders(n, r):
 		return ErrNotAdjacent
+	case n.Army <= 0:
+		return ErrNoArmy
 	}
-	cost := AnnexCostPerHead * r.Population()
-	if n.Treasury < cost {
-		return ErrTreasury
+	if n.Campaign == nil || n.Campaign.Target != region {
+		n.Campaign = &Campaign{Target: region}
 	}
-	n.Treasury -= cost
-	pop := r.Population()
-	for _, p := range r.Pops {
-		p.Cash += cost * p.Size / pop
+	return nil
+}
+
+// CancelCampaign calls the nation's army home.
+func (w *World) CancelCampaign(nation int) error {
+	n := w.Nations[nation]
+	if n.Campaign == nil {
+		return ErrNoCampaign
+	}
+	n.Campaign = nil
+	return nil
+}
+
+func (w *World) borders(n *Nation, r *Region) bool {
+	for _, nb := range HexNeighbors(r.Row, r.Col, w.Rows, w.Cols) {
+		if w.Regions[nb[0]*w.Cols+nb[1]].Nation == n {
+			return true
+		}
+	}
+	return false
+}
+
+// campaigns advances every occupation: progress grows with the attacker's
+// margin over the defence, both sides lose strength while they fight, and
+// the tile changes hands when progress reaches 1.
+func (w *World) campaigns() {
+	for _, n := range w.Nations {
+		c := n.Campaign
+		if c == nil {
+			continue
+		}
+		r := w.Regions[c.Target]
+		if n.Eliminated() || r.Nation == n || !w.borders(n, r) {
+			n.Campaign = nil
+			continue
+		}
+		defense := 0.0
+		if r.Nation != nil {
+			defense = r.Nation.Defense()
+		}
+		net := n.Army - defenderAdvantage*defense
+		if net > 0 {
+			c.Progress += occupyRate * math.Min(1, net/(occupyNeedPerHead*r.Population()))
+		} else {
+			c.Progress = math.Max(0, c.Progress-occupyRate)
+		}
+		if defense > 0 {
+			loss := attrition * math.Min(n.Army, defense)
+			n.Army -= loss
+			r.Nation.Army -= loss
+		}
+		if c.Progress >= 1 {
+			n.Campaign = nil
+			w.transfer(r, n)
+		}
+	}
+}
+
+// transfer hands a tile to a nation. Its infrastructure stays; projects and
+// state-funded expansions under way are abandoned.
+func (w *World) transfer(r *Region, n *Nation) {
+	if old := r.Nation; old != nil {
+		for i, x := range old.Regions {
+			if x == r {
+				old.Regions = append(old.Regions[:i:i], old.Regions[i+1:]...)
+				break
+			}
+		}
+		if old.Eliminated() {
+			old.Army, old.Campaign = 0, nil
+		}
+	}
+	r.Project = nil
+	for _, f := range r.Firms {
+		f.TFP = f.BaseTFP
+		if f.Expansion != nil && f.Expansion.Public {
+			f.Expansion = nil
+		}
 	}
 	r.Nation = n
 	n.Regions = append(n.Regions, r)
 	n.applyTech()
 	w.refreshAllHops()
-	return nil
 }
 
-// AnnexCost is what annexing a tile would cost now.
-func (w *World) AnnexCost(region int) float64 {
-	return AnnexCostPerHead * w.Regions[region].Population()
-}
+// Annex hands a tile to a nation outright (scenarios, tests).
+func (w *World) Annex(region, nation int) { w.transfer(w.Regions[region], w.Nations[nation]) }
 
 // Migration rules (game worlds only).
 const (

@@ -98,7 +98,7 @@ const (
 func (r *Region) planInvestment() {
 	price := r.Markets[Construction].Price
 	for _, f := range r.Firms {
-		if f.Expansion == nil && f.Levels < f.MaxLevels && f.age > investMinAge {
+		if f.Expansion == nil && f.Levels < f.MaxLevels && f.Age > investMinAge {
 			perLevel := f.ProfitEMA / float64(f.Levels)
 			if perLevel > 0 && perLevel*investPayback > LevelCost*price {
 				f.Expansion = &Expansion{}
@@ -120,20 +120,20 @@ func (r *Region) planInvestment() {
 // that keep losing money.
 func (r *Region) settleFirms() {
 	for _, f := range r.Firms {
-		f.age++
+		f.Age++
 		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.tickRevenue-f.tickCost)
 		if e := f.Expansion; e != nil && e.Delivered >= LevelCost-1e-9 {
 			f.Levels++
 			f.Expansion = nil
 		}
 		if f.ProfitEMA < 0 && f.Levels > 1 {
-			f.lossTicks++
-			if f.lossTicks > disinvestAt {
+			f.LossTicks++
+			if f.LossTicks > disinvestAt {
 				f.Levels--
-				f.lossTicks = 0
+				f.LossTicks = 0
 			}
 		} else {
-			f.lossTicks = 0
+			f.LossTicks = 0
 		}
 	}
 }

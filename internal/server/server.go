@@ -1,380 +1,162 @@
-// Package server exposes a running Mercury world over a JSON HTTP API.
+// Package server hosts Mercury games over a JSON HTTP API: a lobby of games,
+// players who each take a nation, server-side clocks, and saves.
 package server
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"math"
 	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/rasmusbergpalm/mercury/engine"
 )
 
-// Server owns one world and serializes access to it.
+// Server hosts many games.
 type Server struct {
-	mu   sync.Mutex
-	w    *engine.World
-	cost float64
-	mux  *http.ServeMux
+	mu      sync.Mutex
+	games   map[string]*Game
+	dataDir string // where save slots live; "" disables them
+	mux     *http.ServeMux
 }
 
-// MaxStep is the most ticks one /api/step call may advance.
-const MaxStep = 1000
+// Limits.
+const (
+	MaxStep    = 1000
+	MaxGames   = 50
+	maxImport  = 64 << 20
+	clockEvery = 100 * time.Millisecond
+)
 
-// New builds a server around a fresh world. static, if non-nil, is served at /.
-func New(transportCost float64, static fs.FS) (*Server, error) {
-	s := &Server{mux: http.NewServeMux()}
-	if err := s.reset(transportCost); err != nil {
-		return nil, err
+// New makes a server. static, if non-nil, is served at /; dataDir holds saves.
+func New(static fs.FS, dataDir string) *Server {
+	s := &Server{games: map[string]*Game{}, dataDir: dataDir, mux: http.NewServeMux()}
+	m := s.mux
+	m.HandleFunc("GET /api/games", s.handleListGames)
+	m.HandleFunc("POST /api/games", s.handleCreateGame)
+	m.HandleFunc("POST /api/games/import", s.handleImport)
+	m.HandleFunc("DELETE /api/games/{gid}", s.game(s.handleDeleteGame))
+	m.HandleFunc("GET /api/games/{gid}/world", s.game(s.handleWorld))
+	m.HandleFunc("GET /api/games/{gid}/state", s.game(s.handleState))
+	m.HandleFunc("GET /api/games/{gid}/regions/{id}", s.game(s.handleRegion))
+	m.HandleFunc("POST /api/games/{gid}/step", s.game(s.handleStep))
+	m.HandleFunc("POST /api/games/{gid}/clock", s.game(s.handleClock))
+	m.HandleFunc("POST /api/games/{gid}/join", s.game(s.handleJoin))
+	m.HandleFunc("POST /api/games/{gid}/leave", s.game(s.handleLeave))
+	m.HandleFunc("POST /api/games/{gid}/save", s.game(s.handleSave))
+	m.HandleFunc("GET /api/games/{gid}/export", s.game(s.handleExport))
+	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "budget", "campaign", "campaign/cancel"} {
+		m.HandleFunc("POST /api/games/{gid}/nations/{nid}/"+cmd, s.game(s.nationCommand(cmd)))
 	}
-	s.mux.HandleFunc("GET /api/world", s.handleWorld)
-	s.mux.HandleFunc("GET /api/state", s.handleState)
-	s.mux.HandleFunc("GET /api/regions/{id}", s.handleRegion)
-	s.mux.HandleFunc("POST /api/step", s.handleStep)
-	s.mux.HandleFunc("POST /api/reset", s.handleReset)
-	s.mux.HandleFunc("POST /api/regions/{id}/build", s.handleBuild)
-	s.mux.HandleFunc("POST /api/regions/{id}/cancel", s.handleCancel)
-	s.mux.HandleFunc("POST /api/nations/{id}/tax", s.handleTax)
-	s.mux.HandleFunc("POST /api/nations/{id}/tariff", s.handleTariff)
-	s.mux.HandleFunc("POST /api/nations/{id}/embargo", s.handleEmbargo)
-	s.mux.HandleFunc("POST /api/nations/{id}/research", s.handleResearch)
-	s.mux.HandleFunc("POST /api/nations/{id}/funding", s.handleFunding)
-	s.mux.HandleFunc("POST /api/regions/{id}/annex", s.handleAnnex)
-	s.mux.HandleFunc("POST /api/regions/{id}/firms/{firm}/expand", s.handleExpand)
+	for _, cmd := range []string{"build", "cancel"} {
+		m.HandleFunc("POST /api/games/{gid}/regions/{id}/"+cmd, s.game(s.regionCommand(cmd)))
+	}
+	m.HandleFunc("POST /api/games/{gid}/regions/{id}/firms/{firm}/expand", s.game(s.regionCommand("expand")))
+	m.HandleFunc("GET /api/saves", s.handleListSaves)
+	m.HandleFunc("POST /api/saves/{slot}/load", s.handleLoad)
 	if static != nil {
-		s.mux.Handle("GET /", http.FileServerFS(static))
+		m.Handle("GET /", http.FileServerFS(static))
 	}
-	return s, nil
+	return s
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.mux.ServeHTTP(w, r) }
 
-func (s *Server) reset(cost float64) error {
+// Warmup is how many ticks a new game runs before anyone sees it, so that it
+// opens on a working economy rather than on starting prices.
+const Warmup = 100
+
+// CreateGame adds a game on the default map, run in by Warmup ticks.
+func (s *Server) CreateGame(name string, transportCost float64) (*Game, error) {
 	spec := engine.DefaultGame
-	spec.TransportCost = cost
+	spec.TransportCost = transportCost
+	spec.AI = true
 	w, err := engine.BuildGame(spec)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.w, s.cost = w, cost
-	return nil
-}
-
-// ---- JSON types ------------------------------------------------------------
-
-type GoodInfo struct {
-	Name     string  `json:"name"`
-	Bulk     float64 `json:"bulk"`
-	Spoilage float64 `json:"spoilage"`
-	Tier     string  `json:"tier"` // "" for goods pops don't consume
-}
-
-type TerrainInfo struct {
-	Name     string  `json:"name"`
-	Symbol   string  `json:"symbol"`
-	MoveCost float64 `json:"move_cost"`
-}
-
-type RegionInfo struct {
-	ID      int    `json:"id"`
-	Name    string `json:"name"`
-	Row     int    `json:"row"`
-	Col     int    `json:"col"`
-	Terrain string `json:"terrain"`
-	Nation  int    `json:"nation"` // -1 if unowned
-}
-
-type NationInfo struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Color string `json:"color"`
-}
-
-type InfraInfo struct {
-	Name      string             `json:"name"`
-	MoveMult  float64            `json:"move_mult"`
-	Cost      float64            `json:"cost"`
-	Upkeep    float64            `json:"upkeep"`
-	Tech      string             `json:"tech"`
-	Materials map[string]float64 `json:"materials"`
-}
-
-type TechInfo struct {
-	Name     string   `json:"name"`
-	Cost     float64  `json:"cost"`
-	Requires []string `json:"requires"`
-	Effect   string   `json:"effect"`
-}
-
-type LinkInfo struct {
-	A   int     `json:"a"`
-	B   int     `json:"b"`
-	Hop float64 `json:"hop"`
-}
-
-// WorldInfo is the static description of the world.
-type WorldInfo struct {
-	Rows     int           `json:"rows"`
-	Cols     int           `json:"cols"`
-	Goods    []GoodInfo    `json:"goods"`
-	Tiers    []string      `json:"tiers"`
-	Terrains []TerrainInfo `json:"terrains"`
-	Regions  []RegionInfo  `json:"regions"`
-	Links    []LinkInfo    `json:"links"`
-	Nations  []NationInfo  `json:"nations"`
-	Infra    []InfraInfo   `json:"infra_levels"`
-	Techs    []TechInfo    `json:"techs"`
-	// LevelCost is the construction one firm building level costs.
-	LevelCost float64 `json:"level_cost"`
-}
-
-type RegionState struct {
-	ID         int       `json:"id"`
-	Wage       float64   `json:"wage"`
-	Utility    float64   `json:"utility"`
-	Population float64   `json:"population"`
-	Employed   float64   `json:"employed"`
-	TierSpend  []float64 `json:"tier_spend"`
-	Prices     []float64 `json:"prices"`
-	Nation     int       `json:"nation"` // -1 if unowned
-	Infra      int       `json:"infra"`
-	MoveCost   float64   `json:"move_cost"`
-	AnnexCost  float64   `json:"annex_cost"`
-	Project    *Project  `json:"project"` // null if nothing is being built
-}
-
-type Project struct {
-	Target    int     `json:"target"`
-	Delivered float64 `json:"delivered"`
-	Required  float64 `json:"required"`
-}
-
-type NationState struct {
-	ID            int       `json:"id"`
-	Treasury      float64   `json:"treasury"`
-	TaxRate       float64   `json:"tax_rate"`
-	Revenue       float64   `json:"revenue"`
-	TariffRevenue float64   `json:"tariff_revenue"`
-	Rebate        float64   `json:"rebate"`
-	Spending      float64   `json:"spending"`
-	Tariff        []float64 `json:"tariff"`  // per good
-	Embargo       []bool    `json:"embargo"` // per nation
-	Funding       float64   `json:"research_funding"`
-	Researching   int       `json:"researching"` // -1: none
-	Points        float64   `json:"research_points"`
-	Known         []bool    `json:"known"` // per tech
-	Population    float64   `json:"population"`
-}
-
-type Flow struct {
-	From int     `json:"from"`
-	To   int     `json:"to"`
-	Good int     `json:"good"`
-	Qty  float64 `json:"qty"`
-}
-
-// State is the dynamic state of the world.
-type State struct {
-	Tick          int           `json:"tick"`
-	Money         float64       `json:"money"`
-	TransportCost float64       `json:"transport_cost"` // null for autarky
-	Autarky       bool          `json:"autarky"`
-	Regions       []RegionState `json:"regions"`
-	Flows         []Flow        `json:"flows"`
-	Nations       []NationState `json:"nations"`
-	Hops          []float64     `json:"hops"` // aligned with WorldInfo.Links
-}
-
-type PopState struct {
-	Size     float64 `json:"size"`
-	Cash     float64 `json:"cash"`
-	Employed float64 `json:"employed"`
-}
-
-type FirmState struct {
-	Name      string     `json:"name"`
-	Output    int        `json:"output"`
-	Labor     float64    `json:"labor"`
-	Produced  float64    `json:"produced"`
-	Inventory float64    `json:"inventory"`
-	Cash      float64    `json:"cash"`
-	Levels    int        `json:"levels"`
-	MaxLevels int        `json:"max_levels"`
-	Profit    float64    `json:"profit"` // moving average per tick
-	Expansion *Expansion `json:"expansion"`
-}
-
-type Expansion struct {
-	Delivered float64 `json:"delivered"`
-	Public    bool    `json:"public"`
-}
-
-type MarketState struct {
-	Good      int     `json:"good"`
-	Price     float64 `json:"price"`
-	Supply    float64 `json:"supply"`
-	Demand    float64 `json:"demand"`
-	PerPerson float64 `json:"consumed_per_person"`
-}
-
-// RegionDetail is everything about one region.
-type RegionDetail struct {
-	Info    RegionInfo    `json:"info"`
-	State   RegionState   `json:"state"`
-	Pops    []PopState    `json:"pops"`
-	Firms   []FirmState   `json:"firms"`
-	Markets []MarketState `json:"markets"`
-	Exports []Flow        `json:"exports"`
-	Imports []Flow        `json:"imports"`
-}
-
-// ---- building responses ----------------------------------------------------
-
-func (s *Server) worldInfo() WorldInfo {
-	info := WorldInfo{Rows: s.w.Rows, Cols: s.w.Cols}
-	for g, good := range engine.Goods {
-		tier := ""
-		if t := engine.TierOf[g]; t >= 0 {
-			tier = t.String()
-		}
-		info.Goods = append(info.Goods, GoodInfo{good.Name, good.Bulk, good.Spoilage, tier})
+	for i := 0; i < Warmup; i++ {
+		w.Step()
 	}
-	for t := engine.Tier(0); t < engine.NumTiers; t++ {
-		info.Tiers = append(info.Tiers, t.String())
-	}
-	for _, t := range engine.Terrains {
-		info.Terrains = append(info.Terrains, TerrainInfo{t.Name, string(t.Symbol), t.MoveCost})
-	}
-	for _, r := range s.w.Regions {
-		info.Regions = append(info.Regions, regionInfo(r))
-	}
-	for _, l := range s.w.Links {
-		info.Links = append(info.Links, LinkInfo{l.A, l.B, l.Hop})
-	}
-	for _, n := range s.w.Nations {
-		info.Nations = append(info.Nations, NationInfo{n.ID, n.Name, n.Color})
-	}
-	for _, l := range engine.InfraLevels {
-		mats := map[string]float64{}
-		for g, q := range l.Materials {
-			mats[engine.Goods[g].Name] = q
-		}
-		info.Infra = append(info.Infra, InfraInfo{l.Name, l.MoveMult, l.Cost, l.Upkeep, l.Tech, mats})
-	}
-	for _, t := range engine.Techs {
-		req := t.Requires
-		if req == nil {
-			req = []string{}
-		}
-		info.Techs = append(info.Techs, TechInfo{t.Name, t.Cost, req, t.Effect})
-	}
-	info.LevelCost = engine.LevelCost
-	return info
+	return s.add(name, w)
 }
 
-func regionInfo(r *engine.Region) RegionInfo {
-	nation := -1
-	if r.Nation != nil {
-		nation = r.Nation.ID
+func (s *Server) add(name string, w *engine.World) (*Game, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.games) >= MaxGames {
+		return nil, fmt.Errorf("the server already hosts %d games", MaxGames)
 	}
-	return RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain, nation}
+	g := newGame(name, w)
+	s.games[g.ID] = g
+	return g, nil
 }
 
-func (s *Server) regionState(i int) RegionState {
-	r := s.w.Regions[i]
-	ts := r.TierSpend(s.w.TradePrices[i])
-	employed := 0.0
-	for _, p := range r.Pops {
-		employed += p.Employed()
-	}
-	nation := -1
-	if r.Nation != nil {
-		nation = r.Nation.ID
-	}
-	st := RegionState{ID: r.ID, Wage: r.Wage, Utility: r.Utility(), Population: r.Population(),
-		Employed: employed, TierSpend: ts[:], Prices: r.Prices(), Nation: nation, Infra: r.Infra,
-		MoveCost: r.MoveCost(), AnnexCost: s.w.AnnexCost(i)}
-	if p := r.Project; p != nil {
-		st.Project = &Project{p.Target, p.Delivered, p.Required()}
-	}
-	return st
-}
-
-const minFlow = 1e-3
-
-func (s *Server) state() State {
-	st := State{Tick: s.w.Tick, Money: s.w.Money(), TransportCost: s.cost,
-		Autarky: math.IsInf(s.cost, 1)}
-	if st.Autarky {
-		st.TransportCost = 0
-	}
-	for i := range s.w.Regions {
-		st.Regions = append(st.Regions, s.regionState(i))
-	}
-	st.Flows = []Flow{}
-	for _, t := range s.w.Traders {
-		if t.Shipped > minFlow {
-			st.Flows = append(st.Flows, Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped})
+// Run drives every running game's clock until stop is closed.
+func (s *Server) Run(stop <-chan struct{}) {
+	t := time.NewTicker(clockEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-t.C:
+			for _, g := range s.list() {
+				g.mu.Lock()
+				g.advance(clockEvery.Seconds())
+				g.mu.Unlock()
+			}
 		}
 	}
-	for _, n := range s.w.Nations {
-		pop := 0.0
-		for _, r := range n.Regions {
-			pop += r.Population()
-		}
-		st.Nations = append(st.Nations, NationState{n.ID, n.Treasury, n.TaxRate, n.Revenue, n.TariffRevenue,
-			n.Rebate, n.Spending, n.Tariff, n.Embargo, n.ResearchFunding, n.Researching, n.ResearchPoints,
-			n.Known, pop})
-	}
-	for _, l := range s.w.Links {
-		st.Hops = append(st.Hops, l.Hop)
-	}
-	return st
 }
 
-func (s *Server) regionDetail(i int) RegionDetail {
-	r := s.w.Regions[i]
-	d := RegionDetail{Info: regionInfo(r), State: s.regionState(i),
-		Exports: []Flow{}, Imports: []Flow{}}
-	for _, p := range r.Pops {
-		d.Pops = append(d.Pops, PopState{p.Size, p.Cash, p.Employed()})
+func (s *Server) list() []*Game {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]*Game, 0, len(s.games))
+	for _, g := range s.games {
+		out = append(out, g)
 	}
-	for _, f := range r.Firms {
-		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil}
-		if e := f.Expansion; e != nil {
-			fs.Expansion = &Expansion{e.Delivered, e.Public}
-		}
-		d.Firms = append(d.Firms, fs)
-	}
-	pop := r.Population()
-	for g, m := range r.Markets {
-		consumed := 0.0
-		for _, p := range r.Pops {
-			consumed += p.Consumed[g]
-		}
-		d.Markets = append(d.Markets, MarketState{g, m.Price, m.Supply, m.Demand, consumed / pop})
-	}
-	for _, t := range s.w.Traders {
-		if t.Shipped <= minFlow {
-			continue
-		}
-		f := Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped}
-		if t.Origin == r {
-			d.Exports = append(d.Exports, f)
-		}
-		if t.Dest == r {
-			d.Imports = append(d.Imports, f)
-		}
-	}
-	return d
+	sort.Slice(out, func(i, j int) bool { return out[i].Created.Before(out[j].Created) })
+	return out
 }
 
-// ---- handlers --------------------------------------------------------------
+// ---- helpers ----------------------------------------------------------------
+
+type httpError struct {
+	status int
+	err    error
+}
+
+func (e httpError) Error() string { return e.err.Error() }
+
+func fail(status int, err error) error { return httpError{status, err} }
+
+func badRequest(format string, a ...any) error {
+	return fail(http.StatusBadRequest, fmt.Errorf(format, a...))
+}
+
+// statusOf maps errors to HTTP statuses: explicit ones as given, permission
+// errors to 403, and anything the game refuses to 409 Conflict.
+func statusOf(err error) int {
+	var he httpError
+	switch {
+	case errors.As(err, &he):
+		return he.status
+	case errors.Is(err, ErrNotPlayer), errors.Is(err, ErrNotInGame):
+		return http.StatusForbidden
+	}
+	return http.StatusConflict
+}
 
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -383,224 +165,498 @@ func writeJSON(w http.ResponseWriter, v any) {
 	}
 }
 
-func (s *Server) handleWorld(w http.ResponseWriter, _ *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	writeJSON(w, s.worldInfo())
-}
-
-func (s *Server) handleState(w http.ResponseWriter, _ *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	writeJSON(w, s.state())
-}
-
-// pathID parses the {id} path value as an index below n.
-func pathID(r *http.Request, n int) (int, bool) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	return id, err == nil && id >= 0 && id < n
-}
-
-func (s *Server) handleRegion(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	id, ok := pathID(r, len(s.w.Regions))
-	if !ok {
-		http.Error(w, "no such region", http.StatusNotFound)
-		return
+func token(r *http.Request) string {
+	if t := r.Header.Get("X-Player-Token"); t != "" {
+		return t
 	}
-	writeJSON(w, s.regionDetail(id))
-}
-
-// act runs a game command on a region and replies with the new state, or
-// 409 Conflict if the game refuses it.
-func (s *Server) act(w http.ResponseWriter, r *http.Request, do func(id int) error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	id, ok := pathID(r, len(s.w.Regions))
-	if !ok {
-		http.Error(w, "no such region", http.StatusNotFound)
-		return
-	}
-	if err := do(id); err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
-		return
-	}
-	writeJSON(w, s.state())
-}
-
-func (s *Server) handleBuild(w http.ResponseWriter, r *http.Request) {
-	s.act(w, r, func(id int) error { return s.w.Build(id) })
-}
-
-func (s *Server) handleCancel(w http.ResponseWriter, r *http.Request) {
-	s.act(w, r, func(id int) error { return s.w.CancelBuild(id) })
-}
-
-func (s *Server) handleTax(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	id, ok := pathID(r, len(s.w.Nations))
-	if !ok {
-		http.Error(w, "no such nation", http.StatusNotFound)
-		return
-	}
-	rate, err := strconv.ParseFloat(r.URL.Query().Get("rate"), 64)
-	if err == nil {
-		err = s.w.Nations[id].SetTaxRate(rate)
-	}
-	if err != nil {
-		if !errors.Is(err, engine.ErrBadTaxRate) {
-			err = engine.ErrBadTaxRate
-		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	writeJSON(w, s.state())
-}
-
-func (s *Server) handleStep(w http.ResponseWriter, r *http.Request) {
-	n := 1
-	if v := r.URL.Query().Get("n"); v != "" {
-		var err error
-		if n, err = strconv.Atoi(v); err != nil || n < 1 || n > MaxStep {
-			http.Error(w, fmt.Sprintf("n must be an integer in [1, %d]", MaxStep), http.StatusBadRequest)
-			return
-		}
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for i := 0; i < n; i++ {
-		s.w.Step()
-	}
-	writeJSON(w, s.state())
-}
-
-func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) {
-	cost := 1.0
-	if v := r.URL.Query().Get("cost"); v != "" {
-		var err error
-		if v == "inf" {
-			cost = math.Inf(1)
-		} else if cost, err = strconv.ParseFloat(v, 64); err != nil || cost < 0 || math.IsNaN(cost) {
-			http.Error(w, "cost must be a non-negative number or inf", http.StatusBadRequest)
-			return
-		}
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err := s.reset(cost); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, s.state())
-}
-
-// nationAct runs a command on a nation and replies with the new state:
-// 404 for an unknown nation, 400 for a bad argument, 409 if the game refuses.
-func (s *Server) nationAct(w http.ResponseWriter, r *http.Request, do func(n *engine.Nation) (status int, err error)) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	id, ok := pathID(r, len(s.w.Nations))
-	if !ok {
-		http.Error(w, "no such nation", http.StatusNotFound)
-		return
-	}
-	if status, err := do(s.w.Nations[id]); err != nil {
-		http.Error(w, err.Error(), status)
-		return
-	}
-	writeJSON(w, s.state())
+	return r.URL.Query().Get("token")
 }
 
 func queryFloat(r *http.Request, key string) (float64, error) {
 	v, err := strconv.ParseFloat(r.URL.Query().Get(key), 64)
-	if err != nil || math.IsNaN(v) {
-		return 0, fmt.Errorf("%s must be a number", key)
+	if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
+		return 0, badRequest("%s must be a number", key)
 	}
 	return v, nil
 }
 
-func (s *Server) handleTariff(w http.ResponseWriter, r *http.Request) {
-	s.nationAct(w, r, func(n *engine.Nation) (int, error) {
-		rate, err := queryFloat(r, "rate")
-		if err != nil {
-			return http.StatusBadRequest, err
-		}
-		good := engine.GoodID(-1)
-		if name := r.URL.Query().Get("good"); name != "" {
-			found := false
-			for _, g := range engine.Tradable {
-				if engine.Goods[g].Name == name {
-					good, found = g, true
-				}
-			}
-			if !found {
-				return http.StatusBadRequest, fmt.Errorf("no tradable good %q", name)
-			}
-		}
-		if err := n.SetTariff(good, rate); err != nil {
-			return http.StatusBadRequest, err
-		}
-		return 0, nil
-	})
+func queryIndex(r *http.Request, key string, n int) (int, error) {
+	v, err := strconv.Atoi(r.URL.Query().Get(key))
+	if err != nil || v < 0 || v >= n {
+		return 0, badRequest("%s must be an index below %d", key, n)
+	}
+	return v, nil
 }
 
-func (s *Server) handleEmbargo(w http.ResponseWriter, r *http.Request) {
-	s.nationAct(w, r, func(n *engine.Nation) (int, error) {
-		target, err := strconv.Atoi(r.URL.Query().Get("target"))
-		if err != nil || target < 0 || target >= len(s.w.Nations) {
-			return http.StatusBadRequest, fmt.Errorf("target must be a nation id")
-		}
-		if target == n.ID {
-			return http.StatusConflict, engine.ErrSelf
-		}
-		n.Embargo[target] = r.URL.Query().Get("on") != "false"
-		return 0, nil
-	})
+func pathIndex(r *http.Request, key string, n int) (int, error) {
+	v, err := strconv.Atoi(r.PathValue(key))
+	if err != nil || v < 0 || v >= n {
+		return 0, fail(http.StatusNotFound, fmt.Errorf("no such %s", key))
+	}
+	return v, nil
 }
 
-func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
-	s.nationAct(w, r, func(n *engine.Nation) (int, error) {
-		tech, err := strconv.Atoi(r.URL.Query().Get("tech"))
-		if err != nil {
-			return http.StatusBadRequest, fmt.Errorf("tech must be a tech id")
+type gameHandler func(g *Game, w http.ResponseWriter, r *http.Request) error
+
+// game resolves {gid}, locks the game for the handler and turns errors into
+// HTTP responses.
+func (s *Server) game(h gameHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.mu.Lock()
+		g := s.games[r.PathValue("gid")]
+		s.mu.Unlock()
+		if g == nil {
+			http.Error(w, "no such game", http.StatusNotFound)
+			return
 		}
-		if err := n.SetResearch(tech); err != nil {
-			return http.StatusConflict, err
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		if err := h(g, w, r); err != nil {
+			http.Error(w, err.Error(), statusOf(err))
 		}
-		return 0, nil
-	})
+	}
 }
 
-func (s *Server) handleFunding(w http.ResponseWriter, r *http.Request) {
-	s.nationAct(w, r, func(n *engine.Nation) (int, error) {
-		amount, err := queryFloat(r, "amount")
-		if err == nil {
-			err = n.SetResearchFunding(amount)
-		}
-		if err != nil {
-			return http.StatusBadRequest, err
-		}
-		return 0, nil
-	})
+func (g *Game) state(r *http.Request) State {
+	st := worldState(g.w)
+	st.Game, st.Running, st.Speed, st.You = g.ID, g.running, g.speed, g.nationOf(token(r))
+	return st
 }
 
-func (s *Server) handleAnnex(w http.ResponseWriter, r *http.Request) {
-	nation, err := strconv.Atoi(r.URL.Query().Get("nation"))
-	if err != nil || nation < 0 || nation >= len(s.w.Nations) {
-		http.Error(w, "nation must be a nation id", http.StatusBadRequest)
+// ---- lobby ------------------------------------------------------------------
+
+func (s *Server) handleListGames(w http.ResponseWriter, _ *http.Request) {
+	out := []GameSummary{}
+	for _, g := range s.list() {
+		g.mu.Lock()
+		out = append(out, g.summary())
+		g.mu.Unlock()
+	}
+	writeJSON(w, out)
+}
+
+var nameRe = regexp.MustCompile(`^[\pL\pN _.,'!-]{1,40}$`)
+
+func (s *Server) handleCreateGame(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		name = "New game"
+	}
+	if !nameRe.MatchString(name) {
+		http.Error(w, "name must be 1-40 letters, digits, spaces or simple punctuation", http.StatusBadRequest)
 		return
 	}
-	s.act(w, r, func(id int) error { return s.w.Annex(id, nation) })
+	cost := 1.0
+	if r.URL.Query().Has("cost") {
+		var err error
+		if cost, err = queryFloat(r, "cost"); err != nil || cost < 0 {
+			http.Error(w, "cost must be a non-negative number", http.StatusBadRequest)
+			return
+		}
+	}
+	g, err := s.CreateGame(name, cost)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, g.summary())
 }
 
-func (s *Server) handleExpand(w http.ResponseWriter, r *http.Request) {
-	s.act(w, r, func(id int) error {
-		firm, err := strconv.Atoi(r.PathValue("firm"))
-		if err != nil || firm < 0 || firm >= len(s.w.Regions[id].Firms) {
-			return fmt.Errorf("no such firm")
+func (s *Server) handleDeleteGame(g *Game, w http.ResponseWriter, r *http.Request) error {
+	if !g.mayControlClock(token(r)) {
+		return ErrNotInGame
+	}
+	s.mu.Lock()
+	delete(s.games, g.ID)
+	s.mu.Unlock()
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// ---- viewing ----------------------------------------------------------------
+
+func (s *Server) handleWorld(g *Game, w http.ResponseWriter, _ *http.Request) error {
+	writeJSON(w, worldInfo(g.w))
+	return nil
+}
+
+func (s *Server) handleState(g *Game, w http.ResponseWriter, r *http.Request) error {
+	writeJSON(w, g.state(r))
+	return nil
+}
+
+func (s *Server) handleRegion(g *Game, w http.ResponseWriter, r *http.Request) error {
+	id, err := pathIndex(r, "id", len(g.w.Regions))
+	if err != nil {
+		return err
+	}
+	writeJSON(w, regionDetail(g.w, id))
+	return nil
+}
+
+// ---- clock and players --------------------------------------------------------
+
+func (s *Server) handleStep(g *Game, w http.ResponseWriter, r *http.Request) error {
+	if !g.mayControlClock(token(r)) {
+		return ErrNotInGame
+	}
+	n := 1
+	if r.URL.Query().Has("n") {
+		var err error
+		if n, err = strconv.Atoi(r.URL.Query().Get("n")); err != nil || n < 1 || n > MaxStep {
+			return badRequest("n must be an integer in [1, %d]", MaxStep)
 		}
-		return s.w.Expand(id, firm)
-	})
+	}
+	for i := 0; i < n; i++ {
+		g.w.Step()
+	}
+	writeJSON(w, g.state(r))
+	return nil
+}
+
+func (s *Server) handleClock(g *Game, w http.ResponseWriter, r *http.Request) error {
+	if !g.mayControlClock(token(r)) {
+		return ErrNotInGame
+	}
+	q := r.URL.Query()
+	if q.Has("speed") {
+		speed, err := queryFloat(r, "speed")
+		if err != nil {
+			return err
+		}
+		ok := false
+		for _, s := range Speeds {
+			ok = ok || s == speed
+		}
+		if !ok {
+			return fail(http.StatusBadRequest, ErrBadSpeed)
+		}
+		g.speed = speed
+	}
+	if q.Has("running") {
+		g.running = q.Get("running") == "true"
+		g.carry = 0
+	}
+	writeJSON(w, g.state(r))
+	return nil
+}
+
+func (s *Server) handleJoin(g *Game, w http.ResponseWriter, r *http.Request) error {
+	nation, err := queryIndex(r, "nation", len(g.w.Nations))
+	if err != nil {
+		return err
+	}
+	t, err := g.join(nation)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, map[string]any{"token": t, "nation": nation})
+	return nil
+}
+
+func (s *Server) handleLeave(g *Game, w http.ResponseWriter, r *http.Request) error {
+	if err := g.leave(token(r)); err != nil {
+		return err
+	}
+	writeJSON(w, g.state(r))
+	return nil
+}
+
+// ---- commands ---------------------------------------------------------------
+
+// nationCommand runs a command on {nid}; only that nation's player may.
+func (s *Server) nationCommand(cmd string) gameHandler {
+	return func(g *Game, w http.ResponseWriter, r *http.Request) error {
+		nid, err := pathIndex(r, "nid", len(g.w.Nations))
+		if err != nil {
+			return err
+		}
+		if g.nationOf(token(r)) != nid {
+			return ErrNotPlayer
+		}
+		n, q := g.w.Nations[nid], r.URL.Query()
+		switch cmd {
+		case "tax":
+			rate, err := queryFloat(r, "rate")
+			if err != nil {
+				return err
+			}
+			if err := n.SetTaxRate(rate); err != nil {
+				return fail(http.StatusBadRequest, err)
+			}
+		case "tariff":
+			rate, err := queryFloat(r, "rate")
+			if err != nil {
+				return err
+			}
+			good := engine.GoodID(-1)
+			if name := q.Get("good"); name != "" {
+				good = -2
+				for _, x := range engine.Tradable {
+					if engine.Goods[x].Name == name {
+						good = x
+					}
+				}
+				if good == -2 {
+					return badRequest("no tradable good %q", name)
+				}
+			}
+			if err := n.SetTariff(good, rate); err != nil {
+				return fail(http.StatusBadRequest, err)
+			}
+		case "embargo":
+			target, err := queryIndex(r, "target", len(g.w.Nations))
+			if err != nil {
+				return err
+			}
+			if target == nid {
+				return engine.ErrSelf
+			}
+			n.Embargo[target] = q.Get("on") != "false"
+		case "research":
+			tech, err := queryIndex(r, "tech", len(engine.Techs))
+			if err != nil {
+				return err
+			}
+			if err := n.SetResearch(tech); err != nil {
+				return err
+			}
+		case "budget":
+			var b [engine.NumBudgets]float64
+			for i, name := range engine.BudgetNames {
+				if b[i], err = queryFloat(r, name); err != nil {
+					return err
+				}
+			}
+			if err := n.SetBudget(b); err != nil {
+				return fail(http.StatusBadRequest, err)
+			}
+		case "campaign":
+			target, err := queryIndex(r, "target", len(g.w.Regions))
+			if err != nil {
+				return err
+			}
+			if err := g.w.StartCampaign(nid, target); err != nil {
+				return err
+			}
+		case "campaign/cancel":
+			if err := g.w.CancelCampaign(nid); err != nil {
+				return err
+			}
+		}
+		writeJSON(w, g.state(r))
+		return nil
+	}
+}
+
+// regionCommand runs a command on tile {id}; only its owner's player may.
+func (s *Server) regionCommand(cmd string) gameHandler {
+	return func(g *Game, w http.ResponseWriter, r *http.Request) error {
+		id, err := pathIndex(r, "id", len(g.w.Regions))
+		if err != nil {
+			return err
+		}
+		owner := g.w.Regions[id].Nation
+		if owner == nil {
+			return engine.ErrNoNation
+		}
+		if g.nationOf(token(r)) != owner.ID {
+			return ErrNotPlayer
+		}
+		switch cmd {
+		case "build":
+			err = g.w.Build(id)
+		case "cancel":
+			err = g.w.CancelBuild(id)
+		case "expand":
+			var firm int
+			if firm, err = pathIndex(r, "firm", len(g.w.Regions[id].Firms)); err == nil {
+				err = g.w.Expand(id, firm)
+			}
+		}
+		if err != nil {
+			return err
+		}
+		writeJSON(w, g.state(r))
+		return nil
+	}
+}
+
+// ---- saves ------------------------------------------------------------------
+
+// SaveFile is a saved game.
+type SaveFile struct {
+	Name     string           `json:"name"`
+	SavedAt  time.Time        `json:"saved_at"`
+	Snapshot *engine.Snapshot `json:"snapshot"`
+}
+
+// SaveInfo describes a save slot.
+type SaveInfo struct {
+	Slot    string    `json:"slot"`
+	Name    string    `json:"name"`
+	Tick    int       `json:"tick"`
+	SavedAt time.Time `json:"saved_at"`
+}
+
+var slotRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,40}$`)
+
+func (s *Server) slotPath(slot string) (string, error) {
+	if s.dataDir == "" {
+		return "", fail(http.StatusNotImplemented, errors.New("saving is disabled on this server"))
+	}
+	if !slotRe.MatchString(slot) {
+		return "", badRequest("slot must be 1-40 letters, digits, - or _")
+	}
+	return filepath.Join(s.dataDir, slot+".json"), nil
+}
+
+func (g *Game) saveFile() (*SaveFile, error) {
+	snap, err := g.w.Snapshot()
+	if err != nil {
+		return nil, err
+	}
+	return &SaveFile{Name: g.Name, SavedAt: time.Now().UTC(), Snapshot: snap}, nil
+}
+
+func (s *Server) handleSave(g *Game, w http.ResponseWriter, r *http.Request) error {
+	if !g.mayControlClock(token(r)) {
+		return ErrNotInGame
+	}
+	path, err := s.slotPath(r.URL.Query().Get("slot"))
+	if err != nil {
+		return err
+	}
+	f, err := g.saveFile()
+	if err != nil {
+		return err
+	}
+	raw, err := json.Marshal(f)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(s.dataDir, 0o755); err != nil {
+		return fail(http.StatusInternalServerError, err)
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, raw, 0o644); err != nil {
+		return fail(http.StatusInternalServerError, err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		return fail(http.StatusInternalServerError, err)
+	}
+	writeJSON(w, SaveInfo{r.URL.Query().Get("slot"), f.Name, f.Snapshot.Tick, f.SavedAt})
+	return nil
+}
+
+func (s *Server) handleListSaves(w http.ResponseWriter, _ *http.Request) {
+	out := []SaveInfo{}
+	if s.dataDir != "" {
+		entries, _ := os.ReadDir(s.dataDir)
+		for _, e := range entries {
+			slot, ok := cutSuffix(e.Name(), ".json")
+			if !ok || !slotRe.MatchString(slot) {
+				continue
+			}
+			f, err := readSave(filepath.Join(s.dataDir, e.Name()))
+			if err != nil {
+				continue
+			}
+			out = append(out, SaveInfo{slot, f.Name, f.Snapshot.Tick, f.SavedAt})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].SavedAt.After(out[j].SavedAt) })
+	writeJSON(w, out)
+}
+
+func cutSuffix(s, suffix string) (string, bool) {
+	if len(s) > len(suffix) && s[len(s)-len(suffix):] == suffix {
+		return s[:len(s)-len(suffix)], true
+	}
+	return s, false
+}
+
+func readSave(path string) (*SaveFile, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return decodeSave(raw)
+}
+
+func decodeSave(raw []byte) (*SaveFile, error) {
+	var f SaveFile
+	if err := json.Unmarshal(raw, &f); err != nil {
+		return nil, err
+	}
+	if f.Snapshot == nil {
+		return nil, errors.New("not a Mercury save")
+	}
+	if !nameRe.MatchString(f.Name) {
+		f.Name = "Loaded game"
+	}
+	return &f, nil
+}
+
+// restore starts a new game from a save; every nation starts computer-run.
+func (s *Server) restore(w http.ResponseWriter, f *SaveFile) {
+	world, err := engine.Restore(f.Snapshot)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	g, err := s.add(f.Name, world)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, g.summary())
+}
+
+func (s *Server) handleLoad(w http.ResponseWriter, r *http.Request) {
+	path, err := s.slotPath(r.PathValue("slot"))
+	if err != nil {
+		http.Error(w, err.Error(), statusOf(err))
+		return
+	}
+	f, err := readSave(path)
+	if errors.Is(err, os.ErrNotExist) {
+		http.Error(w, ErrNoSuchSlot.Error(), http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.restore(w, f)
+}
+
+func (s *Server) handleExport(g *Game, w http.ResponseWriter, _ *http.Request) error {
+	f, err := g.saveFile()
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="mercury-%s-tick%d.json"`, g.ID, g.w.Tick))
+	writeJSON(w, f)
+	return nil
+}
+
+func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
+	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxImport))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+		return
+	}
+	f, err := decodeSave(raw)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.restore(w, f)
 }

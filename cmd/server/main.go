@@ -1,10 +1,9 @@
-// Command server runs a Mercury world and serves the web viewer and JSON API.
+// Command server hosts Mercury games: the web client and the JSON API.
 package main
 
 import (
 	"flag"
 	"log"
-	"math"
 	"net/http"
 
 	"github.com/rasmusbergpalm/mercury/internal/server"
@@ -13,16 +12,13 @@ import (
 
 func main() {
 	addr := flag.String("addr", ":8080", "listen address")
-	cost := flag.Float64("cost", 1, "transport cost multiplier (negative = autarky)")
+	data := flag.String("data", "saves", "directory for saved games (empty disables saving)")
 	flag.Parse()
-	c := *cost
-	if c < 0 {
-		c = math.Inf(1)
-	}
-	s, err := server.New(c, web.Static)
-	if err != nil {
+	s := server.New(web.Static, *data)
+	if _, err := s.CreateGame("The Three Crowns", 1); err != nil {
 		log.Fatal(err)
 	}
+	go s.Run(make(chan struct{}))
 	log.Printf("Mercury on http://localhost%s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, s))
 }

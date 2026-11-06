@@ -67,13 +67,39 @@ type Nation struct {
 	Tariff  []float64 // import tariff per good, as a share of the sale price
 	Embargo []bool    // per nation: no trade across the border with it
 
-	ResearchFunding float64 // money per tick offered for research
-	ResearchPoints  float64 // research delivered towards the current tech
-	Researching     int     // index into Techs, or -1 to pick automatically
-	Known           []bool  // per tech
+	// Budget is the share of income (IncomeEMA) spent each tick on each
+	// of the economy (infrastructure, upkeep, firm expansions), science
+	// and the military. What isn't spent builds up the treasury.
+	Budget    [NumBudgets]float64
+	IncomeEMA float64 // moving average of tax and tariff income per tick
+
+	ResearchPoints float64 // research delivered towards the current tech
+	Researching    int     // index into Techs, or -1 to pick automatically
+	Known          []bool  // per tech
+
+	Army     float64   // army strength; decays unless replenished
+	Campaign *Campaign // tile being occupied, or nil
+	AI       bool      // run by the computer
 
 	// last tick's flows
 	Revenue, TariffRevenue, Rebate, Spending float64
+}
+
+// Budget categories.
+const (
+	Economy = iota
+	Science
+	Defense
+	NumBudgets
+)
+
+// BudgetNames name the budget categories.
+var BudgetNames = [NumBudgets]string{"economy", "science", "military"}
+
+// Campaign is an army occupying a tile next to the nation's territory.
+type Campaign struct {
+	Target   int     // region
+	Progress float64 // 0..1; the tile changes hands at 1
 }
 
 // Errors returned by nation and world commands.
@@ -92,14 +118,18 @@ var (
 	ErrFirmMax     = errors.New("firm cannot grow further here")
 	ErrExpanding   = errors.New("firm is already expanding")
 	ErrSelf        = errors.New("a nation cannot embargo itself")
-	ErrBadFunding  = errors.New("research funding must be non-negative")
+	ErrBadBudget   = errors.New("budget shares must be non-negative and sum to at most 1")
+	ErrNoArmy      = errors.New("the nation has no army")
+	ErrOwnTile     = errors.New("the nation already owns that tile")
+	ErrNoCampaign  = errors.New("the nation has no campaign under way")
+	ErrEliminated  = errors.New("the nation has no tiles left")
 )
 
 func newNation(id int, name, color string, nNations int, taxRate float64) *Nation {
 	return &Nation{ID: id, Name: name, Color: color, TaxRate: taxRate,
 		Reserve: 1000, RebateRate: 0.1, MaxBuildRate: 5,
 		Tariff: make([]float64, NumGoods), Embargo: make([]bool, nNations),
-		ResearchFunding: 40, Researching: -1, Known: make([]bool, len(Techs))}
+		Budget: DefaultBudget, Researching: -1, Known: make([]bool, len(Techs))}
 }
 
 // SetTaxRate changes the nation's tax rate.
@@ -126,13 +156,36 @@ func (n *Nation) SetTariff(good GoodID, rate float64) error {
 	return nil
 }
 
-// SetResearchFunding sets the money per tick offered for research.
-func (n *Nation) SetResearchFunding(amount float64) error {
-	if !(amount >= 0) || math.IsInf(amount, 0) {
-		return ErrBadFunding
+// DefaultBudget is how a new nation splits its income.
+var DefaultBudget = [NumBudgets]float64{0.4, 0.2, 0.2}
+
+// SetBudget sets the shares of income spent on economy, science and military.
+func (n *Nation) SetBudget(b [NumBudgets]float64) error {
+	sum := 0.0
+	for _, x := range b {
+		if !(x >= 0) {
+			return ErrBadBudget
+		}
+		sum += x
 	}
-	n.ResearchFunding = amount
+	if sum > 1+1e-9 {
+		return ErrBadBudget
+	}
+	n.Budget = b
 	return nil
+}
+
+// Eliminated reports whether the nation has lost all its tiles.
+func (n *Nation) Eliminated() bool { return len(n.Regions) == 0 }
+
+// Defense is the army strength that can guard any one of the nation's tiles:
+// its army over the square root of its tile count (troops can be moved to
+// where they're needed, but not all of them).
+func (n *Nation) Defense() float64 {
+	if n.Eliminated() {
+		return 0
+	}
+	return n.Army / math.Sqrt(float64(len(n.Regions)))
 }
 
 // Has reports whether the nation knows a tech.
@@ -221,6 +274,7 @@ const (
 	materialClaim
 	expansionClaim
 	researchClaim
+	militaryClaim
 )
 
 type claim struct {
@@ -236,13 +290,21 @@ type claim struct {
 func (n *Nation) plan() {
 	n.Revenue, n.TariffRevenue, n.Rebate, n.Spending = 0, 0, 0, 0
 	n.pickResearch()
-	total := 0.0
+	if n.Eliminated() {
+		return
+	}
+	tiles := float64(len(n.Regions))
+	economy, total := 0.0, 0.0
 	for _, r := range n.Regions {
 		r.claims = r.claims[:0]
 		add := func(c claim) {
 			if c.qty > 0 {
 				r.claims = append(r.claims, c)
-				total += c.qty * r.Markets[c.good].Price
+				cost := c.qty * r.Markets[c.good].Price
+				total += cost
+				if c.kind != researchClaim && c.kind != militaryClaim {
+					economy += cost
+				}
 			}
 		}
 		add(claim{kind: upkeepClaim, good: Construction, qty: InfraLevels[r.Infra].Upkeep})
@@ -258,10 +320,18 @@ func (n *Nation) plan() {
 				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(n.MaxBuildRate, LevelCost-e.Delivered)})
 			}
 		}
-		if n.Researching >= 0 && n.ResearchFunding > 0 {
+		if n.Researching >= 0 {
 			add(claim{kind: researchClaim, good: Research,
-				qty: n.ResearchFunding / float64(len(n.Regions)) / r.Markets[Research].Price})
+				qty: n.Budget[Science] * n.IncomeEMA / tiles / r.Markets[Research].Price})
 		}
+		add(claim{kind: militaryClaim, good: Military,
+			qty: n.Budget[Defense] * n.IncomeEMA / tiles / r.Markets[Military].Price})
+	}
+	// the economy's claims share the economy budget
+	econScale := 1.0
+	if limit := n.Budget[Economy] * n.IncomeEMA; economy > limit {
+		econScale = limit / economy
+		total -= economy * (1 - econScale)
 	}
 	scale := 1.0
 	if budget := 0.9 * math.Max(n.Treasury, 0); total > budget {
@@ -272,8 +342,12 @@ func (n *Nation) plan() {
 			r.publicBid[g], r.publicGot[g] = 0, 0
 		}
 		for i := range r.claims {
-			r.claims[i].qty *= scale
-			r.publicBid[r.claims[i].good] += r.claims[i].qty
+			c := &r.claims[i]
+			c.qty *= scale
+			if c.kind != researchClaim && c.kind != militaryClaim {
+				c.qty *= econScale
+			}
+			r.publicBid[c.good] += c.qty
 		}
 	}
 }
@@ -311,6 +385,8 @@ func (n *Nation) settle() (hopsChanged bool) {
 				c.exp.Delivered += got
 			case researchClaim:
 				n.ResearchPoints += got
+			case militaryClaim:
+				n.Army += got
 			}
 		}
 		need := InfraLevels[r.Infra].Upkeep
@@ -324,6 +400,12 @@ func (n *Nation) settle() (hopsChanged bool) {
 			hopsChanged = true
 		}
 	}
+	n.Army *= 1 - armyDecay
+	income := n.Revenue + n.TariffRevenue
+	if n.IncomeEMA == 0 {
+		n.IncomeEMA = income
+	}
+	n.IncomeEMA = 0.95*n.IncomeEMA + 0.05*income
 	if i := n.Researching; i >= 0 && n.ResearchPoints >= Techs[i].Cost {
 		n.ResearchPoints -= Techs[i].Cost
 		n.Known[i] = true
@@ -362,7 +444,7 @@ func (n *Nation) applyTech() {
 // rebate returns part of the treasury above the reserve to the pops, per head.
 func (n *Nation) rebate() {
 	excess := n.Treasury - n.Reserve
-	if excess <= 0 {
+	if excess <= 0 || n.Eliminated() {
 		return
 	}
 	amount := n.RebateRate * excess
@@ -376,9 +458,9 @@ func (n *Nation) rebate() {
 	}
 }
 
-// AnnexCostPerHead is what annexing a tile costs per person living there; it
-// is paid to them.
-const AnnexCostPerHead = 15.0
+// armyDecay is the share of an army lost each tick (desertion, retirement):
+// armies must be paid for continuously.
+const armyDecay = 0.02
 
 // neglectLimit is how many ticks' worth of unpaid upkeep (decaying by 2% a
 // tick) a tile's infrastructure tolerates before it drops a level: about 60

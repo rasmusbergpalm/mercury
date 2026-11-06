@@ -55,7 +55,7 @@ type Firm struct {
 
 	// ProfitEMA is a moving average of profit per tick; it drives investment.
 	ProfitEMA             float64
-	lossTicks, age        int
+	LossTicks, Age        int // ticks of losses in a row; ticks alive
 	tickRevenue, tickCost float64
 	investWant            float64 // construction to buy this tick for a private expansion
 }

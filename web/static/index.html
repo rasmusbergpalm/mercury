@@ -2,55 +2,94 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2328">
   <title>Mercury</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Mercury</h1>
-    <div class="controls">
+  <!-- lobby -->
+  <section id="lobby" hidden>
+    <header class="bar">
+      <h1>Mercury</h1>
+      <span class="sub">Build a nation: balance economy, science and armies on a map where moving goods costs.</span>
+    </header>
+    <main class="lobby">
+      <section class="card">
+        <h2>Games</h2>
+        <div id="games"></div>
+      </section>
+      <section class="card">
+        <h2>New game</h2>
+        <form id="new-game" class="row">
+          <label>Name <input id="new-name" maxlength="40" value="New game" required></label>
+          <label>Transport cost <input id="new-cost" type="number" min="0" step="0.25" value="1" class="num"></label>
+          <button class="primary" type="submit">Create</button>
+        </form>
+      </section>
+      <section class="card">
+        <h2>Saved games</h2>
+        <div id="saves"></div>
+        <div class="row">
+          <label class="file">Import a save file <input id="import" type="file" accept=".json,application/json"></label>
+        </div>
+      </section>
+      <p id="lobby-err" class="err"></p>
+    </main>
+  </section>
+
+  <!-- game -->
+  <section id="game" hidden>
+    <header class="bar">
+      <button id="to-lobby" title="Back to the lobby">‹ Games</button>
+      <h1 id="game-name">Mercury</h1>
       <span class="tick">Tick <b id="tick">0</b></span>
-      <button id="step1" title="Advance one tick">Step</button>
-      <button id="step10">+10</button>
-      <button id="step100">+100</button>
-      <button id="play" class="primary">Play</button>
-      <label>Speed <select id="speed">
-        <option value="1">1×</option><option value="5" selected>5×</option>
-        <option value="20">20×</option><option value="100">100×</option>
-      </select></label>
-      <span class="sep"></span>
-      <label>Transport cost <input id="cost" type="text" value="1" size="4"></label>
-      <button id="reset" title="Rebuild the world with this transport cost (inf = no trade)">Reset</button>
-    </div>
-  </header>
-  <main>
-    <section class="map-pane">
-      <div class="overlay-bar">
-        <label>Overlay <select id="overlay">
-          <option value="terrain">Terrain</option>
-          <option value="nation">Nation</option>
-          <option value="infra">Infrastructure</option>
-          <option value="utility">Utility per person</option>
-          <option value="population">Population</option>
-          <option value="wage">Wage</option>
-          <option value="price" selected>Price ÷ wage</option>
-          <option value="basic">Basic share of spending</option>
-          <option value="luxury">Luxury share of spending</option>
-        </select></label>
-        <label id="good-wrap">Good <select id="good"></select></label>
-        <label><input id="show-flows" type="checkbox" checked> Trade flows</label>
-        <label id="flow-good-wrap">of <select id="flow-good"></select></label>
+      <div class="clock">
+        <button id="play" class="primary">Play</button>
+        <select id="speed" aria-label="Speed"></select>
+        <button id="step10" title="Advance 10 ticks">+10</button>
       </div>
-      <div class="canvas-wrap"><canvas id="map"></canvas><div id="tooltip" hidden></div></div>
-      <div id="legend"></div>
-      <h3 class="section">Nations</h3>
-      <table id="nations"></table>
-    </section>
-    <aside id="panel">
-      <p class="hint">Click a tile to inspect it.</p>
-    </aside>
-  </main>
+      <div class="menu">
+        <button id="save">Save</button>
+        <a id="export" class="button" download>Export</a>
+        <button id="leave" hidden>Leave</button>
+      </div>
+    </header>
+    <div id="you" class="you" hidden></div>
+    <p id="game-err" class="err"></p>
+    <main class="game">
+      <section class="map-pane">
+        <div class="overlay-bar">
+          <select id="overlay" aria-label="Map overlay">
+            <option value="nation">Nations</option>
+            <option value="terrain">Terrain</option>
+            <option value="infra">Infrastructure</option>
+            <option value="population">Population</option>
+            <option value="utility">Utility per person</option>
+            <option value="wage">Wage</option>
+            <option value="price">Price ÷ wage</option>
+            <option value="basic">Basic share of spending</option>
+            <option value="luxury">Luxury share of spending</option>
+          </select>
+          <select id="good" aria-label="Good" hidden></select>
+          <label class="check"><input id="show-flows" type="checkbox"> Trade</label>
+          <select id="flow-good" aria-label="Trade of" hidden></select>
+        </div>
+        <div class="canvas-wrap"><canvas id="map"></canvas><div id="tooltip" hidden></div></div>
+        <div id="legend"></div>
+      </section>
+      <aside class="side">
+        <nav class="tabs" role="tablist">
+          <button data-tab="tile" class="active">Tile</button>
+          <button data-tab="nation">Nation</button>
+          <button data-tab="world">World</button>
+        </nav>
+        <div id="tab-tile" class="tab"><p class="hint">Tap a tile on the map.</p></div>
+        <div id="tab-nation" class="tab" hidden></div>
+        <div id="tab-world" class="tab" hidden></div>
+      </aside>
+    </main>
+  </section>
   <script src="app.js"></script>
 </body>
 </html>

@@ -161,10 +161,12 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 	}
 }
 
-func TestResearchFundingDrivesProgress(t *testing.T) {
-	points := func(funding float64) float64 {
+func TestScienceBudgetDrivesResearch(t *testing.T) {
+	points := func(science float64) float64 {
 		w := newTestGame(t)
-		w.Nations[0].SetResearchFunding(funding)
+		if err := w.Nations[0].SetBudget([NumBudgets]float64{0.4, science, 0.2}); err != nil {
+			t.Fatal(err)
+		}
 		for i := 0; i < 300; i++ {
 			w.Step()
 		}
@@ -173,11 +175,14 @@ func TestResearchFundingDrivesProgress(t *testing.T) {
 	if p := points(0); p != 0 {
 		t.Errorf("unfunded research made %v points", p)
 	}
-	if lo, hi := points(20), points(80); hi <= lo {
-		t.Errorf("more funding should mean more research: %v vs %v", lo, hi)
+	if lo, hi := points(0.1), points(0.4); hi <= lo {
+		t.Errorf("a bigger science budget should mean more research: %v vs %v", lo, hi)
 	}
-	if err := newTestGame(t).Nations[0].SetResearchFunding(-1); !errors.Is(err, ErrBadFunding) {
-		t.Errorf("negative funding: %v", err)
+	n := newTestGame(t).Nations[0]
+	for _, b := range [][NumBudgets]float64{{-0.1, 0.2, 0.2}, {0.5, 0.4, 0.3}} {
+		if err := n.SetBudget(b); !errors.Is(err, ErrBadBudget) {
+			t.Errorf("budget %v: %v", b, err)
+		}
 	}
 }
 
@@ -364,54 +369,6 @@ func TestMigrationKeepsPeopleAndFloor(t *testing.T) {
 	}
 	if hi-lo < 10 {
 		t.Errorf("nobody moved: populations %v..%v", lo, hi)
-	}
-}
-
-func TestAnnex(t *testing.T) {
-	w := newTestGame(t)
-	m := nationByName(w, "Montara")
-	for i := 0; i < 100; i++ {
-		w.Step()
-	}
-	if err := w.Annex(regionByName(w, "05").ID, m.ID); !errors.Is(err, ErrOwned) {
-		t.Errorf("annexing another nation's tile: %v", err)
-	}
-	if err := w.Annex(regionByName(w, "25").ID, m.ID); !errors.Is(err, ErrNotAdjacent) {
-		t.Errorf("annexing a distant tile: %v", err)
-	}
-	target := regionByName(w, "02")
-	treasury := m.Treasury
-	m.Treasury = 0
-	if err := w.Annex(target.ID, m.ID); !errors.Is(err, ErrTreasury) {
-		t.Errorf("annexing without money: %v", err)
-	}
-	m.Treasury = treasury
-	w.GrantTech(m.ID, "Wagons")
-	money, cost := w.Money(), w.AnnexCost(target.ID)
-	popCash := 0.0
-	for _, p := range target.Pops {
-		popCash += p.Cash
-	}
-	if err := w.Annex(target.ID, m.ID); err != nil {
-		t.Fatal(err)
-	}
-	after := 0.0
-	for _, p := range target.Pops {
-		after += p.Cash
-	}
-	if target.Nation != m || math.Abs(m.Treasury-(treasury-cost)) > 1e-9 || math.Abs(after-popCash-cost) > 1e-9 {
-		t.Errorf("annex: owner %v, treasury %v -> %v, tile cash %v -> %v (cost %v)", target.Nation, treasury, m.Treasury, popCash, after, cost)
-	}
-	if relDiff(w.Money(), money) > 1e-12 {
-		t.Error("annexing changed the money supply")
-	}
-	for _, f := range target.Firms {
-		if f.Name == "Transport" && math.Abs(f.TFP-1.3*f.BaseTFP) > 1e-12 {
-			t.Errorf("annexed tile's transport doesn't have the nation's tech: %v", f.TFP)
-		}
-	}
-	if err := w.Build(target.ID); err != nil {
-		t.Errorf("building on the annexed tile: %v", err)
 	}
 }
 

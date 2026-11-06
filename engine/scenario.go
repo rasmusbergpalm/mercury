@@ -48,10 +48,12 @@ var ProcessingRecipes = []Recipe{
 }
 
 // GameRecipes exist only in game worlds (with nations): building work for
-// infrastructure and firm expansions, and research for technology.
+// infrastructure and firm expansions, research for technology, and soldiers
+// (who need ironware and clothes) for armies.
 var GameRecipes = []Recipe{
 	{"Construction", "construction", 1.5, []Factor{Labor(0.5), Input("wood", 0.2)}},
 	{"University", "research", 1.0, []Factor{Labor(0.6)}},
+	{"Barracks", "military", 1.0, []Factor{Labor(0.4), Input("ironware", 0.15), Input("clothes", 0.1)}},
 }
 
 // RawMaxLevels caps building levels of land-bound producers (land is scarce).
@@ -213,6 +215,7 @@ type GameSpec struct {
 	Nations       []NationSpec
 	TransportCost float64
 	TaxRate       float64
+	AI            bool // nations are run by the computer until a player takes one
 }
 
 // DefaultGame is the default game scenario on DefaultMap: three nations of
@@ -241,6 +244,9 @@ var DefaultGame = GameSpec{
 // Construction and University firms on every tile, investing firms and
 // migrating people.
 func BuildGame(spec GameSpec) (*World, error) {
+	if math.IsInf(spec.TransportCost, 0) || math.IsNaN(spec.TransportCost) || spec.TransportCost < 0 {
+		return nil, fmt.Errorf("transport cost must be a non-negative number")
+	}
 	w, err := buildWorld(spec.TransportCost, spec.Map, true)
 	if err != nil {
 		return nil, err
@@ -249,9 +255,11 @@ func BuildGame(spec GameSpec) (*World, error) {
 		return nil, fmt.Errorf("nation map has %d rows, want %d", len(spec.NationMap), w.Rows)
 	}
 	w.Investment, w.Migration = true, true
+	w.Spec = &spec
 	bySymbol := map[byte]*Nation{}
 	for i, ns := range spec.Nations {
 		n := newNation(i, ns.Name, ns.Color, len(spec.Nations), spec.TaxRate)
+		n.AI = spec.AI
 		if err := n.SetTaxRate(spec.TaxRate); err != nil {
 			return nil, err
 		}

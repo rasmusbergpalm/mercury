@@ -55,6 +55,8 @@ var Goods = []Good{
 	{"construction", 0.0, 1.00},
 	// research work, bought by nations to develop technology; local and perishable
 	{"research", 0.0, 1.00},
+	// soldiers and their kit, bought by nations to build armies; local and perishable
+	{"military", 0.0, 1.00},
 }
 
 // NumGoods is len(Goods).
@@ -86,11 +88,14 @@ var Construction = G("construction")
 // Research is research work; nations buy it to develop technology.
 var Research = G("research")
 
+// Military is army strength; nations buy it to raise and keep armies.
+var Military = G("military")
+
 // Tradable lists every good that traders can ship (all but the services).
 var Tradable = func() []GoodID {
 	var out []GoodID
 	for i := range Goods {
-		if GoodID(i) != Transport && GoodID(i) != Construction && GoodID(i) != Research {
+		if id := GoodID(i); id != Transport && id != Construction && id != Research && id != Military {
 			out = append(out, GoodID(i))
 		}
 	}
