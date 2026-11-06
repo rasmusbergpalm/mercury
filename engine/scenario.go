@@ -227,6 +227,9 @@ func buildWorld(transportCost float64, gameMap []string, game bool) (*World, err
 				return nil, err
 			}
 			reg := NewRegion(len(regions), fmt.Sprintf("%d%d", r, c), makeFirms(t, game), 2, 50, 500)
+			if game {
+				addOwnerClasses(reg)
+			}
 			reg.Row, reg.Col, reg.Terrain, reg.BaseMove = r, c, t.Name, t.MoveCost
 			grid[r][c] = reg
 			regions = append(regions, reg)
@@ -371,4 +374,30 @@ func makeCity(r *Region) {
 		}
 	}
 	r.updateAgglomeration()
+}
+
+// Owner classes in game worlds: each is this share of a tile's people and
+// starts with this share of its cash (so owners are much richer per head).
+const (
+	ownerPeopleShare = 0.02
+	ownerCashShare   = 0.05
+)
+
+// addOwnerClasses turns part of a tile's people into a capitalist and a
+// landowner pop.
+func addOwnerClasses(r *Region) {
+	pop, cash := r.Population(), 0.0
+	for _, p := range r.Pops {
+		cash += p.Cash
+	}
+	for _, p := range r.Pops {
+		p.Size *= 1 - 2*ownerPeopleShare
+		p.Cash *= 1 - 2*ownerCashShare
+	}
+	for _, c := range []Class{Capitalists, Landowners} {
+		p := NewPop(ownerPeopleShare*pop, ownerCashShare*cash)
+		p.Class = c
+		r.Pops = append(r.Pops, p)
+		r.popDemand = append(r.popDemand, make([]float64, NumGoods))
+	}
 }

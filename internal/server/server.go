@@ -57,6 +57,9 @@ func New(static fs.FS, dataDir string) *Server {
 	m.HandleFunc("GET /api/games/{gid}/export", s.game(s.handleExport))
 	m.HandleFunc("POST /api/games/{gid}/end-turn", s.game(s.handleEndTurn))
 	m.HandleFunc("GET /api/games/{gid}/events", s.game(s.handleEvents))
+	m.HandleFunc("GET /api/games/{gid}/history/nations/{id}", s.game(s.handleNationHistory))
+	m.HandleFunc("GET /api/games/{gid}/history/regions/{id}", s.game(s.handleRegionHistory))
+	m.HandleFunc("GET /api/games/{gid}/history/armies/{id}", s.game(s.handleArmyHistory))
 	for _, cmd := range []string{"move", "target", "upgrade", "disband"} {
 		m.HandleFunc("POST /api/games/{gid}/armies/{aid}/"+cmd, s.game(s.armyCommand(cmd)))
 	}
@@ -570,6 +573,52 @@ func (s *Server) handleEndTurn(g *Game, w http.ResponseWriter, r *http.Request) 
 	}
 	writeJSON(w, g.state(r))
 	return nil
+}
+
+// HistoryReply is a series bundle with its sample ticks.
+type HistoryReply struct {
+	Ticks []int `json:"ticks"`
+	Data  any   `json:"data"`
+}
+
+func (s *Server) handleNationHistory(g *Game, w http.ResponseWriter, r *http.Request) error {
+	id, err := pathIndex(r, "id", len(g.w.Nations))
+	if err != nil {
+		return err
+	}
+	var data any
+	if h := g.w.History; len(h.Nations) > 0 {
+		data = h.Nations[id]
+	}
+	writeJSON(w, HistoryReply{append([]int{}, g.w.History.Ticks...), data})
+	return nil
+}
+
+func (s *Server) handleRegionHistory(g *Game, w http.ResponseWriter, r *http.Request) error {
+	id, err := pathIndex(r, "id", len(g.w.Regions))
+	if err != nil {
+		return err
+	}
+	var data any
+	if h := g.w.History; len(h.Regions) > 0 {
+		data = h.Regions[id]
+	}
+	writeJSON(w, HistoryReply{append([]int{}, g.w.History.Ticks...), data})
+	return nil
+}
+
+func (s *Server) handleArmyHistory(g *Game, w http.ResponseWriter, r *http.Request) error {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		return fail(http.StatusNotFound, engine.ErrNoSuchArmy)
+	}
+	for _, a := range g.w.History.Armies {
+		if a.ID == id {
+			writeJSON(w, HistoryReply{append([]int{}, g.w.History.Ticks[a.From:]...), a})
+			return nil
+		}
+	}
+	return fail(http.StatusNotFound, engine.ErrNoSuchArmy)
 }
 
 func (s *Server) handleEvents(g *Game, w http.ResponseWriter, r *http.Request) error {

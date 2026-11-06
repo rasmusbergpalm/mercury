@@ -20,6 +20,7 @@ type Snapshot struct {
 	Armies      []ArmySnap   `json:"armies"`
 	NextArmyID  int          `json:"next_army_id"`
 	Events      []Event      `json:"events"`
+	History     History      `json:"history"`
 }
 
 type ArmySnap struct {
@@ -43,6 +44,7 @@ type MarketSnap struct {
 }
 
 type PopSnap struct {
+	Class      Class
 	Size, Cash float64
 	Jobs       []Job
 	Consumed   []float64
@@ -112,7 +114,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 			rs.Markets = append(rs.Markets, MarketSnap{m.Price, m.Supply, m.Demand})
 		}
 		for _, p := range r.Pops {
-			rs.Pops = append(rs.Pops, PopSnap{p.Size, p.Cash, append([]Job(nil), p.Jobs...),
+			rs.Pops = append(rs.Pops, PopSnap{p.Class, p.Size, p.Cash, append([]Job(nil), p.Jobs...),
 				append([]float64(nil), p.Consumed...)})
 		}
 		for _, f := range r.Firms {
@@ -153,6 +155,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	}
 	s.NextArmyID = w.NextArmyID
 	s.Events = append([]Event(nil), w.Events...)
+	s.History = w.History // shared, read-only: Snapshot is serialized straight away
 	return s, nil
 }
 
@@ -205,7 +208,7 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 		for j, ps := range rs.Pops {
 			p := r.Pops[j]
-			if len(ps.Consumed) != NumGoods {
+			if len(ps.Consumed) != NumGoods || ps.Class != p.Class {
 				return bad("pop in " + r.Name)
 			}
 			p.Size, p.Cash, p.Jobs = ps.Size, ps.Cash, ps.Jobs
@@ -279,6 +282,12 @@ func Restore(s *Snapshot) (*World, error) {
 	}
 	w.NextArmyID = s.NextArmyID
 	w.Events = append([]Event(nil), s.Events...)
+	if h := s.History; len(h.Ticks) > 0 {
+		if len(h.Nations) != len(w.Nations) || len(h.Regions) != len(w.Regions) {
+			return bad("history")
+		}
+	}
+	w.History = s.History
 	// firm gating follows the (restored) owners' technology
 	for _, r := range w.Regions {
 		if r.Nation == nil {

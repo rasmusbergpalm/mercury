@@ -157,6 +157,12 @@ type NationState struct {
 	MobilizeCap   float64   `json:"mobilize_cap"`
 	Mobilization  float64   `json:"mobilization"` // share of people who may serve
 	BestDoctrine  int       `json:"best_doctrine"`
+	GDP           float64   `json:"gdp"`
+	Utility       float64   `json:"utility"`
+	ClassIncome   []float64 `json:"class_income"` // per head, by class
+	Labor         []float64 `json:"labor"`        // share of workers by sector (industry, primary, service)
+	Exports       []float64 `json:"exports"`      // value per good, today
+	Imports       []float64 `json:"imports"`
 }
 
 type ArmyState struct {
@@ -171,6 +177,11 @@ type ArmyState struct {
 	Supply        map[string]float64 `json:"supply"` // per needed good, 0..1
 	Path          []int              `json:"path"`
 	Retreating    bool               `json:"retreating"`
+	Attack        []engine.Modifier  `json:"attack"`    // strength per soldier, factor by factor
+	Defense       []engine.Modifier  `json:"defense"`   // extra factors when defending at home
+	Attrition     []engine.Modifier  `json:"attrition"` // daily losses
+	Depot         int                `json:"depot"`     // where supplies are bought (-1: cut off)
+	Transport     float64            `json:"transport"` // transport today's supplies needed
 }
 
 type TurnState struct {
@@ -230,8 +241,18 @@ type MarketState struct {
 	PerPerson float64 `json:"consumed_per_person"`
 }
 
+type ClassState struct {
+	Class   string  `json:"class"`
+	Size    float64 `json:"size"`
+	Cash    float64 `json:"cash"`
+	Income  float64 `json:"income"` // per head, today
+	Utility float64 `json:"utility"`
+}
+
 // RegionDetail is everything about one region.
 type RegionDetail struct {
+	Classes []ClassState  `json:"classes"`
+	GDP     float64       `json:"gdp"`
 	Info    RegionInfo    `json:"info"`
 	State   RegionState   `json:"state"`
 	Pops    []PopState    `json:"pops"`
@@ -326,8 +347,11 @@ func worldState(w *engine.World) State {
 		for g := range engine.Doctrines[a.Doctrine].Needs {
 			sup[engine.Goods[g].Name] = a.Supply[g]
 		}
+		att, def, attr := w.Breakdown(a)
+		depot, transport := a.SupplyLine()
 		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, a.Doctrine,
-			a.Effectiveness(), a.Strength(), sup, append([]int{}, a.Path...), a.Retreating})
+			a.Effectiveness(), a.Strength(), sup, append([]int{}, a.Path...), a.Retreating, att, def, attr,
+			depot, transport})
 	}
 	for i := range w.Regions {
 		st.Regions = append(st.Regions, regionState(w, i))
@@ -337,6 +361,7 @@ func worldState(w *engine.World) State {
 			st.Flows = append(st.Flows, Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped, t.Sea})
 		}
 	}
+	trade := w.Trade()
 	for _, n := range w.Nations {
 		ns := NationState{ID: n.ID, Controller: "human", Eliminated: n.Eliminated(), Tiles: len(n.Regions),
 			Treasury: n.Treasury, TaxRate: n.TaxRate, Income: n.IncomeEMA, Revenue: n.Revenue,
@@ -347,6 +372,20 @@ func worldState(w *engine.World) State {
 			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization()}
 		ns.Soldiers, _ = w.Mobilized(n)
 		ns.BestDoctrine = bestDoctrine(n)
+		ns.Exports, ns.Imports = trade.NationOut[n.ID], trade.NationIn[n.ID]
+		pop := 0.0
+		for _, r := range n.Regions {
+			ns.GDP += r.GDP()
+			pop += r.Population()
+		}
+		for _, r := range n.Regions {
+			ns.Utility += r.Utility() * r.Population() / pop
+		}
+		for c := engine.Class(0); c < engine.NumClasses; c++ {
+			ns.ClassIncome = append(ns.ClassIncome, engine.NationClassIncome(n, c))
+		}
+		l := w.LaborShares(n)
+		ns.Labor = l[:]
 		for i := range engine.Techs {
 			ns.TechCosts = append(ns.TechCosts, n.TechCost(i, w.Nations))
 		}
@@ -366,10 +405,23 @@ func worldState(w *engine.World) State {
 
 func regionDetail(w *engine.World, i int) RegionDetail {
 	r := w.Regions[i]
-	d := RegionDetail{Info: RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain}, State: regionState(w, i),
+	d := RegionDetail{Info: RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain}, State: regionState(w, i), GDP: r.GDP(),
 		Exports: []Flow{}, Imports: []Flow{}}
 	for _, p := range r.Pops {
 		d.Pops = append(d.Pops, PopState{p.Size, p.Cash, p.Employed()})
+	}
+	for c := engine.Class(0); c < engine.NumClasses; c++ {
+		cs := ClassState{Class: c.String()}
+		u := 0.0
+		for _, p := range r.ClassPops(c) {
+			cs.Size += p.Size
+			cs.Cash += p.Cash
+			u += p.Utility() * p.Size
+		}
+		if cs.Size > 0 {
+			cs.Income, cs.Utility = r.ClassIncome(c), u/cs.Size
+			d.Classes = append(d.Classes, cs)
+		}
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,

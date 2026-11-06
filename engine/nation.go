@@ -273,10 +273,12 @@ func (n *Nation) population() float64 {
 func (r *Region) payIncome(p *Pop, amount float64) {
 	if r.Nation == nil {
 		p.Cash += amount
+		p.Income += amount
 		return
 	}
 	tax := amount * r.Nation.TaxRate
 	p.Cash += amount - tax
+	p.Income += amount - tax
 	r.Nation.Treasury += tax
 	r.Nation.Revenue += tax
 }

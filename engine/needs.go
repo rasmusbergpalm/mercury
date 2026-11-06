@@ -64,6 +64,15 @@ var Needs = []Need{
 	{"finery", Luxury, goods("fine clothes", "porcelain"), 2.0, 3.0, 0.3},
 }
 
+// ConsumerGoods lists the goods pops consume, in Needs order.
+var ConsumerGoods = func() []GoodID {
+	var out []GoodID
+	for _, n := range Needs {
+		out = append(out, n.Goods...)
+	}
+	return out
+}()
+
 // TierOf maps a good to the tier of the need it satisfies, or -1 if pops don't consume it.
 var TierOf = func() []Tier {
 	out := make([]Tier, NumGoods)

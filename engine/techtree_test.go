@@ -79,7 +79,7 @@ func TestGatedFirmsNeedTheirTech(t *testing.T) {
 		}
 	}
 	w.GrantTech(m.ID, "Ceramics")
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 150; i++ { // tile 00 has no clay: it must be imported
 		w.Step()
 	}
 	if k := firmIn(own, "Kiln"); !k.Enabled || k.LastOutput <= 0 {

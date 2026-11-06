@@ -81,6 +81,9 @@ func (r *Region) refreshPrices() []float64 {
 
 // Plan lets every firm plan at current prices.
 func (r *Region) Plan() {
+	for _, p := range r.Pops {
+		p.Income = 0
+	}
 	if r.City {
 		r.updateAgglomeration()
 	}
@@ -156,7 +159,11 @@ func (r *Region) LaborMarket() {
 	for _, f := range r.Firms {
 		totalD += f.PlanLabor
 	}
-	supply := r.Population()
+	workers := r.ClassPops(Workers)
+	supply := 0.0
+	for _, p := range workers {
+		supply += p.Size
+	}
 	scale := 0.0
 	if totalD > 0 {
 		scale = math.Min(1, supply/totalD)
@@ -165,7 +172,7 @@ func (r *Region) LaborMarket() {
 		p.Jobs = p.Jobs[:0]
 	}
 	pi := 0
-	free := r.Pops[0].Size
+	free := workers[0].Size
 	for fi, f := range r.Firms {
 		f.Labor = f.PlanLabor * scale
 		wage := 0.0
@@ -173,8 +180,8 @@ func (r *Region) LaborMarket() {
 			wage = math.Min(r.Wage, math.Max(f.Cash, 0)/f.Labor)
 		}
 		need := f.Labor
-		for need > 1e-12 && pi < len(r.Pops) {
-			pop := r.Pops[pi]
+		for need > 1e-12 && pi < len(workers) {
+			pop := workers[pi]
 			take := math.Min(need, free)
 			if n := len(pop.Jobs); n > 0 && pop.Jobs[n-1].Firm == fi {
 				pop.Jobs[n-1].Amount += take
@@ -188,8 +195,8 @@ func (r *Region) LaborMarket() {
 			free -= take
 			if free <= 1e-12 {
 				pi++
-				if pi < len(r.Pops) {
-					free = r.Pops[pi].Size
+				if pi < len(workers) {
+					free = workers[pi].Size
 				} else {
 					free = 0
 				}
@@ -320,28 +327,53 @@ func (r *Region) Produce() {
 	}
 }
 
-// PayDividends settles an owner (firm or trader) with the region's pops, who
-// own it. Cash is pulled toward a target that covers what the owner wants to
-// spend: excess is paid out as dividends, a shortfall is met by the pops
-// investing (at most 10% of their cash per tick). Money is conserved.
-func (r *Region) PayDividends(cash *float64, cashBuffer, desiredSpend float64) {
+// ClassPops lists the tile's pops of a class.
+func (r *Region) ClassPops(c Class) []*Pop {
+	var out []*Pop
+	for _, p := range r.Pops {
+		if p.Class == c {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// owners are the pops that own firms of a sector: landowners for land-bound
+// producers, capitalists for the rest (and for traders). Where that class
+// is missing (as in the classic world) everyone owns a share.
+func (r *Region) owners(s Sector) []*Pop {
+	c := Capitalists
+	if s == Primary {
+		c = Landowners
+	}
+	if o := r.ClassPops(c); len(o) > 0 {
+		return o
+	}
+	return r.Pops
+}
+
+// PayDividends settles a firm or trader with its owners. Cash is pulled
+// toward a target that covers what the business wants to spend: excess is
+// paid out as dividends, a shortfall is met by the owners investing (at most
+// 10% of their cash per tick). Money is conserved.
+func (r *Region) PayDividends(cash *float64, cashBuffer, desiredSpend float64, owners []*Pop) {
 	const rate, maxCall = 0.5, 0.1
 	target := cashBuffer + 1.2*desiredSpend
 	div := (*cash - target) * rate
-	popCash := 0.0
-	for _, p := range r.Pops {
-		popCash += p.Cash
+	ownCash, ownSize := 0.0, 0.0
+	for _, p := range owners {
+		ownCash += p.Cash
+		ownSize += p.Size
 	}
 	if div < 0 {
-		div = math.Max(div, -maxCall*popCash)
+		div = math.Max(div, -maxCall*ownCash)
 	}
-	popSize := r.Population()
 	*cash -= div
-	for _, p := range r.Pops {
+	for _, p := range owners {
 		if div < 0 {
-			p.Cash += div * (p.Cash / popCash) // investment is not taxed
+			p.Cash += div * (p.Cash / ownCash) // investment is not taxed
 		} else {
-			r.payIncome(p, div*(p.Size/popSize))
+			r.payIncome(p, div*(p.Size/ownSize))
 		}
 	}
 }

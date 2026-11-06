@@ -25,6 +25,7 @@ type World struct {
 	Armies     []*Army
 	NextArmyID int
 	Events     []Event
+	History    History // game worlds only
 
 	adj [][][2]int // per tile: (neighbour, link index)
 }
@@ -103,11 +104,13 @@ func (w *World) Step() {
 	for _, r := range w.Regions {
 		r.Produce()
 		for _, f := range r.Firms {
-			r.PayDividends(&f.Cash, f.CashBuffer, f.DesiredSpend)
+			// keep cash for what the firm wants to spend, but no more than it
+			// can grow into: twice what it actually spent today
+			r.PayDividends(&f.Cash, f.CashBuffer, math.Min(f.DesiredSpend, 2*f.tickCost+f.CashBuffer), r.owners(f.Sector))
 		}
 	}
 	for _, t := range w.Traders {
-		t.Origin.PayDividends(&t.Cash, t.CashBuffer, t.DesiredSpend)
+		t.Origin.PayDividends(&t.Cash, t.CashBuffer, t.DesiredSpend, t.Origin.owners(Industry))
 	}
 	changed := false
 	for _, n := range w.Nations {
@@ -135,6 +138,9 @@ func (w *World) Step() {
 		}
 	}
 	w.Tick++
+	if w.Spec != nil && w.Tick%HistoryEvery == 0 {
+		w.record()
+	}
 }
 
 // trackTrade updates each nation's moving average of trade with every other.
@@ -377,19 +383,38 @@ func (w *World) migrate() {
 	}
 }
 
-// movePeople moves n people (and their share of cash) between tiles, taking
-// from and adding to every pop in proportion to its size.
+// movable are the pops that move, get drafted and come home: the workers
+// (or everyone, where there are no classes).
+func movable(r *Region) []*Pop {
+	if w := r.ClassPops(Workers); len(w) > 0 && len(w) < len(r.Pops) {
+		return w
+	}
+	return r.Pops
+}
+
+func sizeOf(pops []*Pop) float64 {
+	s := 0.0
+	for _, p := range pops {
+		s += p.Size
+	}
+	return s
+}
+
+// movePeople moves n workers (and their share of cash) between tiles,
+// taking from and adding to every worker pop in proportion to its size.
 func movePeople(from, to *Region, n float64) {
-	fromPop, toPop := from.Population(), to.Population()
+	src, dst := movable(from), movable(to)
+	fromPop, toPop := sizeOf(src), sizeOf(dst)
+	n = math.Min(n, fromPop*0.5)
 	cash := 0.0
-	for _, p := range from.Pops {
+	for _, p := range src {
 		k := n * p.Size / fromPop
 		c := p.Cash * k / p.Size
 		p.Size -= k
 		p.Cash -= c
 		cash += c
 	}
-	for _, p := range to.Pops {
+	for _, p := range dst {
 		share := p.Size / toPop
 		p.Size += n * share
 		p.Cash += cash * share

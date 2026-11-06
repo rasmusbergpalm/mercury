@@ -6,12 +6,31 @@ type Job struct {
 	Amount float64
 }
 
-// Pop is a group of identical people that supply labor and consume goods.
+// Class is a pop's place in society.
+type Class int
+
+const (
+	// Workers sell their labor (and fill the armies).
+	Workers Class = iota
+	// Capitalists own industry, services and trading houses.
+	Capitalists
+	// Landowners own farms, mines, forests and plantations.
+	Landowners
+	NumClasses
+)
+
+var classNames = [...]string{"workers", "capitalists", "landowners"}
+
+func (c Class) String() string { return classNames[c] }
+
+// Pop is a group of identical people of one class.
 type Pop struct {
-	Size     float64 // number of people = units of labor supplied
+	Class    Class
+	Size     float64 // number of people (workers supply one unit of labor each)
 	Cash     float64
 	Jobs     []Job
 	Consumed []float64 // this tick, whole pop, indexed by good
+	Income   float64   // this tick, after tax: wages, dividends, rebates
 
 	perPerson []float64 // scratch
 }

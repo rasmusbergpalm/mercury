@@ -552,7 +552,7 @@ func (w *World) recruit(a *Army) {
 	}
 	if a.Men < a.Target {
 		n := math.Min(a.Target-a.Men, recruitRate*r.Population())
-		n = math.Min(n, r.Population()-minPopulation)
+		n = math.Min(n, sizeOf(movable(r))-minPopulation)
 		if n > 0 {
 			removePeople(r, n)
 			a.Men += n
@@ -725,20 +725,72 @@ func (w *World) sieges() {
 // removePeople drafts n people from a tile, taking from every pop in
 // proportion to its size; their cash stays with those who remain.
 func removePeople(r *Region, n float64) {
-	pop := r.Population()
-	for _, p := range r.Pops {
+	pops := movable(r)
+	pop := sizeOf(pops)
+	for _, p := range pops {
 		p.Size -= n * p.Size / pop
 	}
 }
 
 // addPeople adds n people (with no cash) to a tile.
 func addPeople(r *Region, n float64) {
-	pop := r.Population()
-	for _, p := range r.Pops {
+	pops := movable(r)
+	pop := sizeOf(pops)
+	for _, p := range pops {
 		p.Size += n * p.Size / pop
 	}
 }
 
 func (a *Army) String() string {
 	return fmt.Sprintf("%s army %d (%.0f men, %s) at %d", a.Nation.Name, a.ID, a.Men, Doctrines[a.Doctrine].Name, a.Region)
+}
+
+// Modifier is one factor in an army's strength.
+type Modifier struct {
+	Name  string  `json:"name"`
+	Value float64 `json:"value"` // a multiplier (or, for the first entry, the doctrine's base power)
+	Note  string  `json:"note"`
+}
+
+// Breakdown explains an army's strength per soldier: the doctrine's power,
+// each supplied good's effect, and its nation's technology; then what applies
+// when it defends its own tile, and its daily losses.
+func (w *World) Breakdown(a *Army) (attack []Modifier, defense []Modifier, attrition []Modifier) {
+	d := &Doctrines[a.Doctrine]
+	attack = append(attack, Modifier{d.Name, d.Power, "doctrine's base power per soldier"})
+	for _, g := range sortedGoods(d.Needs) {
+		s := math.Max(a.Supply[g], 0.05)
+		wt := supplyWeight(d, g)
+		attack = append(attack, Modifier{Goods[g].Name + " supply", math.Pow(s, wt),
+			fmt.Sprintf("%.0f%% supplied, weight %.2f", 100*a.Supply[g], wt)})
+	}
+	for i, t := range Techs {
+		if a.Nation.Known[i] && t.Attack != 0 {
+			attack = append(attack, Modifier{t.Name, t.Attack, "technology"})
+		}
+	}
+	defense = append(defense, Modifier{"Home ground", defenderHome, "fighting in its own tile"})
+	for i, t := range Techs {
+		if a.Nation.Known[i] && t.Defense != 0 {
+			defense = append(defense, Modifier{t.Name, t.Defense, "technology"})
+		}
+	}
+	hunger := 1 - a.Supply[G("bread")]
+	attrition = append(attrition, Modifier{"Base", baseAttrition, "share of men lost a day"})
+	attrition = append(attrition, Modifier{"Hunger", hungerAttrition * hunger, fmt.Sprintf("bread %.0f%% supplied", 100*a.Supply[G("bread")])})
+	for i, t := range Techs {
+		if a.Nation.Known[i] && t.Desertion != 0 {
+			attrition = append(attrition, Modifier{t.Name, t.Desertion, "multiplies losses"})
+		}
+	}
+	return
+}
+
+// SupplyLine describes where an army's supplies come from: the depot tile,
+// how far away it is, and the transport that today's supplies needed.
+func (a *Army) SupplyLine() (depot int, transport float64) {
+	if a.depot == nil {
+		return -1, 0
+	}
+	return a.depot.ID, a.transit
 }

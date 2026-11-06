@@ -213,7 +213,7 @@ func TestNationCommands(t *testing.T) {
 	e.do("GET", "/api/games/"+g.ID+"/regions/0", "", nil, 200, &d)
 	fi := -1
 	for i, f := range d.Firms {
-		if f.Expansion == nil && f.Levels < f.MaxLevels {
+		if f.Expansion == nil && f.Enabled && f.Levels < f.MaxLevels {
 			fi = i
 			break
 		}
@@ -301,6 +301,36 @@ func TestEvents(t *testing.T) {
 		t.Error("no events in 400 days")
 	}
 	e.do("GET", "/api/games/"+g.ID+"/events?since=x", "", nil, 400, nil)
+}
+
+func TestHistoryAndBreakdown(t *testing.T) {
+	e := newEnv(t)
+	g := e.newGame("H")
+	var st State
+	e.do("POST", "/api/games/"+g.ID+"/step?n=300", "", nil, 200, &st)
+	var h struct {
+		Ticks []int `json:"ticks"`
+		Data  struct {
+			GDP         []float64   `json:"gdp"`
+			ClassIncome [][]float64 `json:"class_income"`
+		} `json:"data"`
+	}
+	e.do("GET", "/api/games/"+g.ID+"/history/nations/0", "", nil, 200, &h)
+	if len(h.Ticks) == 0 || len(h.Data.GDP) != len(h.Ticks) || len(h.Data.ClassIncome) != 3 {
+		t.Fatalf("nation history: %d ticks, %d gdp", len(h.Ticks), len(h.Data.GDP))
+	}
+	e.do("GET", "/api/games/"+g.ID+"/history/regions/7", "", nil, 200, nil)
+	e.do("GET", "/api/games/"+g.ID+"/history/regions/99", "", nil, 404, nil)
+	if len(st.Armies) == 0 || len(st.Armies[0].Attack) == 0 || len(st.Nations[0].Labor) != 3 {
+		t.Fatalf("state lacks army breakdown or nation stats")
+	}
+	e.do("GET", fmt.Sprintf("/api/games/%s/history/armies/%d", g.ID, st.Armies[0].ID), "", nil, 200, nil)
+	e.do("GET", "/api/games/"+g.ID+"/history/armies/999", "", nil, 404, nil)
+	var d RegionDetail
+	e.do("GET", "/api/games/"+g.ID+"/regions/7", "", nil, 200, &d)
+	if len(d.Classes) != 3 || d.GDP <= 0 {
+		t.Errorf("region detail: %d classes, gdp %v", len(d.Classes), d.GDP)
+	}
 }
 
 func TestClock(t *testing.T) {
