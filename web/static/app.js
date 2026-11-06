@@ -662,8 +662,6 @@ function draw() {
     const rs = state.regions[r.id], [x, y] = center(r);
     if (sc) {
       hexPath(x, y, size * 0.99); ctx.fillStyle = rampColor(sc.t(overlayValue(r.id))); ctx.globalAlpha = 0.88; ctx.fill(); ctx.globalAlpha = 1;
-    } else if (kind === "nation" && rs.nation >= 0) {
-      hexPath(x, y, size); ctx.fillStyle = rgba(nationColor(rs.nation), dark ? 0.3 : 0.28); ctx.fill();
     } else if (kind === "infra") {
       hexPath(x, y, size); ctx.fillStyle = dark ? "rgba(0,0,0,0.35)" : "rgba(244,234,210,0.55)"; ctx.fill();
     }
@@ -741,9 +739,9 @@ function drawBorders(bands) {
       if (other === o) continue;
       const [ax, ay] = corner(x, y, size, i), [bx, by] = corner(x, y, size, i + 1);
       if (o >= 0 && bands) {
-        const [cx, cy] = corner(x, y, size * 0.9, i), [dx, dy] = corner(x, y, size * 0.9, i + 1);
+        const [cx, cy] = corner(x, y, size * 0.88, i), [dx, dy] = corner(x, y, size * 0.88, i + 1);
         ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(dx, dy); ctx.lineTo(cx, cy); ctx.closePath();
-        ctx.fillStyle = rgba(nationColor(o), 0.75); ctx.fill();
+        ctx.fillStyle = rgba(nationColor(o), 0.9); ctx.fill();
       }
       if (nb && nb.id < r.id) continue; // ink each shared edge once
       if (!nb && o < 0) continue;
