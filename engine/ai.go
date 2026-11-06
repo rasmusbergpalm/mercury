@@ -20,6 +20,7 @@ const (
 	aiWarYears      = 3   // seek peace after this long
 	aiLosingRatio   = 0.6 // seek peace when this much weaker than the enemy
 	aiPeaceMobilize = 0.5 // share of the mobilization cap kept under arms in peace
+	aiTruceYears    = 5   // no new war of choice on a nation this soon after peace
 )
 
 func (w *World) runAI() {
@@ -67,16 +68,19 @@ func (w *World) think(n *Nation) {
 	}
 	targets := w.expansionTargets(n)
 	war := w.atWar(n)
+	t, noise := n.Temper, func(k int) float64 { return w.noise(n, k) }
 	switch {
 	case war || invaded || threat > 1.3*own+1:
-		n.SetBudget(aiWarBudget)
+		n.SetBudget(t.budget(aiWarBudget, noise))
 		n.SetDrill(MaxDrill) // keep the arms works busy for what's coming
 	case len(targets) > 0:
-		n.SetBudget(aiExpandBudget)
+		b := aiExpandBudget
+		b[Defense] *= t.Expansion // land-hungry nations field more men to take it
+		n.SetBudget(t.budget(b, noise))
 		n.SetDrill(DefaultDrill)
 	default:
-		n.SetBudget(aiPeaceBudget)
-		n.SetDrill(DefaultDrill)
+		n.SetBudget(t.budget(aiPeaceBudget, noise))
+		n.SetDrill(math.Min(MaxDrill, math.Max(MinDrill, DefaultDrill*t.Militarism)))
 	}
 	w.aiDiplomacy(n, own)
 	w.aiBuild(n)
@@ -113,15 +117,22 @@ func (w *World) aiDiplomacy(n *Nation, own float64) {
 	}
 	// wars of choice only once the grace period is over and there's no free
 	// land left to take
-	if w.atWar(n) || float64(w.Tick) < aiGraceYears*TicksPerYear || len(w.expansionTargets(n)) > 0 {
+	// (belligerent nations start sooner, and don't wait for the land to run out)
+	t := n.Temper
+	if w.atWar(n) || float64(w.Tick) < aiGraceYears/t.Aggression*TicksPerYear ||
+		(len(w.expansionTargets(n)) > 0 && t.Aggression < 1.25) {
 		return
 	}
+	advantage := aiWarAdvantage / t.Aggression * (1 + 0.15*w.noise(n, 1))
 	var victim *Nation
 	for _, o := range w.Nations {
 		if o == n || o.Eliminated() || !w.nationsBorder(n, o) || w.atWar(o) {
 			continue // no ganging up on a nation already at war
 		}
-		if s := w.ArmyStrength(o); own > aiWarAdvantage*s+1 && (victim == nil || s < w.ArmyStrength(victim)) {
+		if since := float64(w.Tick - n.WarSince[o.ID]); n.WarSince[o.ID] > 0 && since < aiTruceYears/t.Aggression*TicksPerYear {
+			continue // a truce after the last peace
+		}
+		if s := w.ArmyStrength(o); own > advantage*s+1 && (victim == nil || s < w.ArmyStrength(victim)) {
 			victim = o
 		}
 	}
@@ -135,7 +146,7 @@ func (w *World) aiDiplomacy(n *Nation, own float64) {
 // invaded tiles, attack the enemy's weakest border tile, or occupy free land.
 func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 	war := w.atWar(n)
-	share := aiPeaceMobilize
+	share := clamp01(aiPeaceMobilize * n.Temper.Militarism)
 	if war {
 		share = 1
 	}
@@ -219,8 +230,8 @@ func (w *World) aiArmyHome(n *Nation) *Region {
 				contested = contested || a.Nation != n
 			}
 		}
-		if contested {
-			continue // an army raised under the enemy's guns would be cut down at once
+		if contested || w.tileTaken(n, r.ID, nil) {
+			continue // one army per tile; and one raised under the enemy's guns would be cut down at once
 		}
 		if best == nil || k < bestN || (k == bestN && r.Population() > best.Population()) {
 			best, bestN = r, k
@@ -247,12 +258,16 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 	}
 	// defend: an enemy army on our soil, if together with our armies there
 	// we can beat it; if we can't, hold and recruit
+	odds := aiFightOdds / math.Sqrt(n.Temper.Aggression) * (1 + 0.1*w.noise(n, 100+a.ID))
 	invaded := false
 	for _, e := range w.Armies {
 		if e.Nation != n && n.AtWar[e.Nation.ID] && w.Regions[e.Region].Nation == n {
 			invaded = true
+			if w.tileTaken(n, e.Region, a) {
+				continue // another of our armies is on it
+			}
 			enemy, own := forces(e.Region)
-			if (own+a.Strength())*defenderHome*n.defenseMult() >= aiFightOdds*enemy {
+			if (own+a.Strength())*defenderHome*n.defenseMult() >= odds*enemy {
 				return e.Region
 			}
 		}
@@ -264,11 +279,11 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 	// people, among those the army can win
 	best, bestScore := -1, math.Inf(-1)
 	for _, r := range w.Regions {
-		if r.Nation == nil || r.Nation == n || !n.AtWar[r.Nation.ID] || !w.borders(n, r) {
+		if r.Nation == nil || r.Nation == n || !n.AtWar[r.Nation.ID] || !w.borders(n, r) || w.tileTaken(n, r.ID, a) {
 			continue
 		}
 		enemy, own := forces(r.ID)
-		if own+a.Strength() < aiFightOdds*enemy*defenderHome*r.Nation.defenseMult() {
+		if own+a.Strength() < odds*enemy*defenderHome*r.Nation.defenseMult() {
 			continue
 		}
 		if score := -enemy*1000 + r.Population(); score > bestScore {
@@ -281,6 +296,9 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 	// expand: free land the army is strong enough to take in reasonable time
 	bestScore = 0
 	for _, t := range targets {
+		if w.tileTaken(n, t.region.ID, a) {
+			continue
+		}
 		if t.score > bestScore {
 			best, bestScore = t.region.ID, t.score
 		}

@@ -118,6 +118,7 @@ type RegionState struct {
 	CityBonus  float64     `json:"city_bonus"`
 	Growth     float64     `json:"growth"` // population growth per year
 	Occupation *Occupation `json:"occupation"`
+	Battle     int         `json:"battle"` // days the battle on the tile has lasted (0: none)
 	Project    *Project    `json:"project"`
 }
 
@@ -162,6 +163,7 @@ type NationState struct {
 	MobilizeCap    float64   `json:"mobilize_cap"`
 	MaxArmySize    float64   `json:"max_army_size"` // men one army can field
 	Drill          float64   `json:"drill"`         // share of wartime supplies armies use in peace
+	Temperament    string    `json:"temperament"`   // how the computer plays it
 	Mobilization   float64   `json:"mobilization"`  // share of people who may serve
 	BestDoctrine   int       `json:"best_doctrine"`
 	GDP            float64   `json:"gdp"`
@@ -353,7 +355,8 @@ func regionState(w *engine.World, i int) RegionState {
 	}
 	st := RegionState{ID: r.ID, Wage: r.Wage, Utility: r.Utility(), Population: r.Population(),
 		Employed: employed, TierSpend: ts[:], Prices: r.Prices(), Nation: -1, Infra: r.Infra,
-		MoveCost: r.MoveCost(), Port: r.Port, City: w.IsCity(r), CityBonus: r.SizeBonus(), Growth: r.GrowthRate()}
+		MoveCost: r.MoveCost(), Port: r.Port, City: w.IsCity(r), CityBonus: r.SizeBonus(), Growth: r.GrowthRate(),
+		Battle: r.Battle}
 	if r.Nation != nil {
 		st.Nation = r.Nation.ID
 	}
@@ -401,7 +404,7 @@ func worldState(w *engine.World) State {
 			Researching: n.Researching, Points: n.ResearchPoints, Known: n.Known,
 			Queue: append([]int{}, n.Queue...), AtWar: n.AtWar, PeaceOffer: n.PeaceOffer,
 			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch,
-			MaxArmySize: n.MaxArmySize(), Drill: n.Drill}
+			MaxArmySize: n.MaxArmySize(), Drill: n.Drill, Temperament: n.Temper.Describe()}
 		ns.Soldiers, _ = w.Mobilized(n)
 		ns.BestDoctrine = bestDoctrine(n)
 		ns.Exports, ns.Imports = trade.NationOut[n.ID], trade.NationIn[n.ID]

@@ -90,6 +90,7 @@ func (s *Server) CreateGame(name string, transportCost float64, turnDays int) (*
 	spec := engine.DefaultGame
 	spec.TransportCost = transportCost
 	spec.AI = true
+	spec.Seed = time.Now().UnixNano() // each game's rivals have their own temperaments
 	w, err := engine.BuildGame(spec)
 	if err != nil {
 		return nil, err

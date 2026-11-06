@@ -460,3 +460,59 @@ func TestLossesTakeEquipment(t *testing.T) {
 		t.Errorf("attrition changed days of stock: %v -> %v", before, x.StockDays(bread))
 	}
 }
+
+// A nation holds each tile with one army at most.
+func TestOneArmyPerTile(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	home, other := regionByName(w, "11"), regionByName(w, "10")
+	a, err := w.RaiseArmy(m.ID, home.ID, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.RaiseArmy(m.ID, home.ID, 1); !errors.Is(err, ErrTileTaken) {
+		t.Errorf("second army in the same tile: %v", err)
+	}
+	b, err := w.RaiseArmy(m.ID, other.ID, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := w.MoveArmy(b.ID, home.ID); !errors.Is(err, ErrTileTaken) {
+		t.Errorf("marching onto our own army: %v", err)
+	}
+	if err := w.MoveArmy(a.ID, regionByName(w, "22").ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.MoveArmy(b.ID, regionByName(w, "22").ID); !errors.Is(err, ErrTileTaken) {
+		t.Errorf("two armies heading for the same tile: %v", err)
+	}
+}
+
+// Battles between near-equal armies end within weeks, and while they last
+// occupation stands still.
+func TestBattlesAreQuickAndFreezeOccupation(t *testing.T) {
+	w := newNeighbourGame(t)
+	w.Migration, w.Demography = false, false
+	w.DeclareWar(0, 1)
+	enemy := regionByName(w, "01")
+	x, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
+	x.Men, x.Region = 40, enemy.ID
+	for i := 0; i < 30; i++ {
+		w.sieges()
+	}
+	p := enemy.Siege.Progress
+	y, _ := w.RaiseArmy(1, enemy.ID, 0)
+	y.Men = 30 // with home ground, close to even
+	days := 0
+	for ; w.ArmyByID(x.ID) != nil && w.ArmyByID(y.ID) != nil && days < 100; days++ {
+		w.battles()
+		w.sieges()
+		if enemy.Battle > 0 && enemy.Siege != nil && enemy.Siege.Progress != p {
+			t.Fatalf("occupation moved during battle: %v -> %v", p, enemy.Siege.Progress)
+		}
+	}
+	if days > 20 {
+		t.Errorf("an even battle lasted %d days", days)
+	}
+	t.Logf("battle decided in %d days", days)
+}

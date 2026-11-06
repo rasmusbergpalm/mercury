@@ -695,6 +695,7 @@ function draw() {
     if (rs.project) progressRing(x + size * 0.52, y - size * 0.34, rs.project.delivered / rs.project.required);
   }
   if ($("show-flows").checked) drawFlows();
+  for (const r of world.regions) if (state.regions[r.id].battle > 0) drawBattle(...center(r));
   drawPaths();
   drawArmies();
   if (selected !== null) {
@@ -892,6 +893,19 @@ function drawArmies() {
   }
 }
 
+// a battle: crossed sabres in a red burst above the armies
+function drawBattle(x, y) {
+  const cx = x, cy = y - size * 0.45, r = size * 0.22;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.6);
+  g.addColorStop(0, "rgba(210,45,25,0.95)"); g.addColorStop(0.55, "rgba(220,60,30,0.7)"); g.addColorStop(1, "rgba(220,60,30,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r * 1.6, 0, 2 * Math.PI); ctx.fill();
+  ctx.strokeStyle = "#fff6e0"; ctx.lineWidth = Math.max(1.5, size * 0.035); ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r); ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r); ctx.stroke();
+  ctx.lineWidth = Math.max(1, size * 0.02);
+  ctx.beginPath(); ctx.moveTo(cx - r * 0.75, cy + r * 0.45); ctx.lineTo(cx - r * 0.45, cy + r * 0.75);
+  ctx.moveTo(cx + r * 0.75, cy + r * 0.45); ctx.lineTo(cx + r * 0.45, cy + r * 0.75); ctx.stroke();
+}
+
 // the marching route of the selected army (and the routes of your others, faintly)
 function drawPaths() {
   for (const a of state.armies) {
@@ -937,7 +951,7 @@ function drawFlows() {
 function drawLegend(sc) {
   const kind = $("overlay").value, el = $("legend");
   const sw = (c) => `<span class="swatch" style="background:${c}"></span>`;
-  const marks = `<span>⌂ towns grow with their people</span><span>⚓ port</span><span>⛨ army</span><span>▨ occupied</span><span>┄ road · ═ paved · ╫ railway</span>`;
+  const marks = `<span>⌂ towns grow with their people</span><span>✕ battle</span><span>⚓ port</span><span>⛨ army</span><span>▨ occupied</span><span>┄ road · ═ paved · ╫ railway</span>`;
   const pal = TERRAIN[dark ? "dark" : "light"];
   if (kind === "nation") {
     el.innerHTML = world.nations.map((n) => `<span>${sw(nationColor(n.id))}${esc(n.name)}</span>`).join("") + marks;
@@ -1100,13 +1114,18 @@ function armiesHere(s, mine) {
     html += `<h3>Occupation</h3><div class="progress"><span style="width:${pct(s.occupation.progress)};background:${nationColor(s.occupation.nation)}"></span></div>
       <p class="sub">${esc(nationName(s.occupation.nation))} holds ${pct(s.occupation.progress)}: it grows each day their army stands here unopposed, and falls back otherwise. At 100% the tile changes hands.</p>`;
   }
+  if (s.battle > 0) {
+    html += `<h3>Battle</h3><p class="bad">Battle raging, day ${s.battle}. Occupation stands still while it lasts; each day the margin that breaks an army narrows.</p>`;
+  }
   if (here.length) {
     html += `<h3>Armies here</h3>` + here.map((a) =>
       `<div class="row">${chip(a.nation)} <span>${esc(nationName(a.nation))}: strength ${short(a.strength)} (${short(a.men)} men, ${world.doctrines[a.doctrine].name})</span>
        <button data-army="${a.id}">Inspect</button></div>`).join("");
   }
   const n = me();
-  if (mine && n) {
+  if (mine && n && here.some((a) => a.nation === n.id)) {
+    html += `<p class="sub">One of your armies holds this tile; a nation keeps one army per tile.</p>`;
+  } else if (mine && n) {
     const room = Math.max(0, n.mobilize_cap - state.armies.filter((a) => a.nation === n.id).reduce((t, a) => t + a.target, 0));
     html += `<h3>Raise an army here</h3>
       <div class="row"><label>Soldiers <input id="raise-men" type="number" min="0" max="${Math.floor(n.max_army_size)}" step="1" value="${Math.floor(Math.min(room, n.max_army_size))}" class="num"></label>
@@ -1394,7 +1413,7 @@ function worldPanel() {
   const n = me();
   const rows = state.nations.map((o) => {
     const info = world.nations[o.id];
-    const who = o.id === state.you ? "you" : o.controller === "ai" ? "computer" : "player";
+    const who = o.id === state.you ? "you" : o.controller === "ai" ? `computer · ${esc(o.temperament)}` : "player";
     let diplo = "";
     if (n && o.id !== n.id && !o.eliminated && !n.eliminated) {
       if (n.at_war[o.id]) {

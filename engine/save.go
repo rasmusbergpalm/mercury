@@ -36,7 +36,7 @@ type SiegeSnap struct {
 }
 
 // SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 8
+const SnapshotVersion = 9
 
 type MarketSnap struct {
 	Price, Supply, Demand float64
@@ -58,7 +58,7 @@ type FirmSnap struct {
 type RegionSnap struct {
 	Wage, Neglect, UtilityEMA float64
 	HouseCash                 float64
-	Infra                     int
+	Infra, Battle             int
 	Port                      bool
 	Project                   *Project
 	Siege                     *SiegeSnap
@@ -99,7 +99,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	}
 	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick, Ports: append([]int(nil), w.Ports...)}
 	for _, r := range w.Regions {
-		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Infra: r.Infra, Port: r.Port}
+		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Infra: r.Infra, Battle: r.Battle, Port: r.Port}
 		if r.Siege != nil {
 			rs.Siege = &SiegeSnap{r.Siege.Nation.ID, r.Siege.Progress}
 		}
@@ -198,7 +198,7 @@ func Restore(s *Snapshot) (*World, error) {
 			return bad("port in " + r.Name)
 		}
 		r.Wage, r.Neglect, r.UtilityEMA, r.Infra, r.Project, r.Nation = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Infra, rs.Project, nil
-		r.House.Cash = rs.HouseCash
+		r.House.Cash, r.Battle = rs.HouseCash, rs.Battle
 		if r.Infra < 0 || r.Infra >= len(InfraLevels) || (r.Project != nil && !r.Project.Port && (r.Project.Target <= 0 || r.Project.Target >= len(InfraLevels))) {
 			return bad("infrastructure in " + r.Name)
 		}

@@ -92,8 +92,9 @@ type Nation struct {
 	// of the economy (infrastructure, upkeep, firm expansions), science
 	// and the military. What isn't spent builds up the treasury.
 	Budget    [NumBudgets]float64
-	Drill     float64 // share of wartime supplies armies use in peace
-	IncomeEMA float64 // moving average of tax and tariff income per tick
+	Drill     float64     // share of wartime supplies armies use in peace
+	Temper    Temperament // how the computer plays it
+	IncomeEMA float64     // moving average of tax and tariff income per tick
 
 	ResearchPoints float64 // research delivered towards the current tech
 	Researching    int     // index into Techs, or -1 to pick automatically
@@ -104,7 +105,7 @@ type Nation struct {
 	TradeWith []float64
 
 	AtWar      []bool // per nation
-	WarSince   []int  // per nation: tick the current war began
+	WarSince   []int  // per nation: tick the current war began, or the last peace was made
 	PeaceOffer []bool // per nation: this nation has offered it peace
 	AI         bool   // run by the computer
 	// ChooseResearch: a tech finished with nothing queued, so the next one

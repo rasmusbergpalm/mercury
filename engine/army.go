@@ -83,9 +83,9 @@ const (
 	baseAttrition   = 0.0002 // share of men lost per day even when well supplied
 	hungerAttrition = 0.004  // extra share lost per day when food is entirely missing
 	marchDaysPerHop = 8.0    // days to march one hop of cost 1 (roads and rails shorten it)
-	battleRate      = 0.02   // men lost per day per unit of enemy strength
+	battleRate      = 0.04   // men lost per day per unit of enemy strength
 	defenderHome    = 1.2    // defending one's own tile
-	retreatRatio    = 0.3    // a side weaker than this fraction of its enemy retreats
+	retreatRatio    = 0.3    // on a battle's first day, a side weaker than this fraction of its enemy breaks
 	occupationDays  = 180.0  // days an unopposed army needs to take unowned land (techs change the pace)
 	ownedTileFactor = 2.0    // taking another nation's tile takes this many times longer
 	minOccupiers    = 1.0    // an army needs at least this many men to occupy or fight
@@ -110,6 +110,7 @@ var (
 	ErrNoPath      = errors.New("the army can't get there")
 	ErrMobilized   = errors.New("that exceeds how many people the nation can mobilize")
 	ErrArmySize    = errors.New("that is more men than one army can field (techs raise it)")
+	ErrTileTaken   = errors.New("another of the nation's armies already holds or is heading for that tile")
 	ErrNoUpgrade   = errors.New("the nation knows no better doctrine")
 	ErrAtWar       = errors.New("already at war")
 	ErrAtPeace     = errors.New("not at war")
@@ -197,6 +198,9 @@ func (w *World) RaiseArmy(nation, region int, target float64) (*Army, error) {
 	n, r := w.Nations[nation], w.Regions[region]
 	if r.Nation != n {
 		return nil, ErrNotOwnTile
+	}
+	if w.tileTaken(n, region, nil) {
+		return nil, ErrTileTaken
 	}
 	if err := w.checkMobilization(n, nil, target); err != nil {
 		return nil, err
@@ -369,6 +373,9 @@ func (w *World) MoveArmy(id, dest int) error {
 	if !w.passable(a.Nation, w.Regions[dest]) {
 		return ErrNoPath
 	}
+	if w.tileTaken(a.Nation, dest, a) {
+		return ErrTileTaken
+	}
 	dist, prev := w.shortestPaths(a.Region, func(r *Region) bool { return w.passable(a.Nation, r) })
 	if math.IsInf(dist[dest], 1) {
 		return ErrNoPath
@@ -377,16 +384,38 @@ func (w *World) MoveArmy(id, dest int) error {
 	return nil
 }
 
-// sendHome sets an army marching to the nearest tile of its own nation,
-// through any land. It returns false if the nation has no tiles.
+// tileTaken reports whether another of a nation's armies (not except)
+// stands in a tile or is marching there: each tile holds one army per nation.
+func (w *World) tileTaken(n *Nation, region int, except *Army) bool {
+	for _, a := range w.Armies {
+		if a == except || a.Nation != n {
+			continue
+		}
+		if dest := a.Region; len(a.Path) > 0 {
+			if a.Path[len(a.Path)-1] == region {
+				return true
+			}
+		} else if dest == region {
+			return true
+		}
+	}
+	return false
+}
+
+// sendHome sets an army marching to the nearest tile of its own nation that
+// none of its other armies holds, through any land. It returns false if
+// there is none.
 func (w *World) sendHome(a *Army) bool {
-	if w.Regions[a.Region].Nation == a.Nation {
+	if w.Regions[a.Region].Nation == a.Nation && !w.tileTaken(a.Nation, a.Region, a) {
 		a.Path = nil
 		return true
 	}
 	dist, prev := w.shortestPaths(a.Region, func(*Region) bool { return true })
 	best := -1
 	for _, r := range a.Nation.Regions {
+		if w.tileTaken(a.Nation, r.ID, a) {
+			continue
+		}
 		if best < 0 || dist[r.ID] < dist[best] {
 			best = r.ID
 		}
@@ -453,6 +482,7 @@ func (w *World) makePeace(a, b int) error {
 		return ErrAtPeace
 	}
 	na.AtWar[b], nb.AtWar[a] = false, false
+	na.WarSince[b], nb.WarSince[a] = w.Tick, w.Tick // now: when peace was made
 	na.PeaceOffer[b], nb.PeaceOffer[a] = false, false
 	for _, ar := range w.Armies {
 		r := w.Regions[ar.Region]
@@ -705,21 +735,35 @@ func (w *World) battles() {
 				here = append(here, a)
 			}
 		}
-		if len(here) < 2 {
-			continue
-		}
-		for i, x := range w.Nations {
-			for _, y := range w.Nations[i+1:] {
-				if !x.AtWar[y.ID] {
-					continue
+		fought := false
+		if len(here) >= 2 {
+			for i, x := range w.Nations {
+				for _, y := range w.Nations[i+1:] {
+					if x.AtWar[y.ID] && w.fight(r, x, y, here, r.Battle+1) {
+						fought = true
+					}
 				}
-				w.fight(r, x, y, here)
 			}
+		}
+		if fought {
+			r.Battle++
+		} else {
+			r.Battle = 0
 		}
 	}
 }
 
-func (w *World) fight(r *Region, x, y *Nation, here []*Army) {
+// breakRatio is how far behind its enemy a side may fall before it breaks
+// and is destroyed, on the day-th day of a battle: at first only a side
+// badly outmatched breaks, but the longer the fight, the smaller the margin
+// that decides it, so battles don't drag on.
+func breakRatio(day int) float64 {
+	return math.Min(0.95, retreatRatio+0.06*float64(day-1))
+}
+
+// fight is a day of battle between two nations' armies on a tile; it
+// reports whether they fought.
+func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 	side := func(n *Nation) ([]*Army, float64, float64) {
 		var armies []*Army
 		power, men := 0.0, 0.0
@@ -738,7 +782,7 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army) {
 	ax, px, mx := side(x)
 	ay, py, my := side(y)
 	if len(ax) == 0 || len(ay) == 0 {
-		return
+		return false
 	}
 	lose := func(armies []*Army, men, losses float64) {
 		if men <= 0 {
@@ -756,12 +800,14 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army) {
 		}
 		w.emit(-1, "battle", r.ID, "%s destroys %s's army at tile %s", enemy.Name, n.Name, r.Name)
 	}
+	br := breakRatio(day)
 	switch {
-	case px < retreatRatio*py:
+	case px < br*py:
 		defeat(ax, x, y)
-	case py < retreatRatio*px:
+	case py < br*px:
 		defeat(ay, y, x)
 	}
+	return true
 }
 
 // sieges advances occupations. While a nation's army stands on a tile it may
@@ -769,9 +815,13 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army) {
 // occupation rises by a fixed amount each day; otherwise it falls back by
 // the same amount until it is gone. At 100% the tile changes hands. Another
 // nation can only start occupying once the previous occupation has fallen
-// back to nothing. Size doesn't matter: holding the ground does.
+// back to nothing. Size doesn't matter: holding the ground does. While a
+// battle is fought on the tile, occupation stands still.
 func (w *World) sieges() {
 	for _, r := range w.Regions {
+		if r.Battle > 0 {
+			continue // no ground is gained or given up while the armies fight
+		}
 		var occupier *Nation
 		biggest, defended := 0.0, false
 		for _, a := range w.Armies {

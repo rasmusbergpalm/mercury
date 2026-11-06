@@ -90,15 +90,15 @@ func TestAIArmsWhenThreatened(t *testing.T) {
 	big, _ := w.RaiseArmy(b.ID, regionByName(w, "01").ID, 0)
 	big.Men = 1000
 	w.think(a)
-	if a.Budget != aiWarBudget {
-		t.Errorf("AI facing a much bigger neighbour kept budget %v", a.Budget)
+	if a.Drill != MaxDrill || a.Budget[Defense] < 0.4 { // a war footing, leaned by temperament
+		t.Errorf("AI facing a much bigger neighbour kept budget %v, drill %v", a.Budget, a.Drill)
 	}
 	if len(w.ArmiesOf(a)) == 0 {
 		t.Error("AI raised no army")
 	}
 	w.removeArmy(big)
 	w.think(a)
-	if a.Budget == aiWarBudget {
+	if a.Drill == MaxDrill {
 		t.Error("AI stayed on a war footing with no threat")
 	}
 }
@@ -118,5 +118,33 @@ func TestPlayersNationsAreLeftAlone(t *testing.T) {
 		if r.Project != nil {
 			t.Error("the AI started a project for a player's nation")
 		}
+	}
+}
+
+// Computer nations differ in temperament, by nation and by game, but a given
+// game's are fixed.
+func TestTemperamentsVary(t *testing.T) {
+	spec := DefaultGame
+	a, b := drawTemperament(1, 0), drawTemperament(1, 1)
+	if a == b {
+		t.Error("two nations of a game share a temperament")
+	}
+	if drawTemperament(2, 0) == a {
+		t.Error("two games draw the same temperament")
+	}
+	spec.Seed = 1
+	w, err := BuildGame(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.Nations[0].Temper != a {
+		t.Error("the game's first nation doesn't have its seed's temperament")
+	}
+	if d := a.Describe(); d == "" {
+		t.Error("no description")
+	}
+	// the AI's whims are deterministic: same tick, same answer
+	if w.noise(w.Nations[0], 3) != w.noise(w.Nations[0], 3) || w.noise(w.Nations[0], 3) == w.noise(w.Nations[1], 3) {
+		t.Error("noise is not a deterministic function of nation and decision")
 	}
 }

@@ -282,7 +282,8 @@ type GameSpec struct {
 	Nations       []NationSpec
 	TransportCost float64
 	TaxRate       float64
-	AI            bool // nations are run by the computer until a player takes one
+	AI            bool  // nations are run by the computer until a player takes one
+	Seed          int64 // draws the computer nations' temperaments and their whims
 }
 
 // DefaultGame is the default game scenario on DefaultMap: three nations of
@@ -331,6 +332,7 @@ func BuildGame(spec GameSpec) (*World, error) {
 	for i, ns := range spec.Nations {
 		n := newNation(i, ns.Name, ns.Color, len(spec.Nations), spec.TaxRate)
 		n.AI = spec.AI
+		n.Temper = drawTemperament(spec.Seed, i)
 		if err := n.SetTaxRate(spec.TaxRate); err != nil {
 			return nil, err
 		}

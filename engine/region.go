@@ -23,6 +23,7 @@ type Region struct {
 	Project  *Project // infrastructure under construction, or nil
 	Neglect  float64  // accumulated unmet upkeep
 	Siege    *Siege   // a foreign army working to take the tile, or nil
+	Battle   int      // days the current battle on the tile has lasted (0: none)
 
 	UtilityEMA float64 // smoothed utility per person; migration follows it
 
