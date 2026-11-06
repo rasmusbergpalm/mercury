@@ -26,9 +26,8 @@ type Snapshot struct {
 type ArmySnap struct {
 	ID, Nation, Region, Doctrine int
 	Men, Target, March           float64
-	Supply                       []float64
+	Supply, Stock                []float64
 	Path                         []int
-	Retreating                   bool
 }
 
 type SiegeSnap struct {
@@ -37,7 +36,7 @@ type SiegeSnap struct {
 }
 
 // SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 6
+const SnapshotVersion = 7
 
 type MarketSnap struct {
 	Price, Supply, Demand float64
@@ -152,7 +151,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	}
 	for _, a := range w.Armies {
 		s.Armies = append(s.Armies, ArmySnap{a.ID, a.Nation.ID, a.Region, a.Doctrine, a.Men, a.Target, a.March,
-			append([]float64(nil), a.Supply...), append([]int(nil), a.Path...), a.Retreating})
+			append([]float64(nil), a.Supply...), append([]float64(nil), a.Stock...), append([]int(nil), a.Path...)})
 	}
 	s.NextArmyID = w.NextArmyID
 	s.Events = append([]Event(nil), w.Events...)
@@ -271,7 +270,7 @@ func Restore(s *Snapshot) (*World, error) {
 	}
 	for _, as := range s.Armies {
 		if as.Nation < 0 || as.Nation >= len(w.Nations) || as.Region < 0 || as.Region >= len(w.Regions) ||
-			as.Doctrine < 0 || as.Doctrine >= len(Doctrines) || len(as.Supply) != NumGoods {
+			as.Doctrine < 0 || as.Doctrine >= len(Doctrines) || len(as.Supply) != NumGoods || len(as.Stock) != NumGoods {
 			return bad("army")
 		}
 		for _, p := range as.Path {
@@ -281,7 +280,7 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 		w.Armies = append(w.Armies, &Army{ID: as.ID, Nation: w.Nations[as.Nation], Region: as.Region,
 			Doctrine: as.Doctrine, Men: as.Men, Target: as.Target, March: as.March, Supply: as.Supply,
-			Path: as.Path, Retreating: as.Retreating})
+			Stock: as.Stock, Path: as.Path})
 	}
 	w.NextArmyID = s.NextArmyID
 	w.Events = append([]Event(nil), s.Events...)

@@ -693,11 +693,6 @@ function draw() {
     drawSettlement(r, x, y - size * 0.12, rs.population, avg);
     if (rs.port) drawAnchor(x - size * 0.55, y - size * 0.28);
     if (rs.project) progressRing(x + size * 0.52, y - size * 0.34, rs.project.delivered / rs.project.required);
-    let label = `${r.name} · ${short(rs.population)}`;
-    if (sc) label = fmtOverlay(overlayValue(r.id));
-    else if (kind === "infra") label = `×${rs.move_cost.toFixed(2)}`;
-    plate(label, x, y + size * 0.62, Math.max(11, size * 0.21), !!sc || kind === "infra");
-    if (rs.occupation) plate(`⚑ ${pct(rs.occupation.progress)}`, x + size * 0.45, y + size * 0.3, Math.max(10, size * 0.18), true, nationColor(rs.occupation.nation));
   }
   if ($("show-flows").checked) drawFlows();
   drawPaths();
@@ -865,7 +860,7 @@ function drawAnchor(x, y) {
 }
 
 // armies: a shield in the nation's colour with the number of men beneath
-const armySpot = (x, y, i, n) => [x + (i - (n - 1) / 2) * size * 0.42, y + size * 0.12];
+const armySpot = (x, y, i, n) => [x + (i - (n - 1) / 2) * size * 0.45, y + size * 0.05];
 function drawArmies() {
   const byTile = {};
   for (const a of state.armies) (byTile[a.region] = byTile[a.region] || []).push(a);
@@ -881,13 +876,18 @@ function drawArmies() {
       ctx.shadowColor = "transparent";
       const sel = a.id === selectedArmy;
       ctx.lineWidth = sel ? 3 : 1.6; ctx.strokeStyle = sel ? cssVar("--select") : "#e7c776";
-      if (a.retreating) ctx.setLineDash([3, 2]);
-      ctx.stroke(); ctx.setLineDash([]);
+      ctx.stroke();
       // crossed sabres
       ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = Math.max(1, size * 0.025);
       ctx.beginPath(); ctx.moveTo(bx - w * 0.55, by - h * 0.6); ctx.lineTo(bx + w * 0.55, by + h * 0.55);
       ctx.moveTo(bx + w * 0.55, by - h * 0.6); ctx.lineTo(bx - w * 0.55, by + h * 0.55); ctx.stroke();
-      plate(short(a.men), bx, by + h * 1.55, Math.max(9, size * 0.16), true);
+      // strength, and a health bar: strength against the army at full size and supply
+      const health = Math.max(0, Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)));
+      const bw = w * 2.3, bh = Math.max(3.5, size * 0.065), bxl = bx - bw / 2, byt = by + h * 1.3;
+      ctx.fillStyle = "rgba(20,14,8,0.75)"; roundRect(bxl - 1, byt - 1, bw + 2, bh + 2, 2); ctx.fill();
+      ctx.fillStyle = health > 0.6 ? (dark ? "#8fbf6a" : "#4f8a2e") : health > 0.3 ? "#d9a520" : "#c8402e";
+      ctx.fillRect(bxl, byt, bw * health, bh);
+      plate(short(a.strength), bx, byt + bh + Math.max(9, size * 0.15) * 0.75, Math.max(9, size * 0.15), true);
     });
   }
 }
@@ -942,7 +942,7 @@ function drawLegend(sc) {
   if (kind === "nation") {
     el.innerHTML = world.nations.map((n) => `<span>${sw(nationColor(n.id))}${esc(n.name)}</span>`).join("") + marks;
   } else if (kind === "infra") {
-    el.innerHTML = world.infra_levels.map((l) => `<span>${esc(l.name)} ×${l.move_mult}</span>`).join(" · ") + `<span>labels: cost of moving through</span>`;
+    el.innerHTML = world.infra_levels.map((l) => `<span>${esc(l.name)} ×${l.move_mult}</span>`).join(" · ") + `<span>roads and railways shown along the links</span>`;
   } else if (kind === "terrain") {
     el.innerHTML = world.terrains.map((t) => `<span>${sw(pal[t.name])}${t.name}</span>`).join("") + `<span>${sw(OCEAN[dark ? "dark" : "light"])}ocean: tiles beside it are coastal (fishing, cheap shipping, ports)</span>` + marks;
   } else {
@@ -1091,16 +1091,17 @@ function armiesHere(s, mine) {
   }
   if (here.length) {
     html += `<h3>Armies here</h3>` + here.map((a) =>
-      `<div class="row">${chip(a.nation)} <span>${esc(nationName(a.nation))}: ${short(a.men)} men, ${world.doctrines[a.doctrine].name}${a.retreating ? " (retreating)" : ""}</span>
+      `<div class="row">${chip(a.nation)} <span>${esc(nationName(a.nation))}: strength ${short(a.strength)} (${short(a.men)} men, ${world.doctrines[a.doctrine].name})</span>
        <button data-army="${a.id}">Inspect</button></div>`).join("");
   }
   const n = me();
   if (mine && n) {
     const room = Math.max(0, n.mobilize_cap - state.armies.filter((a) => a.nation === n.id).reduce((t, a) => t + a.target, 0));
     html += `<h3>Raise an army here</h3>
-      <div class="row"><label>Soldiers <input id="raise-men" type="number" min="0" step="1" value="${Math.floor(room)}" class="num"></label>
+      <div class="row"><label>Soldiers <input id="raise-men" type="number" min="0" max="${Math.floor(n.max_army_size)}" step="1" value="${Math.floor(Math.min(room, n.max_army_size))}" class="num"></label>
       <button class="primary" id="raise">Raise</button></div>
-      <p class="sub">Drafted from this tile's workers over the coming weeks. Room for ${short(room)} more within your mobilisation cap (${pct(n.mobilization)} of your people).</p>`;
+      <p class="sub">Drafted from this tile's workers over the coming weeks. One army can field up to ${short(n.max_army_size)} men (military techs raise this);
+      room for ${short(room)} more within your mobilisation cap (${pct(n.mobilization)} of your people), so field several armies if you need more.</p>`;
   }
   return html;
 }
@@ -1313,8 +1314,8 @@ function armiesPanel() {
   let html = "";
   if (n) {
     html += `<h2>Your armies</h2>
-      <p class="sub">${short(n.soldiers)} soldiers of ${short(n.mobilize_cap)} allowed (${pct(n.mobilization)} of your people). Best doctrine: ${world.doctrines[n.best_doctrine].name}.
-      Raise armies from a tile of yours.</p>`;
+      <p class="sub">${short(n.soldiers)} soldiers of ${short(n.mobilize_cap)} allowed (${pct(n.mobilization)} of your people), up to ${short(n.max_army_size)} per army.
+      Best doctrine: ${world.doctrines[n.best_doctrine].name}. Raise armies from a tile of yours.</p>`;
     html += mine.length ? mine.map((a) => armyCard(a, true)).join("") : `<p class="hint">You have no armies.</p>`;
   }
   html += `<h3>Other armies</h3>` + (others.length ? others.map((a) => armyCard(a, false)).join("") : `<p class="hint">None.</p>`);
@@ -1327,13 +1328,16 @@ function armyCard(a, mine) {
   const dest = a.path.length ? ` → marching to ${world.regions[a.path[a.path.length - 1]].name}` : "";
   const open = a.id === selectedArmy;
   let html = `<div class="army-card ${open ? "selected" : ""}" data-select-army="${a.id}">
-    <div class="title"><b>${chip(a.nation)} ${esc(nationName(a.nation))} army ${a.id}</b><span class="sub">${short(a.men)} / ${short(a.target)} men</span></div>
-    <p class="sub">${d.name} · strength ${short(a.strength)} · at ${where.name}${dest}${a.retreating ? ` · <span class="bad">retreating</span>` : ""}</p>`;
+    <div class="title"><b>${chip(a.nation)} ${esc(nationName(a.nation))} army ${a.id}</b><span><b>${short(a.strength)}</b> <span class="sub">strength</span></span></div>
+    <div class="progress" title="strength against full size and supply"><span style="width:${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))};background:${a.strength > 0.6 * a.full_strength ? cssVar("--good") : a.strength > 0.3 * a.full_strength ? cssVar("--brass") : cssVar("--danger")}"></span></div>
+    <p class="sub">${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))} of full strength ${short(a.full_strength)} · ${short(a.men)} / ${short(a.target)} men · ${d.name} · at ${where.name}${dest}</p>`;
   if (!open) return html + `</div>`;
   const supply = Object.keys(d.needs).map((g) => {
     const v = a.supply[g] ?? 0;
     const color = v > 0.8 ? cssVar("--good") : v > 0.4 ? cssVar("--brass") : cssVar("--danger");
-    return `<span>${g}</span><span class="meter"><span style="width:${pct(v)};background:${color}"></span></span><span>${pct(v)}</span>`;
+    const days = a.stock_days[g] ?? 0;
+    return `<span>${g}</span><span class="meter" title="${Math.round(days)} days in stock"><span style="width:${pct(v)};background:${color}"></span></span><span>${pct(v)}</span>
+      <span></span><span class="sub" style="grid-column:2/4">${days >= 1 ? `${Math.round(days)} days in stock` : `<span class="bad">no stock left</span>`}</span>`;
   }).join("");
   // strength: the doctrine's base power times each factor
   const mult = (v) => `<span class="${v > 1.0001 ? "good" : v < 0.9999 ? "bad" : ""}">×${v.toFixed(2)}</span>`;
@@ -1344,29 +1348,27 @@ function armyCard(a, mine) {
   }).join("");
   let home = 1;
   const def = (a.defense || []).map((m) => { home *= m.value; return `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td><td>${mult(m.value)}</td></tr>`; }).join("");
-  let add = 0, by = 1;
-  const attr = (a.attrition || []).map((m, i) => {
-    if (i < 2) { add += m.value; return `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td><td>${(100 * m.value).toFixed(2)}%</td></tr>`; }
-    by *= m.value; return `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td><td>${mult(m.value)}</td></tr>`;
-  }).join("");
+  const attr = (a.attrition || []).map((m) => `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td>
+    <td>${m.add ? `${(100 * m.value).toFixed(2)}%` : mult(m.value)}</td></tr>`).join("");
   const depot = a.depot >= 0 ? `bought at ${world.regions[a.depot].name}${a.depot === a.region ? " (here)" : ""}, using ${fmt(a.transport, 1)} transport today` : `<span class="bad">cut off: no friendly market can reach it</span>`;
-  html += `<h3>Supplies</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">Supplies ${depot}.</p>
+  html += `<h3>Supplies</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">Supplies ${depot}. The army keeps up to 30 days of each in stock and fights from its stock.</p>
     <h3>Strength in battle</h3>
     <table class="mods"><tr><th>factor</th><th>effect</th></tr>${att}
       <tr class="total"><td>Per soldier</td><td>${per.toFixed(2)}</td></tr>
-      <tr><td>× ${short(a.men)} men</td><td>${a.retreating ? "0 while retreating" : short(a.strength)}</td></tr></table>
+      <tr><td>× ${short(a.men)} men</td><td>${short(a.strength)}</td></tr></table>
+    <p class="sub" style="margin-top:4px">In battle each side loses men in proportion to the other's strength; an army that falls below 30% of its enemy's strength is destroyed.</p>
     <p class="sub" style="margin-top:8px">When defending its own nation's soil:</p>
     <table class="mods">${def}<tr class="total"><td>Defending</td><td>×${home.toFixed(2)}</td></tr></table>
     <p class="sub" style="margin-top:8px">Daily losses outside battle:</p>
-    <table class="mods">${attr}<tr class="total"><td>Men lost a day</td><td>${(100 * add * by).toFixed(2)}% ≈ ${fmt(a.men * add * by, 1)}</td></tr></table>`;
+    <table class="mods">${attr}<tr class="total"><td>Men lost a day</td><td>${(100 * a.daily_loss).toFixed(2)}% ≈ ${fmt(a.men * a.daily_loss, 2)}</td></tr></table>`;
   const h = getHist(`armies/${a.id}`);
-  const [k, row] = seg("army", [["men", "Men"], ["strength", "Strength"], ["effectiveness", "Per soldier"]], "men");
+  const [k, row] = seg("army", [["strength", "Strength"], ["men", "Men"], ["effectiveness", "Per soldier"]], "strength");
   html += `<h3>Its campaign</h3>${row}` + (h && h.data ? lineChart(h.ticks, [{ name: { men: "men", strength: "strength", effectiveness: "strength per soldier" }[k], color: nationColor(a.nation), values: h.data[k] }], { f: k === "effectiveness" ? (v) => fmt(v) : short }) : lineChart(null, []));
   if (mine) {
     const n = me();
     html += `<div class="row">
       <button class="primary" data-move="${a.id}">March…</button>
-      <label>Size <input type="number" min="0" step="1" value="${Math.round(a.target)}" class="num" data-target-for="${a.id}"></label><button data-set-target="${a.id}">Set</button>
+      <label>Size <input type="number" min="0" max="${Math.floor(n.max_army_size)}" step="1" value="${Math.round(a.target)}" class="num" data-target-for="${a.id}"></label><button data-set-target="${a.id}">Set</button>
       ${n.best_doctrine > a.doctrine ? `<button data-cmd="/armies/${a.id}/upgrade">Upgrade to ${world.doctrines[n.best_doctrine].name}</button>` : ""}
       ${state.regions[a.region].nation === a.nation ? `<button class="danger" data-cmd="/armies/${a.id}/disband">Disband</button>` : ""}
     </div>`;

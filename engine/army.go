@@ -55,17 +55,20 @@ type Army struct {
 	Men      float64 // soldiers
 	Target   float64 // soldiers it recruits up to (or demobilizes down to) in home tiles
 	Doctrine int
-	// Supply is, per good, the smoothed share of the army's needs that was
-	// delivered (0..1).
+	// Supply is, per good, the smoothed share of the army's daily needs it
+	// could use (0..1).
 	Supply []float64
-	Path   []int   // tiles still to march through
-	March  float64 // days marched towards Path[0]
-	// Retreating armies march home after a lost battle and don't fight.
-	Retreating bool
+	// Stock is the equipment and provisions the army carries, per good: it
+	// uses them up day by day and the depot refills them, so a bad day at
+	// market doesn't weaken it at once.
+	Stock []float64
+	Path  []int   // tiles still to march through
+	March float64 // days marched towards Path[0]
 
 	// this tick's supply order
 	depot   *Region
-	need    []float64
+	need    []float64 // what it uses today
+	order   []float64 // what it buys today: today's use plus refilling its stock
 	tau     []float64
 	got     []float64
 	transit float64 // transport needed this tick
@@ -84,7 +87,15 @@ const (
 	retreatRatio    = 0.3    // a side weaker than this fraction of its enemy retreats
 	occupationDays  = 180.0  // days an unopposed army needs to take unowned land (techs change the pace)
 	ownedTileFactor = 2.0    // taking another nation's tile takes this many times longer
-	minOccupiers    = 1.0    // an army needs at least this many men to occupy anything
+	minOccupiers    = 1.0    // an army needs at least this many men to occupy or fight
+	stockDays       = 30.0   // days of supplies an army keeps in stock
+	refillDays      = 10.0   // an empty stock is refilled over this many days (at most doubling the order)
+	// Occupying is costly: over a full occupation an army loses about 40% of
+	// its men taking another nation's tile and about 15% taking free land,
+	// however fast it goes. siegeLoss is -ln(share kept).
+	siegeLossOwned = 0.51
+	siegeLossFree  = 0.16
+	survivorsHome  = 0.5 // share of a destroyed army's men who find their way home
 )
 
 // Army errors.
@@ -93,6 +104,7 @@ var (
 	ErrNotYours    = errors.New("that army belongs to another nation")
 	ErrNoPath      = errors.New("the army can't get there")
 	ErrMobilized   = errors.New("that exceeds how many people the nation can mobilize")
+	ErrArmySize    = errors.New("that is more men than one army can field (techs raise it)")
 	ErrNoUpgrade   = errors.New("the nation knows no better doctrine")
 	ErrAtWar       = errors.New("already at war")
 	ErrAtPeace     = errors.New("not at war")
@@ -114,10 +126,13 @@ func (a *Army) Effectiveness() float64 {
 // Strength is the army's fighting power: men times effectiveness times its
 // nation's attack bonus.
 func (a *Army) Strength() float64 {
-	if a.Retreating {
-		return 0
-	}
 	return a.Men * a.Effectiveness() * a.Nation.attackMult()
+}
+
+// FullStrength is the strength the army would have at its full size, fully
+// supplied.
+func (a *Army) FullStrength() float64 {
+	return math.Max(a.Men, a.Target) * Doctrines[a.Doctrine].Power * a.Nation.attackMult()
 }
 
 func (w *World) army(id int) (*Army, error) {
@@ -183,7 +198,7 @@ func (w *World) RaiseArmy(nation, region int, target float64) (*Army, error) {
 	}
 	w.NextArmyID++
 	a := &Army{ID: w.NextArmyID, Nation: n, Region: region, Target: target,
-		Doctrine: n.bestDoctrine(), Supply: make([]float64, NumGoods)}
+		Doctrine: n.bestDoctrine(), Supply: make([]float64, NumGoods), Stock: make([]float64, NumGoods)}
 	for g := range Doctrines[a.Doctrine].Needs {
 		a.Supply[g] = 1
 	}
@@ -203,6 +218,9 @@ func (w *World) checkMobilization(n *Nation, except *Army, target float64) error
 	}
 	if total > w.MobilizationCap(n)+1e-9 {
 		return ErrMobilized
+	}
+	if target > n.MaxArmySize()+1e-9 {
+		return ErrArmySize
 	}
 	return nil
 }
@@ -459,10 +477,14 @@ type Siege struct {
 func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 	for _, a := range w.ArmiesOf(n) {
 		if a.need == nil {
-			a.need, a.tau, a.got = make([]float64, NumGoods), make([]float64, NumGoods), make([]float64, NumGoods)
+			a.need, a.order = make([]float64, NumGoods), make([]float64, NumGoods)
+			a.tau, a.got = make([]float64, NumGoods), make([]float64, NumGoods)
 		}
 		for g := range a.need {
-			a.need[g], a.tau[g], a.got[g] = 0, 0, 0
+			a.need[g], a.order[g], a.tau[g], a.got[g] = 0, 0, 0, 0
+		}
+		for g, per := range Doctrines[a.Doctrine].Needs {
+			a.need[g] = a.Men * per
 		}
 		a.transit, a.gotT, a.depot = 0, 0, nil
 		dist, depot := 0.0, w.Regions[a.Region]
@@ -481,11 +503,12 @@ func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 		a.depot = depot
 		cost := w.Spec.TransportCost * dist * n.supplyTransportMult()
 		for _, g := range sortedGoods(Doctrines[a.Doctrine].Needs) {
-			q := a.Men * Doctrines[a.Doctrine].Needs[g]
-			if q <= 0 {
+			use := a.need[g]
+			if use <= 0 {
 				continue
 			}
-			a.need[g] = q
+			q := use + math.Min(use, math.Max(0, stockDays*use-a.Stock[g])/refillDays)
+			a.order[g] = q
 			a.tau[g] = cost * Goods[g].Bulk
 			a.transit += a.tau[g] * q
 			add(depot, claim{kind: armyClaim, good: g, army: a, qty: q})
@@ -496,28 +519,38 @@ func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 	}
 }
 
-// settleSupply turns what the depots got into delivered supplies: goods only
-// arrive in proportion to the transport bought for them.
+// settleSupply adds what the depot delivered to the army's stock (goods only
+// arrive in proportion to the transport bought for them), then the army uses
+// today's needs from its stock. A cut-off army lives off its stock.
 func (a *Army) settleSupply() {
-	if a.depot == nil {
-		for g, q := range Doctrines[a.Doctrine].Needs {
-			if q > 0 {
-				a.Supply[g] *= 0.9 // cut off
-			}
+	carried := 0.0
+	if a.depot != nil {
+		carried = 1
+		if a.transit > 0 {
+			carried = math.Min(1, a.gotT/a.transit)
 		}
-		return
-	}
-	carried := 1.0
-	if a.transit > 0 {
-		carried = math.Min(1, a.gotT/a.transit)
 	}
 	for _, g := range sortedGoods(Doctrines[a.Doctrine].Needs) {
-		if a.need[g] <= 0 {
+		need := a.Men * Doctrines[a.Doctrine].Needs[g]
+		if a.got != nil {
+			a.Stock[g] += a.got[g] * carried
+		}
+		if need <= 0 {
 			continue
 		}
-		met := math.Min(1, a.got[g]*carried/a.need[g])
-		a.Supply[g] = 0.9*a.Supply[g] + 0.1*met
+		use := math.Min(a.Stock[g], need)
+		a.Stock[g] -= use
+		a.Supply[g] = 0.8*a.Supply[g] + 0.2*use/need
 	}
+}
+
+// StockDays is how many days of a good the army carries at its current size.
+func (a *Army) StockDays(g GoodID) float64 {
+	need := a.Men * Doctrines[a.Doctrine].Needs[g]
+	if need <= 0 {
+		return 0
+	}
+	return a.Stock[g] / need
 }
 
 // armies runs a day of military life: recruitment, attrition, marching,
@@ -537,10 +570,27 @@ func (w *World) armies() {
 		case a.Nation.Eliminated():
 			w.removeArmy(a)
 		case a.Men < 0.5 && w.Regions[a.Region].Nation != a.Nation:
-			w.emit(a.Nation.ID, "army", a.Region, "%s's army %d was destroyed", a.Nation.Name, a.ID)
-			w.removeArmy(a)
+			w.emit(a.Nation.ID, "army", a.Region, "%s's army %d has dwindled away", a.Nation.Name, a.ID)
+			w.destroyArmy(a)
 		}
 	}
+}
+
+// destroyArmy takes a defeated army off the map: some of its men find their
+// way home to the nation's nearest tile, the rest are lost.
+func (w *World) destroyArmy(a *Army) {
+	dist, _ := w.shortestPaths(a.Region, func(*Region) bool { return true })
+	var home *Region
+	for _, r := range a.Nation.Regions {
+		if home == nil || dist[r.ID] < dist[home.ID] {
+			home = r
+		}
+	}
+	if home != nil && a.Men > 0 {
+		addPeople(home, survivorsHome*a.Men)
+	}
+	a.Men = 0
+	w.removeArmy(a)
 }
 
 // recruit drafts soldiers from (or sends them back to) the army's tile while
@@ -568,21 +618,14 @@ func (w *World) recruit(a *Army) {
 // cheaper and so marches faster.
 func (w *World) march(a *Army) {
 	if len(a.Path) == 0 {
-		if a.Retreating && w.Regions[a.Region].Nation == a.Nation {
-			a.Retreating = false
-		}
 		return
 	}
 	next := a.Path[0]
-	if !a.Retreating && !w.passable(a.Nation, w.Regions[next]) {
+	if !w.passable(a.Nation, w.Regions[next]) {
 		a.Path, a.March = nil, 0 // the way is closed (peace, or the tile changed hands)
 		return
 	}
-	speed := 1.0
-	if a.Retreating {
-		speed = 2
-	}
-	a.March += speed
+	a.March++
 	if a.March >= marchDaysPerHop*w.hopBetween(a.Region, next) {
 		a.Region, a.Path, a.March = next, a.Path[1:], 0
 	}
@@ -598,13 +641,13 @@ func (w *World) hopBetween(a, b int) float64 {
 }
 
 // battles: wherever armies of nations at war share a tile, each side loses
-// men in proportion to the other's strength; a side that falls far behind
-// retreats home.
+// men in proportion to the other's strength; a side that falls far behind is
+// destroyed.
 func (w *World) battles() {
 	for _, r := range w.Regions {
 		var here []*Army
 		for _, a := range w.Armies {
-			if a.Region == r.ID && !a.Retreating && a.Men > 0 {
+			if a.Region == r.ID && a.Men >= minOccupiers {
 				here = append(here, a)
 			}
 		}
@@ -627,7 +670,7 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army) {
 		var armies []*Army
 		power, men := 0.0, 0.0
 		for _, a := range here {
-			if a.Nation == n && !a.Retreating && a.Men > 0 {
+			if a.Nation == n && a.Men >= minOccupiers {
 				armies = append(armies, a)
 				power += a.Strength()
 				men += a.Men
@@ -653,18 +696,17 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army) {
 	}
 	lose(ax, mx, math.Min(mx, battleRate*py))
 	lose(ay, my, math.Min(my, battleRate*px))
-	retreat := func(armies []*Army, n, enemy *Nation) {
+	defeat := func(armies []*Army, n, enemy *Nation) {
 		for _, a := range armies {
-			a.Retreating = true
-			w.sendHome(a)
+			w.destroyArmy(a)
 		}
-		w.emit(-1, "battle", r.ID, "%s defeats %s at tile %s", enemy.Name, n.Name, r.Name)
+		w.emit(-1, "battle", r.ID, "%s destroys %s's army at tile %s", enemy.Name, n.Name, r.Name)
 	}
 	switch {
 	case px < retreatRatio*py:
-		retreat(ax, x, y)
+		defeat(ax, x, y)
 	case py < retreatRatio*px:
-		retreat(ay, y, x)
+		defeat(ay, y, x)
 	}
 }
 
@@ -679,7 +721,7 @@ func (w *World) sieges() {
 		var occupier *Nation
 		biggest, defended := 0.0, false
 		for _, a := range w.Armies {
-			if a.Region != r.ID || a.Retreating || len(a.Path) > 0 || a.Men < minOccupiers {
+			if a.Region != r.ID || len(a.Path) > 0 || a.Men < minOccupiers {
 				continue
 			}
 			if a.Nation == r.Nation {
@@ -705,9 +747,12 @@ func (w *World) sieges() {
 				w.emit(r.Nation.ID, "siege", r.ID, "%s is occupying tile %s", occupier.Name, r.Name)
 			}
 		}
-		rate := occupier.occupyMult() / occupationDays
-		if r.Nation != nil {
-			rate /= ownedTileFactor * r.Nation.defenseMult()
+		rate := w.siegeRate(r, occupier)
+		loss := math.Exp(-siegeLoss(r) * rate)
+		for _, a := range w.Armies {
+			if a.Region == r.ID && a.Nation == occupier && len(a.Path) == 0 {
+				a.Men *= loss
+			}
 		}
 		r.Siege.Progress = math.Min(1, r.Siege.Progress+rate)
 		if r.Siege.Progress >= 1-1e-9 {
@@ -720,6 +765,23 @@ func (w *World) sieges() {
 			w.emit(occupier.ID, "taken", r.ID, "%s takes tile %s", occupier.Name, r.Name)
 		}
 	}
+}
+
+// siegeRate is how much of a tile an occupier takes per day.
+func (w *World) siegeRate(r *Region, occupier *Nation) float64 {
+	rate := occupier.occupyMult() / occupationDays
+	if r.Nation != nil {
+		rate /= ownedTileFactor * r.Nation.defenseMult()
+	}
+	return rate
+}
+
+// siegeLoss is how hard occupying the tile is on the occupier's men.
+func siegeLoss(r *Region) float64 {
+	if r.Nation != nil {
+		return siegeLossOwned
+	}
+	return siegeLossFree
 }
 
 // removePeople drafts n people from a tile, taking from every pop in
@@ -750,6 +812,7 @@ type Modifier struct {
 	Name  string  `json:"name"`
 	Value float64 `json:"value"` // a multiplier (or, for the first entry, the doctrine's base power)
 	Note  string  `json:"note"`
+	Add   bool    `json:"add"` // added, not multiplied (losses)
 }
 
 // Breakdown explains an army's strength per soldier: the doctrine's power,
@@ -757,33 +820,53 @@ type Modifier struct {
 // when it defends its own tile, and its daily losses.
 func (w *World) Breakdown(a *Army) (attack []Modifier, defense []Modifier, attrition []Modifier) {
 	d := &Doctrines[a.Doctrine]
-	attack = append(attack, Modifier{d.Name, d.Power, "doctrine's base power per soldier"})
+	attack = append(attack, Modifier{d.Name, d.Power, "doctrine's base power per soldier", false})
 	for _, g := range sortedGoods(d.Needs) {
 		s := math.Max(a.Supply[g], 0.05)
 		wt := supplyWeight(d, g)
 		attack = append(attack, Modifier{Goods[g].Name + " supply", math.Pow(s, wt),
-			fmt.Sprintf("%.0f%% supplied, weight %.2f", 100*a.Supply[g], wt)})
+			fmt.Sprintf("%.0f%% supplied, weight %.2f", 100*a.Supply[g], wt), false})
 	}
 	for i, t := range Techs {
 		if a.Nation.Known[i] && t.Attack != 0 {
-			attack = append(attack, Modifier{t.Name, t.Attack, "technology"})
+			attack = append(attack, Modifier{t.Name, t.Attack, "technology", false})
 		}
 	}
-	defense = append(defense, Modifier{"Home ground", defenderHome, "fighting in its own tile"})
+	defense = append(defense, Modifier{"Home ground", defenderHome, "fighting in its own tile", false})
 	for i, t := range Techs {
 		if a.Nation.Known[i] && t.Defense != 0 {
-			defense = append(defense, Modifier{t.Name, t.Defense, "technology"})
+			defense = append(defense, Modifier{t.Name, t.Defense, "technology", false})
 		}
 	}
 	hunger := 1 - a.Supply[G("bread")]
-	attrition = append(attrition, Modifier{"Base", baseAttrition, "share of men lost a day"})
-	attrition = append(attrition, Modifier{"Hunger", hungerAttrition * hunger, fmt.Sprintf("bread %.0f%% supplied", 100*a.Supply[G("bread")])})
+	attrition = append(attrition, Modifier{"Base", baseAttrition, "share of men lost a day", true})
+	attrition = append(attrition, Modifier{"Hunger", hungerAttrition * hunger, fmt.Sprintf("bread %.0f%% supplied", 100*a.Supply[G("bread")]), true})
 	for i, t := range Techs {
 		if a.Nation.Known[i] && t.Desertion != 0 {
-			attrition = append(attrition, Modifier{t.Name, t.Desertion, "multiplies losses"})
+			attrition = append(attrition, Modifier{t.Name, t.Desertion, "multiplies the losses above", false})
 		}
 	}
+	if s := w.sieging(a); s > 0 {
+		attrition = append(attrition, Modifier{"Occupying", 1 - math.Exp(-s), "a full occupation costs about 40% of the army (15% on free land)", true})
+	}
 	return
+}
+
+// sieging is the occupation loss rate (-ln share kept per day) an army
+// suffers today, or 0.
+func (w *World) sieging(a *Army) float64 {
+	r := w.Regions[a.Region]
+	if r.Siege == nil || r.Siege.Nation != a.Nation || len(a.Path) > 0 {
+		return 0
+	}
+	return siegeLoss(r) * w.siegeRate(r, a.Nation)
+}
+
+// DailyLoss is the share of its men the army loses today outside battle.
+func (w *World) DailyLoss(a *Army) float64 {
+	hunger := 1 - a.Supply[G("bread")]
+	base := (baseAttrition + hungerAttrition*hunger) * a.Nation.desertionMult()
+	return 1 - (1-base)*math.Exp(-w.sieging(a))
 }
 
 // SupplyLine describes where an army's supplies come from: the depot tile,

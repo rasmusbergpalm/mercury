@@ -190,26 +190,98 @@ func TestEnemyTilesNeedWarAndHoldOutLonger(t *testing.T) {
 	}
 }
 
-func TestBattleAndRetreat(t *testing.T) {
+// A battle bleeds both sides; the side that falls far behind is destroyed,
+// and half its remaining men find their way home.
+func TestBattleDestroysTheLoser(t *testing.T) {
 	w := newNeighbourGame(t)
 	w.Migration, w.Demography = false, false
 	w.DeclareWar(0, 1)
-	field := regionByName(w, "02")
+	field, home := regionByName(w, "02"), regionByName(w, "01")
 	big, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
-	small, _ := w.RaiseArmy(1, regionByName(w, "01").ID, 0)
+	small, _ := w.RaiseArmy(1, home.ID, 0)
 	big.Men, small.Men = 50, 12
 	big.Region, small.Region = field.ID, field.ID
-	for i := 0; i < 100 && !small.Retreating; i++ {
+	people := home.Population()
+	for i := 0; i < 100 && w.ArmyByID(small.ID) != nil; i++ {
 		w.battles()
 	}
-	if !small.Retreating || big.Retreating {
-		t.Fatalf("retreating: big %v small %v", big.Retreating, small.Retreating)
+	if w.ArmyByID(small.ID) != nil || w.ArmyByID(big.ID) == nil {
+		t.Fatalf("after the battle: small %v, big %v", w.ArmyByID(small.ID), w.ArmyByID(big.ID))
 	}
-	if big.Men >= 50 || small.Men >= 12 {
-		t.Errorf("no casualties: %v, %v", big.Men, small.Men)
+	if big.Men >= 50 {
+		t.Errorf("the winner took no casualties: %v", big.Men)
 	}
-	if len(small.Path) == 0 || small.Path[len(small.Path)-1] != regionByName(w, "01").ID {
-		t.Errorf("retreat path %v", small.Path)
+	if got := home.Population() - people; got <= 0 || got >= 6 {
+		t.Errorf("%v survivors came home from an army of 12", got)
+	}
+}
+
+// An army can only be so big; techs raise the limit.
+func TestArmySizeLimit(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	home := regionByName(w, "11")
+	addPeople(home, 2000) // enough people to mobilize more than one army's worth
+	if _, err := w.RaiseArmy(m.ID, home.ID, baseArmySize+1); !errors.Is(err, ErrArmySize) {
+		t.Errorf("an army beyond the size limit: %v", err)
+	}
+	a, err := w.RaiseArmy(m.ID, home.ID, baseArmySize)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.GrantTech(m.ID, "Drill")
+	if m.MaxArmySize() != 20 {
+		t.Fatalf("Drill: armies of %v", m.MaxArmySize())
+	}
+	if err := w.SetArmyTarget(a.ID, 20); err != nil {
+		t.Errorf("Drill should allow 20 men: %v", err)
+	}
+}
+
+// Occupying another nation's tile costs the occupier about 40% of its men
+// (30-50%), whatever its techs.
+func TestOccupationCostsMen(t *testing.T) {
+	for _, tech := range []string{"", "General staff"} {
+		w := newNeighbourGame(t)
+		w.DeclareWar(0, 1)
+		if tech != "" {
+			w.GrantTech(0, tech)
+		}
+		enemy := regionByName(w, "01")
+		a, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
+		a.Men, a.Region = 50, enemy.ID
+		for i := 0; i < 2000 && enemy.Nation != w.Nations[0]; i++ {
+			w.sieges()
+		}
+		if enemy.Nation != w.Nations[0] {
+			t.Fatal("tile not taken")
+		}
+		if kept := a.Men / 50; kept < 0.5 || kept > 0.7 {
+			t.Errorf("with %q the occupier kept %.0f%% of its men", tech, 100*kept)
+		}
+	}
+}
+
+// An army carries a stock of supplies, so a sudden shortage doesn't weaken it
+// at once.
+func TestSupplyStockBuffersShortages(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	m.SetBudget([NumBudgets]float64{0.4, 0.2, 0.3})
+	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, w.MobilizationCap(m))
+	for i := 0; i < 300; i++ {
+		w.Step()
+	}
+	if d := a.StockDays(G("bread")); d < 10 {
+		t.Fatalf("only %v days of bread in stock", d)
+	}
+	before := a.Effectiveness()
+	m.SetBudget([NumBudgets]float64{0.4, 0.2, 0})
+	for i := 0; i < 10; i++ {
+		w.Step()
+	}
+	if after := a.Effectiveness(); after < 0.95*before {
+		t.Errorf("ten days without supplies: effectiveness %v -> %v", before, after)
 	}
 }
 

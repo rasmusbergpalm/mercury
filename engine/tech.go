@@ -38,6 +38,7 @@ type Tech struct {
 
 	Doctrine        string  // unlocks this army doctrine
 	Mobilization    float64 // raises the share of the population that can serve (the highest counts)
+	ArmySize        float64 // raises how many men one army can field (the highest counts)
 	Defense         float64 // multiplies defenders' strength and slows sieges of the nation's tiles
 	Attack          float64 // multiplies the army's strength
 	Desertion       float64 // multiplies losses to hunger and desertion
@@ -85,8 +86,8 @@ var Techs = []Tech{
 		CoastMove: 0.8},
 	{Name: "Masonry", Branch: BranchTransport, Era: 0, Cost: era1, Effect: "Unlocks paved roads; construction +20%",
 		FirmTFP: firms("Construction", 1.2)},
-	{Name: "Drill", Branch: BranchMilitary, Era: 0, Cost: era1, Effect: "Line infantry doctrine",
-		Doctrine: "Line infantry"},
+	{Name: "Drill", Branch: BranchMilitary, Era: 0, Cost: era1, Effect: "Line infantry doctrine; armies of up to 20 men",
+		Doctrine: "Line infantry", ArmySize: 20},
 	{Name: "Field artillery", Branch: BranchMilitary, Era: 0, Cost: era1, Requires: []string{"Drill"},
 		Effect: "Foundries +30%; attack +10%", FirmTFP: firms("Foundry", 1.3), Attack: 1.1},
 	{Name: "Fortifications", Branch: BranchMilitary, Era: 0, Cost: era1, Effect: "Defence +50%",
@@ -118,12 +119,13 @@ var Techs = []Tech{
 	{Name: "Railways", Branch: BranchTransport, Era: 1, Cost: era2 * 1.2, Requires: []string{"Steam engine", "Masonry"},
 		Effect: "Unlocks railways"},
 	{Name: "Mass conscription", Branch: BranchMilitary, Era: 1, Cost: era2, Requires: []string{"Drill"},
-		Effect: "Napoleonic corps doctrine; up to 4% of people can serve", Doctrine: "Napoleonic corps",
-		Mobilization: 0.04},
+		Effect: "Napoleonic corps doctrine; up to 4% of people can serve; armies of up to 40 men", Doctrine: "Napoleonic corps",
+		Mobilization: 0.04, ArmySize: 40},
 	{Name: "Rifled muskets", Branch: BranchMilitary, Era: 1, Cost: era2, Requires: []string{"Mass conscription", "Interchangeable parts"},
 		Effect: "Rifle infantry doctrine", Doctrine: "Rifle infantry"},
 	{Name: "Military logistics", Branch: BranchMilitary, Era: 1, Cost: era2, Requires: []string{"Mass conscription"},
-		Effect: "Supplies need 30% less transport; desertion −30%", SupplyTransport: 0.7, Desertion: 0.7},
+		Effect: "Supplies need 30% less transport; desertion −30%; armies of up to 60 men", SupplyTransport: 0.7, Desertion: 0.7,
+		ArmySize: 60},
 	{Name: "Bureaucracy", Branch: BranchPolitics, Era: 1, Cost: era2, Requires: []string{"Administration"},
 		Effect: "Construction +40%; projects can take twice as much per day", BuildRate: 2,
 		FirmTFP: firms("Construction", 1.4)},
@@ -161,7 +163,7 @@ var Techs = []Tech{
 	{Name: "Universal conscription", Branch: BranchMilitary, Era: 2, Cost: era3, Requires: []string{"Mass conscription"},
 		Effect: "Up to 8% of people can serve", Mobilization: 0.08},
 	{Name: "General staff", Branch: BranchMilitary, Era: 2, Cost: era3, Requires: []string{"Military logistics"},
-		Effect: "Attack +20%, sieges 30% faster", Attack: 1.2, OccupySpeed: 1.3},
+		Effect: "Attack +20%, sieges 30% faster; armies of up to 120 men", Attack: 1.2, OccupySpeed: 1.3, ArmySize: 120},
 	{Name: "Public health", Branch: BranchPolitics, Era: 2, Cost: era3, Requires: []string{"Bureaucracy"},
 		Effect: "Population growth +0.6% a year", PopGrowth: 0.006},
 	{Name: "Central bank", Branch: BranchPolitics, Era: 2, Cost: era3, Requires: []string{"Banking"},
@@ -194,7 +196,7 @@ var Techs = []Tech{
 	{Name: "Machine guns", Branch: BranchMilitary, Era: 3, Cost: era4, Requires: []string{"Breech-loading rifles", "Industrial chemistry"},
 		Effect: "Machine-gun infantry doctrine; defence +30%", Doctrine: "Machine-gun infantry", Defense: 1.3},
 	{Name: "Total war", Branch: BranchMilitary, Era: 3, Cost: era4, Requires: []string{"Universal conscription"},
-		Effect: "Up to 15% of people can serve", Mobilization: 0.15},
+		Effect: "Up to 15% of people can serve; armies of up to 250 men", Mobilization: 0.15, ArmySize: 250},
 	{Name: "Military aviation", Branch: BranchMilitary, Era: 3, Cost: era4, Requires: []string{"Aviation", "Machine guns"},
 		Effect: "Recon planes: attack +20%", Attack: 1.2},
 	{Name: "Tanks", Branch: BranchMilitary, Era: 3, Cost: era4 * 1.2, Requires: []string{"Military aviation", "Internal combustion"},
@@ -299,6 +301,21 @@ func (n *Nation) popGrowthBonus() float64 {
 
 // baseMobilization is the share of people that can serve before any tech.
 const baseMobilization = 0.02
+
+// baseArmySize is how many men one army can field before any tech: a nation
+// that may mobilize more needs several armies.
+const baseArmySize = 10.0
+
+// MaxArmySize is how many men one of the nation's armies can field.
+func (n *Nation) MaxArmySize() float64 {
+	m := baseArmySize
+	for i := range Techs {
+		if n.Known[i] && Techs[i].ArmySize > m {
+			m = Techs[i].ArmySize
+		}
+	}
+	return m
+}
 
 // Mobilization is the share of the nation's people that can serve in its armies.
 func (n *Nation) Mobilization() float64 {

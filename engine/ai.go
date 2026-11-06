@@ -127,9 +127,9 @@ func (w *World) aiDiplomacy(n *Nation, own float64) {
 	}
 }
 
-// aiArmies keeps a field army of the right size and doctrine, and gives idle
-// armies orders: defend invaded tiles, attack the enemy's weakest border
-// tile, or occupy free land.
+// aiArmies keeps enough armies to field the soldiers it wants (one army can
+// only be so big), at the best doctrine, and gives idle armies orders: defend
+// invaded tiles, attack the enemy's weakest border tile, or occupy free land.
 func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 	war := w.atWar(n)
 	share := aiPeaceMobilize
@@ -137,24 +137,44 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 		share = 1
 	}
 	want := share * w.MobilizationCap(n)
+	size := n.MaxArmySize()
 	armies := w.ArmiesOf(n)
-	if len(armies) == 0 {
-		home := n.Regions[0]
-		for _, r := range n.Regions {
-			if r.Population() > home.Population() {
-				home = r
+	for k := int(math.Ceil(want/size - 1e-9)); len(armies) < k; {
+		home := w.aiArmyHome(n)
+		if home == nil {
+			break
+		}
+		a, err := w.RaiseArmy(n.ID, home.ID, 0)
+		if err != nil {
+			break
+		}
+		armies = append(armies, a)
+	}
+	if len(armies) > 0 {
+		per := math.Min(size, want/float64(len(armies)))
+		for _, a := range armies { // lower first, so the total never exceeds the cap
+			if a.Target > per {
+				w.SetArmyTarget(a.ID, per)
 			}
 		}
-		if a, err := w.RaiseArmy(n.ID, home.ID, want); err == nil {
-			armies = append(armies, a)
+		for _, a := range armies {
+			if a.Target < per {
+				w.SetArmyTarget(a.ID, per)
+			}
 		}
-	} else {
-		w.SetArmyTarget(armies[0].ID, want)
 	}
 	for _, a := range armies {
 		w.UpgradeArmy(a.ID)
-		if len(a.Path) > 0 || a.Retreating || a.Men < 1 {
+		if len(a.Path) > 0 {
 			continue
+		}
+		atHome := w.Regions[a.Region].Nation == n
+		if !atHome && a.Men < aiRefill*a.Target && !w.underAttack(n) {
+			w.sendHome(a) // worn down: go home to recruit
+			continue
+		}
+		if atHome && a.Men < aiRefill*a.Target && !w.underAttack(n) {
+			continue // recruiting
 		}
 		here := w.Regions[a.Region]
 		if here.Nation != n && here.Siege != nil && here.Siege.Nation == n {
@@ -166,25 +186,87 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 	}
 }
 
-// aiDestination picks where an idle army should go, or -1.
-func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int {
-	// defend: an enemy army on our soil
+// The computer only seeks battle when its side is this many times as strong.
+const aiFightOdds = 1.2
+
+// An army below this share of its target goes home to refill (unless the
+// nation is being invaded).
+const aiRefill = 0.6
+
+// underAttack reports whether an enemy army stands on the nation's soil.
+func (w *World) underAttack(n *Nation) bool {
 	for _, e := range w.Armies {
 		if e.Nation != n && n.AtWar[e.Nation.ID] && w.Regions[e.Region].Nation == n {
-			return e.Region
+			return true
 		}
 	}
-	// attack: the enemy border tile with the least enemy strength, then most people
+	return false
+}
+
+// aiArmyHome is where to raise a new army: the most populous home tile with
+// the fewest armies standing in it, and no enemy there.
+func (w *World) aiArmyHome(n *Nation) *Region {
+	var best *Region
+	bestN := 0
+	for _, r := range n.Regions {
+		k, contested := 0, r.Siege != nil
+		for _, a := range w.Armies {
+			if a.Region == r.ID {
+				k++
+				contested = contested || a.Nation != n
+			}
+		}
+		if contested {
+			continue // an army raised under the enemy's guns would be cut down at once
+		}
+		if best == nil || k < bestN || (k == bestN && r.Population() > best.Population()) {
+			best, bestN = r, k
+		}
+	}
+	return best
+}
+
+// aiDestination picks where an idle army should go, or -1.
+func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int {
+	// strength of the armies of nations at war with n, and of n, in a tile
+	forces := func(r int) (enemy, own float64) {
+		for _, e := range w.Armies {
+			if e.Region != r || e == a {
+				continue
+			}
+			if e.Nation == n {
+				own += e.Strength()
+			} else if n.AtWar[e.Nation.ID] {
+				enemy += e.Strength()
+			}
+		}
+		return
+	}
+	// defend: an enemy army on our soil, if together with our armies there
+	// we can beat it; if we can't, hold and recruit
+	invaded := false
+	for _, e := range w.Armies {
+		if e.Nation != n && n.AtWar[e.Nation.ID] && w.Regions[e.Region].Nation == n {
+			invaded = true
+			enemy, own := forces(e.Region)
+			if (own+a.Strength())*defenderHome*n.defenseMult() >= aiFightOdds*enemy {
+				return e.Region
+			}
+		}
+	}
+	if invaded {
+		return -1
+	}
+	// attack: the enemy border tile with the least enemy strength, then most
+	// people, among those the army can win
 	best, bestScore := -1, math.Inf(-1)
 	for _, r := range w.Regions {
 		if r.Nation == nil || r.Nation == n || !n.AtWar[r.Nation.ID] || !w.borders(n, r) {
 			continue
 		}
-		enemy := 0.0
-		for _, e := range w.Armies {
-			if e.Region == r.ID && e.Nation == r.Nation {
-				enemy += e.Strength()
-			}
+		enemy, own := forces(r.ID)
+		if own+a.Strength() < aiFightOdds*enemy*defenderHome*r.Nation.defenseMult() {
+			continue
 		}
 		if score := -enemy*1000 + r.Population(); score > bestScore {
 			best, bestScore = r.ID, score

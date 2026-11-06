@@ -160,7 +160,8 @@ type NationState struct {
 	PeaceOffer     []bool    `json:"peace_offer"` // this nation has offered peace to
 	Soldiers       float64   `json:"soldiers"`
 	MobilizeCap    float64   `json:"mobilize_cap"`
-	Mobilization   float64   `json:"mobilization"` // share of people who may serve
+	MaxArmySize    float64   `json:"max_army_size"` // men one army can field
+	Mobilization   float64   `json:"mobilization"`  // share of people who may serve
 	BestDoctrine   int       `json:"best_doctrine"`
 	GDP            float64   `json:"gdp"`
 	Utility        float64   `json:"utility"`
@@ -179,9 +180,11 @@ type ArmyState struct {
 	Doctrine      int                `json:"doctrine"`
 	Effectiveness float64            `json:"effectiveness"`
 	Strength      float64            `json:"strength"`
-	Supply        map[string]float64 `json:"supply"` // per needed good, 0..1
+	Supply        map[string]float64 `json:"supply"`        // per needed good, 0..1
+	StockDays     map[string]float64 `json:"stock_days"`    // days of each good it carries
+	FullStrength  float64            `json:"full_strength"` // at full size, fully supplied
+	DailyLoss     float64            `json:"daily_loss"`    // share of men lost today outside battle
 	Path          []int              `json:"path"`
-	Retreating    bool               `json:"retreating"`
 	Attack        []engine.Modifier  `json:"attack"`    // strength per soldier, factor by factor
 	Defense       []engine.Modifier  `json:"defense"`   // extra factors when defending at home
 	Attrition     []engine.Modifier  `json:"attrition"` // daily losses
@@ -366,15 +369,16 @@ func worldState(w *engine.World) State {
 	st := State{Tick: w.Tick, Date: w.Date().Format("2 January 2006"), Money: w.Money(), You: -1,
 		Flows: []Flow{}, Armies: []ArmyState{}}
 	for _, a := range w.Armies {
-		sup := map[string]float64{}
+		sup, days := map[string]float64{}, map[string]float64{}
 		for g := range engine.Doctrines[a.Doctrine].Needs {
 			sup[engine.Goods[g].Name] = a.Supply[g]
+			days[engine.Goods[g].Name] = a.StockDays(g)
 		}
 		att, def, attr := w.Breakdown(a)
 		depot, transport := a.SupplyLine()
 		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, a.Doctrine,
-			a.Effectiveness(), a.Strength(), sup, append([]int{}, a.Path...), a.Retreating, att, def, attr,
-			depot, transport})
+			a.Effectiveness(), a.Strength(), sup, days, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...),
+			att, def, attr, depot, transport})
 	}
 	for i := range w.Regions {
 		st.Regions = append(st.Regions, regionState(w, i))
@@ -392,7 +396,8 @@ func worldState(w *engine.World) State {
 			Budget: append([]float64(nil), n.Budget[:]...), Tariff: n.Tariff, Embargo: n.Embargo,
 			Researching: n.Researching, Points: n.ResearchPoints, Known: n.Known,
 			Queue: append([]int{}, n.Queue...), AtWar: n.AtWar, PeaceOffer: n.PeaceOffer,
-			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch}
+			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch,
+			MaxArmySize: n.MaxArmySize()}
 		ns.Soldiers, _ = w.Mobilized(n)
 		ns.BestDoctrine = bestDoctrine(n)
 		ns.Exports, ns.Imports = trade.NationOut[n.ID], trade.NationIn[n.ID]
