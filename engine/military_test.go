@@ -81,8 +81,9 @@ func TestSuppliesAbroadNeedTransport(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		w.Step()
 	}
-	if a.transit != 0 || a.depot.ID != a.Region {
-		t.Errorf("at home: depot %v, transport %v", a.depot.ID, a.transit)
+	home := a.transit / a.Men // goods may come from other home tiles too
+	if a.depot.ID != a.Region {
+		t.Errorf("at home: base %v", a.depot.ID)
 	}
 	if err := w.MoveArmy(a.ID, regionByName(w, "22").ID); err != nil {
 		t.Fatal(err)
@@ -91,8 +92,8 @@ func TestSuppliesAbroadNeedTransport(t *testing.T) {
 		w.Step()
 	}
 	w.Step()
-	if a.Region != regionByName(w, "22").ID || a.transit <= 0 || a.depot.Nation != m {
-		t.Errorf("abroad: at %d, depot %v, transport %v", a.Region, a.depot, a.transit)
+	if a.Region != regionByName(w, "22").ID || a.transit/a.Men <= home || a.depot.Nation != m {
+		t.Errorf("abroad: at %d, base %v, transport per man %v (at home %v)", a.Region, a.depot, a.transit/a.Men, home)
 	}
 }
 
@@ -360,5 +361,73 @@ func TestConquestEliminatesANation(t *testing.T) {
 	}
 	if relDiff(w.Money(), money) > 1e-10 {
 		t.Error("money not conserved through a conquest")
+	}
+}
+
+// Armies buy each good where it lands cheapest among tiles that offer
+// enough, not just at the nearest tile.
+func TestArmiesBuyWhereGoodsAreMade(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, 5)
+	a.Men = 5
+	arms := G("arms")
+	for _, r := range m.Regions { // only tile 00 makes arms
+		r.Markets[arms].Supply = 0
+	}
+	maker := regionByName(w, "00")
+	maker.Markets[arms].Supply = 100
+	var c []claim
+	w.planSupply(m, func(r *Region, cl claim) { c = append(c, cl) })
+	if a.Source(arms) != maker.ID {
+		t.Errorf("arms bought at %d, want the arms maker %d", a.Source(arms), maker.ID)
+	}
+	if a.Source(G("bread")) < 0 {
+		t.Error("no source for bread")
+	}
+}
+
+// In peace armies use only the drill share of their wartime supplies; in war
+// all of them.
+func TestPeacetimeDrill(t *testing.T) {
+	w := newNeighbourGame(t)
+	n := w.Nations[0]
+	a, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
+	a.Men = 10
+	bread := G("bread")
+	wartime := a.Men * Doctrines[a.Doctrine].Needs[bread]
+	if err := n.SetDrill(0.1); !errors.Is(err, ErrBadDrill) {
+		t.Errorf("drill below 20%%: %v", err)
+	}
+	n.SetDrill(0.3)
+	w.planSupply(n, func(*Region, claim) {})
+	if got := a.need[bread]; math.Abs(got-0.3*wartime) > 1e-12 {
+		t.Errorf("peace: uses %v bread, want %v", got, 0.3*wartime)
+	}
+	w.DeclareWar(0, 1)
+	w.planSupply(n, func(*Region, claim) {})
+	if got := a.need[bread]; math.Abs(got-wartime) > 1e-12 {
+		t.Errorf("war: uses %v bread, want %v", got, wartime)
+	}
+}
+
+// Workers only go to firms that can pay them the tile's wage.
+func TestBrokeFirmsDontHire(t *testing.T) {
+	w := newQuietGame(t)
+	r := regionByName(w, "11")
+	w.Step()
+	var f *Firm
+	for _, x := range r.Firms {
+		if x.Enabled && x.Labor > 0.1 {
+			f = x
+			break
+		}
+	}
+	f.Cash = 0.01 * r.Wage // can pay a hundredth of a worker
+	r.Plan()
+	f.PlanLabor = math.Max(f.PlanLabor, 1)
+	r.LaborMarket()
+	if f.Labor > 0.01+1e-9 {
+		t.Errorf("a broke firm hired %v workers", f.Labor)
 	}
 }

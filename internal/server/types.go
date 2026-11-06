@@ -161,6 +161,7 @@ type NationState struct {
 	Soldiers       float64   `json:"soldiers"`
 	MobilizeCap    float64   `json:"mobilize_cap"`
 	MaxArmySize    float64   `json:"max_army_size"` // men one army can field
+	Drill          float64   `json:"drill"`         // share of wartime supplies armies use in peace
 	Mobilization   float64   `json:"mobilization"`  // share of people who may serve
 	BestDoctrine   int       `json:"best_doctrine"`
 	GDP            float64   `json:"gdp"`
@@ -182,6 +183,7 @@ type ArmyState struct {
 	Strength      float64            `json:"strength"`
 	Supply        map[string]float64 `json:"supply"`        // per needed good, 0..1
 	StockDays     map[string]float64 `json:"stock_days"`    // days of each good it carries
+	Sources       map[string]int     `json:"sources"`       // tile each good was bought in today (-1: none)
 	FullStrength  float64            `json:"full_strength"` // at full size, fully supplied
 	DailyLoss     float64            `json:"daily_loss"`    // share of men lost today outside battle
 	Path          []int              `json:"path"`
@@ -239,7 +241,6 @@ type FirmState struct {
 	Expansion *Expansion `json:"expansion"`
 	Enabled   bool       `json:"enabled"`
 	Requires  string     `json:"requires"` // tech that unlocks it, if any
-	Wage      float64    `json:"wage"`     // paid per worker today
 	Sector    string     `json:"sector"`
 }
 
@@ -371,15 +372,16 @@ func worldState(w *engine.World) State {
 	st := State{Tick: w.Tick, Date: w.Date().Format("2 January 2006"), Money: w.Money(), You: -1,
 		Flows: []Flow{}, Armies: []ArmyState{}}
 	for _, a := range w.Armies {
-		sup, days := map[string]float64{}, map[string]float64{}
+		sup, days, src := map[string]float64{}, map[string]float64{}, map[string]int{}
 		for g := range engine.Doctrines[a.Doctrine].Needs {
 			sup[engine.Goods[g].Name] = a.Supply[g]
 			days[engine.Goods[g].Name] = a.StockDays(g)
+			src[engine.Goods[g].Name] = a.Source(g)
 		}
 		att, def, attr := w.Breakdown(a)
 		depot, transport := a.SupplyLine()
 		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, a.Doctrine,
-			a.Effectiveness(), a.Strength(), sup, days, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...),
+			a.Effectiveness(), a.Strength(), sup, days, src, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...),
 			att, def, attr, depot, transport})
 	}
 	for i := range w.Regions {
@@ -399,7 +401,7 @@ func worldState(w *engine.World) State {
 			Researching: n.Researching, Points: n.ResearchPoints, Known: n.Known,
 			Queue: append([]int{}, n.Queue...), AtWar: n.AtWar, PeaceOffer: n.PeaceOffer,
 			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch,
-			MaxArmySize: n.MaxArmySize()}
+			MaxArmySize: n.MaxArmySize(), Drill: n.Drill}
 		ns.Soldiers, _ = w.Mobilized(n)
 		ns.BestDoctrine = bestDoctrine(n)
 		ns.Exports, ns.Imports = trade.NationOut[n.ID], trade.NationIn[n.ID]
@@ -462,7 +464,7 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.WagePaid, f.Sector.String()}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String()}
 		if e := f.Expansion; e != nil {
 			fs.Expansion = &Expansion{e.Delivered, e.Public}
 		}

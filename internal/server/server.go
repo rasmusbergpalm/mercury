@@ -63,7 +63,7 @@ func New(static fs.FS, dataDir string) *Server {
 	for _, cmd := range []string{"move", "target", "upgrade", "disband"} {
 		m.HandleFunc("POST /api/games/{gid}/armies/{aid}/"+cmd, s.game(s.armyCommand(cmd)))
 	}
-	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "queue", "budget", "war", "peace", "armies"} {
+	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "queue", "budget", "drill", "war", "peace", "armies"} {
 		m.HandleFunc("POST /api/games/{gid}/nations/{nid}/"+cmd, s.game(s.nationCommand(cmd)))
 	}
 	for _, cmd := range []string{"build", "cancel", "port"} {
@@ -480,6 +480,14 @@ func (s *Server) nationCommand(cmd string) gameHandler {
 				}
 			}
 			if err := n.SetBudget(b); err != nil {
+				return fail(http.StatusBadRequest, err)
+			}
+		case "drill":
+			level, err := queryFloat(r, "level")
+			if err != nil {
+				return err
+			}
+			if err := n.SetDrill(level); err != nil {
 				return fail(http.StatusBadRequest, err)
 			}
 		case "queue":

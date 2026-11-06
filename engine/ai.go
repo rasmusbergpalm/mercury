@@ -70,10 +70,13 @@ func (w *World) think(n *Nation) {
 	switch {
 	case war || invaded || threat > 1.3*own+1:
 		n.SetBudget(aiWarBudget)
+		n.SetDrill(MaxDrill) // keep the arms works busy for what's coming
 	case len(targets) > 0:
 		n.SetBudget(aiExpandBudget)
+		n.SetDrill(DefaultDrill)
 	default:
 		n.SetBudget(aiPeaceBudget)
+		n.SetDrill(DefaultDrill)
 	}
 	w.aiDiplomacy(n, own)
 	w.aiBuild(n)

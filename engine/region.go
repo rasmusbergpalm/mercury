@@ -162,8 +162,13 @@ func (r *Region) settleFirms() {
 // exists, each gets the same fraction. Pops fill the jobs in turn (a pop's
 // labor can be split across firms), and get paid by the firm that employs them.
 func (r *Region) LaborMarket() {
+	// a firm only claims the workers it can pay the full wage; the rest look
+	// for work at firms that can
 	totalD := 0.0
 	for _, f := range r.Firms {
+		if r.Wage > 0 {
+			f.PlanLabor = math.Min(f.PlanLabor, math.Max(f.Cash, 0)/r.Wage)
+		}
 		totalD += f.PlanLabor
 	}
 	workers := r.ClassPops(Workers)
@@ -182,11 +187,7 @@ func (r *Region) LaborMarket() {
 	free := workers[0].Size
 	for fi, f := range r.Firms {
 		f.Labor = f.PlanLabor * scale
-		wage := 0.0
-		if f.Labor > 0 {
-			wage = math.Min(r.Wage, math.Max(f.Cash, 0)/f.Labor)
-		}
-		f.WagePaid = wage
+		wage := r.Wage
 		need := f.Labor
 		for need > 1e-12 && pi < len(workers) {
 			pop := workers[pi]

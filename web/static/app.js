@@ -1036,19 +1036,18 @@ function tilePanel() {
     <div class="legend-inline">${world.tiers.map((t, i) => `<span><span class="swatch" style="background:${tc[i]}"></span>${t} ${pct(s.tier_spend[i] / total)}</span>`).join("")}</div>`;
   const firms = d.firms.map((f, i) => ({ ...f, i })).filter((f) => !f.enabled || f.labor > 0.05 || f.produced > 0.05 || f.levels > 1)
     .sort((a, b) => (b.enabled - a.enabled) || (b.labor - a.labor)).map((f) => {
-      if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="6">locked: needs ${esc(f.requires)}</td></tr>`;
+      if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="5">locked: needs ${esc(f.requires)}</td></tr>`;
       let grow = "";
       if (f.expansion) grow = `${pct(f.expansion.delivered / world.level_cost)}${f.expansion.public ? " ★" : ""}`;
       else if (mine && f.levels < f.max_levels) grow = `<button data-cmd="/regions/${selected}/firms/${f.i}/expand" title="Your nation pays ${world.level_cost} construction for a level">+1</button>`;
-      const short_paid = f.labor > 0 && f.wage < s.wage * 0.999;
       return `<tr><td>${esc(f.name)}<br><span class="sub">${f.sector}</span></td><td>${G[f.output].name}</td><td>${fmt(f.produced, 1)}</td><td>${f.levels}/${f.max_levels}</td><td>${fmt(f.labor, 1)}</td>
-        <td class="${short_paid ? "bad" : ""}" title="${short_paid ? "short of cash: pays less than the tile's wage" : ""}">${f.labor > 0 ? fmt(f.wage) : "–"}</td><td class="${f.profit < 0 ? "bad" : ""}">${fmt(f.profit, 1)}</td><td>${grow}</td></tr>`;
+        <td class="${f.profit < 0 ? "bad" : ""}">${fmt(f.profit, 1)}</td><td>${grow}</td></tr>`;
     }).join("");
   const employed = d.firms.reduce((t, f) => t + f.labor, 0), workers = (d.classes.find((c) => c.class === "workers") || { size: 0 }).size;
   html += `<h3>Production</h3>
     <div class="stats">${stat(fmt(s.wage), "the tile's daily wage")}${stat(`${short(employed)} / ${short(workers)}`, "workers employed")}${stat(pct(workers > 0 ? employed / workers : 0), "employment")}</div>
-    <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th>output</th><th>levels</th><th>workers</th><th>wage</th><th>profit</th><th></th></tr>${firms}</table></div>
-    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm short of cash pays less (in red). ★ expansion paid by the state; the rest by owners.</p>`;
+    <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th>output</th><th>levels</th><th>workers</th><th>profit</th><th></th></tr>${firms}</table></div>
+    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay. ★ expansion paid by the state; the rest by owners.</p>`;
   // the market: local supply and demand, and what ships in and out
   const ex = {}, im = {};
   for (const f of d.exports) ex[f.good] = (ex[f.good] || 0) + f.qty;
@@ -1327,7 +1326,9 @@ function armiesPanel() {
   if (n) {
     html += `<h2>Your armies</h2>
       <p class="sub">${short(n.soldiers)} soldiers of ${short(n.mobilize_cap)} allowed (${pct(n.mobilization)} of your people), up to ${short(n.max_army_size)} per army.
-      Best doctrine: ${world.doctrines[n.best_doctrine].name}. Raise armies from a tile of yours.</p>`;
+      Best doctrine: ${world.doctrines[n.best_doctrine].name}. Raise armies from a tile of yours.</p>
+      <div class="budget"><label>Peacetime drill<input type="range" min="20" max="80" step="5" value="${Math.round(100 * n.drill)}" id="drill" aria-label="Peacetime drill"><span class="pct" id="drill-pct">${pct(n.drill)}</span></label></div>
+      <p class="sub">In peace your armies use this share of their wartime supplies: minimal drills cost little, realistic ones keep the arms industries busy so they can supply a war. At war they use everything. ${n.at_war.some(Boolean) ? "<b>You are at war now.</b>" : ""}</p>`;
     html += mine.length ? mine.map((a) => armyCard(a, true)).join("") : `<p class="hint">You have no armies.</p>`;
   }
   html += `<h3>Other armies</h3>` + (others.length ? others.map((a) => armyCard(a, false)).join("") : `<p class="hint">None.</p>`);
@@ -1347,9 +1348,9 @@ function armyCard(a, mine) {
   const supply = Object.keys(d.needs).map((g) => {
     const v = a.supply[g] ?? 0;
     const color = v > 0.8 ? cssVar("--good") : v > 0.4 ? cssVar("--brass") : cssVar("--danger");
-    const days = a.stock_days[g] ?? 0;
+    const days = a.stock_days[g] ?? 0, from = a.sources[g] ?? -1;
     return `<span>${g}</span><span class="meter" title="${Math.round(days)} days in stock"><span style="width:${pct(v)};background:${color}"></span></span><span>${pct(v)}</span>
-      <span></span><span class="sub" style="grid-column:2/4">${days >= 1 ? `${Math.round(days)} days in stock` : `<span class="bad">no stock left</span>`}</span>`;
+      <span></span><span class="sub" style="grid-column:2/4">${days >= 1 ? `${Math.round(days)} days in stock` : `<span class="bad">no stock left</span>`}${from >= 0 ? ` · bought at ${world.regions[from].name}` : ""}</span>`;
   }).join("");
   // strength: the doctrine's base power times each factor
   const mult = (v) => `<span class="${v > 1.0001 ? "good" : v < 0.9999 ? "bad" : ""}">×${v.toFixed(2)}</span>`;
@@ -1362,8 +1363,8 @@ function armyCard(a, mine) {
   const def = (a.defense || []).map((m) => { home *= m.value; return `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td><td>${mult(m.value)}</td></tr>`; }).join("");
   const attr = (a.attrition || []).map((m) => `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td>
     <td>${m.add ? `${(100 * m.value).toFixed(2)}%` : mult(m.value)}</td></tr>`).join("");
-  const depot = a.depot >= 0 ? `bought at ${world.regions[a.depot].name}${a.depot === a.region ? " (here)" : ""}, using ${fmt(a.transport, 1)} transport today` : `<span class="bad">cut off: no friendly market can reach it</span>`;
-  html += `<h3>Supplies</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">Supplies ${depot}. The army keeps up to 30 days of each in stock and fights from its stock.</p>
+  const depot = a.depot >= 0 ? `Each good is bought where it lands cheapest among your tiles that make enough of it, and shipped here (${fmt(a.transport, 1)} transport today)` : `<span class="bad">Cut off: no tile of yours can reach it</span>`;
+  html += `<h3>Supplies</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">${depot}. The army keeps up to 30 days of wartime needs in stock and fights from its stock; in peace it uses only the drill share.</p>
     <h3>Strength in battle</h3>
     <table class="mods"><tr><th>factor</th><th>effect</th></tr>${att}
       <tr class="total"><td>Per soldier</td><td>${per.toFixed(2)}</td></tr>
@@ -1510,7 +1511,11 @@ side.addEventListener("click", (ev) => {
   if (b.dataset.input === "tax") command(`/nations/${state.you}/tax?rate=${(+$("tax").value / 100).toFixed(3)}`);
   if (b.dataset.input === "tariff") command(`/nations/${state.you}/tariff?rate=${(+$("tariff").value / 100).toFixed(3)}`);
 });
+side.addEventListener("input", (ev) => {
+  if (ev.target.id === "drill") $("drill-pct").textContent = `${ev.target.value}%`;
+});
 side.addEventListener("change", (ev) => {
+  if (ev.target.id === "drill") command(`/nations/${state.you}/drill?level=${+ev.target.value / 100}`);
   const t = ev.target.dataset.embargo;
   if (t !== undefined) command(`/nations/${state.you}/embargo?target=${t}&on=${ev.target.checked}`);
   if (ev.target.id === "autopause") setPref("autopause", ev.target.checked);

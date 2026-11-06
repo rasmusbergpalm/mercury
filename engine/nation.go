@@ -92,6 +92,7 @@ type Nation struct {
 	// of the economy (infrastructure, upkeep, firm expansions), science
 	// and the military. What isn't spent builds up the treasury.
 	Budget    [NumBudgets]float64
+	Drill     float64 // share of wartime supplies armies use in peace
 	IncomeEMA float64 // moving average of tax and tariff income per tick
 
 	ResearchPoints float64 // research delivered towards the current tech
@@ -138,6 +139,7 @@ var (
 	ErrNotAdjacent = errors.New("tile does not border the nation")
 	ErrTreasury    = errors.New("treasury cannot afford it")
 	ErrBadTech     = errors.New("tech unknown, already known, or missing prerequisites")
+	ErrBadDrill    = errors.New("peacetime drill must be between 20% and 80% of wartime needs")
 	ErrFirmMax     = errors.New("firm cannot grow further here")
 	ErrExpanding   = errors.New("firm is already expanding")
 	ErrSelf        = errors.New("a nation cannot embargo itself")
@@ -152,7 +154,7 @@ func newNation(id int, name, color string, nNations int, taxRate float64) *Natio
 	return &Nation{ID: id, Name: name, Color: color, TaxRate: taxRate,
 		Reserve: 1000, RebateRate: 0.1, MaxBuildRate: 5,
 		Tariff: make([]float64, NumGoods), Embargo: make([]bool, nNations),
-		Budget: DefaultBudget, Researching: -1, Known: make([]bool, len(Techs)),
+		Budget: DefaultBudget, Drill: DefaultDrill, Researching: -1, Known: make([]bool, len(Techs)),
 		TradeWith: make([]float64, nNations), AtWar: make([]bool, nNations), WarSince: make([]int, nNations),
 		PeaceOffer: make([]bool, nNations)}
 }
@@ -183,6 +185,24 @@ func (n *Nation) SetTariff(good GoodID, rate float64) error {
 
 // DefaultBudget is how a new nation splits its income.
 var DefaultBudget = [NumBudgets]float64{0.4, 0.2, 0.2}
+
+// Peacetime drill: in peace, armies use this share of their wartime
+// supplies (the nation chooses between minimal drills and realistic ones,
+// which keep the arms industries busy). In war they use all of them.
+const (
+	MinDrill     = 0.2
+	MaxDrill     = 0.8
+	DefaultDrill = 0.5
+)
+
+// SetDrill sets the share of wartime supplies armies use in peace.
+func (n *Nation) SetDrill(x float64) error {
+	if !(x >= MinDrill-1e-9 && x <= MaxDrill+1e-9) {
+		return ErrBadDrill
+	}
+	n.Drill = x
+	return nil
+}
 
 // SetBudget sets the shares of income spent on economy, science and military.
 func (n *Nation) SetBudget(b [NumBudgets]float64) error {

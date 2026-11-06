@@ -69,6 +69,7 @@ type Army struct {
 	depot   *Region
 	need    []float64 // what it uses today
 	order   []float64 // what it buys today: today's use plus refilling its stock
+	source  []*Region // where it buys each good today
 	tau     []float64
 	got     []float64
 	transit float64 // transport needed this tick
@@ -470,53 +471,88 @@ type Siege struct {
 	Progress float64 // 0..1; the tile changes hands at 1
 }
 
-// planSupply works out what each army needs today and where it buys it: in
-// its own tile if that's home ground, else in the nearest home tile, shipped
-// along the transport network (needing transport in proportion to distance
-// and bulk). It adds the nation's claims to that depot tile.
+// planSupply works out what each army uses today (in peace only its
+// nation's drill share of its wartime needs) and orders that plus a refill
+// of its stock (up to stockDays of wartime needs). It buys each good where it
+// lands cheapest, among the nation's tiles whose markets offered enough of it
+// yesterday: arms come from the arms works, bread from the farms. The goods
+// travel by the cheapest path, needing transport bought where they are
+// loaded, in proportion to distance and bulk.
 func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
+	drill := 1.0
+	if !w.atWar(n) {
+		drill = n.Drill
+	}
 	for _, a := range w.ArmiesOf(n) {
 		if a.need == nil {
 			a.need, a.order = make([]float64, NumGoods), make([]float64, NumGoods)
 			a.tau, a.got = make([]float64, NumGoods), make([]float64, NumGoods)
+			a.source = make([]*Region, NumGoods)
 		}
 		for g := range a.need {
-			a.need[g], a.order[g], a.tau[g], a.got[g] = 0, 0, 0, 0
+			a.need[g], a.order[g], a.tau[g], a.got[g], a.source[g] = 0, 0, 0, 0, nil
 		}
 		for g, per := range Doctrines[a.Doctrine].Needs {
-			a.need[g] = a.Men * per
+			a.need[g] = a.Men * per * drill
 		}
 		a.transit, a.gotT, a.depot = 0, 0, nil
-		dist, depot := 0.0, w.Regions[a.Region]
-		if depot.Nation != n {
-			d, _ := w.shortestPaths(a.Region, func(*Region) bool { return true })
-			depot = nil
-			for _, r := range n.Regions {
-				if depot == nil || d[r.ID] < dist {
-					depot, dist = r, d[r.ID]
-				}
-			}
-			if depot == nil {
-				continue
+		if len(n.Regions) == 0 {
+			continue
+		}
+		dist, _ := w.shortestPaths(a.Region, func(*Region) bool { return true })
+		for _, r := range n.Regions { // the nearest home tile, its base
+			if a.depot == nil || dist[r.ID] < dist[a.depot.ID] {
+				a.depot = r
 			}
 		}
-		a.depot = depot
-		cost := w.Spec.TransportCost * dist * n.supplyTransportMult()
+		if math.IsInf(dist[a.depot.ID], 1) {
+			a.depot = nil
+			continue
+		}
+		perHop := w.Spec.TransportCost * n.supplyTransportMult()
 		for _, g := range sortedGoods(Doctrines[a.Doctrine].Needs) {
-			use := a.need[g]
+			use, wartime := a.need[g], a.Men*Doctrines[a.Doctrine].Needs[g]
 			if use <= 0 {
 				continue
 			}
-			q := use + math.Min(use, math.Max(0, stockDays*use-a.Stock[g])/refillDays)
-			a.order[g] = q
-			a.tau[g] = cost * Goods[g].Bulk
-			a.transit += a.tau[g] * q
-			add(depot, claim{kind: armyClaim, good: g, army: a, qty: q})
-		}
-		if a.transit > 0 {
-			add(depot, claim{kind: armyClaim, good: Transport, army: a, qty: a.transit})
+			q := use + math.Min(wartime, math.Max(0, stockDays*wartime-a.Stock[g])/refillDays)
+			src := w.supplySource(n, g, q, dist, perHop)
+			a.source[g], a.order[g] = src, q
+			a.tau[g] = perHop * dist[src.ID] * Goods[g].Bulk
+			add(src, claim{kind: armyClaim, good: g, army: a, qty: q})
+			if t := a.tau[g] * q; t > 0 {
+				a.transit += t
+				add(src, claim{kind: armyClaim, good: Transport, army: a, qty: t})
+			}
 		}
 	}
+}
+
+// supplySource is the nation's tile where q of good g lands cheapest at an
+// army dist away: price plus transport, among the tiles whose markets offered
+// at least q yesterday; if none did, the tile that offered the most.
+func (w *World) supplySource(n *Nation, g GoodID, q float64, dist []float64, perHop float64) *Region {
+	var best, most *Region
+	bestCost := math.Inf(1)
+	for _, r := range n.Regions {
+		if math.IsInf(dist[r.ID], 1) {
+			continue
+		}
+		m := r.Markets[g]
+		if most == nil || m.Supply > most.Markets[g].Supply {
+			most = r
+		}
+		if m.Supply < q {
+			continue
+		}
+		if c := m.Price + perHop*dist[r.ID]*Goods[g].Bulk*r.Markets[Transport].Price; c < bestCost {
+			best, bestCost = r, c
+		}
+	}
+	if best == nil {
+		return most
+	}
+	return best
 }
 
 // settleSupply adds what the depot delivered to the army's stock (goods only
@@ -532,6 +568,9 @@ func (a *Army) settleSupply() {
 	}
 	for _, g := range sortedGoods(Doctrines[a.Doctrine].Needs) {
 		need := a.Men * Doctrines[a.Doctrine].Needs[g]
+		if a.need != nil {
+			need = a.need[g] // drill share in peace
+		}
 		if a.got != nil {
 			a.Stock[g] += a.got[g] * carried
 		}
@@ -876,4 +915,12 @@ func (a *Army) SupplyLine() (depot int, transport float64) {
 		return -1, 0
 	}
 	return a.depot.ID, a.transit
+}
+
+// Source is the tile the army bought a good in today, or -1.
+func (a *Army) Source(g GoodID) int {
+	if a.source == nil || a.source[g] == nil {
+		return -1
+	}
+	return a.source[g].ID
 }

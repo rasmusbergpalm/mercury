@@ -65,7 +65,6 @@ type Firm struct {
 	Inventory  float64   // stock of own output, for sale
 	Inputs     []float64 // goods bought this tick, indexed by good
 	Labor      float64   // labor employed this tick
-	WagePaid   float64   // per worker this tick: the tile's wage, less if the firm ran short of cash
 	LastOutput float64
 	// DesiredSpend is the unconstrained cost of the optimal plan.
 	DesiredSpend float64
