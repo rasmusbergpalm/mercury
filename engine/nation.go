@@ -26,21 +26,42 @@ var InfraLevels = []InfraLevel{
 		Materials: map[GoodID]float64{G("iron"): 60}},
 }
 
-// Project is infrastructure being built on a tile.
+// Project is infrastructure being built on a tile: the next road level, or a port.
 type Project struct {
-	Target    int                // level being built
+	Target    int                // road level being built (ignored for a port)
+	Port      bool               // building a port
 	Delivered float64            // construction units delivered so far
 	Materials map[GoodID]float64 // other goods delivered so far
 }
 
+// Ports: what one costs. A port lets a coast tile trade directly with every
+// other port, at a cost that depends on distance at sea.
+var (
+	PortCost      = 300.0
+	PortMaterials = map[GoodID]float64{G("wood"): 60}
+)
+
 // Required is the construction units the project needs in total.
-func (p *Project) Required() float64 { return InfraLevels[p.Target].Cost }
+func (p *Project) Required() float64 {
+	if p.Port {
+		return PortCost
+	}
+	return InfraLevels[p.Target].Cost
+}
+
+// RequiredMaterials are the other goods the project needs.
+func (p *Project) RequiredMaterials() map[GoodID]float64 {
+	if p.Port {
+		return PortMaterials
+	}
+	return InfraLevels[p.Target].Materials
+}
 
 func (p *Project) done() bool {
 	if p.Delivered < p.Required()-1e-9 {
 		return false
 	}
-	for g, q := range InfraLevels[p.Target].Materials {
+	for g, q := range p.RequiredMaterials() {
 		if p.Materials[g] < q-1e-9 {
 			return false
 		}
@@ -118,6 +139,9 @@ var (
 	ErrFirmMax     = errors.New("firm cannot grow further here")
 	ErrExpanding   = errors.New("firm is already expanding")
 	ErrSelf        = errors.New("a nation cannot embargo itself")
+	ErrNotCoast    = errors.New("only coast tiles can have ports")
+	ErrHasPort     = errors.New("tile already has a port")
+	ErrFirmLocked  = errors.New("that firm needs a technology the nation lacks")
 	ErrBadBudget   = errors.New("budget shares must be non-negative and sum to at most 1")
 	ErrNoArmy      = errors.New("the nation has no army")
 	ErrOwnTile     = errors.New("the nation already owns that tile")
@@ -185,7 +209,7 @@ func (n *Nation) Defense() float64 {
 	if n.Eliminated() {
 		return 0
 	}
-	return n.Army / math.Sqrt(float64(len(n.Regions)))
+	return n.Army / math.Sqrt(float64(len(n.Regions))) * n.defenseMult()
 }
 
 // Has reports whether the nation knows a tech.
@@ -211,38 +235,6 @@ func (n *Nation) SetResearch(i int) error {
 	}
 	n.Researching = i
 	return nil
-}
-
-func (n *Nation) firmMult(firm string) float64 {
-	m := 1.0
-	for i, t := range Techs {
-		if n.Known[i] {
-			if x, ok := t.FirmTFP[firm]; ok {
-				m *= x
-			}
-		}
-	}
-	return m
-}
-
-func (n *Nation) coastMult() float64 {
-	m := 1.0
-	for i, t := range Techs {
-		if n.Known[i] && t.CoastMove > 0 {
-			m *= t.CoastMove
-		}
-	}
-	return m
-}
-
-func (n *Nation) spoilageMult() float64 {
-	m := 1.0
-	for i, t := range Techs {
-		if n.Known[i] && t.TransitSpoilage > 0 {
-			m *= t.TransitSpoilage
-		}
-	}
-	return m
 }
 
 func (n *Nation) population() float64 {
@@ -294,6 +286,7 @@ func (n *Nation) plan() {
 		return
 	}
 	tiles := float64(len(n.Regions))
+	rate := n.MaxBuildRate * n.buildRateMult()
 	economy, total := 0.0, 0.0
 	for _, r := range n.Regions {
 		r.claims = r.claims[:0]
@@ -309,15 +302,16 @@ func (n *Nation) plan() {
 		}
 		add(claim{kind: upkeepClaim, good: Construction, qty: InfraLevels[r.Infra].Upkeep})
 		if p := r.Project; p != nil {
-			add(claim{kind: infraClaim, good: Construction, qty: math.Min(n.MaxBuildRate, p.Required()-p.Delivered)})
-			for _, g := range sortedGoods(InfraLevels[p.Target].Materials) {
-				need := InfraLevels[p.Target].Materials[g] - p.Materials[g]
-				add(claim{kind: materialClaim, good: g, qty: math.Min(n.MaxBuildRate, need)})
+			add(claim{kind: infraClaim, good: Construction, qty: math.Min(rate, p.Required()-p.Delivered)})
+			mats := p.RequiredMaterials()
+			for _, g := range sortedGoods(mats) {
+				need := mats[g] - p.Materials[g]
+				add(claim{kind: materialClaim, good: g, qty: math.Min(rate, need)})
 			}
 		}
 		for _, f := range r.Firms {
 			if e := f.Expansion; e != nil && e.Public {
-				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(n.MaxBuildRate, LevelCost-e.Delivered)})
+				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(rate, LevelCost-e.Delivered)})
 			}
 		}
 		if n.Researching >= 0 {
@@ -391,7 +385,9 @@ func (n *Nation) settle() (hopsChanged bool) {
 		}
 		need := InfraLevels[r.Infra].Upkeep
 		r.Neglect = r.Neglect*0.98 + math.Max(0, need-upkeep)
-		if p := r.Project; p != nil && p.done() {
+		if p := r.Project; p != nil && p.done() && p.Port {
+			r.Port, r.Project = true, nil // the world opens its sea routes
+		} else if p != nil && p.done() {
 			r.Infra, r.Project, r.Neglect = p.Target, nil, 0
 			hopsChanged = true
 		} else if r.Infra > 0 && r.Neglect > neglectLimit*need {
@@ -400,7 +396,7 @@ func (n *Nation) settle() (hopsChanged bool) {
 			hopsChanged = true
 		}
 	}
-	n.Army *= 1 - armyDecay
+	n.Army *= 1 - armyDecay*n.upkeepMult()
 	income := n.Revenue + n.TariffRevenue
 	if n.IncomeEMA == 0 {
 		n.IncomeEMA = income
@@ -424,10 +420,9 @@ func (n *Nation) pickResearch() {
 		return
 	}
 	n.Researching = -1
-	for i := range Techs {
-		if n.CanResearch(i) {
+	for i := range Techs { // the cheapest available tech; ties go to the earlier one
+		if n.CanResearch(i) && (n.Researching < 0 || Techs[i].Cost < Techs[n.Researching].Cost) {
 			n.Researching = i
-			return
 		}
 	}
 }
@@ -437,6 +432,7 @@ func (n *Nation) applyTech() {
 	for _, r := range n.Regions {
 		for _, f := range r.Firms {
 			f.TFP = f.BaseTFP * n.firmMult(f.Name)
+			f.Enabled = firmEnabled(f, n)
 		}
 	}
 }

@@ -151,8 +151,11 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 				continue
 			}
 			want := f.BaseTFP
-			if r.Nation == n {
+			switch {
+			case r.Nation == n:
 				want *= 1.3
+			case r.Nation != nil:
+				continue // other nations research too
 			}
 			if math.Abs(f.TFP-want) > 1e-12 {
 				t.Errorf("tile %s transport TFP %v, want %v", r.Name, f.TFP, want)
@@ -170,7 +173,14 @@ func TestScienceBudgetDrivesResearch(t *testing.T) {
 		for i := 0; i < 300; i++ {
 			w.Step()
 		}
-		return w.Nations[0].ResearchPoints
+		n := w.Nations[0] // all research done: what's banked plus what was spent on techs
+		total := n.ResearchPoints
+		for i, k := range n.Known {
+			if k {
+				total += Techs[i].Cost
+			}
+		}
+		return total
 	}
 	if p := points(0); p != 0 {
 		t.Errorf("unfunded research made %v points", p)

@@ -17,6 +17,7 @@ type Region struct {
 	Nation   *Nation  // owner, or nil
 	BaseMove float64  // terrain's movement cost
 	Infra    int      // index into InfraLevels
+	Port     bool     // has a port: trades by sea with every other port
 	Project  *Project // infrastructure under construction, or nil
 	Neglect  float64  // accumulated unmet upkeep
 
@@ -97,10 +98,14 @@ const (
 // and sets what expanding firms buy this tick.
 func (r *Region) planInvestment() {
 	price := r.Markets[Construction].Price
+	payback := float64(investPayback)
+	if r.Nation != nil {
+		payback *= r.Nation.paybackMult()
+	}
 	for _, f := range r.Firms {
-		if f.Expansion == nil && f.Levels < f.MaxLevels && f.Age > investMinAge {
+		if f.Expansion == nil && f.Enabled && f.Levels < f.MaxLevels && f.Age > investMinAge {
 			perLevel := f.ProfitEMA / float64(f.Levels)
-			if perLevel > 0 && perLevel*investPayback > LevelCost*price {
+			if perLevel > 0 && perLevel*payback > LevelCost*price {
 				f.Expansion = &Expansion{}
 			}
 		}
@@ -336,14 +341,19 @@ func (r *Region) PayDividends(cash *float64, cashBuffer, desiredSpend float64) {
 	}
 }
 
-// MoveCost is the cost of moving through the tile, given its infrastructure
-// and its owner's technology.
+// MoveCost is the cost of moving through the tile. Roads and railways
+// improve movement over land (a land tile's base cost times the
+// infrastructure multiplier). Coast tiles can also be crossed by sea, at their
+// base cost times the owner's shipping technology; the cheaper way counts.
 func (r *Region) MoveCost() float64 {
-	m := r.BaseMove * InfraLevels[r.Infra].MoveMult
-	if r.Nation != nil && r.Terrain == "coast" {
-		m *= r.Nation.coastMult()
+	if r.Terrain != "coast" {
+		return r.BaseMove * InfraLevels[r.Infra].MoveMult
 	}
-	return m
+	sea := r.BaseMove
+	if r.Nation != nil {
+		sea *= r.Nation.coastMult()
+	}
+	return math.Min(sea, InfraLevels[r.Infra].MoveMult)
 }
 
 // Money is the cash held by the region's pops and firms.

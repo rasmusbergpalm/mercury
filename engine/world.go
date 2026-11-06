@@ -16,6 +16,9 @@ type World struct {
 	Investment, Migration bool
 	// Spec is the scenario a game world was built from (nil for the classic world).
 	Spec *GameSpec
+	// Ports lists tiles with ports in the order they opened (which fixes the
+	// order of sea traders).
+	Ports []int
 	// TradePrices are the prices trade happened at in the last tick, per region.
 	TradePrices [][]float64
 }
@@ -95,6 +98,7 @@ func (w *World) Step() {
 		changed = n.settle() || changed
 		n.rebate()
 	}
+	w.openNewPorts()
 	if changed {
 		w.refreshAllHops()
 	}
@@ -136,11 +140,111 @@ func (w *World) Expand(region, firm int) error {
 		return ErrNoNation
 	case f.Expansion != nil:
 		return ErrExpanding
+	case !f.Enabled:
+		return ErrFirmLocked
 	case f.Levels >= f.MaxLevels:
 		return ErrFirmMax
 	}
 	f.Expansion = &Expansion{Public: true}
 	return nil
+}
+
+// BuildPort starts a port on a coast tile, paid for by its nation. The nation
+// needs a tech that allows ports (Ocean sailing).
+func (w *World) BuildPort(region int) error {
+	r := w.Regions[region]
+	switch {
+	case r.Nation == nil:
+		return ErrNoNation
+	case r.Terrain != "coast":
+		return ErrNotCoast
+	case r.Port:
+		return ErrHasPort
+	case r.Project != nil:
+		return ErrBuilding
+	case !r.Nation.CanBuildPorts():
+		return ErrNeedTech
+	}
+	r.Project = &Project{Port: true, Materials: map[GoodID]float64{}}
+	return nil
+}
+
+// Sea routes: a fixed cost for loading and unloading, plus distance at sea,
+// cheaper with the owners' shipping technology.
+const (
+	portHandling = 0.2
+	seaPerHex    = 0.12
+)
+
+// HexDistance is the number of hops between two tiles of an odd-r hex grid.
+func HexDistance(r1, c1, r2, c2 int) int {
+	cube := func(r, c int) (int, int, int) {
+		x := c - (r-(r&1))/2
+		return x, -x - r, r
+	}
+	x1, y1, z1 := cube(r1, c1)
+	x2, y2, z2 := cube(r2, c2)
+	abs := func(v int) int {
+		if v < 0 {
+			return -v
+		}
+		return v
+	}
+	return max(abs(x1-x2), abs(y1-y2), abs(z1-z2))
+}
+
+func (w *World) seaHop(a, b *Region) float64 {
+	mult := func(r *Region) float64 {
+		if r.Nation == nil {
+			return 1
+		}
+		return r.Nation.coastMult()
+	}
+	d := float64(HexDistance(a.Row, a.Col, b.Row, b.Col))
+	return portHandling + seaPerHex*d*(mult(a)+mult(b))/2
+}
+
+// openNewPorts opens sea routes for ports finished this tick.
+func (w *World) openNewPorts() {
+	for _, r := range w.Regions {
+		if r.Port && !w.hasPortRoutes(r.ID) {
+			w.openPort(r)
+		}
+	}
+}
+
+func (w *World) hasPortRoutes(id int) bool {
+	for _, p := range w.Ports {
+		if p == id {
+			return true
+		}
+	}
+	return false
+}
+
+// openPort adds traders for every good both ways between r and every port
+// already open.
+func (w *World) openPort(r *Region) {
+	if !math.IsInf(w.Spec.TransportCost, 1) {
+		var added []*Trader
+		for _, id := range w.Ports {
+			p := w.Regions[id]
+			hop := w.seaHop(r, p)
+			for _, g := range Tradable {
+				a := NewTrader(g, r, p, hop, w.Spec.TransportCost)
+				b := NewTrader(g, p, r, hop, w.Spec.TransportCost)
+				a.Sea, b.Sea = true, true
+				a.Cash, b.Cash = 0, 0 // money isn't created: owners fund new routes
+				added = append(added, a, b)
+			}
+		}
+		r.connect(added)
+		for _, id := range w.Ports {
+			w.Regions[id].connect(added)
+		}
+		w.Traders = append(w.Traders, added...)
+	}
+	w.Ports = append(w.Ports, r.ID)
 }
 
 // Occupation rules.
@@ -209,14 +313,15 @@ func (w *World) campaigns() {
 		if r.Nation != nil {
 			defense = r.Nation.Defense()
 		}
-		net := n.Army - defenderAdvantage*defense
+		attack := n.Army * n.attackMult()
+		net := attack - defenderAdvantage*defense
 		if net > 0 {
-			c.Progress += occupyRate * math.Min(1, net/(occupyNeedPerHead*r.Population()))
+			c.Progress += occupyRate * n.occupyMult() * math.Min(1, net/(occupyNeedPerHead*r.Population()))
 		} else {
 			c.Progress = math.Max(0, c.Progress-occupyRate)
 		}
 		if defense > 0 {
-			loss := attrition * math.Min(n.Army, defense)
+			loss := attrition * math.Min(attack, defense)
 			n.Army -= loss
 			r.Nation.Army -= loss
 		}
@@ -248,6 +353,7 @@ func (w *World) transfer(r *Region, n *Nation) {
 			f.Expansion = nil
 		}
 	}
+	// (the new owner's applyTech below sets productivity and which firms work)
 	r.Nation = n
 	n.Regions = append(n.Regions, r)
 	n.applyTech()
@@ -345,7 +451,11 @@ func (w *World) refreshAllHops() {
 		w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
 	}
 	for _, t := range w.Traders {
-		t.SetDistance(hop(t.Origin, t.Dest))
+		if t.Sea {
+			t.SetDistance(w.seaHop(t.Origin, t.Dest))
+		} else {
+			t.SetDistance(hop(t.Origin, t.Dest))
+		}
 	}
 }
 
@@ -358,7 +468,7 @@ func (w *World) refreshHops(r *Region) {
 		}
 	}
 	for _, t := range w.Traders {
-		if t.Origin == r || t.Dest == r {
+		if !t.Sea && (t.Origin == r || t.Dest == r) {
 			t.SetDistance(hop(t.Origin, t.Dest))
 		}
 	}

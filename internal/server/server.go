@@ -57,7 +57,7 @@ func New(static fs.FS, dataDir string) *Server {
 	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "budget", "campaign", "campaign/cancel"} {
 		m.HandleFunc("POST /api/games/{gid}/nations/{nid}/"+cmd, s.game(s.nationCommand(cmd)))
 	}
-	for _, cmd := range []string{"build", "cancel"} {
+	for _, cmd := range []string{"build", "cancel", "port"} {
 		m.HandleFunc("POST /api/games/{gid}/regions/{id}/"+cmd, s.game(s.regionCommand(cmd)))
 	}
 	m.HandleFunc("POST /api/games/{gid}/regions/{id}/firms/{firm}/expand", s.game(s.regionCommand("expand")))
@@ -471,6 +471,8 @@ func (s *Server) regionCommand(cmd string) gameHandler {
 			err = g.w.Build(id)
 		case "cancel":
 			err = g.w.CancelBuild(id)
+		case "port":
+			err = g.w.BuildPort(id)
 		case "expand":
 			var firm int
 			if firm, err = pathIndex(r, "firm", len(g.w.Regions[id].Firms)); err == nil {

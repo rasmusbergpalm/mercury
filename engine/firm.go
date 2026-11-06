@@ -39,12 +39,16 @@ type Firm struct {
 	// variable factors together: q = TFP * Levels^(1-s) * prod f_i^a_i.
 	Levels, MaxLevels int
 	Expansion         *Expansion // a level under construction, or nil
-	Cash              float64
-	CashBuffer        float64   // cash kept beyond what the plan needs
-	Inventory         float64   // stock of own output, for sale
-	Inputs            []float64 // goods bought this tick, indexed by good
-	Labor             float64   // labor employed this tick
-	LastOutput        float64
+	// Requires names the tech the owner needs for the firm to work; Enabled
+	// says whether it does (always true in the classic world).
+	Requires   string
+	Enabled    bool
+	Cash       float64
+	CashBuffer float64   // cash kept beyond what the plan needs
+	Inventory  float64   // stock of own output, for sale
+	Inputs     []float64 // goods bought this tick, indexed by good
+	Labor      float64   // labor employed this tick
+	LastOutput float64
 	// DesiredSpend is the unconstrained cost of the optimal plan.
 	DesiredSpend float64
 
@@ -85,7 +89,7 @@ func (f *Firm) effectiveTFP() float64 {
 // NewFirm makes a firm.
 func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash float64) *Firm {
 	return &Firm{Name: name, Output: output, TFP: tfp, BaseTFP: tfp, Factors: factors, Cash: cash,
-		Levels: 1, MaxLevels: 8,
+		Levels: 1, MaxLevels: 8, Enabled: true,
 		CashBuffer: 20, Inputs: make([]float64, NumGoods),
 		PlanQty: make([]float64, NumGoods), PlanHas: make([]bool, NumGoods)}
 }
@@ -111,6 +115,13 @@ func (f *Firm) unitCost(fc Factor, prices []float64, wage float64) float64 {
 //
 // Composite factors are then split into their cheapest goods mix.
 func (f *Firm) Plan(prices []float64, wage float64) {
+	if !f.Enabled {
+		f.PlanLabor, f.DesiredSpend = 0, 0
+		for i := range f.PlanQty {
+			f.PlanQty[i], f.PlanHas[i] = 0, false
+		}
+		return
+	}
 	p := prices[f.Output]
 	n := len(f.Factors)
 	cost := make([]float64, n)

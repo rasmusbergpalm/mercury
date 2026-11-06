@@ -63,11 +63,28 @@ func (w *World) nationsBorder(a, b *Nation) bool {
 	return false
 }
 
-// aiBuild keeps one infrastructure project going, on the tile where better
-// movement matters most: many people and much trade passing through.
+// aiBuild keeps one infrastructure project going: a couple of ports once it
+// can sail, else roads on the tile where better movement matters most (many
+// people and much trade passing through).
 func (w *World) aiBuild(n *Nation) {
+	ports := 0
 	for _, r := range n.Regions {
 		if r.Project != nil {
+			return
+		}
+		if r.Port {
+			ports++
+		}
+	}
+	if n.CanBuildPorts() && ports < 2 {
+		var best *Region
+		for _, r := range n.Regions {
+			if r.Terrain == "coast" && !r.Port && (best == nil || r.Population() > best.Population()) {
+				best = r
+			}
+		}
+		if best != nil {
+			w.BuildPort(best.ID)
 			return
 		}
 	}
@@ -106,7 +123,7 @@ func (w *World) aiExpandFirm(n *Nation) {
 	best := 0.0
 	for _, r := range n.Regions {
 		for i, f := range r.Firms {
-			if f.Expansion != nil || f.Levels >= f.MaxLevels {
+			if f.Expansion != nil || !f.Enabled || f.Levels >= f.MaxLevels {
 				continue
 			}
 			if p := f.ProfitEMA / float64(f.Levels); p > best {

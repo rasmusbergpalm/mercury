@@ -16,10 +16,11 @@ type Snapshot struct {
 	Traders     []TraderSnap `json:"traders"`
 	Nations     []NationSnap `json:"nations"`
 	TradePrices [][]float64  `json:"trade_prices"`
+	Ports       []int        `json:"ports"` // in the order they opened
 }
 
 // SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 1
+const SnapshotVersion = 2
 
 type MarketSnap struct {
 	Price, Supply, Demand float64
@@ -40,6 +41,7 @@ type FirmSnap struct {
 type RegionSnap struct {
 	Wage, Neglect, UtilityEMA float64
 	Infra                     int
+	Port                      bool
 	Project                   *Project
 	Markets                   []MarketSnap
 	Pops                      []PopSnap
@@ -73,9 +75,9 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	if w.Spec == nil {
 		return nil, ErrNotAGame
 	}
-	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick}
+	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick, Ports: append([]int(nil), w.Ports...)}
 	for _, r := range w.Regions {
-		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, Infra: r.Infra}
+		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, Infra: r.Infra, Port: r.Port}
 		if p := r.Project; p != nil {
 			cp := *p
 			cp.Materials = map[GoodID]float64{}
@@ -139,9 +141,18 @@ func Restore(s *Snapshot) (*World, error) {
 	bad := func(what string) (*World, error) {
 		return nil, fmt.Errorf("snapshot doesn't fit its scenario: %s", what)
 	}
-	if len(s.Regions) != len(w.Regions) || len(s.Traders) != len(w.Traders) || len(s.Nations) != len(w.Nations) ||
-		len(s.TradePrices) != len(w.Regions) {
+	if len(s.Regions) != len(w.Regions) || len(s.Nations) != len(w.Nations) || len(s.TradePrices) != len(w.Regions) {
 		return bad("counts")
+	}
+	for _, id := range s.Ports { // reopen sea routes in their original order (hops are refreshed below)
+		if id < 0 || id >= len(w.Regions) || !s.Regions[id].Port || w.hasPortRoutes(id) {
+			return bad("ports")
+		}
+		w.Regions[id].Port = true
+		w.openPort(w.Regions[id])
+	}
+	if len(s.Traders) != len(w.Traders) {
+		return bad("traders")
 	}
 	w.Tick = s.Tick
 	for _, n := range w.Nations {
@@ -152,8 +163,11 @@ func Restore(s *Snapshot) (*World, error) {
 		if len(rs.Markets) != len(r.Markets) || len(rs.Pops) != len(r.Pops) || len(rs.Firms) != len(r.Firms) {
 			return bad("region " + r.Name)
 		}
+		if rs.Port && !w.hasPortRoutes(i) {
+			return bad("port in " + r.Name)
+		}
 		r.Wage, r.Neglect, r.UtilityEMA, r.Infra, r.Project, r.Nation = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Infra, rs.Project, nil
-		if r.Infra < 0 || r.Infra >= len(InfraLevels) || (r.Project != nil && (r.Project.Target <= 0 || r.Project.Target >= len(InfraLevels))) {
+		if r.Infra < 0 || r.Infra >= len(InfraLevels) || (r.Project != nil && !r.Project.Port && (r.Project.Target <= 0 || r.Project.Target >= len(InfraLevels))) {
 			return bad("infrastructure in " + r.Name)
 		}
 		if r.Project != nil && r.Project.Materials == nil {
@@ -199,6 +213,22 @@ func Restore(s *Snapshot) (*World, error) {
 			}
 			n.Regions = append(n.Regions, w.Regions[id])
 			w.Regions[id].Nation = n
+		}
+	}
+	// firm gating follows the (restored) owners' technology
+	for _, r := range w.Regions {
+		if r.Nation == nil {
+			for _, f := range r.Firms {
+				f.Enabled = firmEnabled(f, nil)
+			}
+		}
+	}
+	for _, n := range w.Nations {
+		n.applyTech()
+		for _, r := range n.Regions { // TFP exactly as saved
+			for j, f := range r.Firms {
+				f.TFP = s.Regions[r.ID].Firms[j].TFP
+			}
 		}
 	}
 	w.refreshAllHops()

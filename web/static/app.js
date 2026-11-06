@@ -342,6 +342,11 @@ function draw() {
       ctx.fillRect(bx, by, size * 0.22, size * 0.08); ctx.strokeRect(bx, by, size * 0.22, size * 0.08);
     }
     if (rs.project) progressRing(x + size * 0.45, y - size * 0.45, rs.project.delivered / rs.project.required, "#e8590c");
+    if (rs.port) {
+      ctx.font = `${Math.max(11, size * 0.3)}px system-ui`;
+      ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.lineWidth = 3;
+      ctx.strokeText("⚓", x - size * 0.45, y - size * 0.4); ctx.fillText("⚓", x - size * 0.45, y - size * 0.4);
+    }
   }
   if ($("show-flows").checked) drawFlows(css);
   drawBorders();
@@ -396,13 +401,15 @@ function drawFlows(css) {
   for (const f of state.flows) {
     if (fg !== "all" && f.good !== +fg) continue;
     const v = fg === "all" ? f.qty * state.regions[f.from].prices[f.good] : f.qty;
-    const k = f.from * 1000 + f.to;
+    const k = f.from * 1000 + f.to + (f.sea ? 1e6 : 0);
     agg.set(k, (agg.get(k) || 0) + v);
   }
   const max = Math.max(1e-9, ...agg.values());
   ctx.strokeStyle = ctx.fillStyle = css.getPropertyValue("--flow");
-  for (const [k, v] of agg) {
+  for (const [key, v] of agg) {
     if (v < max * 0.03) continue;
+    const sea = key >= 1e6, k = key % 1e6;
+    ctx.setLineDash(sea ? [8, 6] : []);
     const [x1, y1] = center(world.regions[Math.floor(k / 1000)]), [x2, y2] = center(world.regions[k % 1000]);
     const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
     const sx = -uy * size * 0.12, sy = ux * size * 0.12, w = 1 + 5 * Math.sqrt(v / max);
@@ -410,6 +417,7 @@ function drawFlows(css) {
     ctx.lineWidth = w; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
     const h = 4 + w;
+    ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(bx + ux * h, by + uy * h); ctx.lineTo(bx - uy * h * 0.6, by + ux * h * 0.6); ctx.lineTo(bx + uy * h * 0.6, by - ux * h * 0.6);
     ctx.closePath(); ctx.fill();
   }
@@ -420,7 +428,7 @@ function drawLegend(sc) {
   const sw = (c) => `<span class="swatch" style="background:${c}"></span>`;
   if (kind === "nation") {
     el.innerHTML = world.nations.map((n) => `<span>${sw(n.color)}${esc(n.name)}</span>`).join("")
-      + `<span>${sw(UNOWNED)}unowned</span><span>⚔ occupation under way</span>`;
+      + `<span>${sw(UNOWNED)}unowned</span><span>⚔ occupation under way</span><span>⚓ port</span>`;
   } else if (kind === "infra") {
     el.innerHTML = world.infra_levels.map((l, i) => `<span>${sw(INFRA_COLORS[i])}${l.name} (×${l.move_mult})</span>`).join("") + `<span>labels: movement cost</span>`;
   } else if (kind === "terrain") {
@@ -489,8 +497,9 @@ function tilePanel() {
   html += `<h3>Infrastructure</h3>${infraBlock(s, mine)}`;
   html += `<h3>Spending by need tier</h3><div class="bar-stack">${bar}</div>
     <p class="sub">${world.tiers.map((t, i) => `${t} ${pct(s.tier_spend[i] / total)}`).join(" · ")}</p>`;
-  const firms = d.firms.map((f, i) => ({ ...f, i })).filter((f) => f.labor > 0.05 || f.produced > 0.05 || f.levels > 1)
-    .sort((a, b) => b.labor - a.labor).map((f) => {
+  const firms = d.firms.map((f, i) => ({ ...f, i })).filter((f) => !f.enabled || f.labor > 0.05 || f.produced > 0.05 || f.levels > 1)
+    .sort((a, b) => (b.enabled - a.enabled) || (b.labor - a.labor)).map((f) => {
+      if (!f.enabled) return `<tr class="dim"><td>🔒 ${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="4">needs ${esc(f.requires)}</td></tr>`;
       let grow = "";
       if (f.expansion) grow = `${pct(f.expansion.delivered / world.level_cost)}${f.expansion.public ? " ★" : ""}`;
       else if (mine && f.levels < f.max_levels) grow = `<button data-cmd="/regions/${selected}/firms/${f.i}/expand" title="Your nation pays ${world.level_cost} construction for a level">+1</button>`;
@@ -522,15 +531,30 @@ function militaryActions(s) {
     <div class="row"><button class="primary" data-cmd="/nations/${state.you}/campaign?target=${selected}" ${n.army <= 0 ? "disabled" : ""}>Occupy</button></div>`;
 }
 
+const knows = (nation, techName) => !techName || state.nations[nation].known[world.techs.findIndex((t) => t.name === techName)];
+const canPort = (nation) => world.techs.some((t, i) => t.ports && state.nations[nation].known[i]);
+const portTech = () => (world.techs.find((t) => t.ports) || {}).name;
+
 function infraBlock(s, mine) {
   const lvl = world.infra_levels[s.infra], next = world.infra_levels[s.infra + 1];
+  const coast = world.regions[selected].terrain === "coast";
   let html = `<p class="sub">${lvl.name} · moving through costs ×${s.move_cost.toFixed(2)}${lvl.upkeep ? ` · upkeep ${lvl.upkeep}/tick` : ""}</p>`;
+  if (coast) html += `<p class="sub">${s.port ? "⚓ Port: ships sail straight to every other port." : "No port."}</p>`;
   if (s.project) {
+    const what = s.project.port ? "port" : world.infra_levels[s.project.target].name;
     html += `<div class="progress"><span style="width:${pct(s.project.delivered / s.project.required)}"></span></div>
-      <div class="row"><span class="sub">Building ${world.infra_levels[s.project.target].name}: ${fmt(s.project.delivered, 0)} / ${s.project.required}</span>
+      <div class="row"><span class="sub">Building ${what}: ${fmt(s.project.delivered, 0)} / ${s.project.required}</span>
       ${mine ? `<button data-cmd="/regions/${selected}/cancel">Cancel</button>` : ""}</div>`;
-  } else if (next && mine) {
-    const known = !next.tech || state.nations[state.you].known[world.techs.findIndex((t) => t.name === next.tech)];
+    return html;
+  }
+  if (mine && coast && !s.port) {
+    const mats = Object.entries(world.port.materials).map(([g, q]) => ` + ${q} ${g}`).join("");
+    html += canPort(state.you)
+      ? `<div class="row"><button class="primary" data-cmd="/regions/${selected}/port">Build port</button><span class="sub">${world.port.cost} construction${mats}</span></div>`
+      : `<p class="sub">A port needs ${portTech()}.</p>`;
+  }
+  if (next && mine) {
+    const known = knows(state.you, next.tech);
     const mats = Object.entries(next.materials || {}).map(([g, q]) => ` + ${q} ${g}`).join("");
     html += known ? `<div class="row"><button class="primary" data-cmd="/regions/${selected}/build">Build ${next.name}</button><span class="sub">${next.cost} construction${mats}</span></div>`
       : `<p class="sub">${next.name} needs ${next.tech}.</p>`;
@@ -551,13 +575,18 @@ function nationPanel() {
   const tariff = Math.max(...tradable.map((i) => n.tariff[i]));
   const others = world.nations.filter((o) => o.id !== n.id).map((o) =>
     `<label class="check"><input type="checkbox" data-embargo="${o.id}" ${n.embargo[o.id] ? "checked" : ""}> ${esc(o.name)}</label>`).join("");
-  const techs = world.techs.map((t, i) => {
+  const techRow = (t, i) => {
     let status;
     if (n.known[i]) status = "✓";
     else if (n.researching === i) status = pct(Math.min(1, n.research_points / t.cost));
     else if (t.requires.every((r) => n.known[world.techs.findIndex((x) => x.name === r)])) status = `<button data-cmd="/nations/${n.id}/research?tech=${i}">Research</button>`;
     else status = `<span class="sub">needs ${t.requires.join(", ")}</span>`;
     return `<tr class="${n.known[i] ? "dim" : ""}"><td>${t.name}</td><td>${t.effect}</td><td>${t.cost}</td><td>${status}</td></tr>`;
+  };
+  const techs = world.branches.map((b) => {
+    const rows = world.techs.map((t, i) => [t, i]).filter(([t]) => t.branch === b);
+    const known = rows.filter(([, i]) => n.known[i]).length;
+    return `<tr class="branch"><th colspan="4">${b} · ${known}/${rows.length}</th></tr>${rows.map(([t, i]) => techRow(t, i)).join("")}`;
   }).join("");
   const campaign = n.campaign
     ? `<div class="progress"><span style="width:${pct(n.campaign.progress)}"></span></div>
@@ -581,7 +610,8 @@ function nationPanel() {
     <div class="row"><span class="sub">Embargo:</span> ${others}</div>
     <p class="sub">Tax ${fmt(n.revenue, 1)} + tariffs ${fmt(n.tariff_revenue, 1)} a tick · spending ${fmt(n.spending, 1)} · returned to your people ${fmt(n.rebate, 1)}</p>
     <h3>Research</h3>
-    <div class="table-scroll"><table><tr><th>tech</th><th>effect</th><th>cost</th><th></th></tr>${techs}</table></div>`;
+    <p class="sub">Researching ${n.researching >= 0 ? `${world.techs[n.researching].name}, ${pct(Math.min(1, n.research_points / world.techs[n.researching].cost))}` : "nothing"}. With nothing chosen, the cheapest available tech is picked.</p>
+    <div class="table-scroll"><table>${techs}</table></div>`;
 }
 
 // keep the three budget shares within 100% while dragging

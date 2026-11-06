@@ -50,9 +50,11 @@ type InfraInfo struct {
 
 type TechInfo struct {
 	Name     string   `json:"name"`
+	Branch   string   `json:"branch"`
 	Cost     float64  `json:"cost"`
 	Requires []string `json:"requires"`
 	Effect   string   `json:"effect"`
+	Ports    bool     `json:"ports"` // lets the nation build ports
 }
 
 // WorldInfo is the static description of a game's world.
@@ -68,10 +70,18 @@ type WorldInfo struct {
 	Infra     []InfraInfo   `json:"infra_levels"`
 	Techs     []TechInfo    `json:"techs"`
 	Budgets   []string      `json:"budgets"`
+	Branches  []string      `json:"branches"`
 	LevelCost float64       `json:"level_cost"` // construction per firm building level
+	Port      PortInfo      `json:"port"`
+}
+
+type PortInfo struct {
+	Cost      float64            `json:"cost"`
+	Materials map[string]float64 `json:"materials"`
 }
 
 type Project struct {
+	Port      bool    `json:"port"`
 	Target    int     `json:"target"`
 	Delivered float64 `json:"delivered"`
 	Required  float64 `json:"required"`
@@ -88,6 +98,7 @@ type RegionState struct {
 	Nation     int       `json:"nation"` // -1 if unowned
 	Infra      int       `json:"infra"`
 	MoveCost   float64   `json:"move_cost"`
+	Port       bool      `json:"port"`
 	Defense    float64   `json:"defense"`
 	Project    *Project  `json:"project"`
 }
@@ -97,6 +108,7 @@ type Flow struct {
 	To   int     `json:"to"`
 	Good int     `json:"good"`
 	Qty  float64 `json:"qty"`
+	Sea  bool    `json:"sea"`
 }
 
 type Campaign struct {
@@ -164,6 +176,8 @@ type FirmState struct {
 	MaxLevels int        `json:"max_levels"`
 	Profit    float64    `json:"profit"`
 	Expansion *Expansion `json:"expansion"`
+	Enabled   bool       `json:"enabled"`
+	Requires  string     `json:"requires"` // tech that unlocks it, if any
 }
 
 type MarketState struct {
@@ -186,7 +200,11 @@ type RegionDetail struct {
 }
 
 func worldInfo(w *engine.World) WorldInfo {
-	info := WorldInfo{Rows: w.Rows, Cols: w.Cols, Budgets: engine.BudgetNames[:], LevelCost: engine.LevelCost}
+	info := WorldInfo{Rows: w.Rows, Cols: w.Cols, Budgets: engine.BudgetNames[:], Branches: engine.Branches,
+		LevelCost: engine.LevelCost, Port: PortInfo{engine.PortCost, map[string]float64{}}}
+	for g, q := range engine.PortMaterials {
+		info.Port.Materials[engine.Goods[g].Name] = q
+	}
 	for g, good := range engine.Goods {
 		tier := ""
 		if t := engine.TierOf[g]; t >= 0 {
@@ -221,7 +239,7 @@ func worldInfo(w *engine.World) WorldInfo {
 		if req == nil {
 			req = []string{}
 		}
-		info.Techs = append(info.Techs, TechInfo{t.Name, t.Cost, req, t.Effect})
+		info.Techs = append(info.Techs, TechInfo{t.Name, t.Branch, t.Cost, req, t.Effect, t.Ports})
 	}
 	return info
 }
@@ -235,12 +253,12 @@ func regionState(w *engine.World, i int) RegionState {
 	}
 	st := RegionState{ID: r.ID, Wage: r.Wage, Utility: r.Utility(), Population: r.Population(),
 		Employed: employed, TierSpend: ts[:], Prices: r.Prices(), Nation: -1, Infra: r.Infra,
-		MoveCost: r.MoveCost()}
+		MoveCost: r.MoveCost(), Port: r.Port}
 	if r.Nation != nil {
 		st.Nation, st.Defense = r.Nation.ID, r.Nation.Defense()
 	}
 	if p := r.Project; p != nil {
-		st.Project = &Project{p.Target, p.Delivered, p.Required()}
+		st.Project = &Project{p.Port, p.Target, p.Delivered, p.Required()}
 	}
 	return st
 }
@@ -254,7 +272,7 @@ func worldState(w *engine.World) State {
 	}
 	for _, t := range w.Traders {
 		if t.Shipped > minFlow {
-			st.Flows = append(st.Flows, Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped})
+			st.Flows = append(st.Flows, Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped, t.Sea})
 		}
 	}
 	for _, n := range w.Nations {
@@ -290,7 +308,7 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires}
 		if e := f.Expansion; e != nil {
 			fs.Expansion = &Expansion{e.Delivered, e.Public}
 		}
@@ -308,7 +326,7 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 		if t.Shipped <= minFlow {
 			continue
 		}
-		f := Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped}
+		f := Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped, t.Sea}
 		if t.Origin == r {
 			d.Exports = append(d.Exports, f)
 		}

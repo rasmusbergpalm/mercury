@@ -170,11 +170,12 @@ func TestNationCommands(t *testing.T) {
 		t.Error("embargo not set")
 	}
 	e.do("POST", base+"embargo?target=0", tok, nil, 409, nil)
-	e.do("POST", base+"research?tech=2", tok, nil, 200, &st)
-	if st.Nations[0].Researching != 2 {
+	masonry, railways := engine.TechID("Masonry"), engine.TechID("Railways")
+	e.do("POST", fmt.Sprintf("%sresearch?tech=%d", base, masonry), tok, nil, 200, &st)
+	if st.Nations[0].Researching != masonry {
 		t.Errorf("researching %d", st.Nations[0].Researching)
 	}
-	e.do("POST", base+"research?tech=6", tok, nil, 409, nil) // Railways needs prerequisites
+	e.do("POST", fmt.Sprintf("%sresearch?tech=%d", base, railways), tok, nil, 409, nil) // needs prerequisites
 	e.do("POST", base+"campaign?target=2", tok, nil, 200, &st)
 	if c := st.Nations[0].Campaign; c == nil || c.Target != 2 {
 		t.Errorf("campaign %+v", c)
@@ -200,6 +201,46 @@ func TestNationCommands(t *testing.T) {
 	e.do("POST", path, tok, nil, 409, nil)
 	e.do("POST", fmt.Sprintf("/api/games/%s/regions/0/firms/999/expand", g.ID), tok, nil, 404, nil)
 	e.do("GET", "/api/games/"+g.ID+"/regions/99", "", nil, 404, nil)
+}
+
+func TestTechTreeAndPorts(t *testing.T) {
+	e := newEnv(t)
+	g := e.newGame("G")
+	var info WorldInfo
+	e.do("GET", "/api/games/"+g.ID+"/world", "", nil, 200, &info)
+	if len(info.Branches) != 5 || info.Techs[0].Branch == "" || info.Port.Cost <= 0 {
+		t.Fatalf("world: branches %v, first tech %+v, port %+v", info.Branches, info.Techs[0], info.Port)
+	}
+	tok := e.join(g.ID, 2) // Thalassa: tile 44 (index 28) is coast
+	var st State
+	e.do("POST", "/api/games/"+g.ID+"/regions/28/port", tok, nil, 409, nil) // needs Ocean sailing
+	game := e.srv.games[g.ID]
+	game.mu.Lock()
+	game.w.GrantTech(2, "Navigation")
+	game.w.GrantTech(2, "Ocean sailing")
+	if p := game.w.Regions[28].Project; p != nil { // the computer may have started a road while warming up
+		game.w.CancelBuild(28)
+	}
+	game.mu.Unlock()
+	e.do("POST", "/api/games/"+g.ID+"/regions/28/port", tok, nil, 200, &st)
+	if p := st.Regions[28].Project; p == nil || !p.Port {
+		t.Errorf("project %+v", p)
+	}
+	e.do("POST", "/api/games/"+g.ID+"/regions/27/port", tok, nil, 409, nil) // 43 is tropical, not coast
+	var d RegionDetail
+	e.do("GET", "/api/games/"+g.ID+"/regions/0", "", nil, 200, &d)
+	locked := 0
+	for _, f := range d.Firms {
+		if !f.Enabled {
+			locked++
+			if f.Requires == "" {
+				t.Errorf("locked firm %s names no tech", f.Name)
+			}
+		}
+	}
+	if locked == 0 {
+		t.Error("no locked firms at the start")
+	}
 }
 
 func TestClock(t *testing.T) {

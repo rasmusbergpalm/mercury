@@ -54,7 +54,22 @@ var GameRecipes = []Recipe{
 	{"Construction", "construction", 1.5, []Factor{Labor(0.5), Input("wood", 0.2)}},
 	{"University", "research", 1.0, []Factor{Labor(0.6)}},
 	{"Barracks", "military", 1.0, []Factor{Labor(0.4), Input("ironware", 0.15), Input("clothes", 0.1)}},
+	// industrial firms, unlocked by technology
+	{"Textile factory", "cloth", 3.0, []Factor{Labor(0.2), Comp("fiber", 0.4), Input("coal", 0.15)}},
+	{"Steel works", "iron", 2.2, []Factor{Labor(0.2), Input("iron ore", 0.35), Input("coal", 0.25)}},
 }
+
+// FirmTech maps a firm to the tech that enables it (from Tech.EnableFirms).
+// In game worlds such firms only work for nations that know the tech.
+var FirmTech = func() map[string]string {
+	m := map[string]string{}
+	for _, t := range Techs {
+		for _, f := range t.EnableFirms {
+			m[f] = t.Name
+		}
+	}
+	return m
+}()
 
 // RawMaxLevels caps building levels of land-bound producers (land is scarce).
 const RawMaxLevels = 4
@@ -143,6 +158,12 @@ func makeFirms(t Terrain, game bool) []*Firm {
 	}
 	for _, rc := range recipes {
 		firms = append(firms, NewFirm(rc.Firm, G(rc.Output), rc.TFP, rc.Factors, 50))
+	}
+	if game {
+		for _, f := range firms {
+			f.Requires = FirmTech[f.Name]
+			f.Enabled = f.Requires == ""
+		}
 	}
 	return firms
 }
@@ -280,6 +301,9 @@ func BuildGame(spec GameSpec) (*World, error) {
 		}
 		r.Nation = n
 		n.Regions = append(n.Regions, r)
+	}
+	for _, n := range w.Nations {
+		n.applyTech()
 	}
 	w.refreshAllHops()
 	return w, nil

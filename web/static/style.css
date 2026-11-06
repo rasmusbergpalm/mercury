@@ -117,3 +117,4 @@ td button { min-height: 28px; padding: 1px 8px; font-size: 12px; }
   #tooltip { display: none; }
 }
 .err.ok { color: var(--muted); }
+tr.branch th { text-align: left; text-transform: capitalize; color: var(--text); padding-top: 12px; }

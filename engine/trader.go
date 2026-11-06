@@ -15,6 +15,7 @@ type Trader struct {
 	Good          GoodID
 	Origin, Dest  *Region
 	TransportCost float64 // multiplier on every hop
+	Sea           bool    // a sea route between two ports
 	Distance      float64
 	Tau           float64
 	Arriving      float64
