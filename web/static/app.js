@@ -487,6 +487,8 @@ const TERRAIN = {
   light: { plains: "#e3d59b", forest: "#b9c28c", hills: "#d6bd8c", mountains: "#c9bdab", tropical: "#bcd194", coast: "#bcd6d0" },
   dark: { plains: "#5c5434", forest: "#3e4a2f", hills: "#5b4b34", mountains: "#514b44", tropical: "#3d5234", coast: "#2f4a4d" },
 };
+const OCEAN = { light: "#9fc2c9", dark: "#22383d" };
+const SHORE = { light: "#e5d7a4", dark: "#5b5338" };
 const TIER_COLORS = () => [series(1), series(2), series(0)]; // basic, intermediate, luxury
 // a single warm hue, light to dark, for magnitudes
 const RAMP = ["#f6ecd0", "#ecd09a", "#d9a066", "#b5622f", "#7d2a17"];
@@ -501,9 +503,10 @@ function rampColor(t) {
 
 let size = 40;
 const margin = 16;
+const RING = 0.7; // how much of the surrounding ring of ocean tiles shows, in tiles
 function center(r) {
   const w = Math.sqrt(3) * size;
-  return [margin + w / 2 + w * (r.col + 0.5 * (r.row & 1)), margin + size + 1.5 * size * r.row];
+  return [margin + RING * w + w / 2 + w * (r.col + 0.5 * (r.row & 1)), margin + size + RING * 1.5 * size + 1.5 * size * r.row];
 }
 const corner = (x, y, s, i) => { const a = Math.PI / 180 * (60 * i - 30); return [x + s * Math.cos(a), y + s * Math.sin(a)]; };
 function hexPath(x, y, s, c = ctx) {
@@ -525,8 +528,8 @@ function resize() {
   const wrap = canvas.parentElement;
   const narrow = window.innerWidth <= 860;
   const availH = narrow ? Infinity : Math.max(320, window.innerHeight - wrap.getBoundingClientRect().top - 60);
-  size = Math.min((wrap.clientWidth - 2 * margin) / (Math.sqrt(3) * (world.cols + 0.5)), (availH - 2 * margin) / (2 + 1.5 * (world.rows - 1)));
-  const w = 2 * margin + Math.sqrt(3) * size * (world.cols + 0.5), h = 2 * margin + size * (2 + 1.5 * (world.rows - 1));
+  size = Math.min((wrap.clientWidth - 2 * margin) / (Math.sqrt(3) * (world.cols + 0.5 + 2 * RING)), (availH - 2 * margin) / (2 + 1.5 * (world.rows - 1) + 3 * RING));
+  const w = 2 * margin + Math.sqrt(3) * size * (world.cols + 0.5 + 2 * RING), h = 2 * margin + size * (2 + 1.5 * (world.rows - 1) + 3 * RING);
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
   canvas.style.width = w + "px"; canvas.style.height = h + "px";
@@ -555,20 +558,67 @@ function terrainLayer() {
   const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
   vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, dark ? "rgba(0,0,0,0.35)" : "rgba(120,80,30,0.18)");
   g.fillStyle = vg; g.fillRect(0, 0, W, H);
-  g.strokeStyle = cssVar("--rule"); g.lineWidth = 2; g.strokeRect(4, 4, W - 8, H - 8);
-  g.lineWidth = 0.75; g.strokeRect(8, 8, W - 16, H - 16);
   const pal = TERRAIN[dark ? "dark" : "light"], ink = dark ? "rgba(225,205,160,0.55)" : "rgba(80,55,25,0.6)";
+  // the open sea inside the frame, with a ring of ocean tiles around the map
+  g.save(); g.beginPath(); g.rect(8, 8, W - 16, H - 16); g.clip();
+  g.fillStyle = OCEAN[dark ? "dark" : "light"]; g.fillRect(8, 8, W - 16, H - 16);
+  for (let row = -2; row <= world.rows + 1; row++) {
+    for (let col = -2; col <= world.cols + 1; col++) {
+      if (grid[`${row},${col}`]) continue;
+      const [x, y] = center({ row, col });
+      g.save(); hexPath(x, y, size * 0.96, g); g.clip();
+      terrainGlyphs(g, { id: 1000 + (row + 2) * 100 + col, terrain: "coast" }, x, y, ink);
+      g.restore();
+      hexPath(x, y, size, g); g.lineWidth = 0.5; g.strokeStyle = cssVar("--hex-stroke"); g.stroke();
+    }
+  }
   for (const r of world.regions) {
     const [x, y] = center(r);
     hexPath(x, y, size, g);
     g.fillStyle = pal[r.terrain]; g.fill();
     g.save(); hexPath(x, y, size * 0.96, g); g.clip();
     terrainGlyphs(g, r, x, y, ink);
+    if (r.terrain === "coast") shore(g, r, x, y, ink);
     g.restore();
     hexPath(x, y, size, g); g.lineWidth = 0.75; g.strokeStyle = cssVar("--hex-stroke"); g.stroke();
   }
+  g.restore();
+  g.strokeStyle = cssVar("--rule"); g.lineWidth = 2; g.strokeRect(4, 4, W - 8, H - 8);
+  g.lineWidth = 0.75; g.strokeRect(8, 8, W - 16, H - 16);
   terrainCache = { key, canvas: c };
   return c;
+}
+
+// A coast tile is land along the edges it shares with land tiles and sea
+// along the edges it shares with other coast tiles or the ocean; one with no
+// land neighbour is a small island.
+function shore(g, r, x, y, ink) {
+  const land = [0, 1, 2, 3, 4, 5].map((i) => { const nb = across(r, i); return !!nb && nb.terrain !== "coast"; });
+  const rand = rng(r.id * 13 + 3), s = size;
+  const at = (ang, rad) => [x + rad * Math.cos(ang), y + rad * Math.sin(ang)];
+  const cornerR = (k) => (land[(k + 5) % 6] || land[k % 6] ? s * 1.02 : s * (0.4 + 0.08 * rand()));
+  g.beginPath();
+  if (land.some(Boolean)) {
+    const rc = [0, 1, 2, 3, 4, 5].map(cornerR);
+    const cp = (k) => at(Math.PI / 180 * (60 * k - 30), rc[k % 6]);
+    g.moveTo(...cp(0));
+    for (let i = 0; i < 6; i++) {
+      if (land[i]) { g.lineTo(...cp(i + 1)); continue; }
+      const deep = rc[i] > s && rc[(i + 1) % 6] > s ? 0.32 : 0.42;
+      const [qx, qy] = at(Math.PI / 180 * 60 * i, s * (deep + 0.06 * rand()));
+      g.quadraticCurveTo(qx, qy, ...cp(i + 1));
+    }
+    g.closePath();
+  } else {
+    g.ellipse(x, y, s * 0.36, s * 0.28, rand() * Math.PI, 0, 2 * Math.PI);
+  }
+  // surf, then the land and its shoreline
+  g.lineWidth = 5; g.strokeStyle = dark ? "rgba(170,210,215,0.25)" : "rgba(255,255,255,0.55)"; g.stroke();
+  g.fillStyle = SHORE[dark ? "dark" : "light"]; g.fill();
+  g.lineWidth = 1; g.strokeStyle = ink; g.stroke();
+  g.save(); g.clip();
+  terrainGlyphs(g, { id: r.id + 500, terrain: "plains" }, x, y, ink);
+  g.restore();
 }
 
 function terrainGlyphs(g, r, x, y, ink) {
