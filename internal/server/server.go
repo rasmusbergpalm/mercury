@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -54,7 +55,12 @@ func New(static fs.FS, dataDir string) *Server {
 	m.HandleFunc("POST /api/games/{gid}/leave", s.game(s.handleLeave))
 	m.HandleFunc("POST /api/games/{gid}/save", s.game(s.handleSave))
 	m.HandleFunc("GET /api/games/{gid}/export", s.game(s.handleExport))
-	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "budget", "campaign", "campaign/cancel"} {
+	m.HandleFunc("POST /api/games/{gid}/end-turn", s.game(s.handleEndTurn))
+	m.HandleFunc("GET /api/games/{gid}/events", s.game(s.handleEvents))
+	for _, cmd := range []string{"move", "target", "upgrade", "disband"} {
+		m.HandleFunc("POST /api/games/{gid}/armies/{aid}/"+cmd, s.game(s.armyCommand(cmd)))
+	}
+	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "queue", "budget", "war", "peace", "armies"} {
 		m.HandleFunc("POST /api/games/{gid}/nations/{nid}/"+cmd, s.game(s.nationCommand(cmd)))
 	}
 	for _, cmd := range []string{"build", "cancel", "port"} {
@@ -71,12 +77,13 @@ func New(static fs.FS, dataDir string) *Server {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.mux.ServeHTTP(w, r) }
 
-// Warmup is how many ticks a new game runs before anyone sees it, so that it
+// Warmup is how many days a new game runs before anyone sees it, so that it
 // opens on a working economy rather than on starting prices.
-const Warmup = 100
+const Warmup = 30
 
-// CreateGame adds a game on the default map, run in by Warmup ticks.
-func (s *Server) CreateGame(name string, transportCost float64) (*Game, error) {
+// CreateGame adds a game on the default map, run in by Warmup days.
+// turnDays > 0 makes it turn-based.
+func (s *Server) CreateGame(name string, transportCost float64, turnDays int) (*Game, error) {
 	spec := engine.DefaultGame
 	spec.TransportCost = transportCost
 	spec.AI = true
@@ -87,16 +94,16 @@ func (s *Server) CreateGame(name string, transportCost float64) (*Game, error) {
 	for i := 0; i < Warmup; i++ {
 		w.Step()
 	}
-	return s.add(name, w)
+	return s.add(name, w, turnDays)
 }
 
-func (s *Server) add(name string, w *engine.World) (*Game, error) {
+func (s *Server) add(name string, w *engine.World, turnDays int) (*Game, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.games) >= MaxGames {
 		return nil, fmt.Errorf("the server already hosts %d games", MaxGames)
 	}
-	g := newGame(name, w)
+	g := newGame(name, w, turnDays)
 	s.games[g.ID] = g
 	return g, nil
 }
@@ -217,9 +224,25 @@ func (s *Server) game(h gameHandler) http.HandlerFunc {
 	}
 }
 
+// recentEvents is how many recent events the state carries.
+const recentEvents = 40
+
 func (g *Game) state(r *http.Request) State {
 	st := worldState(g.w)
 	st.Game, st.Running, st.Speed, st.You = g.ID, g.running, g.speed, g.nationOf(token(r))
+	if g.turnDays > 0 {
+		st.Turn = &TurnState{Days: g.turnDays, Ready: []int{}}
+		for n := range g.w.Nations {
+			if g.ready[n] {
+				st.Turn.Ready = append(st.Turn.Ready, n)
+			}
+		}
+	}
+	ev := g.w.EventsSince(0, st.You)
+	if len(ev) > recentEvents {
+		ev = ev[len(ev)-recentEvents:]
+	}
+	st.Events = ev
 	return st
 }
 
@@ -254,7 +277,23 @@ func (s *Server) handleCreateGame(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	g, err := s.CreateGame(name, cost)
+	turn := 0
+	if r.URL.Query().Has("turn") {
+		var err error
+		turn, err = strconv.Atoi(r.URL.Query().Get("turn"))
+		ok := err == nil
+		if ok {
+			ok = false
+			for _, t := range TurnLengths {
+				ok = ok || t == turn
+			}
+		}
+		if !ok {
+			http.Error(w, fmt.Sprintf("turn must be one of %v days", TurnLengths), http.StatusBadRequest)
+			return
+		}
+	}
+	g, err := s.CreateGame(name, cost, turn)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
@@ -303,6 +342,9 @@ func (s *Server) handleStep(g *Game, w http.ResponseWriter, r *http.Request) err
 	if !g.mayControlClock(token(r)) {
 		return ErrNotInGame
 	}
+	if g.turnDays > 0 && len(g.players) > 0 {
+		return ErrTurnBased
+	}
 	n := 1
 	if r.URL.Query().Has("n") {
 		var err error
@@ -320,6 +362,9 @@ func (s *Server) handleStep(g *Game, w http.ResponseWriter, r *http.Request) err
 func (s *Server) handleClock(g *Game, w http.ResponseWriter, r *http.Request) error {
 	if !g.mayControlClock(token(r)) {
 		return ErrNotInGame
+	}
+	if g.turnDays > 0 {
+		return ErrTurnBased
 	}
 	q := r.URL.Query()
 	if q.Has("speed") {
@@ -434,22 +479,109 @@ func (s *Server) nationCommand(cmd string) gameHandler {
 			if err := n.SetBudget(b); err != nil {
 				return fail(http.StatusBadRequest, err)
 			}
-		case "campaign":
-			target, err := queryIndex(r, "target", len(g.w.Regions))
+		case "queue":
+			var q []int
+			if v := q0(r, "techs"); v != "" {
+				for _, part := range strings.Split(v, ",") {
+					i, err := strconv.Atoi(part)
+					if err != nil {
+						return badRequest("techs must be comma-separated tech ids")
+					}
+					q = append(q, i)
+				}
+			}
+			if err := n.SetQueue(q); err != nil {
+				return fail(http.StatusBadRequest, err)
+			}
+		case "war":
+			target, err := queryIndex(r, "target", len(g.w.Nations))
 			if err != nil {
 				return err
 			}
-			if err := g.w.StartCampaign(nid, target); err != nil {
+			if err := g.w.DeclareWar(nid, target); err != nil {
 				return err
 			}
-		case "campaign/cancel":
-			if err := g.w.CancelCampaign(nid); err != nil {
+		case "peace":
+			target, err := queryIndex(r, "target", len(g.w.Nations))
+			if err != nil {
+				return err
+			}
+			if _, err := g.w.OfferPeace(nid, target); err != nil {
+				return err
+			}
+		case "armies": // raise a new army
+			region, err := queryIndex(r, "region", len(g.w.Regions))
+			if err != nil {
+				return err
+			}
+			men, err := queryFloat(r, "target")
+			if err != nil {
+				return err
+			}
+			if _, err := g.w.RaiseArmy(nid, region, men); err != nil {
 				return err
 			}
 		}
 		writeJSON(w, g.state(r))
 		return nil
 	}
+}
+
+func q0(r *http.Request, key string) string { return r.URL.Query().Get(key) }
+
+// armyCommand runs a command on army {aid}; only its nation's player may.
+func (s *Server) armyCommand(cmd string) gameHandler {
+	return func(g *Game, w http.ResponseWriter, r *http.Request) error {
+		id, err := strconv.Atoi(r.PathValue("aid"))
+		a := g.w.ArmyByID(id)
+		if err != nil || a == nil {
+			return fail(http.StatusNotFound, engine.ErrNoSuchArmy)
+		}
+		if g.nationOf(token(r)) != a.Nation.ID {
+			return ErrNotPlayer
+		}
+		switch cmd {
+		case "move":
+			var to int
+			if to, err = queryIndex(r, "to", len(g.w.Regions)); err == nil {
+				err = g.w.MoveArmy(id, to)
+			}
+		case "target":
+			var men float64
+			if men, err = queryFloat(r, "men"); err == nil {
+				err = g.w.SetArmyTarget(id, men)
+			}
+		case "upgrade":
+			err = g.w.UpgradeArmy(id)
+		case "disband":
+			err = g.w.DisbandArmy(id)
+		}
+		if err != nil {
+			return err
+		}
+		writeJSON(w, g.state(r))
+		return nil
+	}
+}
+
+func (s *Server) handleEndTurn(g *Game, w http.ResponseWriter, r *http.Request) error {
+	if _, err := g.endTurn(token(r)); err != nil {
+		return err
+	}
+	writeJSON(w, g.state(r))
+	return nil
+}
+
+func (s *Server) handleEvents(g *Game, w http.ResponseWriter, r *http.Request) error {
+	since := 0
+	if v := q0(r, "since"); v != "" {
+		var err error
+		if since, err = strconv.Atoi(v); err != nil {
+			return badRequest("since must be a tick")
+		}
+	}
+	writeJSON(w, g.w.EventsSince(since, g.nationOf(token(r))))
+	return nil
 }
 
 // regionCommand runs a command on tile {id}; only its owner's player may.
@@ -492,6 +624,7 @@ func (s *Server) regionCommand(cmd string) gameHandler {
 // SaveFile is a saved game.
 type SaveFile struct {
 	Name     string           `json:"name"`
+	TurnDays int              `json:"turn_days"`
 	SavedAt  time.Time        `json:"saved_at"`
 	Snapshot *engine.Snapshot `json:"snapshot"`
 }
@@ -521,7 +654,7 @@ func (g *Game) saveFile() (*SaveFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SaveFile{Name: g.Name, SavedAt: time.Now().UTC(), Snapshot: snap}, nil
+	return &SaveFile{Name: g.Name, TurnDays: g.turnDays, SavedAt: time.Now().UTC(), Snapshot: snap}, nil
 }
 
 func (s *Server) handleSave(g *Game, w http.ResponseWriter, r *http.Request) error {
@@ -600,6 +733,13 @@ func decodeSave(raw []byte) (*SaveFile, error) {
 	if !nameRe.MatchString(f.Name) {
 		f.Name = "Loaded game"
 	}
+	valid := false
+	for _, t := range TurnLengths {
+		valid = valid || t == f.TurnDays
+	}
+	if !valid {
+		f.TurnDays = 0
+	}
 	return &f, nil
 }
 
@@ -610,7 +750,7 @@ func (s *Server) restore(w http.ResponseWriter, f *SaveFile) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	g, err := s.add(f.Name, world)
+	g, err := s.add(f.Name, world, f.TurnDays)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return

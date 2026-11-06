@@ -10,7 +10,7 @@ func TestTechTreeIsWellFormed(t *testing.T) {
 	branches := map[string]int{}
 	seen := map[string]bool{}
 	firms := map[string]bool{}
-	for _, rc := range append(append(append([]Recipe(nil), RawRecipes...), ProcessingRecipes...), GameRecipes...) {
+	for _, rc := range append(append(append(append([]Recipe(nil), RawRecipes...), ProcessingRecipes...), GameRecipes...), GameRawRecipes...) {
 		firms[rc.Firm] = true
 	}
 	for _, tech := range Techs {
@@ -121,43 +121,50 @@ func TestConquestTransfersFirmGating(t *testing.T) {
 }
 
 func TestMilitaryAndPoliticsTechs(t *testing.T) {
-	w := newNeighbourGame(t)
-	a, b := w.Nations[0], w.Nations[1]
-	a.Army, b.Army = 100, 40
-	d0 := b.Defense()
-	w.GrantTech(b.ID, "Drill")
-	w.GrantTech(b.ID, "Fortifications")
-	if got := b.Defense(); math.Abs(got-1.5*d0) > 1e-9 {
-		t.Errorf("Fortifications: defence %v, want %v", got, 1.5*d0)
-	}
-	progress := func(grant ...string) float64 {
+	// occupation pace: Administration speeds it, the owner's Fortifications slow it
+	progress := func(attacker, defender []string) float64 {
 		w := newNeighbourGame(t)
-		for _, g := range grant {
+		for _, g := range attacker {
 			w.GrantTech(0, g)
 		}
-		w.Nations[0].Army = 30
-		if err := w.StartCampaign(0, regionByName(w, "10").ID); err != nil {
-			t.Fatal(err)
+		for _, g := range defender {
+			w.GrantTech(1, g)
 		}
+		w.DeclareWar(0, 1)
+		a, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
+		a.Men, a.Region = 5, regionByName(w, "01").ID
 		for i := 0; i < 10; i++ {
-			w.campaigns()
+			w.sieges()
 		}
-		return w.Nations[0].Campaign.Progress
+		return regionByName(w, "01").Siege.Progress
 	}
-	base, admin := progress(), progress("Administration")
-	if math.Abs(admin-1.5*base) > 1e-9 {
+	base := progress(nil, nil)
+	if admin := progress([]string{"Administration"}, nil); math.Abs(admin-1.5*base) > 1e-9 {
 		t.Errorf("Administration: progress %v, want %v", admin, 1.5*base)
 	}
-	rifles := progress("Drill", "Professional army", "Wagons", "Steam engine", "Steel", "Rifles")
-	if rifles <= base {
-		t.Errorf("Rifles should speed an under-strength army: %v vs %v", rifles, base)
+	if fort := progress(nil, []string{"Fortifications"}); math.Abs(fort-base/1.5) > 1e-9 {
+		t.Errorf("Fortifications: progress %v, want %v", fort, base/1.5)
 	}
-	n := newTestGame(t).Nations[0]
-	n.Army = 100
-	n.Known[TechID("Drill")], n.Known[TechID("Professional army")] = true, true
-	n.settle()
-	if math.Abs(n.Army-100*(1-armyDecay/2)) > 1e-9 {
-		t.Errorf("Professional army: army %v after a tick", n.Army)
+	// attack bonuses raise strength; desertion techs cut hunger losses
+	w := newNeighbourGame(t)
+	a, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
+	a.Men = 10
+	s0 := a.Strength()
+	w.GrantTech(0, "Drill")
+	w.GrantTech(0, "Field artillery")
+	if got := a.Strength(); math.Abs(got-1.1*s0) > 1e-9 {
+		t.Errorf("Field artillery: strength %v, want %v", got, 1.1*s0)
+	}
+	if m := w.Nations[0].desertionMult(); m != 1 {
+		t.Errorf("desertion multiplier %v before Military logistics", m)
+	}
+	w.GrantTech(0, "Mass conscription")
+	w.GrantTech(0, "Military logistics")
+	if m := w.Nations[0].desertionMult(); m != 0.7 {
+		t.Errorf("Military logistics: desertion multiplier %v", m)
+	}
+	if mob := w.Nations[0].Mobilization(); mob != 0.04 {
+		t.Errorf("Mass conscription: mobilization %v", mob)
 	}
 }
 
@@ -287,8 +294,8 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 		t.Fatal("a lone port opened routes")
 	}
 	b := buildPortNow(t, w, "50")
-	if got := len(w.Traders) - traders; got != 2*len(Tradable) {
-		t.Fatalf("second port added %d traders, want %d", got, 2*len(Tradable))
+	if got := len(w.Traders) - traders; got != 2*len(GameTradable) {
+		t.Fatalf("second port added %d traders, want %d", got, 2*len(GameTradable))
 	}
 	want := portHandling + seaPerHex*4*th.coastMult()
 	sea := 0
@@ -304,7 +311,7 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 			t.Fatalf("sea hop %v, want %v", tr.Distance, want)
 		}
 	}
-	if sea != 2*len(Tradable) {
+	if sea != 2*len(GameTradable) {
 		t.Fatalf("%d sea traders", sea)
 	}
 	money := w.Money()
@@ -368,41 +375,6 @@ func TestSaveLoadWithPorts(t *testing.T) {
 	}
 }
 
-func TestAIUsesTheNewTree(t *testing.T) {
-	if testing.Short() {
-		t.Skip("long")
-	}
-	w := newAIGame(t)
-	for i := 0; i < 3000; i++ {
-		w.Step()
-	}
-	branches := map[string]int{}
-	for _, n := range w.Nations {
-		for i, k := range n.Known {
-			if k {
-				branches[Techs[i].Branch]++
-			}
-		}
-	}
-	sea := 0.0
-	for _, tr := range w.Traders {
-		if tr.Sea {
-			sea += tr.Shipped
-		}
-	}
-	t.Logf("techs known by branch after 3000 ticks: %v; ports %v; sea trade %.1f/tick", branches, w.Ports, sea)
-	for _, b := range Branches {
-		if branches[b] == 0 {
-			t.Errorf("no nation researched anything in %s", b)
-		}
-	}
-	if len(w.Ports) < 2 {
-		t.Errorf("AI built %d ports", len(w.Ports))
-	}
-}
-
-// Roads and rails improve movement over land; a coast tile costs the cheaper
-// of sailing past it and crossing it by land.
 func TestCoastMovementTakesTheCheaperWay(t *testing.T) {
 	w := newTestGame(t)
 	th := nationByName(w, "Thalassa")

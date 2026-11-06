@@ -17,10 +17,26 @@ type Snapshot struct {
 	Nations     []NationSnap `json:"nations"`
 	TradePrices [][]float64  `json:"trade_prices"`
 	Ports       []int        `json:"ports"` // in the order they opened
+	Armies      []ArmySnap   `json:"armies"`
+	NextArmyID  int          `json:"next_army_id"`
+	Events      []Event      `json:"events"`
+}
+
+type ArmySnap struct {
+	ID, Nation, Region, Doctrine int
+	Men, Target, March           float64
+	Supply                       []float64
+	Path                         []int
+	Retreating                   bool
+}
+
+type SiegeSnap struct {
+	Nation   int
+	Progress float64
 }
 
 // SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 2
+const SnapshotVersion = 3
 
 type MarketSnap struct {
 	Price, Supply, Demand float64
@@ -43,6 +59,7 @@ type RegionSnap struct {
 	Infra                     int
 	Port                      bool
 	Project                   *Project
+	Siege                     *SiegeSnap
 	Markets                   []MarketSnap
 	Pops                      []PopSnap
 	Firms                     []FirmSnap
@@ -61,8 +78,10 @@ type NationSnap struct {
 	IncomeEMA, ResearchPoints                         float64
 	Researching                                       int
 	Known                                             []bool
-	Army                                              float64
-	Campaign                                          *Campaign
+	Queue                                             []int
+	TradeWith                                         []float64
+	AtWar, PeaceOffer                                 []bool
+	WarSince                                          []int
 	AI                                                bool
 	Revenue, TariffRevenue, Rebate, Spending          float64
 }
@@ -78,6 +97,9 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick, Ports: append([]int(nil), w.Ports...)}
 	for _, r := range w.Regions {
 		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, Infra: r.Infra, Port: r.Port}
+		if r.Siege != nil {
+			rs.Siege = &SiegeSnap{r.Siege.Nation.ID, r.Siege.Progress}
+		}
 		if p := r.Project; p != nil {
 			cp := *p
 			cp.Materials = map[GoodID]float64{}
@@ -112,20 +134,25 @@ func (w *World) Snapshot() (*Snapshot, error) {
 			RebateRate: n.RebateRate, BuildRate: n.MaxBuildRate,
 			Tariff: append([]float64(nil), n.Tariff...), Embargo: append([]bool(nil), n.Embargo...),
 			Budget: n.Budget, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints,
-			Researching: n.Researching, Known: append([]bool(nil), n.Known...), Army: n.Army, AI: n.AI,
-			Revenue: n.Revenue, TariffRevenue: n.TariffRevenue, Rebate: n.Rebate, Spending: n.Spending}
+			Researching: n.Researching, Known: append([]bool(nil), n.Known...), AI: n.AI,
+			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
+			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
+			PeaceOffer: append([]bool(nil), n.PeaceOffer...),
+			Revenue:    n.Revenue, TariffRevenue: n.TariffRevenue, Rebate: n.Rebate, Spending: n.Spending}
 		for _, r := range n.Regions {
 			ns.Regions = append(ns.Regions, r.ID)
-		}
-		if n.Campaign != nil {
-			c := *n.Campaign
-			ns.Campaign = &c
 		}
 		s.Nations = append(s.Nations, ns)
 	}
 	for _, p := range w.TradePrices {
 		s.TradePrices = append(s.TradePrices, append([]float64(nil), p...))
 	}
+	for _, a := range w.Armies {
+		s.Armies = append(s.Armies, ArmySnap{a.ID, a.Nation.ID, a.Region, a.Doctrine, a.Men, a.Target, a.March,
+			append([]float64(nil), a.Supply...), append([]int(nil), a.Path...), a.Retreating})
+	}
+	s.NextArmyID = w.NextArmyID
+	s.Events = append([]Event(nil), w.Events...)
 	return s, nil
 }
 
@@ -205,7 +232,20 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 		n.Treasury, n.TaxRate, n.Reserve, n.RebateRate, n.MaxBuildRate = ns.Treasury, ns.TaxRate, ns.Reserve, ns.RebateRate, ns.BuildRate
 		n.Tariff, n.Embargo, n.Budget, n.IncomeEMA, n.ResearchPoints = ns.Tariff, ns.Embargo, ns.Budget, ns.IncomeEMA, ns.ResearchPoints
-		n.Researching, n.Known, n.Army, n.Campaign, n.AI = ns.Researching, ns.Known, ns.Army, ns.Campaign, ns.AI
+		if len(ns.TradeWith) != len(w.Nations) || len(ns.AtWar) != len(w.Nations) || len(ns.WarSince) != len(w.Nations) ||
+			len(ns.PeaceOffer) != len(w.Nations) {
+			return bad("nation " + n.Name)
+		}
+		for _, q := range ns.Queue {
+			if q < 0 || q >= len(Techs) {
+				return bad("research queue")
+			}
+		}
+		if ns.Researching < -1 || ns.Researching >= len(Techs) {
+			return bad("research")
+		}
+		n.Researching, n.Known, n.AI, n.Queue = ns.Researching, ns.Known, ns.AI, ns.Queue
+		n.TradeWith, n.AtWar, n.WarSince, n.PeaceOffer = ns.TradeWith, ns.AtWar, ns.WarSince, ns.PeaceOffer
 		n.Revenue, n.TariffRevenue, n.Rebate, n.Spending = ns.Revenue, ns.TariffRevenue, ns.Rebate, ns.Spending
 		for _, id := range ns.Regions {
 			if id < 0 || id >= len(w.Regions) || w.Regions[id].Nation != nil {
@@ -215,6 +255,30 @@ func Restore(s *Snapshot) (*World, error) {
 			w.Regions[id].Nation = n
 		}
 	}
+	for i, rs := range s.Regions {
+		if rs.Siege != nil {
+			if rs.Siege.Nation < 0 || rs.Siege.Nation >= len(w.Nations) {
+				return bad("siege")
+			}
+			w.Regions[i].Siege = &Siege{w.Nations[rs.Siege.Nation], rs.Siege.Progress}
+		}
+	}
+	for _, as := range s.Armies {
+		if as.Nation < 0 || as.Nation >= len(w.Nations) || as.Region < 0 || as.Region >= len(w.Regions) ||
+			as.Doctrine < 0 || as.Doctrine >= len(Doctrines) || len(as.Supply) != NumGoods {
+			return bad("army")
+		}
+		for _, p := range as.Path {
+			if p < 0 || p >= len(w.Regions) {
+				return bad("army path")
+			}
+		}
+		w.Armies = append(w.Armies, &Army{ID: as.ID, Nation: w.Nations[as.Nation], Region: as.Region,
+			Doctrine: as.Doctrine, Men: as.Men, Target: as.Target, March: as.March, Supply: as.Supply,
+			Path: as.Path, Retreating: as.Retreating})
+	}
+	w.NextArmyID = s.NextArmyID
+	w.Events = append([]Event(nil), s.Events...)
 	// firm gating follows the (restored) owners' technology
 	for _, r := range w.Regions {
 		if r.Nation == nil {
@@ -230,6 +294,9 @@ func Restore(s *Snapshot) (*World, error) {
 				f.TFP = s.Regions[r.ID].Firms[j].TFP
 			}
 		}
+	}
+	for _, r := range w.Regions {
+		r.updateAgglomeration()
 	}
 	w.refreshAllHops()
 	return w, nil

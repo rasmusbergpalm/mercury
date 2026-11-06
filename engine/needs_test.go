@@ -78,11 +78,11 @@ func TestDemandFillsTiersInOrder(t *testing.T) {
 		}
 		return s
 	}
-	// with every price at 1, the first non-basic need (home) enters at a budget of 0.04
-	if s := share(0.02); s[Basic] < 0.999 {
+	// with every price at 1, the first non-basic need (home) enters at a budget of 0.02
+	if s := share(0.01); s[Basic] < 0.999 {
 		t.Errorf("a poor pop should only buy basic needs, got shares %v", s)
 	}
-	prev := share(0.02)
+	prev := share(0.01)
 	for _, b := range []float64{0.2, 0.5, 1, 3, 10, 100} {
 		s := share(b)
 		if s[Basic] > prev[Basic]+1e-12 || s[Luxury] < prev[Luxury]-1e-12 {

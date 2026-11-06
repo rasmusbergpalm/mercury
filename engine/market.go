@@ -8,6 +8,12 @@ type Order struct {
 	Qty  float64
 }
 
+// Prices stay within [minPrice, maxPrice].
+const (
+	minPrice = 1e-4
+	maxPrice = 1e9
+)
+
 // Market is a single-good call market in one region: proportional rationing
 // of the long side, then a tatonnement price update.
 type Market struct {
@@ -54,7 +60,8 @@ func (m *Market) Clear(bids, asks []Order) (bidFills, askFills []float64) {
 	// relative excess demand in [-1, 1]; the floor keeps a trickle of demand
 	// for a good nobody sells from pushing its price up at full speed forever
 	excess := (demand - supply) / math.Max(math.Max(supply, demand), m.MinVolume)
-	m.Price *= math.Exp(m.Speed * excess)
+	// a good nobody wants for decades mustn't fall (or rise) out of range
+	m.Price = math.Min(maxPrice, math.Max(minPrice, m.Price*math.Exp(m.Speed*excess)))
 	m.Supply, m.Demand = supply, demand
 	return bidFills, askFills
 }

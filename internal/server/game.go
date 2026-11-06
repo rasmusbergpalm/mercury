@@ -20,12 +20,21 @@ type Game struct {
 	w       *engine.World
 	players map[string]int // token -> nation
 	running bool
-	speed   float64 // ticks per second while running
+	speed   float64 // days per second while running
 	carry   float64 // fractional ticks owed by the clock
+
+	// Turn-based games advance turnDays at once when every player has ended
+	// the turn (real-time games have turnDays 0).
+	turnDays int
+	ready    map[int]bool // nations whose players have ended the turn
 }
 
-// Speeds the clock allows, in ticks per second.
-var Speeds = []float64{1, 2, 5, 10, 20, 50}
+// Speeds the clock allows, in days per second.
+var Speeds = []float64{1, 2, 3, 7, 15, 30}
+
+// TurnLengths are the turn lengths (in days) a turn-based game may have; 0
+// means real time.
+var TurnLengths = []int{0, 7, 30, 90, 365}
 
 // Errors from game commands.
 var (
@@ -34,14 +43,39 @@ var (
 	ErrNotInGame  = errors.New("only this game's players can do that")
 	ErrBadSpeed   = errors.New("unsupported speed")
 	ErrNoSuchSlot = errors.New("no such save")
+	ErrTurnBased  = errors.New("this game is turn-based: end your turn instead")
+	ErrRealTime   = errors.New("this game runs in real time")
 )
 
-func newGame(name string, w *engine.World) *Game {
+func newGame(name string, w *engine.World, turnDays int) *Game {
 	for _, n := range w.Nations {
 		n.AI = true // the computer runs every nation until a player joins
 	}
 	return &Game{ID: randomHex(4), Name: name, Created: time.Now(), w: w,
-		players: map[string]int{}, speed: 5}
+		players: map[string]int{}, speed: 3, turnDays: turnDays, ready: map[int]bool{}}
+}
+
+// endTurn marks the player's nation ready. When every player is ready the
+// game advances a turn. It reports whether it did.
+func (g *Game) endTurn(token string) (bool, error) {
+	if g.turnDays == 0 {
+		return false, ErrRealTime
+	}
+	n := g.nationOf(token)
+	if n < 0 {
+		return false, ErrNotInGame
+	}
+	g.ready[n] = true
+	for _, p := range g.players {
+		if !g.ready[p] {
+			return false, nil
+		}
+	}
+	for i := 0; i < g.turnDays; i++ {
+		g.w.Step()
+	}
+	g.ready = map[int]bool{}
+	return true, nil
 }
 
 func randomHex(n int) string {
@@ -74,6 +108,7 @@ func (g *Game) leave(token string) error {
 		return ErrNotInGame
 	}
 	delete(g.players, token)
+	delete(g.ready, nation)
 	g.w.Nations[nation].AI = true
 	return nil
 }
@@ -93,7 +128,7 @@ func (g *Game) mayControlClock(token string) bool {
 
 // advance runs the ticks a running clock owes for elapsed seconds.
 func (g *Game) advance(seconds float64) {
-	if !g.running {
+	if !g.running || g.turnDays > 0 {
 		return
 	}
 	g.carry += g.speed * seconds
@@ -109,6 +144,8 @@ type GameSummary struct {
 	Tick    int             `json:"tick"`
 	Running bool            `json:"running"`
 	Speed   float64         `json:"speed"`
+	Date    string          `json:"date"`
+	Turn    int             `json:"turn_days"` // 0: real time
 	Nations []NationSummary `json:"nations"`
 }
 
@@ -122,7 +159,8 @@ type NationSummary struct {
 }
 
 func (g *Game) summary() GameSummary {
-	s := GameSummary{ID: g.ID, Name: g.Name, Tick: g.w.Tick, Running: g.running, Speed: g.speed}
+	s := GameSummary{ID: g.ID, Name: g.Name, Tick: g.w.Tick, Running: g.running, Speed: g.speed,
+		Date: g.w.Date().Format("2 January 2006"), Turn: g.turnDays}
 	for _, n := range g.w.Nations {
 		c := "human"
 		if n.AI {

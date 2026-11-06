@@ -6,13 +6,16 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 const fmt = (x, d = 2) => (Math.abs(x) >= 1000 ? Math.round(x).toLocaleString() : x.toFixed(d));
 const pct = (x) => `${Math.round(100 * x)}%`;
 
-let gid = null;       // current game
-let world = null;     // its static description
-let state = null;     // its latest state
-let detail = null;    // selected tile's details
-let selected = null;  // selected tile id
+let gid = null;          // current game
+let world = null;        // its static description
+let state = null;        // its latest state
+let detail = null;       // selected tile's details
+let selected = null;     // selected tile id
+let selectedArmy = null; // selected army id
+let moving = false;      // next map tap orders the selected army to march there
 let tab = "tile";
 let pollTimer = null;
+let lastEventTick = -1;  // newest event seen, for auto-pause
 
 // seats (player tokens) are kept per game in this browser
 const seatKey = (g) => `mercury:seat:${g}`;
@@ -22,6 +25,10 @@ function getSeat(g) {
 function setSeat(g, seat) {
   try { seat ? localStorage.setItem(seatKey(g), JSON.stringify(seat)) : localStorage.removeItem(seatKey(g)); } catch { /* storage blocked */ }
 }
+function pref(key, fallback) {
+  try { const v = localStorage.getItem(`mercury:${key}`); return v === null ? fallback : JSON.parse(v); } catch { return fallback; }
+}
+function setPref(key, v) { try { localStorage.setItem(`mercury:${key}`, JSON.stringify(v)); } catch { /* storage blocked */ } }
 
 async function api(method, path, body) {
   const headers = {};
@@ -62,11 +69,13 @@ async function refreshLobby() {
   const [games, saves] = await Promise.all([api("GET", "/api/games"), api("GET", "/api/saves")]);
   $("games").innerHTML = games.length ? games.map(gameCard).join("") : `<p class="hint">No games yet. Create one below.</p>`;
   $("saves").innerHTML = saves.length
-    ? `<div class="table-scroll"><table><tr><th>slot</th><th>game</th><th>tick</th><th>saved</th><th></th></tr>${saves.map((s) =>
+    ? `<div class="table-scroll"><table><tr><th>slot</th><th>game</th><th>date</th><th>saved</th><th></th></tr>${saves.map((s) =>
       `<tr><td>${esc(s.slot)}</td><td>${esc(s.name)}</td><td>${s.tick}</td><td>${new Date(s.saved_at).toLocaleString()}</td>
        <td><button data-load="${esc(s.slot)}">Load</button></td></tr>`).join("")}</table></div>`
     : `<p class="hint">No saves yet. Save a game from its top bar.</p>`;
 }
+
+const paceName = (d) => ({ 0: "real time", 7: "weekly turns", 30: "monthly turns", 90: "seasonal turns", 365: "yearly turns" }[d] || `${d}-day turns`);
 
 function gameCard(g) {
   const seat = getSeat(g.id);
@@ -79,7 +88,7 @@ function gameCard(g) {
     return `<span class="nation-pill"><span class="chip" style="background:${n.color}"></span>${esc(n.name)} · ${n.tiles} tiles ${action}</span>`;
   }).join("");
   return `<div class="game-card">
-    <div class="title"><b>${esc(g.name)}</b><span class="sub">tick ${g.tick}${g.running ? " · running" : ""}</span></div>
+    <div class="title"><b>${esc(g.name)}</b><span class="sub">${esc(g.date)} · ${paceName(g.turn_days)}${g.running ? " · running" : ""}</span></div>
     <div class="nations-row">${pills}<button data-open="${g.id}">Watch</button></div></div>`;
 }
 
@@ -104,7 +113,7 @@ $("lobby").addEventListener("click", async (ev) => {
 $("new-game").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   try {
-    const q = new URLSearchParams({ name: $("new-name").value.trim(), cost: $("new-cost").value });
+    const q = new URLSearchParams({ name: $("new-name").value.trim(), cost: $("new-cost").value, turn: $("new-turn").value });
     const g = await api("POST", `/api/games?${q}`);
     location.hash = `#/game/${g.id}`;
   } catch (e) { showError("lobby-err", e); }
@@ -124,7 +133,7 @@ $("import").addEventListener("change", async (ev) => {
 async function openGame(id) {
   stopPolling();
   gid = id;
-  selected = null; detail = null;
+  selected = null; detail = null; selectedArmy = null; moving = false;
   world = await api("GET", `/api/games/${id}/world`);
   state = await api("GET", `/api/games/${id}/state`);
   const summary = (await api("GET", "/api/games")).find((g) => g.id === id);
@@ -137,8 +146,9 @@ async function openGame(id) {
   $("good").innerHTML = opts;
   $("good").value = String(world.goods.findIndex((g) => g.name === "bread"));
   $("flow-good").innerHTML = `<option value="all">all goods (value)</option>${opts}`;
-  $("speed").innerHTML = [1, 2, 5, 10, 20, 50].map((s) => `<option value="${s}">${s}/s</option>`).join("");
+  $("speed").innerHTML = [1, 2, 3, 7, 15, 30].map((s) => `<option value="${s}">${s} day${s > 1 ? "s" : ""}/s</option>`).join("");
   if (state.you < 0 && getSeat(id)) setSeat(id, null); // the server no longer knows our seat
+  lastEventTick = state.events.length ? state.events[state.events.length - 1].tick : -1;
   setTab(state.you >= 0 ? "nation" : "world");
   resize();
   render(true);
@@ -151,6 +161,7 @@ function startPolling() {
     try {
       state = await api("GET", `/api/games/${gid}/state`);
       if (selected !== null && tab === "tile") detail = await api("GET", `/api/games/${gid}/regions/${selected}`);
+      autoPause();
       render();
     } catch (e) { showError("game-err", e); }
     if (gid) pollTimer = setTimeout(tickOnce, state && state.running ? 700 : 2500);
@@ -159,11 +170,34 @@ function startPolling() {
 }
 function stopPolling() { clearTimeout(pollTimer); pollTimer = null; }
 
+// pause when something important happens to you
+const ALARMS = ["war", "battle", "lost", "siege", "eliminated", "peace"];
+function autoPause() {
+  const fresh = state.events.filter((e) => e.tick > lastEventTick);
+  if (state.events.length) lastEventTick = Math.max(lastEventTick, state.events[state.events.length - 1].tick);
+  if (!fresh.length || !state.running || !canClock() || !pref("autopause", true)) return;
+  const alarm = fresh.find((e) => ALARMS.includes(e.kind) && (e.nation < 0 || e.nation === state.you));
+  if (alarm) {
+    command("/clock?running=false");
+    say("game-err", `Paused: ${alarm.text}`, false);
+  }
+}
+
 const humans = () => state.nations.some((n) => n.controller === "human");
-const canClock = () => !humans() || state.you >= 0;
+const canClock = () => !state.turn && (!humans() || state.you >= 0);
 const me = () => (state.you >= 0 ? state.nations[state.you] : null);
 const owner = (id) => state.regions[id].nation;
 const neighbours = (id) => world.links.filter((l) => l.a === id || l.b === id).map((l) => (l.a === id ? l.b : l.a));
+const armyById = (id) => state.armies.find((a) => a.id === id);
+const nationName = (id) => (id >= 0 ? world.nations[id].name : "unowned");
+const chip = (id) => `<span class="chip" style="background:${id >= 0 ? world.nations[id].color : UNOWNED}"></span>`;
+// the game's calendar has 365-day years (29 February is skipped), so any
+// common year maps its days to dates
+const dateOf = (tick) => {
+  const y = world.start_year + Math.floor(tick / 365);
+  const dt = new Date(Date.UTC(2001, 0, 1 + (tick % 365)));
+  return `${dt.getUTCDate()} ${dt.toLocaleString("en", { month: "short", timeZone: "UTC" })} ${y}`;
+};
 
 async function command(path, after) {
   try {
@@ -171,30 +205,43 @@ async function command(path, after) {
     if (selected !== null) detail = await api("GET", `/api/games/${gid}/regions/${selected}`);
     if (after) after();
     render(true);
-  } catch (e) { showError("game-err", e); }
+    return true;
+  } catch (e) { showError("game-err", e); return false; }
 }
 
 // ---- top bar -------------------------------------------------------------------
 function renderBar() {
-  $("tick").textContent = state.tick;
-  $("play").textContent = state.running ? "Pause" : "Play";
-  $("speed").value = String(state.speed);
-  for (const id of ["play", "speed", "step10", "save"]) $(id).disabled = !canClock();
+  $("date").textContent = state.date;
+  $("clock").hidden = !!state.turn;
+  $("turn").hidden = !state.turn;
+  if (state.turn) {
+    const players = state.nations.filter((n) => n.controller === "human").map((n) => n.id);
+    const waiting = players.filter((p) => !state.turn.ready.includes(p)).map(nationName);
+    $("end-turn").textContent = `End turn (${state.turn.days} days)`;
+    $("end-turn").disabled = state.you < 0 || state.turn.ready.includes(state.you);
+    $("turn-status").textContent = waiting.length ? `waiting for ${waiting.join(", ")}` : "";
+  } else {
+    $("play").textContent = state.running ? "Pause" : "Play";
+    $("speed").value = String(state.speed);
+    for (const id of ["play", "speed", "step10"]) $(id).disabled = !canClock();
+  }
+  $("save").disabled = !(!humans() || state.you >= 0);
   $("leave").hidden = state.you < 0;
   const n = me();
   $("you").hidden = !n;
   if (!n) return;
-  const info = world.nations[n.id];
-  const c = n.campaign ? `<span>⚔ occupying ${world.regions[n.campaign.target].name}: <b>${pct(n.campaign.progress)}</b></span>` : "";
-  $("you").innerHTML = `<span><span class="chip" style="background:${info.color}"></span> <b>${esc(info.name)}</b>${n.eliminated ? " (fallen)" : ""}</span>
+  const wars = n.at_war.map((w, i) => (w ? world.nations[i].name : null)).filter(Boolean);
+  $("you").innerHTML = `<span>${chip(n.id)} <b>${esc(world.nations[n.id].name)}</b>${n.eliminated ? " (fallen)" : ""}</span>
     <span>tiles <b>${n.tiles}</b></span><span>people <b>${fmt(n.population, 0)}</b></span>
-    <span>treasury <b>${fmt(n.treasury, 0)}</b></span><span>income <b>${fmt(n.income, 0)}</b>/tick</span>
-    <span>army <b>${fmt(n.army, 0)}</b></span>${c}`;
+    <span>treasury <b>${fmt(n.treasury, 0)}</b></span><span>income <b>${fmt(n.income, 0)}</b>/day</span>
+    <span>soldiers <b>${fmt(n.soldiers, 0)}</b> / ${fmt(n.mobilize_cap, 0)}</span>
+    ${wars.length ? `<span class="war">⚔ at war with <b>${wars.map(esc).join(", ")}</b></span>` : ""}`;
 }
 $("to-lobby").onclick = () => { location.hash = "#/"; };
 $("play").onclick = () => command(`/clock?running=${!state.running}`);
 $("speed").onchange = () => command(`/clock?speed=${$("speed").value}`);
 $("step10").onclick = () => command("/step?n=10");
+$("end-turn").onclick = () => command("/end-turn");
 $("leave").onclick = () => command("/leave", () => { setSeat(gid, null); setTab("world"); });
 $("save").onclick = async () => {
   const suggestion = ($("game-name").textContent || "game").replace(/[^A-Za-z0-9_-]+/g, "-").slice(0, 40);
@@ -202,15 +249,16 @@ $("save").onclick = async () => {
   if (!slot) return;
   try {
     const info = await api("POST", `/api/games/${gid}/save?slot=${encodeURIComponent(slot)}`);
-    say("game-err", `Saved “${info.slot}” at tick ${info.tick}.`, false);
+    say("game-err", `Saved “${info.slot}” on ${state.date}.`, false);
   } catch (e) { showError("game-err", e); }
 };
 
 // ---- tabs ----------------------------------------------------------------------
+const TABS = ["tile", "nation", "armies", "world", "news"];
 function setTab(t) {
   tab = t;
   for (const b of document.querySelectorAll(".tabs button")) b.classList.toggle("active", b.dataset.tab === t);
-  for (const name of ["tile", "nation", "world"]) $(`tab-${name}`).hidden = name !== t;
+  for (const name of TABS) $(`tab-${name}`).hidden = name !== t;
 }
 document.querySelector(".tabs").addEventListener("click", async (ev) => {
   const b = ev.target.closest("button");
@@ -229,11 +277,14 @@ function render(force) {
   if (!state || !world) return;
   renderBar();
   draw();
+  const m = $("mode");
+  const a = selectedArmy !== null && armyById(selectedArmy);
+  m.hidden = !(moving && a);
+  if (moving && a) m.innerHTML = `<span>Tap a tile to march army ${a.id} there</span><button id="cancel-move">Cancel</button>`;
   const el = $(`tab-${tab}`);
   if (!force && busy(el)) return;
-  if (tab === "tile") el.innerHTML = tilePanel();
-  if (tab === "nation") el.innerHTML = nationPanel();
-  if (tab === "world") el.innerHTML = worldPanel();
+  const panels = { tile: tilePanel, nation: nationPanel, armies: armiesPanel, world: worldPanel, news: newsPanel };
+  el.innerHTML = panels[tab]();
 }
 
 // ---- map -----------------------------------------------------------------------
@@ -283,6 +334,7 @@ window.addEventListener("resize", resize);
 
 const CATEGORICAL = ["terrain", "nation", "infra"];
 const isShare = () => ["basic", "luxury"].includes($("overlay").value);
+const isPct = () => isShare() || $("overlay").value === "growth";
 function share(rs, tier) {
   const total = rs.tier_spend.reduce((a, b) => a + b, 0);
   return total > 0 ? rs.tier_spend[world.tiers.indexOf(tier)] / total : 0;
@@ -292,6 +344,7 @@ function overlayValue(id) {
   switch ($("overlay").value) {
     case "utility": return rs.utility;
     case "population": return rs.population;
+    case "growth": return rs.growth;
     case "wage": return rs.wage;
     case "price": return rs.prices[g] / rs.wage;
     case "basic": return share(rs, "basic");
@@ -300,6 +353,7 @@ function overlayValue(id) {
   return 0;
 }
 const overlayLabel = () => ($("overlay").value === "price" ? `${world.goods[+$("good").value].name} price ÷ wage` : $("overlay").selectedOptions[0].textContent);
+const fmtOverlay = (v) => ($("overlay").value === "growth" ? `${(100 * v).toFixed(1)}%` : isShare() ? pct(v) : fmt(v, 1));
 
 function draw() {
   if (!world || !state) return;
@@ -323,34 +377,37 @@ function draw() {
     else ctx.fillStyle = TERRAIN_COLORS[r.terrain];
     ctx.fill();
     ctx.lineWidth = 1; ctx.strokeStyle = css.getPropertyValue("--hex-stroke"); ctx.stroke();
-    if (kind !== "terrain") { // terrain pip, so terrain stays visible under other overlays
-      ctx.beginPath(); ctx.arc(x, y - size * 0.55, size * 0.1, 0, 2 * Math.PI);
+    if (kind !== "terrain") { // terrain pip
+      ctx.beginPath(); ctx.arc(x, y - size * 0.62, size * 0.09, 0, 2 * Math.PI);
       ctx.fillStyle = TERRAIN_COLORS[r.terrain]; ctx.fill(); ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.stroke();
     }
     let label, dark;
-    if (sc) { const v = overlayValue(r.id); label = isShare() ? pct(v) : fmt(v, 1); dark = sc.t(v) <= 0.6; }
+    if (sc) { const v = overlayValue(r.id); label = fmtOverlay(v); dark = sc.t(v) <= 0.6; }
     else if (kind === "nation") { label = rs.nation >= 0 ? world.nations[rs.nation].name.slice(0, 3) : "–"; dark = rs.nation >= 0; }
     else if (kind === "infra") { label = "×" + rs.move_cost.toFixed(2); dark = rs.infra >= 2; }
     else { label = r.terrain[0].toUpperCase(); dark = false; }
     ctx.fillStyle = dark ? "#fff" : "#1b1b1b";
-    ctx.font = `600 ${Math.max(10, size * 0.28)}px system-ui`;
+    ctx.font = `600 ${Math.max(10, size * 0.26)}px system-ui`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(label, x, y + size * 0.05);
+    ctx.fillText(rs.city ? `★ ${label}` : label, x, y - size * 0.22);
     for (let i = 0; i < rs.infra; i++) { // one bar per road level
       ctx.fillStyle = INFRA_COLORS[2]; ctx.strokeStyle = "#fff"; ctx.lineWidth = 1;
-      const bx = x - size * 0.37 + i * size * 0.27, by = y + size * 0.42;
-      ctx.fillRect(bx, by, size * 0.22, size * 0.08); ctx.strokeRect(bx, by, size * 0.22, size * 0.08);
+      const bx = x - size * 0.37 + i * size * 0.27, by = y + size * 0.62;
+      ctx.fillRect(bx, by, size * 0.22, size * 0.07); ctx.strokeRect(bx, by, size * 0.22, size * 0.07);
     }
-    if (rs.project) progressRing(x + size * 0.45, y - size * 0.45, rs.project.delivered / rs.project.required, "#e8590c");
-    if (rs.port) {
-      ctx.font = `${Math.max(11, size * 0.3)}px system-ui`;
-      ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.lineWidth = 3;
-      ctx.strokeText("⚓", x - size * 0.45, y - size * 0.4); ctx.fillText("⚓", x - size * 0.45, y - size * 0.4);
+    if (rs.project) progressRing(x + size * 0.5, y - size * 0.38, rs.project.delivered / rs.project.required, "#e8590c");
+    if (rs.port) outlinedText("⚓", x - size * 0.52, y - size * 0.38, Math.max(11, size * 0.26));
+    if (rs.occupation) {
+      const c = world.nations[rs.occupation.nation].color;
+      ctx.setLineDash([6, 4]); hexPath(x, y, size * 0.82);
+      ctx.lineWidth = 3; ctx.strokeStyle = c; ctx.stroke(); ctx.setLineDash([]);
+      outlinedText(`⚑ ${pct(rs.occupation.progress)}`, x, y + size * 0.5, Math.max(10, size * 0.2));
     }
   }
   if ($("show-flows").checked) drawFlows(css);
   drawBorders();
-  drawCampaigns();
+  drawPaths();
+  drawArmies();
   if (selected !== null) {
     const [x, y] = center(world.regions[selected]);
     hexPath(x, y, size * 0.92);
@@ -359,10 +416,17 @@ function draw() {
   drawLegend(sc);
 }
 
+function outlinedText(t, x, y, px) {
+  ctx.font = `700 ${px}px system-ui`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.fillStyle = "#fff";
+  ctx.strokeText(t, x, y); ctx.fillText(t, x, y);
+}
+
 function progressRing(x, y, f, color) {
-  ctx.beginPath(); ctx.arc(x, y, size * 0.12, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * Math.min(1, f));
+  ctx.beginPath(); ctx.arc(x, y, size * 0.11, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * Math.min(1, f));
   ctx.lineWidth = size * 0.06; ctx.strokeStyle = color; ctx.stroke();
-  ctx.beginPath(); ctx.arc(x, y, size * 0.12, 0, 2 * Math.PI);
+  ctx.beginPath(); ctx.arc(x, y, size * 0.11, 0, 2 * Math.PI);
   ctx.lineWidth = 1; ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.stroke();
 }
 
@@ -381,18 +445,37 @@ function drawBorders() {
   }
 }
 
-function drawCampaigns() {
-  for (const n of state.nations) {
-    if (!n.campaign) continue;
-    const [x, y] = center(world.regions[n.campaign.target]);
-    ctx.setLineDash([6, 4]);
-    hexPath(x, y, size * 0.8);
-    ctx.lineWidth = 3; ctx.strokeStyle = world.nations[n.id].color; ctx.stroke();
+// armies: a badge per army in its nation's colour with its size
+function drawArmies() {
+  const byTile = {};
+  for (const a of state.armies) (byTile[a.region] = byTile[a.region] || []).push(a);
+  for (const [tile, armies] of Object.entries(byTile)) {
+    const [x, y] = center(world.regions[+tile]);
+    armies.forEach((a, i) => {
+      const bx = x + (i - (armies.length - 1) / 2) * size * 0.5, by = y + size * 0.12;
+      const r = size * 0.2;
+      ctx.beginPath(); ctx.arc(bx, by, r, 0, 2 * Math.PI);
+      ctx.fillStyle = world.nations[a.nation].color; ctx.fill();
+      ctx.lineWidth = a.id === selectedArmy ? 3 : 1.5;
+      ctx.strokeStyle = a.id === selectedArmy ? getComputedStyle(document.documentElement).getPropertyValue("--select") : "#fff";
+      ctx.stroke();
+      if (a.retreating) { ctx.setLineDash([3, 3]); ctx.strokeStyle = "#000"; ctx.stroke(); ctx.setLineDash([]); }
+      ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.max(9, size * 0.17)}px system-ui`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(fmt(a.men, 0), bx, by);
+    });
+  }
+}
+
+// the marching route of the selected army (and the routes of your others, faintly)
+function drawPaths() {
+  for (const a of state.armies) {
+    if (!a.path.length || (a.id !== selectedArmy && a.nation !== state.you)) continue;
+    const pts = [a.region, ...a.path].map((id) => center(world.regions[id]));
+    ctx.setLineDash([5, 5]); ctx.lineWidth = a.id === selectedArmy ? 3 : 1.5;
+    ctx.strokeStyle = world.nations[a.nation].color;
+    ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + size * 0.12) : ctx.moveTo(x, y + size * 0.12))); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.font = `700 ${Math.max(10, size * 0.24)}px system-ui`;
-    ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 3;
-    const t = `⚔ ${pct(n.campaign.progress)}`;
-    ctx.strokeText(t, x, y + size * 0.32); ctx.fillText(t, x, y + size * 0.32);
   }
 }
 
@@ -416,8 +499,8 @@ function drawFlows(css) {
     const ax = x1 + ux * size * 0.35 + sx, ay = y1 + uy * size * 0.35 + sy, bx = x2 - ux * size * 0.45 + sx, by = y2 - uy * size * 0.45 + sy;
     ctx.lineWidth = w; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-    const h = 4 + w;
     ctx.setLineDash([]);
+    const h = 4 + w;
     ctx.beginPath(); ctx.moveTo(bx + ux * h, by + uy * h); ctx.lineTo(bx - uy * h * 0.6, by + ux * h * 0.6); ctx.lineTo(bx + uy * h * 0.6, by - ux * h * 0.6);
     ctx.closePath(); ctx.fill();
   }
@@ -426,16 +509,15 @@ function drawFlows(css) {
 function drawLegend(sc) {
   const kind = $("overlay").value, el = $("legend");
   const sw = (c) => `<span class="swatch" style="background:${c}"></span>`;
+  const marks = `<span>★ city</span><span>⚓ port</span><span>● army</span><span>⚑ occupation</span>`;
   if (kind === "nation") {
-    el.innerHTML = world.nations.map((n) => `<span>${sw(n.color)}${esc(n.name)}</span>`).join("")
-      + `<span>${sw(UNOWNED)}unowned</span><span>⚔ occupation under way</span><span>⚓ port</span>`;
+    el.innerHTML = world.nations.map((n) => `<span>${sw(n.color)}${esc(n.name)}</span>`).join("") + `<span>${sw(UNOWNED)}unowned</span>${marks}`;
   } else if (kind === "infra") {
     el.innerHTML = world.infra_levels.map((l, i) => `<span>${sw(INFRA_COLORS[i])}${l.name} (×${l.move_mult})</span>`).join("") + `<span>labels: movement cost</span>`;
   } else if (kind === "terrain") {
-    el.innerHTML = world.terrains.map((t) => `<span>${sw(TERRAIN_COLORS[t.name])}${t.name}${t.move_cost < 1 ? ` (move ×${t.move_cost})` : ""}</span>`).join("");
+    el.innerHTML = world.terrains.map((t) => `<span>${sw(TERRAIN_COLORS[t.name])}${t.name}${t.move_cost < 1 ? ` (move ×${t.move_cost})` : ""}</span>`).join("") + marks;
   } else {
-    const f = (v) => (isShare() ? pct(v) : fmt(v));
-    el.innerHTML = `<span>${esc(overlayLabel())}</span><span>${f(sc.lo)}</span><span class="ramp" style="background:linear-gradient(90deg,${RAMP.join(",")})"></span><span>${f(sc.hi)}</span>`;
+    el.innerHTML = `<span>${esc(overlayLabel())}</span><span>${fmtOverlay(sc.lo)}</span><span class="ramp" style="background:linear-gradient(90deg,${RAMP.join(",")})"></span><span>${fmtOverlay(sc.hi)}</span>`;
   }
 }
 
@@ -448,9 +530,31 @@ function regionAt(ev) {
   }
   return bd < size ? best : null;
 }
+function armyAt(ev, region) {
+  const rect = canvas.getBoundingClientRect(), x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+  const here = state.armies.filter((a) => a.region === region.id);
+  const [cx, cy] = center(region);
+  for (let i = 0; i < here.length; i++) {
+    const bx = cx + (i - (here.length - 1) / 2) * size * 0.5, by = cy + size * 0.12;
+    if (Math.hypot(bx - x, by - y) < size * 0.24) return here[i];
+  }
+  return null;
+}
 canvas.addEventListener("click", async (ev) => {
   const r = regionAt(ev);
   if (!r) return;
+  if (moving && selectedArmy !== null) {
+    moving = false;
+    await command(`/armies/${selectedArmy}/move?to=${r.id}`);
+    return;
+  }
+  const a = armyAt(ev, r);
+  if (a) {
+    selectedArmy = a.id;
+    setTab("armies");
+    render(true);
+    return;
+  }
   selected = r.id;
   setTab("tile");
   try { detail = await api("GET", `/api/games/${gid}/regions/${r.id}`); } catch (e) { showError("game-err", e); }
@@ -461,9 +565,8 @@ canvas.addEventListener("mousemove", (ev) => {
   const r = regionAt(ev), tip = $("tooltip");
   if (!r || !state) { tip.hidden = true; return; }
   const rs = state.regions[r.id];
-  const who = rs.nation >= 0 ? world.nations[rs.nation].name : "unowned";
-  const v = CATEGORICAL.includes($("overlay").value) ? "" : ` · ${overlayLabel()}: ${isShare() ? pct(overlayValue(r.id)) : fmt(overlayValue(r.id))}`;
-  tip.textContent = `${r.name} ${r.terrain} · ${who}${v}`;
+  const v = CATEGORICAL.includes($("overlay").value) ? "" : ` · ${overlayLabel()}: ${fmtOverlay(overlayValue(r.id))}`;
+  tip.textContent = `${r.name} ${r.terrain}${rs.city ? " city" : ""} · ${nationName(rs.nation)}${v}`;
   const rect = canvas.getBoundingClientRect();
   tip.style.left = ev.clientX - rect.left + 12 + "px"; tip.style.top = ev.clientY - rect.top + 12 + "px";
   tip.hidden = false;
@@ -482,18 +585,17 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", dra
 function tilePanel() {
   if (selected === null || !detail || detail.info.id !== selected) return `<p class="hint">Tap a tile on the map.</p>`;
   const d = detail, s = state.regions[selected], G = world.goods;
-  const nation = s.nation >= 0 ? world.nations[s.nation] : null;
   const mine = state.you >= 0 && s.nation === state.you;
   const total = s.tier_spend.reduce((a, b) => a + b, 0) || 1;
   const bar = world.tiers.map((t, i) => `<span style="width:${(100 * s.tier_spend[i] / total).toFixed(1)}%;background:${TIER_COLORS[t]}"></span>`).join("");
-  let html = `<h2>Tile ${esc(d.info.name)}</h2>
-    <p class="sub">${d.info.terrain} · ${nation ? `<span class="chip" style="background:${nation.color}"></span> ${esc(nation.name)} · defended by ${fmt(s.defense, 0)}` : "unowned · undefended"}</p>
+  let html = `<h2>${s.city ? "★ City" : "Tile"} ${esc(d.info.name)}</h2>
+    <p class="sub">${d.info.terrain} · ${chip(s.nation)} ${esc(nationName(s.nation))}${s.city ? ` · industry and services ×${s.city_bonus.toFixed(2)} from its size` : ""}</p>
     <div class="stats">
+      <div class="stat"><div class="v">${fmt(s.population, 0)}</div><div class="k">people (${s.growth >= 0 ? "+" : ""}${(100 * s.growth).toFixed(1)}%/yr)</div></div>
       <div class="stat"><div class="v">${fmt(s.utility)}</div><div class="k">utility / person</div></div>
       <div class="stat"><div class="v">${fmt(s.wage)}</div><div class="k">wage</div></div>
-      <div class="stat"><div class="v">${fmt(s.population, 0)}</div><div class="k">people</div></div>
     </div>`;
-  html += militaryActions(s);
+  html += armiesHere(s, mine);
   html += `<h3>Infrastructure</h3>${infraBlock(s, mine)}`;
   html += `<h3>Spending by need tier</h3><div class="bar-stack">${bar}</div>
     <p class="sub">${world.tiers.map((t, i) => `${t} ${pct(s.tier_spend[i] / total)}`).join(" · ")}</p>`;
@@ -511,24 +613,32 @@ function tilePanel() {
     `<tr class="${G[m.good].tier ? "" : "dim"}"><td>${G[m.good].name}</td><td>${fmt(m.price)}</td><td>${fmt(m.price / s.wage)}</td><td>${fmt(m.supply)}</td><td>${fmt(m.demand)}</td></tr>`).join("");
   html += `<h3>Markets</h3><div class="table-scroll"><table><tr><th>good</th><th>price</th><th>÷ wage</th><th>supply</th><th>demand</th></tr>${markets}</table></div>`;
   const trade = (list, out) => list.sort((a, b) => b.qty - a.qty).slice(0, 8).map((f) =>
-    `<tr><td>${G[f.good].name}</td><td>${out ? "→" : "←"} ${world.regions[out ? f.to : f.from].name}</td><td>${fmt(f.qty)}</td></tr>`).join("") || `<tr class="dim"><td colspan="3">none</td></tr>`;
+    `<tr><td>${G[f.good].name}</td><td>${out ? "→" : "←"} ${world.regions[out ? f.to : f.from].name}${f.sea ? " ⚓" : ""}</td><td>${fmt(f.qty)}</td></tr>`).join("") || `<tr class="dim"><td colspan="3">none</td></tr>`;
   html += `<h3>Exports</h3><table>${trade(d.exports, true)}</table><h3>Imports</h3><table>${trade(d.imports, false)}</table>`;
   return html;
 }
 
-function militaryActions(s) {
-  const n = me();
-  if (!n || n.eliminated || s.nation === state.you) return "";
-  if (n.campaign && n.campaign.target === selected) {
-    return `<h3>Occupation</h3><div class="progress"><span style="width:${pct(n.campaign.progress)}"></span></div>
-      <div class="row"><span class="sub">Your army (${fmt(n.army, 0)}) is occupying this tile: ${pct(n.campaign.progress)}.</span>
-      <button data-cmd="/nations/${state.you}/campaign/cancel">Call off</button></div>`;
+function armiesHere(s, mine) {
+  const here = state.armies.filter((a) => a.region === selected);
+  let html = "";
+  if (s.occupation) {
+    html += `<h3>Occupation</h3><div class="progress"><span style="width:${pct(s.occupation.progress)};background:${world.nations[s.occupation.nation].color}"></span></div>
+      <p class="sub">${esc(nationName(s.occupation.nation))} holds ${pct(s.occupation.progress)}: it grows each day their army stands here unopposed, and falls back otherwise. At 100% the tile changes hands.</p>`;
   }
-  if (!neighbours(selected).some((id) => owner(id) === state.you)) return "";
-  const odds = s.nation < 0 ? "Undefended: it falls slowly to any army, faster to a bigger one."
-    : `Their garrison counts as ${fmt(1.5 * s.defense, 0)}; your army is ${fmt(n.army, 0)}. Fighting costs both sides.`;
-  return `<h3>Occupation</h3><p class="sub">${odds}${n.campaign ? " This calls off your current campaign." : ""}</p>
-    <div class="row"><button class="primary" data-cmd="/nations/${state.you}/campaign?target=${selected}" ${n.army <= 0 ? "disabled" : ""}>Occupy</button></div>`;
+  if (here.length) {
+    html += `<h3>Armies here</h3>` + here.map((a) =>
+      `<div class="row">${chip(a.nation)} <span>${esc(nationName(a.nation))}: ${fmt(a.men, 0)} men, ${world.doctrines[a.doctrine].name}${a.retreating ? " (retreating)" : ""}</span>
+       <button data-army="${a.id}">Select</button></div>`).join("");
+  }
+  const n = me();
+  if (mine && n) {
+    const room = Math.max(0, n.mobilize_cap - state.armies.filter((a) => a.nation === n.id).reduce((t, a) => t + a.target, 0));
+    html += `<h3>Raise an army here</h3>
+      <div class="row"><label>Soldiers <input id="raise-men" type="number" min="0" step="1" value="${Math.floor(room)}" class="num"></label>
+      <button class="primary" id="raise">Raise</button></div>
+      <p class="sub">They are drafted from this tile's people over the coming weeks. Room for ${fmt(room, 0)} more within your mobilization cap (${pct(n.mobilization)} of your people).</p>`;
+  }
+  return html;
 }
 
 const knows = (nation, techName) => !techName || state.nations[nation].known[world.techs.findIndex((t) => t.name === techName)];
@@ -538,7 +648,7 @@ const portTech = () => (world.techs.find((t) => t.ports) || {}).name;
 function infraBlock(s, mine) {
   const lvl = world.infra_levels[s.infra], next = world.infra_levels[s.infra + 1];
   const coast = world.regions[selected].terrain === "coast";
-  let html = `<p class="sub">${lvl.name} · moving through costs ×${s.move_cost.toFixed(2)}${lvl.upkeep ? ` · upkeep ${lvl.upkeep}/tick` : ""}</p>`;
+  let html = `<p class="sub">${lvl.name} · moving through costs ×${s.move_cost.toFixed(2)}${lvl.upkeep ? ` · upkeep ${lvl.upkeep}/day` : ""}</p>`;
   if (coast) html += `<p class="sub">${s.port ? "⚓ Port: ships sail straight to every other port." : "No port."}</p>`;
   if (s.project) {
     const what = s.project.port ? "port" : world.infra_levels[s.project.target].name;
@@ -554,9 +664,9 @@ function infraBlock(s, mine) {
       : `<p class="sub">A port needs ${portTech()}.</p>`;
   }
   if (next && mine) {
-    const known = knows(state.you, next.tech);
     const mats = Object.entries(next.materials || {}).map(([g, q]) => ` + ${q} ${g}`).join("");
-    html += known ? `<div class="row"><button class="primary" data-cmd="/regions/${selected}/build">Build ${next.name}</button><span class="sub">${next.cost} construction${mats}</span></div>`
+    html += knows(state.you, next.tech)
+      ? `<div class="row"><button class="primary" data-cmd="/regions/${selected}/build">Build ${next.name}</button><span class="sub">${next.cost} construction${mats}</span></div>`
       : `<p class="sub">${next.name} needs ${next.tech}.</p>`;
   }
   return html;
@@ -571,47 +681,56 @@ function nationPanel() {
   const kept = Math.max(0, 1 - n.budget.reduce((a, b) => a + b, 0));
   const sliders = world.budgets.map((name, i) =>
     `<label>${name}<input type="range" min="0" max="100" step="5" value="${Math.round(100 * n.budget[i])}" data-budget="${i}" aria-label="${name} budget"><span class="pct" id="pct-${i}">${pct(n.budget[i])}</span></label>`).join("");
-  const tradable = world.goods.map((g, i) => i).filter((i) => !["transport", "construction", "research", "military"].includes(world.goods[i].name));
+  const tradable = world.goods.map((g, i) => i).filter((i) => !["transport", "construction", "research"].includes(world.goods[i].name));
   const tariff = Math.max(...tradable.map((i) => n.tariff[i]));
   const others = world.nations.filter((o) => o.id !== n.id).map((o) =>
     `<label class="check"><input type="checkbox" data-embargo="${o.id}" ${n.embargo[o.id] ? "checked" : ""}> ${esc(o.name)}</label>`).join("");
-  const techRow = (t, i) => {
-    let status;
-    if (n.known[i]) status = "✓";
-    else if (n.researching === i) status = pct(Math.min(1, n.research_points / t.cost));
-    else if (t.requires.every((r) => n.known[world.techs.findIndex((x) => x.name === r)])) status = `<button data-cmd="/nations/${n.id}/research?tech=${i}">Research</button>`;
-    else status = `<span class="sub">needs ${t.requires.join(", ")}</span>`;
-    return `<tr class="${n.known[i] ? "dim" : ""}"><td>${t.name}</td><td>${t.effect}</td><td>${t.cost}</td><td>${status}</td></tr>`;
-  };
-  const techs = world.branches.map((b) => {
-    const rows = world.techs.map((t, i) => [t, i]).filter(([t]) => t.branch === b);
-    const known = rows.filter(([, i]) => n.known[i]).length;
-    return `<tr class="branch"><th colspan="4">${b} · ${known}/${rows.length}</th></tr>${rows.map(([t, i]) => techRow(t, i)).join("")}`;
-  }).join("");
-  const campaign = n.campaign
-    ? `<div class="progress"><span style="width:${pct(n.campaign.progress)}"></span></div>
-       <div class="row"><span class="sub">Occupying tile ${world.regions[n.campaign.target].name}: ${pct(n.campaign.progress)}</span><button data-cmd="/nations/${n.id}/campaign/cancel">Call off</button></div>`
-    : `<p class="sub">No campaign. Tap a tile on your border and choose Occupy.</p>`;
-  return `<h2><span class="chip" style="background:${info.color}"></span> ${esc(info.name)}</h2>
+  return `<h2>${chip(n.id)} ${esc(info.name)}</h2>
     <div class="stats">
-      <div class="stat"><div class="v">${fmt(n.income, 0)}</div><div class="k">income / tick</div></div>
+      <div class="stat"><div class="v">${fmt(n.income, 0)}</div><div class="k">income / day</div></div>
       <div class="stat"><div class="v">${fmt(n.treasury, 0)}</div><div class="k">treasury</div></div>
-      <div class="stat"><div class="v">${fmt(n.army, 0)}</div><div class="k">army</div></div>
+      <div class="stat"><div class="v">${fmt(n.soldiers, 0)}</div><div class="k">soldiers (cap ${fmt(n.mobilize_cap, 0)})</div></div>
     </div>
     <h3>Budget (share of income)</h3>
     <div class="budget">${sliders}</div>
     <div class="row"><span class="sub" id="kept">${pct(kept)} kept in the treasury</span><button class="primary" id="apply-budget">Apply</button></div>
-    <p class="sub">Economy pays for roads, upkeep and firm expansions; science for research; military for the army, which shrinks 2% a tick unless it is paid for.</p>
-    <h3>Army</h3>
-    <p class="sub">Strength ${fmt(n.army, 0)}; each of your tiles can call on ${fmt(n.defense, 0)} of it.</p>${campaign}
+    <p class="sub">Economy pays for roads, upkeep and firm expansions; science buys research; military buys your armies' food, clothing and equipment. Armies short of supplies fight worse and lose men.</p>
     <h3>Taxes and trade</h3>
     <div class="row"><label>Tax <input id="tax" type="number" min="0" max="90" step="1" value="${Math.round(100 * n.tax_rate)}" class="num">%</label><button data-input="tax">Set</button></div>
     <div class="row"><label>Import tariff <input id="tariff" type="number" min="0" max="500" step="5" value="${Math.round(100 * tariff)}" class="num">%</label><button data-input="tariff">Set</button></div>
     <div class="row"><span class="sub">Embargo:</span> ${others}</div>
-    <p class="sub">Tax ${fmt(n.revenue, 1)} + tariffs ${fmt(n.tariff_revenue, 1)} a tick · spending ${fmt(n.spending, 1)} · returned to your people ${fmt(n.rebate, 1)}</p>
-    <h3>Research</h3>
-    <p class="sub">Researching ${n.researching >= 0 ? `${world.techs[n.researching].name}, ${pct(Math.min(1, n.research_points / world.techs[n.researching].cost))}` : "nothing"}. With nothing chosen, the cheapest available tech is picked.</p>
-    <div class="table-scroll"><table>${techs}</table></div>`;
+    <p class="sub">Tax ${fmt(n.revenue, 1)} + tariffs ${fmt(n.tariff_revenue, 1)} a day · spending ${fmt(n.spending, 1)} · returned to your people ${fmt(n.rebate, 1)}</p>
+    ${researchBlock(n)}`;
+}
+
+function researchBlock(n) {
+  const current = n.researching >= 0
+    ? `${world.techs[n.researching].name}: ${fmt(n.research_points, 0)} / ${fmt(n.tech_costs[n.researching], 0)}` : "nothing";
+  const queue = n.queue.length
+    ? n.queue.map((i, k) => `<span class="nation-pill">${k + 1}. ${world.techs[i].name} <button data-unqueue="${k}" title="Remove">×</button></span>`).join(" ")
+    : `<span class="sub">empty: the cheapest available tech is picked automatically</span>`;
+  const available = (t) => t.requires.every((r) => n.known[world.techs.findIndex((x) => x.name === r)]);
+  const rows = (branch) => world.techs.map((t, i) => [t, i]).filter(([t]) => t.branch === branch).map(([t, i]) => {
+    let action;
+    if (n.known[i]) action = "✓";
+    else if (n.researching === i) action = pct(Math.min(1, n.research_points / n.tech_costs[i]));
+    else {
+      const now = available(t) ? `<button data-cmd="/nations/${n.id}/research?tech=${i}">Now</button>` : "";
+      const q = n.queue.includes(i) ? "" : `<button data-queue="${i}">Queue</button>`;
+      action = `${now}${q}`;
+    }
+    const cost = n.tech_costs[i] < t.cost - 1 ? `${fmt(n.tech_costs[i], 0)} <span class="sub">(−${pct(1 - n.tech_costs[i] / t.cost)})</span>` : fmt(t.cost, 0);
+    const needs = !n.known[i] && !available(t) ? `<br><span class="sub">needs ${t.requires.join(", ")}</span>` : "";
+    return `<tr class="${n.known[i] ? "dim" : ""}"><td>${t.name}<br><span class="sub">${world.eras[t.era].split(" (")[0]}</span></td><td>${t.effect}${needs}</td><td>${cost}</td><td>${action}</td></tr>`;
+  }).join("");
+  const branches = world.branches.map((b) => {
+    const all = world.techs.filter((t) => t.branch === b).length, known = world.techs.filter((t, i) => t.branch === b && n.known[i]).length;
+    return `<tr class="branch"><th colspan="4">${b} · ${known}/${all}</th></tr>${rows(b)}`;
+  }).join("");
+  return `<h3>Research</h3>
+    <p class="sub">Researching ${current}. Techs your trade partners know are cheaper: ideas travel with trade.</p>
+    <div class="row">${queue}</div>
+    <div class="table-scroll"><table>${branches}</table></div>`;
 }
 
 // keep the three budget shares within 100% while dragging
@@ -630,26 +749,102 @@ $("tab-nation").addEventListener("input", (ev) => {
   $("kept").textContent = `${100 - ranges.reduce((a, r) => a + +r.value, 0)}% kept in the treasury`;
 });
 
+// ---- armies panel --------------------------------------------------------------
+function armiesPanel() {
+  const n = me();
+  const mine = n ? state.armies.filter((a) => a.nation === n.id) : [];
+  const others = state.armies.filter((a) => !n || a.nation !== n.id);
+  let html = "";
+  if (n) {
+    html += `<h2>Your armies</h2>
+      <p class="sub">${fmt(n.soldiers, 0)} soldiers of ${fmt(n.mobilize_cap, 0)} allowed (${pct(n.mobilization)} of your people). Best doctrine: ${world.doctrines[n.best_doctrine].name}.
+      Raise armies from a tile of yours (Tile tab).</p>`;
+    html += mine.length ? mine.map((a) => armyCard(a, true)).join("") : `<p class="hint">You have no armies.</p>`;
+  }
+  html += `<h3>Other armies</h3>` + (others.length ? others.map((a) => armyCard(a, false)).join("") : `<p class="hint">None.</p>`);
+  return html;
+}
+
+function armyCard(a, mine) {
+  const d = world.doctrines[a.doctrine];
+  const where = world.regions[a.region];
+  const dest = a.path.length ? ` → marching to ${world.regions[a.path[a.path.length - 1]].name}` : "";
+  const supply = Object.entries(d.needs).map(([g]) => {
+    const v = a.supply[g] ?? 0;
+    const color = v > 0.8 ? "#4caf50" : v > 0.4 ? "#e0a020" : "#d9480f";
+    return `<span>${g}</span><span class="meter"><span style="width:${pct(v)};background:${color}"></span></span><span>${pct(v)}</span>`;
+  }).join("");
+  let actions = "";
+  if (mine) {
+    const n = me();
+    actions = `<div class="row">
+      <button class="primary" data-move="${a.id}">Move…</button>
+      <label>Size <input type="number" min="0" step="1" value="${Math.round(a.target)}" class="num" data-target-for="${a.id}"></label><button data-set-target="${a.id}">Set</button>
+      ${n.best_doctrine > a.doctrine ? `<button data-cmd="/armies/${a.id}/upgrade">Upgrade to ${world.doctrines[n.best_doctrine].name}</button>` : ""}
+      ${state.regions[a.region].nation === a.nation ? `<button class="danger" data-cmd="/armies/${a.id}/disband">Disband</button>` : ""}
+    </div>`;
+  }
+  return `<div class="army-card ${a.id === selectedArmy ? "selected" : ""}" data-select-army="${a.id}">
+    <div class="title"><b>${chip(a.nation)} ${esc(nationName(a.nation))} army ${a.id}</b><span class="sub">${fmt(a.men, 0)} / ${fmt(a.target, 0)} men</span></div>
+    <p class="sub">${d.name} · strength ${fmt(a.strength, 1)} (effectiveness ${fmt(a.effectiveness)} of ${d.power}) · at ${where.name}${dest}${a.retreating ? " · retreating" : ""}</p>
+    <div class="supply">${supply}</div>${actions}</div>`;
+}
+
 // ---- world panel ---------------------------------------------------------------
 function worldPanel() {
-  const rows = state.nations.map((n) => {
-    const info = world.nations[n.id];
-    const res = n.researching >= 0 ? `${world.techs[n.researching].name} ${pct(Math.min(1, n.research_points / world.techs[n.researching].cost))}` : "—";
-    const who = n.id === state.you ? "you" : n.controller === "ai" ? "computer" : "player";
-    return `<tr><td><span class="chip" style="background:${info.color}"></span> ${esc(info.name)}</td><td>${who}</td><td>${n.eliminated ? "fallen" : n.tiles}</td>
-      <td>${fmt(n.population, 0)}</td><td>${fmt(n.income, 0)}</td><td>${fmt(n.army, 0)}</td>
-      <td>${n.budget.map((b) => Math.round(100 * b)).join("/")}</td><td>${n.known.filter(Boolean).length}/${world.techs.length}</td><td>${res}</td></tr>`;
+  const n = me();
+  const rows = state.nations.map((o) => {
+    const info = world.nations[o.id];
+    const who = o.id === state.you ? "you" : o.controller === "ai" ? "computer" : "player";
+    let diplo = "";
+    if (n && o.id !== n.id && !o.eliminated && !n.eliminated) {
+      if (n.at_war[o.id]) {
+        diplo = n.peace_offer[o.id] ? `<span class="sub">peace offered</span>`
+          : `<button data-cmd="/nations/${n.id}/peace?target=${o.id}">${o.peace_offer[n.id] ? "Accept peace" : "Offer peace"}</button>`;
+      } else {
+        diplo = `<button class="danger" data-confirm="Declare war on ${esc(info.name)}?" data-cmd="/nations/${n.id}/war?target=${o.id}">Declare war</button>`;
+      }
+    }
+    const war = o.at_war.map((w, i) => (w ? world.nations[i].name : null)).filter(Boolean);
+    return `<tr><td>${chip(o.id)} ${esc(info.name)}</td><td>${who}</td><td>${o.eliminated ? "fallen" : o.tiles}</td>
+      <td>${fmt(o.population, 0)}</td><td>${fmt(o.income, 0)}</td><td>${fmt(o.soldiers, 0)}</td><td>${o.known.filter(Boolean).length}/${world.techs.length}</td>
+      <td>${war.length ? `⚔ ${war.map(esc).join(", ")}` : "peace"}</td><td>${diplo}</td></tr>`;
   }).join("");
   return `<h2>Nations</h2><div class="table-scroll"><table>
-    <tr><th>nation</th><th>who</th><th>tiles</th><th>people</th><th>income</th><th>army</th><th>econ/sci/mil</th><th>techs</th><th>researching</th></tr>${rows}</table></div>
+    <tr><th>nation</th><th>who</th><th>tiles</th><th>people</th><th>income</th><th>soldiers</th><th>techs</th><th>wars</th><th></th></tr>${rows}</table></div>
+    <p class="sub">You can only go to war with a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless.</p>
     <p class="sub">Money in the world: ${fmt(state.money, 0)} (conserved).</p>`;
+}
+
+// ---- news panel ----------------------------------------------------------------
+function newsPanel() {
+  const items = [...state.events].reverse().map((e) =>
+    `<li class="${e.kind}"><span class="when">${dateOf(e.tick)}</span>${esc(e.text)}</li>`).join("");
+  return `<h2>News</h2>
+    <label class="check"><input type="checkbox" id="autopause" ${pref("autopause", true) ? "checked" : ""}> Pause when war, battle or occupation news concerns me</label>
+    <div class="news"><ul>${items || `<li class="sub">Nothing yet.</li>`}</ul></div>`;
 }
 
 // ---- panel actions -------------------------------------------------------------
 document.querySelector(".side").addEventListener("click", (ev) => {
   const b = ev.target.closest("button");
-  if (!b) return;
+  if (b && b.id === "cancel-move") { moving = false; render(true); return; }
+  if (!b) {
+    const card = ev.target.closest("[data-select-army]");
+    if (card) { selectedArmy = +card.dataset.selectArmy; render(true); }
+    return;
+  }
+  if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
   if (b.dataset.cmd) command(b.dataset.cmd);
+  if (b.dataset.army) { selectedArmy = +b.dataset.army; setTab("armies"); render(true); }
+  if (b.dataset.move) { selectedArmy = +b.dataset.move; moving = true; render(true); if (window.innerWidth <= 760) canvas.scrollIntoView({ behavior: "smooth" }); }
+  if (b.dataset.setTarget) command(`/armies/${b.dataset.setTarget}/target?men=${+document.querySelector(`[data-target-for="${b.dataset.setTarget}"]`).value}`);
+  if (b.id === "raise") command(`/nations/${state.you}/armies?region=${selected}&target=${+$("raise-men").value}`);
+  if (b.dataset.queue !== undefined) command(`/nations/${state.you}/queue?techs=${[...me().queue, +b.dataset.queue].join(",")}`);
+  if (b.dataset.unqueue !== undefined) {
+    const q = [...me().queue]; q.splice(+b.dataset.unqueue, 1);
+    command(`/nations/${state.you}/queue?techs=${q.join(",")}`);
+  }
   if (b.id === "apply-budget") {
     const q = world.budgets.map((name, i) => `${name}=${+document.querySelector(`[data-budget="${i}"]`).value / 100}`).join("&");
     command(`/nations/${state.you}/budget?${q}`);
@@ -660,6 +855,7 @@ document.querySelector(".side").addEventListener("click", (ev) => {
 document.querySelector(".side").addEventListener("change", (ev) => {
   const t = ev.target.dataset.embargo;
   if (t !== undefined) command(`/nations/${state.you}/embargo?target=${t}&on=${ev.target.checked}`);
+  if (ev.target.id === "autopause") setPref("autopause", ev.target.checked);
 });
 
 route();

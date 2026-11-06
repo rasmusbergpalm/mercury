@@ -58,7 +58,7 @@ func TestSaveLoadContinuesExactly(t *testing.T) {
 	}
 	for i, n := range w.Nations {
 		m := r.Nations[i]
-		if n.Treasury != m.Treasury || n.Army != m.Army || len(n.Regions) != len(m.Regions) || n.ResearchPoints != m.ResearchPoints {
+		if n.Treasury != m.Treasury || len(n.Regions) != len(m.Regions) || n.ResearchPoints != m.ResearchPoints {
 			t.Fatalf("%s differs after load", n.Name)
 		}
 	}

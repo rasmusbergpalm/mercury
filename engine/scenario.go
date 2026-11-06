@@ -47,16 +47,36 @@ var ProcessingRecipes = []Recipe{
 	{"Transport", "transport", 2.0, []Factor{Labor(0.6)}},
 }
 
-// GameRecipes exist only in game worlds (with nations): building work for
-// infrastructure and firm expansions, research for technology, and soldiers
-// (who need ironware and clothes) for armies.
+// GameRecipes exist only in game worlds (with nations): services for
+// building, research and moving goods, war industry, and industrial firms
+// unlocked by technology.
 var GameRecipes = []Recipe{
 	{"Construction", "construction", 1.5, []Factor{Labor(0.5), Input("wood", 0.2)}},
 	{"University", "research", 1.0, []Factor{Labor(0.6)}},
-	{"Barracks", "military", 1.0, []Factor{Labor(0.4), Input("ironware", 0.15), Input("clothes", 0.1)}},
-	// industrial firms, unlocked by technology
+	{"Armory", "arms", 1.0, []Factor{Labor(0.3), Input("iron", 0.25), Input("wood", 0.1)}},
+	{"Foundry", "artillery", 0.8, []Factor{Labor(0.3), Input("iron", 0.3), Input("coal", 0.1)}},
+	{"Munitions plant", "munitions", 1.5, []Factor{Labor(0.3), Input("iron", 0.2), Input("coal", 0.2)}},
+	{"Motor works", "vehicles", 0.8, []Factor{Labor(0.3), Input("iron", 0.3), Input("coal", 0.1)}},
+	{"Aircraft factory", "aircraft", 0.8, []Factor{Labor(0.4), Input("wood", 0.15), Input("cloth", 0.1), Input("iron", 0.1)}},
 	{"Textile factory", "cloth", 3.0, []Factor{Labor(0.2), Comp("fiber", 0.4), Input("coal", 0.15)}},
 	{"Steel works", "iron", 2.2, []Factor{Labor(0.2), Input("iron ore", 0.35), Input("coal", 0.25)}},
+}
+
+// serviceFirms are the firms in the service sector (the rest of the
+// non-primary firms are industry).
+var serviceFirms = map[string]bool{"Transport": true, "Construction": true, "University": true}
+
+// GameRawRecipes are land-bound producers that exist only in game worlds,
+// with where they can be set up.
+var GameRawRecipes = []Recipe{
+	{"Oil well", "oil", 1.5, []Factor{Labor(0.6)}},
+}
+
+// GameTerrainRaw adds game-only raw producers to terrains.
+var GameTerrainRaw = map[string][]Bonus{
+	"tropical": {{"Oil well", 1.5}},
+	"plains":   {{"Oil well", 0.7}},
+	"coast":    {{"Oil well", 0.6}},
 }
 
 // FirmTech maps a firm to the tech that enables it (from Tech.EnableFirms).
@@ -143,21 +163,31 @@ func HexNeighbors(r, c, rows, cols int) [][2]int {
 
 func makeFirms(t Terrain, game bool) []*Firm {
 	var firms []*Firm
-	for _, rc := range RawRecipes {
-		for _, b := range t.Raw {
-			if b.Firm == rc.Firm {
-				f := NewFirm(rc.Firm, G(rc.Output), rc.TFP*b.Mult, rc.Factors, 50)
-				f.MaxLevels = RawMaxLevels
-				firms = append(firms, f)
+	addRaw := func(recipes []Recipe, bonuses []Bonus) {
+		for _, rc := range recipes {
+			for _, b := range bonuses {
+				if b.Firm == rc.Firm {
+					f := NewFirm(rc.Firm, G(rc.Output), rc.TFP*b.Mult, rc.Factors, 50)
+					f.MaxLevels, f.Sector = RawMaxLevels, Primary
+					firms = append(firms, f)
+				}
 			}
 		}
+	}
+	addRaw(RawRecipes, t.Raw)
+	if game {
+		addRaw(GameRawRecipes, GameTerrainRaw[t.Name])
 	}
 	recipes := ProcessingRecipes
 	if game {
 		recipes = append(append([]Recipe(nil), recipes...), GameRecipes...)
 	}
 	for _, rc := range recipes {
-		firms = append(firms, NewFirm(rc.Firm, G(rc.Output), rc.TFP, rc.Factors, 50))
+		f := NewFirm(rc.Firm, G(rc.Output), rc.TFP, rc.Factors, 50)
+		if serviceFirms[rc.Firm] {
+			f.Sector = Service
+		}
+		firms = append(firms, f)
 	}
 	if game {
 		for _, f := range firms {
@@ -179,7 +209,7 @@ func BuildWorld(transportCost float64, gameMap []string) (*World, error) {
 // tiles' movement costs (land 1, coast 1/4, less with infrastructure). Traders
 // only run between neighbours; longer trade happens by re-export along a chain
 // of tiles.
-func buildWorld(transportCost float64, gameMap []string, construction bool) (*World, error) {
+func buildWorld(transportCost float64, gameMap []string, game bool) (*World, error) {
 	if len(gameMap) == 0 {
 		return nil, fmt.Errorf("empty map")
 	}
@@ -196,7 +226,7 @@ func buildWorld(transportCost float64, gameMap []string, construction bool) (*Wo
 			if err != nil {
 				return nil, err
 			}
-			reg := NewRegion(len(regions), fmt.Sprintf("%d%d", r, c), makeFirms(t, construction), 2, 50, 500)
+			reg := NewRegion(len(regions), fmt.Sprintf("%d%d", r, c), makeFirms(t, game), 2, 50, 500)
 			reg.Row, reg.Col, reg.Terrain, reg.BaseMove = r, c, t.Name, t.MoveCost
 			grid[r][c] = reg
 			regions = append(regions, reg)
@@ -213,7 +243,11 @@ func buildWorld(transportCost float64, gameMap []string, construction bool) (*Wo
 				links = append(links, Link{a.ID, b.ID, hop})
 			}
 			if !math.IsInf(transportCost, 1) {
-				for _, g := range Tradable {
+				tradable := Tradable
+				if game {
+					tradable = GameTradable
+				}
+				for _, g := range tradable {
 					traders = append(traders, NewTrader(g, a, b, hop, transportCost))
 				}
 			}
@@ -233,6 +267,7 @@ type NationSpec struct {
 type GameSpec struct {
 	Map           []string
 	NationMap     []string // same shape as Map; '.' = unowned
+	Cities        [][2]int // (row, col) of city tiles
 	Nations       []NationSpec
 	TransportCost float64
 	TaxRate       float64
@@ -256,6 +291,8 @@ var DefaultGame = GameSpec{
 		{'B', "Verdania", "#2e6fd8"},
 		{'C', "Thalassa", "#17a589"},
 	},
+	// a capital for each nation, and a free city in the middle
+	Cities:        [][2]int{{1, 1}, {1, 4}, {4, 4}, {3, 2}},
 	TransportCost: 1,
 	TaxRate:       0.1,
 }
@@ -275,8 +312,14 @@ func BuildGame(spec GameSpec) (*World, error) {
 	if len(spec.NationMap) != w.Rows {
 		return nil, fmt.Errorf("nation map has %d rows, want %d", len(spec.NationMap), w.Rows)
 	}
-	w.Investment, w.Migration = true, true
+	w.Investment, w.Migration, w.Demography = true, true, true
 	w.Spec = &spec
+	for _, c := range spec.Cities {
+		if c[0] < 0 || c[0] >= w.Rows || c[1] < 0 || c[1] >= w.Cols {
+			return nil, fmt.Errorf("city %v is off the map", c)
+		}
+		makeCity(w.Regions[c[0]*w.Cols+c[1]])
+	}
 	bySymbol := map[byte]*Nation{}
 	for i, ns := range spec.Nations {
 		n := newNation(i, ns.Name, ns.Color, len(spec.Nations), spec.TaxRate)
@@ -307,4 +350,25 @@ func BuildGame(spec GameSpec) (*World, error) {
 	}
 	w.refreshAllHops()
 	return w, nil
+}
+
+// Cities start with this many times the people of other tiles, and their
+// land-bound producers are capped at this many levels (there's little land).
+const (
+	cityPopMult      = 2.0
+	cityRawMaxLevels = 2
+)
+
+func makeCity(r *Region) {
+	r.City = true
+	for _, p := range r.Pops {
+		p.Size *= cityPopMult
+		p.Cash *= cityPopMult
+	}
+	for _, f := range r.Firms {
+		if f.Sector == Primary {
+			f.MaxLevels = cityRawMaxLevels
+		}
+	}
+	r.updateAgglomeration()
 }

@@ -12,8 +12,8 @@ type World struct {
 	Nations    []*Nation
 	Tick       int
 	// Game rules, off in the classic world: firms invest in building levels,
-	// and people migrate between neighbouring tiles.
-	Investment, Migration bool
+	// people migrate between neighbouring tiles, and populations grow.
+	Investment, Migration, Demography bool
 	// Spec is the scenario a game world was built from (nil for the classic world).
 	Spec *GameSpec
 	// Ports lists tiles with ports in the order they opened (which fixes the
@@ -21,6 +21,12 @@ type World struct {
 	Ports []int
 	// TradePrices are the prices trade happened at in the last tick, per region.
 	TradePrices [][]float64
+
+	Armies     []*Army
+	NextArmyID int
+	Events     []Event
+
+	adj [][][2]int // per tile: (neighbour, link index)
 }
 
 // Link is a pair of neighbouring regions and the cost of one hop between them:
@@ -57,6 +63,15 @@ func (w *World) Money() float64 {
 	return s
 }
 
+// Soldiers is how many people serve in armies.
+func (w *World) Soldiers() float64 {
+	s := 0.0
+	for _, a := range w.Armies {
+		s += a.Men
+	}
+	return s
+}
+
 // Step advances the world one tick.
 func (w *World) Step() {
 	w.runAI()
@@ -73,7 +88,7 @@ func (w *World) Step() {
 		t.Plan()
 	}
 	for _, n := range w.Nations {
-		n.plan()
+		n.plan(w)
 	}
 	for _, r := range w.Regions {
 		r.LaborMarket()
@@ -84,6 +99,7 @@ func (w *World) Step() {
 	for _, t := range w.Traders {
 		t.Ship()
 	}
+	w.trackTrade()
 	for _, r := range w.Regions {
 		r.Produce()
 		for _, f := range r.Firms {
@@ -95,14 +111,16 @@ func (w *World) Step() {
 	}
 	changed := false
 	for _, n := range w.Nations {
-		changed = n.settle() || changed
+		changed = n.settle(w) || changed
 		n.rebate()
 	}
 	w.openNewPorts()
 	if changed {
 		w.refreshAllHops()
 	}
-	w.campaigns()
+	if len(w.Nations) > 0 {
+		w.armies()
+	}
 	if w.Investment {
 		for _, r := range w.Regions {
 			r.settleFirms()
@@ -111,7 +129,34 @@ func (w *World) Step() {
 	if w.Migration {
 		w.migrate()
 	}
+	if w.Demography {
+		for _, r := range w.Regions {
+			r.grow()
+		}
+	}
 	w.Tick++
+}
+
+// trackTrade updates each nation's moving average of trade with every other.
+func (w *World) trackTrade() {
+	if len(w.Nations) == 0 {
+		return
+	}
+	k := len(w.Nations)
+	flow := make([]float64, k*k)
+	for _, t := range w.Traders {
+		on, dn := t.Origin.Nation, t.Dest.Nation
+		if on != nil && dn != nil && on != dn && t.Shipped > 0 {
+			v := t.Shipped * t.Origin.Markets[t.Good].Price
+			flow[on.ID*k+dn.ID] += v
+			flow[dn.ID*k+on.ID] += v
+		}
+	}
+	for _, n := range w.Nations {
+		for j := range n.TradeWith {
+			n.TradeWith[j] = 0.98*n.TradeWith[j] + 0.02*flow[n.ID*k+j]
+		}
+	}
 }
 
 // Build starts the next infrastructure level on a tile, paid for by its nation.
@@ -230,7 +275,7 @@ func (w *World) openPort(r *Region) {
 		for _, id := range w.Ports {
 			p := w.Regions[id]
 			hop := w.seaHop(r, p)
-			for _, g := range Tradable {
+			for _, g := range GameTradable {
 				a := NewTrader(g, r, p, hop, w.Spec.TransportCost)
 				b := NewTrader(g, p, r, hop, w.Spec.TransportCost)
 				a.Sea, b.Sea = true, true
@@ -247,45 +292,7 @@ func (w *World) openPort(r *Region) {
 	w.Ports = append(w.Ports, r.ID)
 }
 
-// Occupation rules.
-const (
-	occupyRate        = 0.01 // progress per tick at full strength: 100 ticks per tile
-	occupyNeedPerHead = 0.5  // army needed per inhabitant to occupy at full speed
-	defenderAdvantage = 1.5  // a defended tile counts its garrison this many times
-	attrition         = 0.005
-)
-
-// StartCampaign sends a nation's army to occupy a tile that borders it.
-// Unowned tiles have no defenders and fall slowly to any army; owned tiles
-// are defended by their owner's army, spread over its tiles.
-func (w *World) StartCampaign(nation, region int) error {
-	n, r := w.Nations[nation], w.Regions[region]
-	switch {
-	case n.Eliminated():
-		return ErrEliminated
-	case r.Nation == n:
-		return ErrOwnTile
-	case !w.borders(n, r):
-		return ErrNotAdjacent
-	case n.Army <= 0:
-		return ErrNoArmy
-	}
-	if n.Campaign == nil || n.Campaign.Target != region {
-		n.Campaign = &Campaign{Target: region}
-	}
-	return nil
-}
-
-// CancelCampaign calls the nation's army home.
-func (w *World) CancelCampaign(nation int) error {
-	n := w.Nations[nation]
-	if n.Campaign == nil {
-		return ErrNoCampaign
-	}
-	n.Campaign = nil
-	return nil
-}
-
+// borders reports whether a tile neighbours one of the nation's tiles.
 func (w *World) borders(n *Nation, r *Region) bool {
 	for _, nb := range HexNeighbors(r.Row, r.Col, w.Rows, w.Cols) {
 		if w.Regions[nb[0]*w.Cols+nb[1]].Nation == n {
@@ -293,43 +300,6 @@ func (w *World) borders(n *Nation, r *Region) bool {
 		}
 	}
 	return false
-}
-
-// campaigns advances every occupation: progress grows with the attacker's
-// margin over the defence, both sides lose strength while they fight, and
-// the tile changes hands when progress reaches 1.
-func (w *World) campaigns() {
-	for _, n := range w.Nations {
-		c := n.Campaign
-		if c == nil {
-			continue
-		}
-		r := w.Regions[c.Target]
-		if n.Eliminated() || r.Nation == n || !w.borders(n, r) {
-			n.Campaign = nil
-			continue
-		}
-		defense := 0.0
-		if r.Nation != nil {
-			defense = r.Nation.Defense()
-		}
-		attack := n.Army * n.attackMult()
-		net := attack - defenderAdvantage*defense
-		if net > 0 {
-			c.Progress += occupyRate * n.occupyMult() * math.Min(1, net/(occupyNeedPerHead*r.Population()))
-		} else {
-			c.Progress = math.Max(0, c.Progress-occupyRate)
-		}
-		if defense > 0 {
-			loss := attrition * math.Min(attack, defense)
-			n.Army -= loss
-			r.Nation.Army -= loss
-		}
-		if c.Progress >= 1 {
-			n.Campaign = nil
-			w.transfer(r, n)
-		}
-	}
 }
 
 // transfer hands a tile to a nation. Its infrastructure stays; projects and
@@ -343,9 +313,15 @@ func (w *World) transfer(r *Region, n *Nation) {
 			}
 		}
 		if old.Eliminated() {
-			old.Army, old.Campaign = 0, nil
+			for j := range old.AtWar {
+				if old.AtWar[j] {
+					old.AtWar[j], w.Nations[j].AtWar[old.ID] = false, false
+				}
+			}
+			w.emit(-1, "eliminated", r.ID, "%s has fallen", old.Name)
 		}
 	}
+	r.Siege = nil
 	r.Project = nil
 	for _, f := range r.Firms {
 		f.TFP = f.BaseTFP

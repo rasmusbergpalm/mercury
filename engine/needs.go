@@ -53,15 +53,15 @@ func goods(names ...string) []GoodID {
 
 // Needs are the need groups every pop has.
 var Needs = []Need{
-	{"staples", Basic, goods("bread", "potatoes"), 5.0, 2.0, 0.05},
-	{"protein", Basic, goods("meat", "fish"), 4.0, 2.0, 0.05},
-	{"clothing", Basic, goods("clothes"), 2.0, 2.0, 0.05},
-	{"heating", Basic, goods("wood", "coal"), 5.0, 2.0, 0.05},
+	{"staples", Basic, goods("bread", "potatoes"), 5.0, 1.0, 0.025},
+	{"protein", Basic, goods("meat", "fish"), 4.0, 1.0, 0.025},
+	{"clothing", Basic, goods("clothes"), 2.0, 1.0, 0.025},
+	{"heating", Basic, goods("wood", "coal"), 5.0, 1.0, 0.025},
 	{"home", Intermediate, goods("furniture", "ironware"), 0.5, 2.0, 0.015},
 	{"drink", Intermediate, goods("beer", "tea"), 2.0, 2.0, 0.1},
 	{"sweets", Intermediate, goods("sugar"), 2.0, 2.0, 0.1},
-	{"wine", Luxury, goods("wine"), 2.0, 2.0, 0.2},
-	{"finery", Luxury, goods("fine clothes", "porcelain"), 2.0, 2.0, 0.2},
+	{"wine", Luxury, goods("wine"), 2.0, 3.0, 0.3},
+	{"finery", Luxury, goods("fine clothes", "porcelain"), 2.0, 3.0, 0.3},
 }
 
 // TierOf maps a good to the tier of the need it satisfies, or -1 if pops don't consume it.

@@ -1,0 +1,80 @@
+// Command probe runs an AI game and prints yearly statistics (for calibration).
+package main
+
+import (
+	"flag"
+	"fmt"
+	"time"
+
+	"github.com/rasmusbergpalm/mercury/engine"
+)
+
+func main() {
+	years := flag.Int("years", 20, "years to simulate")
+	every := flag.Int("every", 2, "print every n years")
+	flag.Parse()
+	spec := engine.DefaultGame
+	spec.AI = true
+	w, err := engine.BuildGame(spec)
+	if err != nil {
+		panic(err)
+	}
+	start := time.Now()
+	for y := 1; y <= *years; y++ {
+		for d := 0; d < 365; d++ {
+			w.Step()
+		}
+		if y%*every != 0 {
+			continue
+		}
+		pop := w.Population()
+		var labor [3]float64
+		for _, r := range w.Regions {
+			for _, f := range r.Firms {
+				labor[f.Sector] += f.Labor
+			}
+		}
+		tot := labor[0] + labor[1] + labor[2]
+		u := 0.0
+		for _, r := range w.Regions {
+			u += r.Utility() * r.Population() / pop
+		}
+		cityPop := 0.0
+		for _, r := range w.Regions {
+			if r.City {
+				cityPop += r.Population()
+			}
+		}
+		fmt.Printf("%d pop %.0f (cities %.0f%%, soldiers %.0f) U %.2f labor primary %.0f%% industry %.0f%% service %.0f%%\n",
+			w.Date().Year(), pop+w.Soldiers(), 100*cityPop/pop, w.Soldiers(), u, 100*labor[1]/tot, 100*labor[0]/tot, 100*labor[2]/tot)
+		for _, n := range w.Nations {
+			known := 0
+			for _, k := range n.Known {
+				if k {
+					known++
+				}
+			}
+			war := ""
+			for j, x := range n.AtWar {
+				if x {
+					war += " war:" + w.Nations[j].Name
+				}
+			}
+			arm := ""
+			for _, a := range w.ArmiesOf(n) {
+				sup := ""
+				for g := range engine.Doctrines[a.Doctrine].Needs {
+					sup += fmt.Sprintf(" %s:%.2f", engine.Goods[g].Name, a.Supply[g])
+				}
+				arm += fmt.Sprintf(" [%.0f/%.0f %s eff %.2f @%s%s]", a.Men, a.Target, engine.Doctrines[a.Doctrine].Name, a.Effectiveness(), w.Regions[a.Region].Name, sup)
+			}
+			fmt.Printf("   %-9s tiles %2d income %6.0f techs %2d res %.0f%s%s\n", n.Name, len(n.Regions), n.IncomeEMA, known, n.ResearchPoints, war, arm)
+		}
+	}
+	fmt.Println("events:", len(w.Events), "elapsed", time.Since(start))
+	for _, e := range w.EventsSince(0, -1) {
+		if e.Kind == "war" || e.Kind == "peace" || e.Kind == "eliminated" || e.Kind == "taken" {
+			fmt.Println("  ", engine.Date(e.Tick).Format("2006-01-02"), e.Text)
+		}
+	}
+}

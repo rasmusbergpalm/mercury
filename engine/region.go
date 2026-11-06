@@ -18,8 +18,10 @@ type Region struct {
 	BaseMove float64  // terrain's movement cost
 	Infra    int      // index into InfraLevels
 	Port     bool     // has a port: trades by sea with every other port
+	City     bool     // a city: non-primary firms gain from its size
 	Project  *Project // infrastructure under construction, or nil
 	Neglect  float64  // accumulated unmet upkeep
+	Siege    *Siege   // a foreign army working to take the tile, or nil
 
 	UtilityEMA float64 // smoothed utility per person; migration follows it
 
@@ -79,6 +81,9 @@ func (r *Region) refreshPrices() []float64 {
 
 // Plan lets every firm plan at current prices.
 func (r *Region) Plan() {
+	if r.City {
+		r.updateAgglomeration()
+	}
 	prices := r.refreshPrices()
 	for _, f := range r.Firms {
 		f.tickRevenue, f.tickCost, f.investWant = 0, 0, 0
@@ -338,6 +343,79 @@ func (r *Region) PayDividends(cash *float64, cashBuffer, desiredSpend float64) {
 		} else {
 			r.payIncome(p, div*(p.Size/popSize))
 		}
+	}
+}
+
+// City agglomeration: in a city, industry and services are more productive
+// the bigger it is: cityBonus * (people / cityBonusPop)^cityBonusExp.
+const (
+	cityBonus    = 1.25
+	cityBonusPop = 200.0
+	cityBonusExp = 0.3
+)
+
+// CityBonus is the productivity multiplier the tile's size gives its
+// non-primary firms (1 outside cities).
+func (r *Region) CityBonus() float64 {
+	if !r.City {
+		return 1
+	}
+	return cityBonus * math.Pow(r.Population()/cityBonusPop, cityBonusExp)
+}
+
+func (r *Region) updateAgglomeration() {
+	b := r.CityBonus()
+	for _, f := range r.Firms {
+		if f.Sector != Primary {
+			f.Agglom = b
+		}
+	}
+}
+
+// Population growth per year: well-fed people multiply, hungry ones don't.
+// growth = popGrowthSlope * (basic needs met - popGrowthNeutral) + tech bonus,
+// within [popGrowthMin, popGrowthMax].
+const (
+	popGrowthSlope   = 0.045
+	popGrowthNeutral = 0.5
+	popGrowthMin     = -0.03
+	popGrowthMax     = 0.025
+)
+
+// BasicNeedsMet is how far the tile's people satisfy their basic needs, on
+// average: Q/(Q+r) per basic need group (0 = nothing, 1 = plenty).
+func (r *Region) BasicNeedsMet() float64 {
+	s, n := 0.0, 0
+	for _, nd := range Needs {
+		if nd.Tier != Basic {
+			continue
+		}
+		pop := r.Population()
+		q := 0.0
+		for _, p := range r.Pops {
+			q += Aggregate(p.Consumed, nd.Goods, nd.Sigma)
+		}
+		q /= pop
+		s += q / (q + nd.Requirement)
+		n++
+	}
+	return s / float64(n)
+}
+
+// GrowthRate is the tile's population growth per year at current consumption.
+func (r *Region) GrowthRate() float64 {
+	g := popGrowthSlope * (r.BasicNeedsMet() - popGrowthNeutral)
+	if r.Nation != nil {
+		g += r.Nation.popGrowthBonus()
+	}
+	return math.Max(popGrowthMin, math.Min(popGrowthMax, g))
+}
+
+// grow applies a day of population growth. Newborns bring no cash.
+func (r *Region) grow() {
+	f := 1 + r.GrowthRate()/TicksPerYear
+	for _, p := range r.Pops {
+		p.Size *= f
 	}
 }
 

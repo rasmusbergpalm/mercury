@@ -176,16 +176,38 @@ func TestNationCommands(t *testing.T) {
 		t.Errorf("researching %d", st.Nations[0].Researching)
 	}
 	e.do("POST", fmt.Sprintf("%sresearch?tech=%d", base, railways), tok, nil, 409, nil) // needs prerequisites
-	e.do("POST", base+"campaign?target=2", tok, nil, 200, &st)
-	if c := st.Nations[0].Campaign; c == nil || c.Target != 2 {
-		t.Errorf("campaign %+v", c)
+	// armies: raise one in the capital (tile 11), march it to free land next door
+	// (the computer raised Montara's first army before we joined; it stays ours)
+	e.do("POST", base+"armies?region=7&target=0", tok, nil, 200, &st)
+	var army *ArmyState
+	for i := range st.Armies {
+		if st.Armies[i].Nation == 0 {
+			army = &st.Armies[i]
+		}
 	}
-	e.do("POST", base+"campaign?target=35", tok, nil, 409, nil) // not adjacent
-	e.do("POST", base+"campaign/cancel", tok, nil, 200, &st)
-	if st.Nations[0].Campaign != nil {
-		t.Error("campaign not cancelled")
+	if army == nil || army.Target != 0 || army.Region != 7 {
+		t.Fatalf("armies after raising: %+v", st.Armies)
 	}
-	e.do("POST", base+"campaign/cancel", tok, nil, 409, nil)
+	e.do("POST", base+"armies?region=7&target=1e6", tok, nil, 409, nil) // beyond the mobilization cap
+	apath := fmt.Sprintf("/api/games/%s/armies/%d/", g.ID, army.ID)
+	e.do("POST", apath+"move?to=8", tok, nil, 200, &st)  // tile 12, unowned
+	e.do("POST", apath+"move?to=10", tok, nil, 409, nil) // tile 14: Verdania, at peace
+	e.do("POST", apath+"target?men=0", tok, nil, 200, &st)
+	e.do("POST", apath+"upgrade", tok, nil, 409, nil) // no better doctrine yet
+	other := e.join(g.ID, 1)
+	e.do("POST", apath+"move?to=7", other, nil, 403, nil)
+	e.do("POST", fmt.Sprintf("/api/games/%s/armies/999/move?to=1", g.ID), tok, nil, 404, nil)
+	// war and peace with Verdania (borders aren't shared yet: refused)
+	e.do("POST", base+"war?target=1", tok, nil, 409, nil)
+	e.do("POST", base+"peace?target=1", tok, nil, 409, nil)
+	e.do("POST", base+"queue?techs=1,2", tok, nil, 200, &st)
+	if q := st.Nations[0].Queue; len(q) != 2 || q[0] != 1 {
+		t.Errorf("queue %v", q)
+	}
+	e.do("POST", base+"queue?techs=x", tok, nil, 400, nil)
+	if len(st.Nations[0].TechCosts) != len(engine.Techs) || st.Date == "" {
+		t.Errorf("state lacks tech costs or date")
+	}
 
 	var d RegionDetail
 	e.do("GET", "/api/games/"+g.ID+"/regions/0", "", nil, 200, &d)
@@ -243,24 +265,62 @@ func TestTechTreeAndPorts(t *testing.T) {
 	}
 }
 
+func TestTurnBasedGames(t *testing.T) {
+	e := newEnv(t)
+	var g GameSummary
+	e.do("POST", "/api/games?name=T&turn=30", "", nil, 201, &g)
+	if g.Turn != 30 {
+		t.Fatalf("turn days %d", g.Turn)
+	}
+	e.do("POST", "/api/games?name=T&turn=13", "", nil, 400, nil)
+	a, b := e.join(g.ID, 0), e.join(g.ID, 1)
+	var st State
+	e.do("POST", "/api/games/"+g.ID+"/clock?running=true", a, nil, 409, nil)
+	e.do("POST", "/api/games/"+g.ID+"/step?n=5", a, nil, 409, nil)
+	e.do("POST", "/api/games/"+g.ID+"/end-turn", a, nil, 200, &st)
+	if st.Tick != Warmup || len(st.Turn.Ready) != 1 {
+		t.Fatalf("after one player ended the turn: tick %d, ready %v", st.Tick, st.Turn.Ready)
+	}
+	e.do("POST", "/api/games/"+g.ID+"/end-turn", b, nil, 200, &st)
+	if st.Tick != Warmup+30 || len(st.Turn.Ready) != 0 {
+		t.Fatalf("after both ended the turn: tick %d, ready %v", st.Tick, st.Turn.Ready)
+	}
+	e.do("POST", "/api/games/"+g.ID+"/end-turn", "", nil, 403, nil)
+	real := e.newGame("R")
+	tok := e.join(real.ID, 0)
+	e.do("POST", "/api/games/"+real.ID+"/end-turn", tok, nil, 409, nil)
+}
+
+func TestEvents(t *testing.T) {
+	e := newEnv(t)
+	g := e.newGame("E")
+	e.do("POST", "/api/games/"+g.ID+"/step?n=400", "", nil, 200, nil)
+	var ev []engine.Event
+	e.do("GET", "/api/games/"+g.ID+"/events?since=0", "", nil, 200, &ev)
+	if len(ev) == 0 {
+		t.Error("no events in 400 days")
+	}
+	e.do("GET", "/api/games/"+g.ID+"/events?since=x", "", nil, 400, nil)
+}
+
 func TestClock(t *testing.T) {
 	e := newEnv(t)
 	g := e.newGame("G")
 	var st State
-	e.do("POST", "/api/games/"+g.ID+"/clock?running=true&speed=20", "", nil, 200, &st)
-	if !st.Running || st.Speed != 20 {
+	e.do("POST", "/api/games/"+g.ID+"/clock?running=true&speed=30", "", nil, 200, &st)
+	if !st.Running || st.Speed != 30 {
 		t.Fatalf("clock %v %v", st.Running, st.Speed)
 	}
-	e.do("POST", "/api/games/"+g.ID+"/clock?speed=7", "", nil, 400, nil)
+	e.do("POST", "/api/games/"+g.ID+"/clock?speed=4", "", nil, 400, nil)
 	game := e.srv.games[g.ID]
 	game.mu.Lock()
-	game.advance(0.5) // half a second at 20 ticks per second
+	game.advance(0.5) // half a second at 30 days per second
 	tick := game.w.Tick
 	game.running = false
 	game.advance(10)
 	stopped := game.w.Tick
 	game.mu.Unlock()
-	if tick != Warmup+10 || stopped != Warmup+10 {
+	if tick != Warmup+15 || stopped != Warmup+15 {
 		t.Errorf("clock ran %d ticks, then %d when stopped; want 10 and 10", tick, stopped)
 	}
 }
@@ -295,7 +355,7 @@ func TestSaveAndLoad(t *testing.T) {
 	e.do("POST", "/api/games/"+g.ID+"/leave", tok, nil, 200, nil)
 	e.do("POST", "/api/games/"+g.ID+"/step?n=30", "", nil, 200, &a)
 	e.do("POST", "/api/games/"+loaded.ID+"/step?n=30", "", nil, 200, &b)
-	if a.Money != b.Money || a.Regions[5].Wage != b.Regions[5].Wage || a.Nations[1].Army != b.Nations[1].Army {
+	if a.Money != b.Money || a.Regions[5].Wage != b.Regions[5].Wage || a.Nations[1].Soldiers != b.Nations[1].Soldiers {
 		t.Error("loaded game diverged from the original")
 	}
 }
@@ -327,7 +387,7 @@ func TestSavingDisabledWithoutDataDir(t *testing.T) {
 	srv := New(nil, "")
 	ts := httptest.NewServer(srv)
 	defer ts.Close()
-	g, _ := srv.CreateGame("x", 1)
+	g, _ := srv.CreateGame("x", 1, 0)
 	resp, err := http.Post(ts.URL+"/api/games/"+g.ID+"/save?slot=a", "", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -357,7 +417,7 @@ func TestClockRunsAlongsideRequests(t *testing.T) {
 	stop := make(chan struct{})
 	done := make(chan struct{})
 	go func() { e.srv.Run(stop); close(done) }()
-	e.do("POST", "/api/games/"+g.ID+"/clock?running=true&speed=50", "", nil, 200, nil)
+	e.do("POST", "/api/games/"+g.ID+"/clock?running=true&speed=30", "", nil, 200, nil)
 	var st State
 	for i := 0; i < 20; i++ {
 		e.do("GET", "/api/games/"+g.ID+"/state", "", nil, 200, &st)

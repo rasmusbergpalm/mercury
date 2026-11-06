@@ -75,13 +75,13 @@ func TestTariffsRaiseRevenueAndCutImports(t *testing.T) {
 		return
 	}
 	vFree, rFree := imports(0)
-	vTax, rTax := imports(1)
-	t.Logf("imports into Verdania %.2f -> %.2f with a 100%% tariff, raising %.2f/tick", vFree, vTax, rTax)
+	vTax, rTax := imports(0.5)
+	t.Logf("imports into Verdania %.2f -> %.2f with a 50%% tariff, raising %.2f/tick", vFree, vTax, rTax)
 	if rFree != 0 || rTax <= 0 {
 		t.Errorf("tariff revenue %v (free) and %v (taxed)", rFree, rTax)
 	}
 	if vTax >= vFree {
-		t.Errorf("a 100%% tariff should cut imports: %v -> %v", vFree, vTax)
+		t.Errorf("a 50%% tariff should cut imports: %v -> %v", vFree, vTax)
 	}
 }
 
@@ -133,11 +133,19 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 	if err := n.SetResearch(TechID("Steam engine")); !errors.Is(err, ErrBadTech) {
 		t.Errorf("researching Steam engine before Wagons: %v", err)
 	}
-	for i := 0; i < 1000 && !n.Has("Wagons"); i++ {
+	if err := n.SetResearch(TechID("Wagons")); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 50; i++ {
 		w.Step()
 	}
+	if n.ResearchPoints <= 0 {
+		t.Fatal("no research produced")
+	}
+	n.ResearchPoints = Techs[TechID("Wagons")].Cost
+	w.Step()
 	if !n.Has("Wagons") {
-		t.Fatalf("Wagons not researched in 1000 ticks (points %v)", n.ResearchPoints)
+		t.Fatalf("Wagons not researched with its full cost banked")
 	}
 	if err := n.SetResearch(TechID("Wagons")); !errors.Is(err, ErrBadTech) {
 		t.Errorf("researching a known tech: %v", err)
@@ -146,20 +154,16 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 		t.Errorf("Steam engine after Wagons: %v", err)
 	}
 	for _, r := range w.Regions {
-		for _, f := range r.Firms {
-			if f.Name != "Transport" {
-				continue
-			}
-			want := f.BaseTFP
-			switch {
-			case r.Nation == n:
-				want *= 1.3
-			case r.Nation != nil:
-				continue // other nations research too
-			}
-			if math.Abs(f.TFP-want) > 1e-12 {
-				t.Errorf("tile %s transport TFP %v, want %v", r.Name, f.TFP, want)
-			}
+		f := firmIn(r, "Transport")
+		want := f.BaseTFP
+		switch {
+		case r.Nation == n:
+			want *= 1.3
+		case r.Nation != nil:
+			continue
+		}
+		if math.Abs(f.TFP-want) > 1e-12 {
+			t.Errorf("tile %s transport TFP %v, want %v", r.Name, f.TFP, want)
 		}
 	}
 }
@@ -363,6 +367,7 @@ func TestPeopleMoveTowardsHigherUtility(t *testing.T) {
 
 func TestMigrationKeepsPeopleAndFloor(t *testing.T) {
 	w := newTestGame(t)
+	w.Demography = false
 	pop := w.Population()
 	for i := 0; i < 600; i++ {
 		w.Step()

@@ -15,7 +15,7 @@ func main() {
 	data := flag.String("data", "saves", "directory for saved games (empty disables saving)")
 	flag.Parse()
 	s := server.New(web.Static, *data)
-	if _, err := s.CreateGame("The Three Crowns", 1); err != nil {
+	if _, err := s.CreateGame("The Three Crowns", 1, 0); err != nil {
 		log.Fatal(err)
 	}
 	go s.Run(make(chan struct{}))

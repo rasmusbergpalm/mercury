@@ -16,47 +16,55 @@ type Good struct {
 	// Spoilage is the fraction of unsold stock lost per tick, and per unit of
 	// distance in transit.
 	Spoilage float64
+	// Game marks goods that only exist in game worlds (the classic world, the
+	// one the Python reference specifies, doesn't trade them).
+	Game bool
 }
 
 // Goods lists every good. The order is part of the simulation's definition.
 var Goods = []Good{
 	// basic consumer goods
-	{"bread", 1.0, 0.30},
-	{"potatoes", 2.0, 0.10},
-	{"meat", 1.0, 0.40},
-	{"fish", 1.0, 0.50},
-	{"clothes", 0.5, 0.02},
-	{"wood", 2.0, 0.02},
-	{"coal", 2.0, 0.00},
+	{"bread", 1.0, 0.30, false},
+	{"potatoes", 2.0, 0.10, false},
+	{"meat", 1.0, 0.40, false},
+	{"fish", 1.0, 0.50, false},
+	{"clothes", 0.5, 0.02, false},
+	{"wood", 2.0, 0.02, false},
+	{"coal", 2.0, 0.00, false},
 	// intermediate consumer goods
-	{"furniture", 1.5, 0.02},
-	{"ironware", 1.0, 0.00},
-	{"beer", 1.5, 0.10},
-	{"tea", 0.3, 0.02},
-	{"sugar", 0.5, 0.02},
+	{"furniture", 1.5, 0.02, false},
+	{"ironware", 1.0, 0.00, false},
+	{"beer", 1.5, 0.10, false},
+	{"tea", 0.3, 0.02, false},
+	{"sugar", 0.5, 0.02, false},
 	// luxury consumer goods
-	{"wine", 0.5, 0.01},
-	{"fine clothes", 0.2, 0.01},
-	{"porcelain", 0.5, 0.00},
+	{"wine", 0.5, 0.01, false},
+	{"fine clothes", 0.2, 0.01, false},
+	{"porcelain", 0.5, 0.00, false},
 	// industrial inputs (not consumed by pops)
-	{"grain", 1.5, 0.05},
-	{"iron ore", 2.0, 0.00},
-	{"iron", 1.0, 0.00},
-	{"wool", 1.0, 0.02},
-	{"cotton", 1.0, 0.02},
-	{"cloth", 0.5, 0.02},
-	{"sugar cane", 2.0, 0.20},
-	{"grapes", 1.0, 0.30},
-	{"silk", 0.2, 0.01},
-	{"clay", 2.0, 0.00},
+	{"grain", 1.5, 0.05, false},
+	{"iron ore", 2.0, 0.00, false},
+	{"iron", 1.0, 0.00, false},
+	{"wool", 1.0, 0.02, false},
+	{"cotton", 1.0, 0.02, false},
+	{"cloth", 0.5, 0.02, false},
+	{"sugar cane", 2.0, 0.20, false},
+	{"grapes", 1.0, 0.30, false},
+	{"silk", 0.2, 0.01, false},
+	{"clay", 2.0, 0.00, false},
 	// a service: whatever isn't used in the tick it's produced is lost
-	{"transport", 0.0, 1.00},
+	{"transport", 0.0, 1.00, false},
 	// building work, bought by nations for infrastructure; local and perishable
-	{"construction", 0.0, 1.00},
+	{"construction", 0.0, 1.00, false},
 	// research work, bought by nations to develop technology; local and perishable
-	{"research", 0.0, 1.00},
-	// soldiers and their kit, bought by nations to build armies; local and perishable
-	{"military", 0.0, 1.00},
+	{"research", 0.0, 1.00, false},
+	// war materiel and fuel, game worlds only
+	{"arms", 0.5, 0.00, true},
+	{"artillery", 2.0, 0.00, true},
+	{"munitions", 1.0, 0.00, true},
+	{"vehicles", 3.0, 0.00, true},
+	{"aircraft", 2.0, 0.00, true},
+	{"oil", 1.5, 0.00, true},
 }
 
 // NumGoods is len(Goods).
@@ -88,14 +96,26 @@ var Construction = G("construction")
 // Research is research work; nations buy it to develop technology.
 var Research = G("research")
 
-// Military is army strength; nations buy it to raise and keep armies.
-var Military = G("military")
+// IsService reports whether a good is a local service that can't be shipped.
+func IsService(g GoodID) bool { return g == Transport || g == Construction || g == Research }
 
-// Tradable lists every good that traders can ship (all but the services).
+// Tradable lists the goods traders ship in the classic world.
 var Tradable = func() []GoodID {
 	var out []GoodID
+	for i, g := range Goods {
+		if !IsService(GoodID(i)) && !g.Game {
+			out = append(out, GoodID(i))
+		}
+	}
+	return out
+}()
+
+// GameTradable lists the goods traders ship in game worlds: Tradable plus war
+// materiel and oil.
+var GameTradable = func() []GoodID {
+	var out []GoodID
 	for i := range Goods {
-		if id := GoodID(i); id != Transport && id != Construction && id != Research && id != Military {
+		if !IsService(GoodID(i)) {
 			out = append(out, GoodID(i))
 		}
 	}

@@ -24,6 +24,13 @@
         <form id="new-game" class="row">
           <label>Name <input id="new-name" maxlength="40" value="New game" required></label>
           <label>Transport cost <input id="new-cost" type="number" min="0" step="0.25" value="1" class="num"></label>
+          <label>Pace <select id="new-turn">
+            <option value="0">Real time</option>
+            <option value="7">Turns of a week</option>
+            <option value="30">Turns of a month</option>
+            <option value="90">Turns of a season</option>
+            <option value="365">Turns of a year</option>
+          </select></label>
           <button class="primary" type="submit">Create</button>
         </form>
       </section>
@@ -43,11 +50,15 @@
     <header class="bar">
       <button id="to-lobby" title="Back to the lobby">‹ Games</button>
       <h1 id="game-name">Mercury</h1>
-      <span class="tick">Tick <b id="tick">0</b></span>
-      <div class="clock">
+      <span class="tick"><b id="date">1 January 1820</b></span>
+      <div class="clock" id="clock">
         <button id="play" class="primary">Play</button>
         <select id="speed" aria-label="Speed"></select>
-        <button id="step10" title="Advance 10 ticks">+10</button>
+        <button id="step10" title="Advance 10 days">+10 days</button>
+      </div>
+      <div class="clock" id="turn" hidden>
+        <button id="end-turn" class="primary">End turn</button>
+        <span id="turn-status" class="sub"></span>
       </div>
       <div class="menu">
         <button id="save">Save</button>
@@ -62,6 +73,7 @@
         <div class="overlay-bar">
           <select id="overlay" aria-label="Map overlay">
             <option value="nation">Nations</option>
+          <option value="growth">Population growth</option>
             <option value="terrain">Terrain</option>
             <option value="infra">Infrastructure</option>
             <option value="population">Population</option>
@@ -82,11 +94,16 @@
         <nav class="tabs" role="tablist">
           <button data-tab="tile" class="active">Tile</button>
           <button data-tab="nation">Nation</button>
+          <button data-tab="armies">Armies</button>
           <button data-tab="world">World</button>
+          <button data-tab="news">News</button>
         </nav>
+        <div id="mode" class="mode" hidden></div>
         <div id="tab-tile" class="tab"><p class="hint">Tap a tile on the map.</p></div>
         <div id="tab-nation" class="tab" hidden></div>
+        <div id="tab-armies" class="tab" hidden></div>
         <div id="tab-world" class="tab" hidden></div>
+        <div id="tab-news" class="tab" hidden></div>
       </aside>
     </main>
   </section>

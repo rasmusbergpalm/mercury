@@ -26,6 +26,19 @@ func Comp(name string, exp float64) Factor {
 	return Factor{Kind: CompositeFactor, Composite: CompositeID(name), Exp: exp}
 }
 
+// Sector classifies firms: land-bound producers, manufacturing, and services.
+type Sector int
+
+const (
+	Industry Sector = iota
+	Primary
+	Service
+)
+
+var sectorNames = [...]string{"industry", "primary", "service"}
+
+func (s Sector) String() string { return sectorNames[s] }
+
 // Firm turns labor and inputs into one output good with a decreasing-returns
 // Cobb-Douglas technology q = A * prod f_i^a_i, sum a_i < 1.
 type Firm struct {
@@ -41,8 +54,12 @@ type Firm struct {
 	Expansion         *Expansion // a level under construction, or nil
 	// Requires names the tech the owner needs for the firm to work; Enabled
 	// says whether it does (always true in the classic world).
-	Requires   string
-	Enabled    bool
+	Requires string
+	Enabled  bool
+	Sector   Sector
+	// Agglom multiplies productivity for firms that gain from a city around
+	// them (1 elsewhere).
+	Agglom     float64
 	Cash       float64
 	CashBuffer float64   // cash kept beyond what the plan needs
 	Inventory  float64   // stock of own output, for sale
@@ -83,13 +100,13 @@ func (f *Firm) exponentSum() float64 {
 
 // effectiveTFP is TFP * Levels^(1-s): productivity of the firm's variable factors.
 func (f *Firm) effectiveTFP() float64 {
-	return f.TFP * math.Pow(float64(f.Levels), 1-f.exponentSum())
+	return f.TFP * math.Pow(float64(f.Levels), 1-f.exponentSum()) * f.Agglom
 }
 
 // NewFirm makes a firm.
 func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash float64) *Firm {
 	return &Firm{Name: name, Output: output, TFP: tfp, BaseTFP: tfp, Factors: factors, Cash: cash,
-		Levels: 1, MaxLevels: 8, Enabled: true,
+		Levels: 1, MaxLevels: 8, Enabled: true, Agglom: 1,
 		CashBuffer: 20, Inputs: make([]float64, NumGoods),
 		PlanQty: make([]float64, NumGoods), PlanHas: make([]bool, NumGoods)}
 }

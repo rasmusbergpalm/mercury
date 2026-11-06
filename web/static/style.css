@@ -14,6 +14,7 @@
 @media (pointer: coarse) { :root { --tap: 42px; } }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
   background: var(--bg); color: var(--text); }
@@ -118,3 +119,16 @@ td button { min-height: 28px; padding: 1px 8px; font-size: 12px; }
 }
 .err.ok { color: var(--muted); }
 tr.branch th { text-align: left; text-transform: capitalize; color: var(--text); padding-top: 12px; }
+.mode { padding: 8px 14px; background: var(--accent); color: var(--accent-text); display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.mode button { min-height: 30px; background: var(--surface); color: var(--text); }
+.supply { display: grid; grid-template-columns: 90px 1fr 40px; gap: 4px 8px; align-items: center; font-size: 12px; }
+.supply .meter { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.supply .meter span { display: block; height: 100%; }
+.army-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-top: 8px; }
+.army-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.army-card .title { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.news li { margin: 4px 0; list-style: none; }
+.news ul { padding: 0; margin: 0; }
+.news .when { color: var(--muted); font-size: 12px; margin-right: 6px; font-variant-numeric: tabular-nums; }
+.news .war, .news .lost, .news .battle { color: var(--danger); }
+.tabs button { padding: 4px 6px; }
