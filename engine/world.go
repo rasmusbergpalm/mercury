@@ -207,7 +207,7 @@ func (w *World) BuildPort(region int) error {
 	switch {
 	case r.Nation == nil:
 		return ErrNoNation
-	case r.Terrain != "coast":
+	case !r.Coastal:
 		return ErrNotCoast
 	case r.Port:
 		return ErrHasPort

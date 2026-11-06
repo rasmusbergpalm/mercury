@@ -138,7 +138,7 @@ var (
 	ErrFirmMax     = errors.New("firm cannot grow further here")
 	ErrExpanding   = errors.New("firm is already expanding")
 	ErrSelf        = errors.New("a nation cannot embargo itself")
-	ErrNotCoast    = errors.New("only coast tiles can have ports")
+	ErrNotCoast    = errors.New("only coastal tiles can have ports")
 	ErrHasPort     = errors.New("tile already has a port")
 	ErrFirmLocked  = errors.New("that firm needs a technology the nation lacks")
 	ErrBadBudget   = errors.New("budget shares must be non-negative and sum to at most 1")

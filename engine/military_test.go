@@ -100,13 +100,12 @@ func TestRailwaysSpeedMarches(t *testing.T) {
 	days := func(infra int) int {
 		w := newQuietGame(t)
 		m := nationByName(w, "Montara")
-		for _, name := range []string{"10", "20", "30"} {
+		for _, name := range []string{"11", "21", "31"} { // inland, where ships don't help
 			w.SetInfra(regionByName(w, name).ID, infra)
 		}
-		w.SetInfra(regionByName(w, "11").ID, infra)
-		a, _ := w.RaiseArmy(m.ID, regionByName(w, "10").ID, 1)
+		a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, 1)
 		a.Men = 1
-		if err := w.MoveArmy(a.ID, regionByName(w, "30").ID); err != nil {
+		if err := w.MoveArmy(a.ID, regionByName(w, "31").ID); err != nil {
 			t.Fatal(err)
 		}
 		n := 0

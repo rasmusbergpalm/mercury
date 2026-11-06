@@ -8,6 +8,7 @@ type Region struct {
 	Name      string
 	Row, Col  int
 	Terrain   string
+	Coastal   bool // on the map's edge, by the ocean
 	Firms     []*Firm
 	Pops      []*Pop
 	Markets   []*Market // indexed by good
@@ -451,17 +452,18 @@ func (r *Region) grow() {
 
 // MoveCost is the cost of moving through the tile. Roads and railways
 // improve movement over land (a land tile's base cost times the
-// infrastructure multiplier). Coast tiles can also be crossed by sea, at their
-// base cost times the owner's shipping technology; the cheaper way counts.
+// infrastructure multiplier). Coastal tiles can also be passed by sea, at
+// CoastMove times the owner's shipping technology; the cheaper way counts.
 func (r *Region) MoveCost() float64 {
-	if r.Terrain != "coast" {
-		return r.BaseMove * InfraLevels[r.Infra].MoveMult
+	land := r.BaseMove * InfraLevels[r.Infra].MoveMult
+	if !r.Coastal {
+		return land
 	}
-	sea := r.BaseMove
+	sea := CoastMove
 	if r.Nation != nil {
 		sea *= r.Nation.coastMult()
 	}
-	return math.Min(sea, InfraLevels[r.Infra].MoveMult)
+	return math.Min(sea, land)
 }
 
 // Money is the cash held by the region's pops and firms.

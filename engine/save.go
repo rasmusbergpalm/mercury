@@ -37,7 +37,7 @@ type SiegeSnap struct {
 }
 
 // SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 4
+const SnapshotVersion = 5
 
 type MarketSnap struct {
 	Price, Supply, Demand float64

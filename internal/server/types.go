@@ -25,6 +25,7 @@ type RegionInfo struct {
 	Row     int    `json:"row"`
 	Col     int    `json:"col"`
 	Terrain string `json:"terrain"`
+	Coastal bool   `json:"coastal"` // by the ocean: fishing, cheap shipping, ports
 }
 
 type LinkInfo struct {
@@ -295,7 +296,7 @@ func worldInfo(w *engine.World) WorldInfo {
 		info.Terrains = append(info.Terrains, TerrainInfo{t.Name, string(t.Symbol), t.MoveCost})
 	}
 	for _, r := range w.Regions {
-		info.Regions = append(info.Regions, RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain})
+		info.Regions = append(info.Regions, RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain, r.Coastal})
 	}
 	for _, l := range w.Links {
 		info.Links = append(info.Links, LinkInfo{l.A, l.B, l.Hop})
@@ -417,7 +418,7 @@ func worldState(w *engine.World) State {
 
 func regionDetail(w *engine.World, i int) RegionDetail {
 	r := w.Regions[i]
-	d := RegionDetail{Info: RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain}, State: regionState(w, i), GDP: r.GDP(),
+	d := RegionDetail{Info: RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain, r.Coastal}, State: regionState(w, i), GDP: r.GDP(),
 		Exports: []Flow{}, Imports: []Flow{}}
 	for _, p := range r.Pops {
 		d.Pops = append(d.Pops, PopState{p.Size, p.Cash, p.Employed()})

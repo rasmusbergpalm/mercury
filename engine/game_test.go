@@ -102,7 +102,7 @@ func TestEmbargoStopsCrossBorderTrade(t *testing.T) {
 		t.Fatal("no trade between the neighbours to begin with")
 	}
 	w.Nations[0].Embargo[1] = true // Alpha embargoes Beta: both directions close
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 20; i++ { // stock bought before the embargo ships out first
 		w.Step()
 	}
 	for _, tr := range tradersBetween(w, a, b) {
@@ -110,7 +110,7 @@ func TestEmbargoStopsCrossBorderTrade(t *testing.T) {
 			t.Errorf("%s not blocked", tr.Name())
 		}
 	}
-	if f := flow(); f > 1e-6 { // only goods already bought before the embargo
+	if f := flow(); f > 1e-6 {
 		t.Errorf("trade across an embargoed border: %v", f)
 	}
 	// trade with unowned tiles goes on
@@ -210,7 +210,7 @@ func TestSteamshipsCheapenCoastTiles(t *testing.T) {
 	w.GrantTech(th.ID, "Steamships")
 	for _, r := range w.Regions {
 		want := before[r]
-		if r.Nation == th && r.Terrain == "coast" {
+		if r.Nation == th && r.Coastal {
 			want *= 0.6
 		}
 		if math.Abs(r.MoveCost()-want) > 1e-12 {

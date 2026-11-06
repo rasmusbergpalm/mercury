@@ -107,25 +107,42 @@ func TestHexGrid(t *testing.T) {
 	}
 }
 
+// Tiles on the map's edge are coastal whatever their terrain, and ships make
+// passing them cheap.
 func TestCoastIsCheapToCross(t *testing.T) {
 	w := newTestWorld(t, 1)
-	want := map[[2]string]float64{
-		{"coast", "coast"}: 0.25, {"plains", "coast"}: 0.625, {"plains", "plains"}: 1,
-	}
-	seen := map[[2]string]bool{}
+	want := map[[2]bool]float64{{true, true}: 0.25, {true, false}: 0.625, {false, true}: 0.625, {false, false}: 1}
+	seen := map[[2]bool]bool{}
 	for _, l := range w.Links {
-		a, b := w.Regions[l.A].Terrain, w.Regions[l.B].Terrain
-		for _, k := range [][2]string{{a, b}, {b, a}} {
-			if hop, ok := want[k]; ok {
-				seen[k] = true
-				if l.Hop != hop {
-					t.Errorf("%s-%s hop %v, want %v", a, b, l.Hop, hop)
-				}
-			}
+		a, b := w.Regions[l.A], w.Regions[l.B]
+		k := [2]bool{a.Coastal, b.Coastal}
+		seen[k] = true
+		if l.Hop != want[k] {
+			t.Errorf("%s-%s hop %v, want %v", a.Name, b.Name, l.Hop, want[k])
 		}
 	}
 	if len(seen) < 3 {
 		t.Errorf("map lacks some link types: %v", seen)
+	}
+	coastal := 0
+	for _, r := range w.Regions {
+		edge := r.Row == 0 || r.Col == 0 || r.Row == w.Rows-1 || r.Col == w.Cols-1
+		if r.Coastal != edge {
+			t.Errorf("tile %s coastal %v", r.Name, r.Coastal)
+		}
+		if r.Coastal {
+			coastal++
+		}
+		fish := false
+		for _, f := range r.Firms {
+			fish = fish || f.Name == "Fishery"
+		}
+		if fish != r.Coastal {
+			t.Errorf("tile %s (coastal %v) has a fishery: %v", r.Name, r.Coastal, fish)
+		}
+	}
+	if coastal != 20 {
+		t.Errorf("%d coastal tiles, want 20", coastal)
 	}
 }
 

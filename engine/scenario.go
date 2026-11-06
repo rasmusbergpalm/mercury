@@ -76,7 +76,6 @@ var GameRawRecipes = []Recipe{
 var GameTerrainRaw = map[string][]Bonus{
 	"tropical": {{"Oil well", 1.5}},
 	"plains":   {{"Oil well", 0.7}},
-	"coast":    {{"Oil well", 0.6}},
 }
 
 // FirmTech maps a firm to the tech that enables it (from Tech.EnableFirms).
@@ -118,9 +117,15 @@ var Terrains = []Terrain{
 	{"mountains", 'M', 1.0, []Bonus{{"Coal mine", 1.5}, {"Iron mine", 1.5}, {"Sheep farm", 0.8}}},
 	{"tropical", 'T', 1.0, []Bonus{{"Cotton plantation", 1.5}, {"Sugar plantation", 1.5},
 		{"Tea plantation", 1.5}, {"Silk farm", 1.2}, {"Farm", 0.6}}},
-	{"coast", 'C', 0.25, []Bonus{{"Fishery", 1.5}, {"Farm", 0.8}, {"Potato farm", 1.0},
-		{"Clay pit", 0.8}}},
 }
+
+// The ocean surrounds the map. A tile on the map's edge is coastal whatever
+// its terrain: it can fish, ships carry goods past it cheaply (CoastMove,
+// less with naval techs) and it can build a port.
+const CoastMove = 0.25
+
+// CoastRaw are the producers every coastal tile has on top of its terrain's.
+var CoastRaw = []Bonus{{"Fishery", 1.5}}
 
 // TerrainBySymbol looks a terrain up by its map symbol.
 func TerrainBySymbol(sym byte) (Terrain, error) {
@@ -137,10 +142,10 @@ func TerrainBySymbol(sym byte) (Terrain, error) {
 var DefaultMap = []string{
 	"MMHFFP",
 	"HHFPPP",
-	"FFPPHC",
-	"PPPTTC",
-	"CPTTCC",
-	"CCCCCC",
+	"FFPPHP",
+	"PPPTTH",
+	"PPTTTP",
+	"HPPTPF",
 }
 
 // HexNeighbors lists the neighbours of (r, c) in an odd-r offset grid.
@@ -161,7 +166,7 @@ func HexNeighbors(r, c, rows, cols int) [][2]int {
 	return out
 }
 
-func makeFirms(t Terrain, game bool) []*Firm {
+func makeFirms(t Terrain, coastal, game bool) []*Firm {
 	var firms []*Firm
 	addRaw := func(recipes []Recipe, bonuses []Bonus) {
 		for _, rc := range recipes {
@@ -175,6 +180,9 @@ func makeFirms(t Terrain, game bool) []*Firm {
 		}
 	}
 	addRaw(RawRecipes, t.Raw)
+	if coastal {
+		addRaw(RawRecipes, CoastRaw)
+	}
 	if game {
 		addRaw(GameRawRecipes, GameTerrainRaw[t.Name])
 	}
@@ -206,7 +214,7 @@ func BuildWorld(transportCost float64, gameMap []string) (*World, error) {
 }
 
 // The cost of a hop between neighbouring tiles is the average of the two
-// tiles' movement costs (land 1, coast 1/4, less with infrastructure). Traders
+// tiles' movement costs (land 1, coastal 1/4, less with infrastructure). Traders
 // only run between neighbours; longer trade happens by re-export along a chain
 // of tiles.
 func buildWorld(transportCost float64, gameMap []string, game bool) (*World, error) {
@@ -226,11 +234,12 @@ func buildWorld(transportCost float64, gameMap []string, game bool) (*World, err
 			if err != nil {
 				return nil, err
 			}
-			reg := NewRegion(len(regions), fmt.Sprintf("%d%d", r, c), makeFirms(t, game), 2, 50, 500)
+			coastal := len(HexNeighbors(r, c, rows, cols)) < 6
+			reg := NewRegion(len(regions), fmt.Sprintf("%d%d", r, c), makeFirms(t, coastal, game), 2, 50, 500)
 			if game {
 				addOwnerClasses(reg)
 			}
-			reg.Row, reg.Col, reg.Terrain, reg.BaseMove = r, c, t.Name, t.MoveCost
+			reg.Row, reg.Col, reg.Terrain, reg.BaseMove, reg.Coastal = r, c, t.Name, t.MoveCost, coastal
 			grid[r][c] = reg
 			regions = append(regions, reg)
 		}

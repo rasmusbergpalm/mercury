@@ -484,11 +484,10 @@ function shield(color, px = 30) {
 const canvas = $("map");
 const ctx = canvas.getContext("2d");
 const TERRAIN = {
-  light: { plains: "#e3d59b", forest: "#b9c28c", hills: "#d6bd8c", mountains: "#c9bdab", tropical: "#bcd194", coast: "#bcd6d0" },
-  dark: { plains: "#5c5434", forest: "#3e4a2f", hills: "#5b4b34", mountains: "#514b44", tropical: "#3d5234", coast: "#2f4a4d" },
+  light: { plains: "#e3d59b", forest: "#b9c28c", hills: "#d6bd8c", mountains: "#c9bdab", tropical: "#bcd194" },
+  dark: { plains: "#5c5434", forest: "#3e4a2f", hills: "#5b4b34", mountains: "#514b44", tropical: "#3d5234" },
 };
 const OCEAN = { light: "#9fc2c9", dark: "#22383d" };
-const SHORE = { light: "#e5d7a4", dark: "#5b5338" };
 const TIER_COLORS = () => [series(1), series(2), series(0)]; // basic, intermediate, luxury
 // a single warm hue, light to dark, for magnitudes
 const RAMP = ["#f6ecd0", "#ecd09a", "#d9a066", "#b5622f", "#7d2a17"];
@@ -567,7 +566,7 @@ function terrainLayer() {
       if (grid[`${row},${col}`]) continue;
       const [x, y] = center({ row, col });
       g.save(); hexPath(x, y, size * 0.96, g); g.clip();
-      terrainGlyphs(g, { id: 1000 + (row + 2) * 100 + col, terrain: "coast" }, x, y, ink);
+      terrainGlyphs(g, { id: 1000 + (row + 2) * 100 + col, terrain: "ocean" }, x, y, ink);
       g.restore();
       hexPath(x, y, size, g); g.lineWidth = 0.5; g.strokeStyle = cssVar("--hex-stroke"); g.stroke();
     }
@@ -578,7 +577,6 @@ function terrainLayer() {
     g.fillStyle = pal[r.terrain]; g.fill();
     g.save(); hexPath(x, y, size * 0.96, g); g.clip();
     terrainGlyphs(g, r, x, y, ink);
-    if (r.terrain === "coast") shore(g, r, x, y, ink);
     g.restore();
     hexPath(x, y, size, g); g.lineWidth = 0.75; g.strokeStyle = cssVar("--hex-stroke"); g.stroke();
   }
@@ -587,38 +585,6 @@ function terrainLayer() {
   g.lineWidth = 0.75; g.strokeRect(8, 8, W - 16, H - 16);
   terrainCache = { key, canvas: c };
   return c;
-}
-
-// A coast tile is land along the edges it shares with land tiles and sea
-// along the edges it shares with other coast tiles or the ocean; one with no
-// land neighbour is a small island.
-function shore(g, r, x, y, ink) {
-  const land = [0, 1, 2, 3, 4, 5].map((i) => { const nb = across(r, i); return !!nb && nb.terrain !== "coast"; });
-  const rand = rng(r.id * 13 + 3), s = size;
-  const at = (ang, rad) => [x + rad * Math.cos(ang), y + rad * Math.sin(ang)];
-  const cornerR = (k) => (land[(k + 5) % 6] || land[k % 6] ? s * 1.02 : s * (0.4 + 0.08 * rand()));
-  g.beginPath();
-  if (land.some(Boolean)) {
-    const rc = [0, 1, 2, 3, 4, 5].map(cornerR);
-    const cp = (k) => at(Math.PI / 180 * (60 * k - 30), rc[k % 6]);
-    g.moveTo(...cp(0));
-    for (let i = 0; i < 6; i++) {
-      if (land[i]) { g.lineTo(...cp(i + 1)); continue; }
-      const deep = rc[i] > s && rc[(i + 1) % 6] > s ? 0.32 : 0.42;
-      const [qx, qy] = at(Math.PI / 180 * 60 * i, s * (deep + 0.06 * rand()));
-      g.quadraticCurveTo(qx, qy, ...cp(i + 1));
-    }
-    g.closePath();
-  } else {
-    g.ellipse(x, y, s * 0.36, s * 0.28, rand() * Math.PI, 0, 2 * Math.PI);
-  }
-  // surf, then the land and its shoreline
-  g.lineWidth = 5; g.strokeStyle = dark ? "rgba(170,210,215,0.25)" : "rgba(255,255,255,0.55)"; g.stroke();
-  g.fillStyle = SHORE[dark ? "dark" : "light"]; g.fill();
-  g.lineWidth = 1; g.strokeStyle = ink; g.stroke();
-  g.save(); g.clip();
-  terrainGlyphs(g, { id: r.id + 500, terrain: "plains" }, x, y, ink);
-  g.restore();
 }
 
 function terrainGlyphs(g, r, x, y, ink) {
@@ -663,7 +629,7 @@ function terrainGlyphs(g, r, x, y, ink) {
           g.quadraticCurveTo(px + u * (0.2 + dx * 0.6), py - u * 1.3, px + u * (0.2 + dx), py - u * 0.4); g.stroke();
         }
         break;
-      case "coast": // waves
+      case "ocean": // waves
         g.strokeStyle = dark ? "rgba(150,200,210,0.7)" : "rgba(40,90,110,0.6)";
         g.moveTo(px - u, py); g.quadraticCurveTo(px - u * 0.5, py - u * 0.6, px, py); g.quadraticCurveTo(px + u * 0.5, py - u * 0.6, px + u, py);
         g.stroke(); g.strokeStyle = ink; break;
@@ -976,7 +942,7 @@ function drawLegend(sc) {
   } else if (kind === "infra") {
     el.innerHTML = world.infra_levels.map((l) => `<span>${esc(l.name)} ×${l.move_mult}</span>`).join(" · ") + `<span>labels: cost of moving through</span>`;
   } else if (kind === "terrain") {
-    el.innerHTML = world.terrains.map((t) => `<span>${sw(pal[t.name])}${t.name}${t.move_cost < 1 ? ` (carriage ×${t.move_cost})` : ""}</span>`).join("") + marks;
+    el.innerHTML = world.terrains.map((t) => `<span>${sw(pal[t.name])}${t.name}</span>`).join("") + `<span>${sw(OCEAN[dark ? "dark" : "light"])}ocean: tiles beside it are coastal (fishing, cheap shipping, ports)</span>` + marks;
   } else {
     el.innerHTML = `<span>${esc(overlayLabel())}</span><span>${fmtOverlay(sc.lo)}</span><span class="ramp" style="background:linear-gradient(90deg,${RAMP.join(",")})"></span><span>${fmtOverlay(sc.hi)}</span>`;
   }
@@ -1027,7 +993,7 @@ canvas.addEventListener("mousemove", (ev) => {
   if (!r || !state) { tip.hidden = true; return; }
   const rs = state.regions[r.id];
   const v = CATEGORICAL.includes($("overlay").value) ? "" : ` · ${overlayLabel()}: ${fmtOverlay(overlayValue(r.id))}`;
-  tip.textContent = `${r.name}, ${r.terrain}${rs.city ? " city" : ""} · ${nationName(rs.nation)} · ${short(rs.population)} people${v}`;
+  tip.textContent = `${r.name}, ${r.coastal ? "coastal " : ""}${r.terrain}${rs.city ? " city" : ""} · ${nationName(rs.nation)} · ${short(rs.population)} people${v}`;
   const rect = canvas.getBoundingClientRect();
   tip.style.left = ev.clientX - rect.left + 12 + "px"; tip.style.top = ev.clientY - rect.top + 12 + "px";
   tip.hidden = false;
@@ -1050,7 +1016,7 @@ function tilePanel() {
   const h = getHist(`regions/${selected}`);
   const exp = d.exports.reduce((t, f) => t + flowValue(f), 0), imp = d.imports.reduce((t, f) => t + flowValue(f), 0);
   let html = `<div class="crest">${shield(nationColor(s.nation))}<div><h2>${esc(d.info.name)}${s.city ? " <span class=\"sub\">· city</span>" : ""}</h2>
-    <p class="sub">${cap(d.info.terrain)} · ${esc(nationName(s.nation))} · its size makes industry and services ×${s.city_bonus.toFixed(2)} as productive</p></div></div>
+    <p class="sub">${cap(d.info.terrain)}${d.info.coastal ? " by the sea" : ""} · ${esc(nationName(s.nation))} · its size makes industry and services ×${s.city_bonus.toFixed(2)} as productive</p></div></div>
     <div class="stats">
       ${stat(short(s.population), "people", `<span class="${s.growth >= 0 ? "good" : "bad"}">${s.growth >= 0 ? "+" : ""}${(100 * s.growth).toFixed(1)}%/yr</span>`)}
       ${stat(fmt(s.wage), "daily wage", trend(h, "wage"))}
@@ -1140,9 +1106,9 @@ const portTech = () => (world.techs.find((t) => t.ports) || {}).name;
 
 function infraBlock(s, mine) {
   const lvl = world.infra_levels[s.infra], next = world.infra_levels[s.infra + 1];
-  const coast = world.regions[selected].terrain === "coast";
+  const coast = world.regions[selected].coastal;
   let html = `<p class="sub">${cap(lvl.name)} · moving through costs ×${s.move_cost.toFixed(2)}${lvl.upkeep ? ` · upkeep ${lvl.upkeep}/day` : ""}</p>`;
-  if (coast) html += `<p class="sub">${s.port ? "⚓ Port: ships sail straight to every other port." : "No port."}</p>`;
+  if (coast) html += `<p class="sub">Coastal: fishing, and ships carry goods past it cheaply. ${s.port ? "⚓ Its port sails straight to every other port." : "No port yet."}</p>`;
   if (s.project) {
     const what = s.project.port ? "port" : world.infra_levels[s.project.target].name;
     html += `<div class="progress"><span style="width:${pct(s.project.delivered / s.project.required)}"></span></div>

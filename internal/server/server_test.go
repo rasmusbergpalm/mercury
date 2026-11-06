@@ -233,19 +233,19 @@ func TestTechTreeAndPorts(t *testing.T) {
 	if len(info.Branches) != 5 || info.Techs[0].Branch == "" || info.Port.Cost <= 0 {
 		t.Fatalf("world: branches %v, first tech %+v, port %+v", info.Branches, info.Techs[0], info.Port)
 	}
-	tok := e.join(g.ID, 2) // Thalassa: tile 44 (index 28) is coast
+	tok := e.join(g.ID, 2) // Thalassa: tile 54 (index 34) is coastal
 	var st State
-	e.do("POST", "/api/games/"+g.ID+"/regions/28/port", tok, nil, 409, nil) // needs Ocean sailing
+	e.do("POST", "/api/games/"+g.ID+"/regions/34/port", tok, nil, 409, nil) // needs Ocean sailing
 	game := e.srv.games[g.ID]
 	game.mu.Lock()
 	game.w.GrantTech(2, "Navigation")
 	game.w.GrantTech(2, "Ocean sailing")
-	if p := game.w.Regions[28].Project; p != nil { // the computer may have started a road while warming up
-		game.w.CancelBuild(28)
+	if p := game.w.Regions[34].Project; p != nil { // the computer may have started a road while warming up
+		game.w.CancelBuild(34)
 	}
 	game.mu.Unlock()
-	e.do("POST", "/api/games/"+g.ID+"/regions/28/port", tok, nil, 200, &st)
-	if p := st.Regions[28].Project; p == nil || !p.Port {
+	e.do("POST", "/api/games/"+g.ID+"/regions/34/port", tok, nil, 200, &st)
+	if p := st.Regions[34].Project; p == nil || !p.Port {
 		t.Errorf("project %+v", p)
 	}
 	e.do("POST", "/api/games/"+g.ID+"/regions/27/port", tok, nil, 409, nil) // 43 is tropical, not coast

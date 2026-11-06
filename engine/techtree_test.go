@@ -252,7 +252,7 @@ func buildPortNow(t *testing.T, w *World, name string) *Region {
 func TestPortRules(t *testing.T) {
 	w := newTestGame(t)
 	th := nationByName(w, "Thalassa")
-	coast, inland := regionByName(w, "44"), regionByName(w, "43")
+	coast, inland := regionByName(w, "54"), regionByName(w, "43")
 	if err := w.BuildPort(coast.ID); !errors.Is(err, ErrNeedTech) {
 		t.Errorf("port without Ocean sailing: %v", err)
 	}
@@ -378,7 +378,7 @@ func TestSaveLoadWithPorts(t *testing.T) {
 func TestCoastMovementTakesTheCheaperWay(t *testing.T) {
 	w := newTestGame(t)
 	th := nationByName(w, "Thalassa")
-	coast, land := regionByName(w, "44"), regionByName(w, "43")
+	coast, land := regionByName(w, "54"), regionByName(w, "43")
 	if coast.MoveCost() != 0.25 || land.MoveCost() != 1 {
 		t.Fatalf("base costs %v %v", coast.MoveCost(), land.MoveCost())
 	}
