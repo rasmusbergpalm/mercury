@@ -1036,17 +1036,29 @@ function tilePanel() {
     <div class="legend-inline">${world.tiers.map((t, i) => `<span><span class="swatch" style="background:${tc[i]}"></span>${t} ${pct(s.tier_spend[i] / total)}</span>`).join("")}</div>`;
   const firms = d.firms.map((f, i) => ({ ...f, i })).filter((f) => !f.enabled || f.labor > 0.05 || f.produced > 0.05 || f.levels > 1)
     .sort((a, b) => (b.enabled - a.enabled) || (b.labor - a.labor)).map((f) => {
-      if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="4">needs ${esc(f.requires)}</td></tr>`;
+      if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="6">locked: needs ${esc(f.requires)}</td></tr>`;
       let grow = "";
       if (f.expansion) grow = `${pct(f.expansion.delivered / world.level_cost)}${f.expansion.public ? " ★" : ""}`;
       else if (mine && f.levels < f.max_levels) grow = `<button data-cmd="/regions/${selected}/firms/${f.i}/expand" title="Your nation pays ${world.level_cost} construction for a level">+1</button>`;
-      return `<tr><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td>${f.levels}/${f.max_levels}</td><td>${fmt(f.labor, 1)}</td><td class="${f.profit < 0 ? "bad" : ""}">${fmt(f.profit, 1)}</td><td>${grow}</td></tr>`;
+      const short_paid = f.labor > 0 && f.wage < s.wage * 0.999;
+      return `<tr><td>${esc(f.name)}<br><span class="sub">${f.sector}</span></td><td>${G[f.output].name}</td><td>${fmt(f.produced, 1)}</td><td>${f.levels}/${f.max_levels}</td><td>${fmt(f.labor, 1)}</td>
+        <td class="${short_paid ? "bad" : ""}" title="${short_paid ? "short of cash: pays less than the tile's wage" : ""}">${f.labor > 0 ? fmt(f.wage) : "–"}</td><td class="${f.profit < 0 ? "bad" : ""}">${fmt(f.profit, 1)}</td><td>${grow}</td></tr>`;
     }).join("");
-  html += `<h3>Works and farms</h3><div class="table-scroll"><table><tr><th>firm</th><th>makes</th><th>levels</th><th>workers</th><th>profit</th><th></th></tr>${firms}</table></div>
-    <p class="sub">★ expansion paid by the state; the rest by owners.</p>`;
-  const markets = d.markets.filter((m) => m.supply > 1e-3 || m.demand > 1e-3).map((m) =>
-    `<tr class="${G[m.good].tier ? "" : "dim"}"><td>${G[m.good].name}</td><td>${fmt(m.price)}</td><td>${fmt(m.price / s.wage)}</td><td>${fmt(m.supply)}</td><td>${fmt(m.demand)}</td></tr>`).join("");
-  html += `<h3>Market</h3><div class="table-scroll"><table><tr><th>good</th><th>price</th><th>÷ wage</th><th>supply</th><th>demand</th></tr>${markets}</table></div>`;
+  const employed = d.firms.reduce((t, f) => t + f.labor, 0), workers = (d.classes.find((c) => c.class === "workers") || { size: 0 }).size;
+  html += `<h3>Production</h3>
+    <div class="stats">${stat(fmt(s.wage), "the tile's daily wage")}${stat(`${short(employed)} / ${short(workers)}`, "workers employed")}${stat(pct(workers > 0 ? employed / workers : 0), "employment")}</div>
+    <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th>output</th><th>levels</th><th>workers</th><th>wage</th><th>profit</th><th></th></tr>${firms}</table></div>
+    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm short of cash pays less (in red). ★ expansion paid by the state; the rest by owners.</p>`;
+  // the market: local supply and demand, and what ships in and out
+  const ex = {}, im = {};
+  for (const f of d.exports) ex[f.good] = (ex[f.good] || 0) + f.qty;
+  for (const f of d.imports) im[f.good] = (im[f.good] || 0) + f.qty;
+  const row = (m) => `<tr><td>${G[m.good].name}</td><td>${fmt(m.price)}</td><td>${fmt(m.supply)}</td><td>${fmt(m.demand)}</td><td>${im[m.good] ? fmt(im[m.good]) : "–"}</td><td>${ex[m.good] ? fmt(ex[m.good]) : "–"}</td></tr>`;
+  const live = d.markets.filter((m) => m.supply > 1e-3 || m.demand > 1e-3 || ex[m.good] || im[m.good]);
+  const head = (label) => `<tr class="branch"><th colspan="6">${label}</th></tr><tr><th>good</th><th>price</th><th>supply</th><th>demand</th><th>imports</th><th>exports</th></tr>`;
+  html += `<h3>Market</h3><div class="table-scroll"><table>${head("What people buy")}${live.filter((m) => G[m.good].tier).map(row).join("")}
+    ${head("Materials and services")}${live.filter((m) => !G[m.good].tier).map(row).join("")}</table></div>
+    <p class="sub">Supply is what was offered for sale today (local output and imports arriving), demand what buyers wanted (people, firms, the state and merchants shipping out). Imports and exports are today's shipments.</p>`;
   const trade = (list, out) => list.sort((a, b) => flowValue(b) - flowValue(a)).slice(0, 8).map((f) =>
     `<tr><td>${G[f.good].name}</td><td>${out ? "→" : "←"} ${world.regions[out ? f.to : f.from].name}${f.sea ? " ⚓" : ""}</td><td>${fmt(f.qty)}</td><td>${fmt(flowValue(f))}</td></tr>`).join("") || `<tr class="dim"><td colspan="4">none</td></tr>`;
   html += `<h3>The trading house</h3><p class="sub">The tile's merchants share one purse across ${d.house.routes} routes (one per good and destination, by land and sea); ${d.house.active} shipped today.

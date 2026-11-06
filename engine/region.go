@@ -186,6 +186,7 @@ func (r *Region) LaborMarket() {
 		if f.Labor > 0 {
 			wage = math.Min(r.Wage, math.Max(f.Cash, 0)/f.Labor)
 		}
+		f.WagePaid = wage
 		need := f.Labor
 		for need > 1e-12 && pi < len(workers) {
 			pop := workers[pi]

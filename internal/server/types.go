@@ -239,6 +239,8 @@ type FirmState struct {
 	Expansion *Expansion `json:"expansion"`
 	Enabled   bool       `json:"enabled"`
 	Requires  string     `json:"requires"` // tech that unlocks it, if any
+	Wage      float64    `json:"wage"`     // paid per worker today
+	Sector    string     `json:"sector"`
 }
 
 type MarketState struct {
@@ -460,7 +462,7 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.WagePaid, f.Sector.String()}
 		if e := f.Expansion; e != nil {
 			fs.Expansion = &Expansion{e.Delivered, e.Public}
 		}
