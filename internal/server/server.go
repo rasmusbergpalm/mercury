@@ -28,6 +28,7 @@ type Server struct {
 	games   map[string]*Game
 	dataDir string // where save slots live; "" disables them
 	mux     *http.ServeMux
+	writes  sync.WaitGroup // autosaves being written
 }
 
 // Limits.

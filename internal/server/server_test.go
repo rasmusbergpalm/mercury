@@ -26,6 +26,7 @@ func newEnv(t *testing.T) *env {
 	t.Helper()
 	static := fstest.MapFS{"index.html": {Data: []byte("<h1>mercury</h1>")}}
 	srv := New(static, t.TempDir())
+	t.Cleanup(srv.Wait) // runs before the temp dir is removed
 	ts := httptest.NewServer(srv)
 	t.Cleanup(ts.Close)
 	return &env{t, ts, srv}
@@ -468,6 +469,7 @@ func TestClockRunsAlongsideRequests(t *testing.T) {
 func TestAutosaveSurvivesRestart(t *testing.T) {
 	dir := t.TempDir()
 	s := New(nil, dir)
+	t.Cleanup(s.Wait)
 	g, err := s.CreateGame("Kept", 1, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -498,6 +500,7 @@ func TestAutosaveSurvivesRestart(t *testing.T) {
 	}
 	// a new server on the same data picks the game up where it was saved
 	s2 := New(nil, dir)
+	t.Cleanup(s2.Wait)
 	g2 := s2.games[g.ID]
 	if g2 == nil || g2.w.Tick != 75 || g2.nationOf(tok) != 1 || g2.w.Nations[1].AI {
 		t.Fatal("the game didn't resume as saved, with its player")

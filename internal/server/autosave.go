@@ -51,7 +51,9 @@ func (s *Server) autosave(g *Game) {
 		return
 	}
 	tick, dir, path := g.w.Tick, s.autosaveDir(), filepath.Join(s.autosaveDir(), g.ID+".json")
+	s.writes.Add(1)
 	go func() {
+		defer s.writes.Done()
 		g.fileMu.Lock()
 		defer g.fileMu.Unlock()
 		if tick < g.savedTick || g.deleted {
@@ -64,6 +66,9 @@ func (s *Server) autosave(g *Game) {
 		g.savedTick = tick
 	}()
 }
+
+// Wait blocks until every autosave in progress is on disk.
+func (s *Server) Wait() { s.writes.Wait() }
 
 // dropAutosave removes a deleted game's autosave.
 func (s *Server) dropAutosave(g *Game) {
