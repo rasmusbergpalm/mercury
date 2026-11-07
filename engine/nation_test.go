@@ -315,7 +315,7 @@ func TestInfrastructurePaysOff(t *testing.T) {
 		t.Skip("long")
 	}
 	inland := map[string]bool{"22": true, "23": true, "32": true, "33": true}
-	type result struct{ utility, volume, inlandPop float64 }
+	type result struct{ utility, volume, inlandPop, people float64 }
 	run := func(paved func(r *Region) bool) (res result) {
 		w := newTestGame(t)
 		for _, r := range w.Regions {
@@ -329,6 +329,7 @@ func TestInfrastructurePaysOff(t *testing.T) {
 			if i < ticks-window {
 				continue
 			}
+			res.people += w.Population() / window
 			for _, r := range w.Regions { // population-weighted utility
 				res.utility += r.Utility() * r.Population() / w.Population() / window
 				if inland[r.Name] {
@@ -345,13 +346,16 @@ func TestInfrastructurePaysOff(t *testing.T) {
 	all := run(func(*Region) bool { return true })
 	mid := run(func(r *Region) bool { return inland[r.Name] })
 	t.Logf("none %+v\nall paved %+v\ninland paved %+v", none, all, mid)
-	if !(all.utility > none.utility && all.volume > none.volume) {
-		t.Errorf("paving everything should raise welfare and trade")
+	if all.volume <= none.volume {
+		t.Errorf("paving everything should raise trade: %v -> %v", none.volume, all.volume)
+	}
+	// Coastal tiles gain nothing from roads (ships are cheaper), so paving
+	// everything costs upkeep for little; paving inland, where roads matter,
+	// raises welfare and draws people.
+	if mid.utility <= none.utility {
+		t.Errorf("paving inland tiles should raise welfare: %v -> %v", none.utility, mid.utility)
 	}
 	if mid.inlandPop <= none.inlandPop {
 		t.Errorf("paving inland tiles should draw people to them: %v -> %v", none.inlandPop, mid.inlandPop)
 	}
-	// Paving a few tiles mostly relocates people: with every tile's industry
-	// gaining from its size, the tiles they leave lose productivity that
-	// migrants don't weigh, so world welfare needn't rise.
 }

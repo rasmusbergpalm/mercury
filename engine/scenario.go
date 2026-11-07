@@ -107,16 +107,18 @@ type Terrain struct {
 	Raw      []Bonus
 }
 
-// Terrains are the tile types.
+// Terrains are the tile types. Iron ore is mined best in mountains; elsewhere
+// poorer deposits (hill ores, bog iron, laterite) can be worked at a fraction
+// of the productivity, so a nation cut off from mountains can still arm, dearly.
 var Terrains = []Terrain{
 	{"plains", 'P', 1.0, []Bonus{{"Farm", 1.5}, {"Potato farm", 1.2}, {"Ranch", 1.3},
-		{"Sheep farm", 1.0}, {"Clay pit", 1.0}}},
-	{"forest", 'F', 1.0, []Bonus{{"Forestry", 1.8}, {"Potato farm", 0.8}, {"Ranch", 0.7}}},
+		{"Sheep farm", 1.0}, {"Clay pit", 1.0}, {"Iron mine", 0.25}}},
+	{"forest", 'F', 1.0, []Bonus{{"Forestry", 1.8}, {"Potato farm", 0.8}, {"Ranch", 0.7}, {"Iron mine", 0.3}}},
 	{"hills", 'H', 1.0, []Bonus{{"Sheep farm", 1.5}, {"Vineyard", 1.5}, {"Coal mine", 1.0},
-		{"Clay pit", 1.3}, {"Potato farm", 1.0}}},
+		{"Clay pit", 1.3}, {"Potato farm", 1.0}, {"Iron mine", 0.5}}},
 	{"mountains", 'M', 1.0, []Bonus{{"Coal mine", 1.5}, {"Iron mine", 1.5}, {"Sheep farm", 0.8}}},
 	{"tropical", 'T', 1.0, []Bonus{{"Cotton plantation", 1.5}, {"Sugar plantation", 1.5},
-		{"Tea plantation", 1.5}, {"Silk farm", 1.2}, {"Farm", 0.6}}},
+		{"Tea plantation", 1.5}, {"Silk farm", 1.2}, {"Farm", 0.6}, {"Iron mine", 0.25}}},
 }
 
 // The ocean surrounds the map. A tile on the map's edge is coastal whatever
