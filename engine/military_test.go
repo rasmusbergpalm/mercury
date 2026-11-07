@@ -554,3 +554,24 @@ func TestFieldArmiesAreReinforced(t *testing.T) {
 		t.Errorf("after 90 days of reinforcements: %v of %v men", a.Men, a.Target)
 	}
 }
+
+// Lowering an army's target, or raising an empty army, is always allowed,
+// even when the nation is over its cap (e.g. after losing tiles).
+func TestOverCapStillAllowsCuts(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, 5)
+	a.Target = m.MaxArmySize() // over the cap of about 8, within the army size limit
+	if a.Target <= w.MobilizationCap(m) {
+		t.Fatalf("the cap %v is not below %v", w.MobilizationCap(m), a.Target)
+	}
+	if err := w.SetArmyTarget(a.ID, a.Target-1); err != nil {
+		t.Errorf("lowering an over-cap target: %v", err)
+	}
+	if _, err := w.RaiseArmy(m.ID, regionByName(w, "10").ID, 0); err != nil {
+		t.Errorf("raising an empty army while over the cap: %v", err)
+	}
+	if err := w.SetArmyTarget(a.ID, a.Target+0.5); !errors.Is(err, ErrMobilized) {
+		t.Errorf("raising an over-cap target: %v", err)
+	}
+}

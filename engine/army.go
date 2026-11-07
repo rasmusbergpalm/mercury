@@ -229,7 +229,13 @@ func (w *World) checkMobilization(n *Nation, except *Army, target float64) error
 			total += a.Target
 		}
 	}
-	if total > w.MobilizationCap(n)+1e-9 {
+	old := 0.0
+	if except != nil {
+		old = except.Target
+	}
+	// only a change that asks for more men can exceed the cap (the cap can
+	// fall below what's already asked, e.g. when tiles are lost)
+	if target > old && total > w.MobilizationCap(n)+1e-9 {
 		return ErrMobilized
 	}
 	if target > n.MaxArmySize()+1e-9 {
