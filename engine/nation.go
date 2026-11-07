@@ -88,10 +88,13 @@ type Nation struct {
 	Tariff  []float64 // import tariff per good, as a share of the sale price
 	Embargo []bool    // per nation: no trade across the border with it
 
-	// Budget is the share of income (IncomeEMA) spent each tick on each
-	// of the economy (infrastructure, upkeep, firm expansions), science
-	// and the military. What isn't spent builds up the treasury.
-	Budget    [NumBudgets]float64
+	// SpentOn is what the nation spent today on each of the economy
+	// (infrastructure, upkeep, firm expansions), science and the military
+	// (supplies and pay).
+	SpentOn   [NumSpending]float64
+	AutoBuild bool // the computer builds roads and expands firms for it
+	payBill   float64 // soldiers' pay due today
+	payScale  float64 // share of today's bills the treasury could cover
 	Drill     float64     // share of wartime supplies armies use in peace
 	Temper    Temperament // how the computer plays it
 	IncomeEMA float64     // moving average of tax and tariff income per tick
@@ -116,16 +119,26 @@ type Nation struct {
 	Revenue, TariffRevenue, Rebate, Spending float64
 }
 
-// Budget categories.
+// Spending categories.
 const (
 	Economy = iota
 	Science
 	Defense
-	NumBudgets
+	NumSpending
 )
 
-// BudgetNames name the budget categories.
-var BudgetNames = [NumBudgets]string{"economy", "science", "military"}
+// SpendingNames name the spending categories.
+var SpendingNames = [NumSpending]string{"economy", "science", "military"}
+
+func spendingOf(k claimKind) int {
+	switch k {
+	case researchClaim:
+		return Science
+	case armyClaim:
+		return Defense
+	}
+	return Economy
+}
 
 // Errors returned by nation and world commands.
 var (
@@ -147,7 +160,6 @@ var (
 	ErrNotCoast    = errors.New("only coastal tiles can have ports")
 	ErrHasPort     = errors.New("tile already has a port")
 	ErrFirmLocked  = errors.New("that firm needs a technology the nation lacks")
-	ErrBadBudget   = errors.New("budget shares must be non-negative and sum to at most 1")
 	ErrEliminated  = errors.New("the nation has no tiles left")
 )
 
@@ -155,7 +167,7 @@ func newNation(id int, name, color string, nNations int, taxRate float64) *Natio
 	return &Nation{ID: id, Name: name, Color: color, TaxRate: taxRate,
 		Reserve: 1000, RebateRate: 0.1, MaxBuildRate: 5,
 		Tariff: make([]float64, NumGoods), Embargo: make([]bool, nNations),
-		Budget: DefaultBudget, Drill: DefaultDrill, Researching: -1, Known: make([]bool, len(Techs)),
+		Drill: DefaultDrill, payScale: 1, Researching: -1, Known: make([]bool, len(Techs)),
 		TradeWith: make([]float64, nNations), AtWar: make([]bool, nNations), WarSince: make([]int, nNations),
 		PeaceOffer: make([]bool, nNations)}
 }
@@ -184,9 +196,6 @@ func (n *Nation) SetTariff(good GoodID, rate float64) error {
 	return nil
 }
 
-// DefaultBudget is how a new nation splits its income.
-var DefaultBudget = [NumBudgets]float64{0.4, 0.2, 0.2}
-
 // Peacetime drill: in peace, armies use this share of their wartime
 // supplies (the nation chooses between minimal drills and realistic ones,
 // which keep the arms industries busy). In war they use all of them.
@@ -202,22 +211,6 @@ func (n *Nation) SetDrill(x float64) error {
 		return ErrBadDrill
 	}
 	n.Drill = x
-	return nil
-}
-
-// SetBudget sets the shares of income spent on economy, science and military.
-func (n *Nation) SetBudget(b [NumBudgets]float64) error {
-	sum := 0.0
-	for _, x := range b {
-		if !(x >= 0) {
-			return ErrBadBudget
-		}
-		sum += x
-	}
-	if sum > 1+1e-9 {
-		return ErrBadBudget
-	}
-	n.Budget = b
 	return nil
 }
 
@@ -329,42 +322,38 @@ type claim struct {
 	qty  float64
 }
 
-// plan decides what the nation buys in each of its tiles this tick: upkeep,
-// infrastructure (construction and materials), firm expansions, research and
-// its armies' supplies. Each budget caps its own spending; all of it is
-// scaled down together if the treasury can't pay.
+// plan decides what the nation buys in each of its tiles today. It pays
+// for everything it needs: upkeep, infrastructure (construction and
+// materials), state firm expansions, its armies' supplies and their pay.
+// What income is left over (and a little of any treasury above its reserve)
+// buys research. Only when the treasury can't cover it all does everything
+// shrink alike.
 func (n *Nation) plan(w *World) {
 	n.Revenue, n.TariffRevenue, n.Rebate, n.Spending = 0, 0, 0, 0
+	n.SpentOn = [NumSpending]float64{}
 	n.pickResearch()
 	if n.Eliminated() {
 		return
 	}
 	tiles := float64(len(n.Regions))
 	rate := n.MaxBuildRate * n.buildRateMult()
-	var spend [NumBudgets]float64
 	for _, r := range n.Regions {
 		r.claims = r.claims[:0]
 	}
-	category := func(k claimKind) int {
-		switch k {
-		case researchClaim:
-			return Science
-		case armyClaim:
-			return Defense
-		}
-		return Economy
-	}
 	// what a claim will cost: no more than the market offered yesterday can
 	// be bought, so an order for a good nobody sells (whose price runs away)
-	// doesn't eat the budget of everything else in its category
+	// doesn't count as spending
+	needs := 0.0
 	addTo := func(r *Region, c claim) {
 		if c.qty > 0 {
 			r.claims = append(r.claims, c)
 			m := r.Markets[c.good]
-			spend[category(c.kind)] += math.Min(c.qty, m.Supply) * m.Price
+			needs += math.Min(c.qty, m.Supply) * m.Price
 		}
 	}
 	w.planSupply(n, addTo)
+	n.payBill = w.soldiersPay(n)
+	needs += n.payBill
 	for _, r := range n.Regions {
 		add := func(c claim) { addTo(r, c) }
 		add(claim{kind: upkeepClaim, good: Construction, qty: InfraLevels[r.Infra].Upkeep})
@@ -381,24 +370,19 @@ func (n *Nation) plan(w *World) {
 				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(rate, LevelCost-e.Delivered)})
 			}
 		}
-		if n.Researching >= 0 {
-			add(claim{kind: researchClaim, good: Research,
-				qty: n.Budget[Science] * n.IncomeEMA / tiles / r.Markets[Research].Price})
+	}
+	// research gets what's left of the day's income
+	science := 0.0
+	if n.Researching >= 0 {
+		science = math.Max(0, n.IncomeEMA-needs) + researchFromReserve*math.Max(0, n.Treasury-n.Reserve)
+		for _, r := range n.Regions {
+			addTo(r, claim{kind: researchClaim, good: Research, qty: science / tiles / r.Markets[Research].Price})
 		}
 	}
-	// each budget caps its category; then the treasury caps the total
-	var catScale [NumBudgets]float64
-	total := 0.0
-	for k := range spend {
-		catScale[k] = 1
-		if limit := n.Budget[k] * n.IncomeEMA; spend[k] > limit {
-			catScale[k] = limit / spend[k]
-		}
-		total += spend[k] * catScale[k]
-	}
-	scale := 1.0
-	if budget := 0.9 * math.Max(n.Treasury, 0); total > budget {
-		scale = budget / total
+	// the treasury caps the total
+	n.payScale = 1.0
+	if budget := 0.9 * math.Max(n.Treasury, 0); needs+science > budget {
+		n.payScale = budget / (needs + science)
 	}
 	for _, r := range n.Regions {
 		for g := range r.publicBid {
@@ -406,11 +390,15 @@ func (n *Nation) plan(w *World) {
 		}
 		for i := range r.claims {
 			c := &r.claims[i]
-			c.qty *= scale * catScale[category(c.kind)]
+			c.qty *= n.payScale
 			r.publicBid[c.good] += c.qty
 		}
 	}
 }
+
+// researchFromReserve is the share of the treasury above its reserve that
+// goes to research each day, on top of the day's surplus income.
+const researchFromReserve = 0.01
 
 // sortedGoods lists a map's goods in GoodID order, for determinism.
 func sortedGoods(m map[GoodID]float64) []GoodID {
@@ -434,6 +422,7 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 			if bid := r.publicBid[c.good]; bid > 0 {
 				got = c.qty * r.publicGot[c.good] / bid
 			}
+			n.SpentOn[spendingOf(c.kind)] += got * w.TradePrices[r.ID][c.good]
 			switch c.kind {
 			case upkeepClaim:
 				upkeep += got
