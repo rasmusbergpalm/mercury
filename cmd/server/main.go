@@ -18,8 +18,10 @@ func main() {
 	data := flag.String("data", envOr("MERCURY_DATA", "saves", ""), "directory for saved games (empty disables saving)")
 	flag.Parse()
 	s := server.New(web.Static, *data)
-	if _, err := s.CreateGame("The Three Crowns", 1, 0); err != nil {
-		log.Fatal(err)
+	if s.NumGames() == 0 { // nothing to resume
+		if _, err := s.CreateGame("The Three Crowns", 1, 0); err != nil {
+			log.Fatal(err)
+		}
 	}
 	go s.Run(make(chan struct{}))
 	log.Printf("Mercury on http://localhost%s (saves in %q)", *addr, *data)

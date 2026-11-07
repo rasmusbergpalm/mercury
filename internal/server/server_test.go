@@ -7,8 +7,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/rasmusbergpalm/mercury/engine"
 )
@@ -458,4 +461,54 @@ func TestClockRunsAlongsideRequests(t *testing.T) {
 	}
 	close(stop)
 	<-done
+}
+
+// Games are saved every AutosaveEvery days and come back, players and all,
+// when the server restarts.
+func TestAutosaveSurvivesRestart(t *testing.T) {
+	dir := t.TempDir()
+	s := New(nil, dir)
+	g, err := s.CreateGame("Kept", 1, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.mu.Lock()
+	tok, err := g.join(1)
+	g.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := httptest.NewServer(s)
+	defer h.Close()
+	req, _ := http.NewRequest("POST", h.URL+"/api/games/"+g.ID+"/step?n=45", nil)
+	req.Header.Set("X-Player-Token", tok)
+	if res, err := http.DefaultClient.Do(req); err != nil || res.StatusCode != 200 {
+		t.Fatalf("step: %v %v", err, res)
+	}
+	path := filepath.Join(dir, "autosave", g.ID+".json")
+	var f autosaveFile
+	for i := 0; i < 100; i++ { // written in the background
+		if raw, err := os.ReadFile(path); err == nil && json.Unmarshal(raw, &f) == nil && f.Snapshot.Tick >= 75 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if f.Snapshot == nil || f.Snapshot.Tick != 75 {
+		t.Fatal("no autosave at tick 75 (30 days of warm-up, then 45)")
+	}
+	// a new server on the same data picks the game up where it was saved
+	s2 := New(nil, dir)
+	g2 := s2.games[g.ID]
+	if g2 == nil || g2.w.Tick != 75 || g2.nationOf(tok) != 1 || g2.w.Nations[1].AI {
+		t.Fatal("the game didn't resume as saved, with its player")
+	}
+	// deleting a game deletes its autosave
+	req, _ = http.NewRequest("DELETE", h.URL+"/api/games/"+g.ID, nil)
+	req.Header.Set("X-Player-Token", tok)
+	http.DefaultClient.Do(req)
+	g.fileMu.Lock()
+	g.fileMu.Unlock()
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("autosave of a deleted game still there: %v", err)
+	}
 }

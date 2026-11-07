@@ -75,6 +75,7 @@ func New(static fs.FS, dataDir string) *Server {
 	if static != nil {
 		m.Handle("GET /", http.FileServerFS(static))
 	}
+	s.loadAutosaves()
 	return s
 }
 
@@ -109,6 +110,9 @@ func (s *Server) add(name string, w *engine.World, turnDays int) (*Game, error) 
 	}
 	g := newGame(name, w, turnDays)
 	s.games[g.ID] = g
+	g.mu.Lock()
+	s.autosave(g) // a new game is on disk from the start
+	g.mu.Unlock()
 	return g, nil
 }
 
@@ -124,6 +128,7 @@ func (s *Server) Run(stop <-chan struct{}) {
 			for _, g := range s.list() {
 				g.mu.Lock()
 				g.advance(clockEvery.Seconds())
+				s.autosave(g)
 				g.mu.Unlock()
 			}
 		}
@@ -225,6 +230,7 @@ func (s *Server) game(h gameHandler) http.HandlerFunc {
 		if err := h(g, w, r); err != nil {
 			http.Error(w, err.Error(), statusOf(err))
 		}
+		s.autosave(g) // the handler may have advanced the game
 	}
 }
 
@@ -315,6 +321,7 @@ func (s *Server) handleDeleteGame(g *Game, w http.ResponseWriter, r *http.Reques
 	s.mu.Lock()
 	delete(s.games, g.ID)
 	s.mu.Unlock()
+	s.dropAutosave(g)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

@@ -27,6 +27,11 @@ type Game struct {
 	// the turn (real-time games have turnDays 0).
 	turnDays int
 	ready    map[int]bool // nations whose players have ended the turn
+
+	nextAutosave int        // the tick at which it is next saved
+	fileMu       sync.Mutex // guards the autosave file and the two below
+	savedTick    int        // tick of the autosave on disk
+	deleted      bool
 }
 
 // Speeds the clock allows, in days per second.

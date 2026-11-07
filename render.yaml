@@ -8,9 +8,10 @@ services:
     buildCommand: go build -trimpath -ldflags="-s -w" -o mercury ./cmd/server
     startCommand: ./mercury
     healthCheckPath: /api/games
-    # Games live in memory and saves on local disk, which Render wipes on
-    # every deploy and restart (and the free plan sleeps when idle). To keep
-    # saves, use a paid plan with a disk and point MERCURY_DATA at it:
+    # The server autosaves every game every 30 game days (and resumes them
+    # on start) under MERCURY_DATA, but Render wipes local disk on every
+    # deploy and restart (and the free plan sleeps when idle). To keep games
+    # and saves, use a paid plan with a disk and point MERCURY_DATA at it:
     # disk:
     #   name: saves
     #   mountPath: /var/data
