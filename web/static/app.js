@@ -694,6 +694,7 @@ function draw() {
     if (rs.port) drawAnchor(x - size * 0.55, y - size * 0.28);
     if (rs.project) progressRing(x + size * 0.52, y - size * 0.34, rs.project.delivered / rs.project.required);
   }
+  if (moving && selectedArmy !== null && armyById(selectedArmy)) shadeUnreachable(armyById(selectedArmy).nation);
   if ($("show-flows").checked) drawFlows();
   for (const r of world.regions) if (state.regions[r.id].battle > 0) drawBattle(...center(r));
   drawPaths();
@@ -769,6 +770,7 @@ function drawBorders(bands) {
 // roads, paved roads and railways run between neighbouring tiles that both have them
 function drawRoads(strong) {
   ctx.lineCap = "round";
+  ctx.globalAlpha = strong ? 0.95 : 0.3; // faint unless the infrastructure view asks for them
   for (const l of world.links) {
     const lvl = Math.min(state.regions[l.a].infra, state.regions[l.b].infra);
     if (!lvl) continue;
@@ -782,6 +784,7 @@ function drawRoads(strong) {
     ctx.beginPath(); ctx.arc(x, y, 1 + lvl, 0, 2 * Math.PI);
     ctx.fillStyle = lvl === 3 ? "#2b2420" : "#7a5630"; ctx.fill();
   }
+  ctx.globalAlpha = 1;
 }
 function road(x1, y1, x2, y2, lvl, strong) {
   const k = strong ? 1.4 : 1;
@@ -878,7 +881,8 @@ function drawArmies() {
       ctx.shadowColor = "transparent";
       const sel = a.id === selectedArmy;
       ctx.lineWidth = sel ? 3 : 1.6; ctx.strokeStyle = sel ? cssVar("--select") : "#e7c776";
-      ctx.stroke();
+      if (a.retreating) ctx.setLineDash([3, 2]); // falling back
+      ctx.stroke(); ctx.setLineDash([]);
       // crossed sabres
       ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = Math.max(1, size * 0.025);
       ctx.beginPath(); ctx.moveTo(bx - w * 0.55, by - h * 0.6); ctx.lineTo(bx + w * 0.55, by + h * 0.55);
@@ -891,6 +895,25 @@ function drawArmies() {
       ctx.fillRect(bxl, byt, bw * health, bh);
       plate(short(a.strength), bx, byt + bh + Math.max(9, size * 0.15) * 0.75, Math.max(9, size * 0.15), true);
     });
+  }
+}
+
+// While choosing where to march: grey out the tiles the army can't enter.
+// An army keeps to its own tiles and those next to them (its supply lines),
+// and enters foreign land only at war.
+function canEnter(nation, r) {
+  const o = state.regions[r.id].nation;
+  if (o >= 0 && o !== nation && !state.nations[nation].at_war[o]) return false;
+  if (o === nation) return true;
+  for (let i = 0; i < 6; i++) { const nb = across(r, i); if (nb && state.regions[nb.id].nation === nation) return true; }
+  return false;
+}
+function shadeUnreachable(nation) {
+  ctx.fillStyle = dark ? "rgba(0,0,0,0.45)" : "rgba(60,40,20,0.45)";
+  for (const r of world.regions) {
+    if (canEnter(nation, r)) continue;
+    const [x, y] = center(r);
+    hexPath(x, y, size); ctx.fill();
   }
 }
 
@@ -915,7 +938,7 @@ const canvasXY = (ev) => { const rect = canvas.getBoundingClientRect(); return [
 function drawBoots() {
   boots = null;
   const a = selected !== null && myArmyOn(selected);
-  if (!a) return;
+  if (!a || a.retreating) return;
   const here = state.armies.filter((x) => x.region === selected);
   const [x, y] = center(world.regions[selected]);
   const [bx, by] = armySpot(x, y, here.indexOf(a), here.length);
@@ -1142,8 +1165,8 @@ function tilePanel() {
   html += `<h3>What people buy</h3><div class="bar-stack">${world.tiers.map((t, i) => `<span style="width:${(100 * s.tier_spend[i] / total).toFixed(1)}%;background:${tc[i]}"></span>`).join("")}</div>
     <div class="legend-inline">${world.tiers.map((t, i) => `<span><span class="swatch" style="background:${tc[i]}"></span>${t} ${pct(s.tier_spend[i] / total)}</span>`).join("")}</div>`;
   const firms = d.firms.map((f, i) => ({ ...f, i })).filter((f) => !f.enabled || f.labor > 0.05 || f.produced > 0.05 || f.levels > 1)
-    .sort((a, b) => (b.enabled - a.enabled) || (b.labor - a.labor)).map((f) => {
-      if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="5">locked: needs ${esc(f.requires)}</td></tr>`;
+    .sort((a, b) => (b.enabled - a.enabled) || (b.state - a.state) || (b.labor - a.labor)).map((f) => {
+      if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="4">locked: needs ${esc(f.requires)}</td></tr>`;
       let grow = "";
       if (f.expansion) grow = `${pct(f.expansion.delivered / world.level_cost)}${f.expansion.public ? " ★" : ""}`;
       else if (mine && !f.state && f.levels < f.max_levels) grow = `<button data-cmd="/regions/${selected}/firms/${f.i}/expand" title="Your nation pays ${world.level_cost} construction for a level">+1</button>`;
@@ -1151,15 +1174,19 @@ function tilePanel() {
       const bon = (f.bonuses || []).slice(1).map((m) => `${esc(m.name.toLowerCase())} ×${m.value.toFixed(2)}`).join(" · ");
       const total = (f.bonuses || []).reduce((t, m) => t * m.value, 1);
       const tip = (f.bonuses || []).map((m) => `${m.name}: ×${m.value.toFixed(2)} (${m.note})`).join("\n");
-      if (f.state) return `<tr><td>${esc(f.name)}<br><span class="sub">public · ${f.levels} levels, run from the ${f.name === "University" ? "Research" : "State"} tab</span></td><td>${f.name === "University" ? "research" : "service"}</td><td colspan="5"></td></tr>`;
-      return `<tr title="${esc(tip)}\nproductivity ×${total.toFixed(2)}"><td>${esc(f.name)}<br><span class="sub">${f.sector}${bon ? ` · ${bon}` : ""}</span></td><td>${G[f.output].name}</td><td>${fmt(f.produced, 1)}</td><td>${f.levels}/${f.max_levels}</td><td>${fmt(f.labor, 1)}</td>
-        <td class="${f.profit < 0 ? "bad" : ""}">${fmt(f.profit, 1)}</td><td>${grow}</td></tr>`;
+      if (f.state) return `<tr class="dim"><td>${esc(f.name)}<br><span class="sub">public · ${f.levels} levels, run from the ${f.name === "University" ? "Research" : "State"} tab</span></td><td>${f.name === "University" ? "research" : "service"}</td><td>${fmt(f.labor, 1)}</td><td colspan="3"></td></tr>`;
+      const m = d.markets.find((x) => x.good === f.output) || { supply: 0, demand: 0 };
+      // productivity: the value each worker adds a day (output less the goods used up), against the wage
+      const per = f.labor > 0.01 ? `<span class="${f.per_worker >= s.wage ? "good" : "bad"}">£${fmt(f.per_worker)}</span>` : "–";
+      return `<tr title="${esc(tip)}\nproductivity ×${total.toFixed(2)}\nprofit £${fmt(f.profit, 2)} a day"><td>${esc(f.name)}<br><span class="sub">${f.sector}${bon ? ` · ${bon}` : ""}</span></td>
+        <td>${G[f.output].name}<br><span class="sub">${fmt(f.produced, 1)} a day</span></td>
+        <td class="nowrap">${fmt(f.labor, 1)} / ${fmt(f.wanted, 1)}</td><td class="nowrap">${fmt(m.supply, 1)} / ${fmt(m.demand, 1)}</td><td>${per}</td><td class="nowrap">${f.levels}/${f.max_levels}${grow ? `<br>${grow}` : ""}</td></tr>`;
     }).join("");
   const employed = d.firms.reduce((t, f) => t + f.labor, 0), workers = (d.classes.find((c) => c.class === "workers") || { size: 0 }).size;
   html += `<h3>Production</h3>
     <div class="stats">${stat(fmt(s.wage), "the tile's daily wage")}${stat(`${short(employed)} / ${short(workers)}`, "workers employed")}${stat(pct(workers > 0 ? employed / workers : 0), "employment")}</div>
-    <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th>output</th><th>levels</th><th>workers</th><th>profit</th><th></th></tr>${firms}</table></div>
-    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay. Under each firm, what multiplies its productivity: its site, technology, the tile's size and its buildings (hover for the details). ★ expansion paid by the state; the rest by owners.</p>`;
+    <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th class="nowrap">workers<br>/ wanted</th><th class="nowrap">supply<br>/ demand</th><th class="nowrap">per<br>worker</th><th>levels</th></tr>${firms}</table></div>
+    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay. <b>Per worker</b> is productivity: the value each worker adds a day (output less the goods used up), green when it beats the wage. Supply and demand are the tile's market for what the firm makes. Under each firm, what multiplies its productivity: its site, technology, the tile's size and its buildings (hover for the details and profit). ★ expansion paid by the state; the rest by owners.</p>`;
   // the market: local supply and demand, and what ships in and out
   const ex = {}, im = {};
   for (const f of d.exports) ex[f.good] = (ex[f.good] || 0) + f.qty;
@@ -1523,7 +1550,8 @@ function armyCard(a, mine) {
     <div class="title"><b>${chip(a.nation)} ${esc(nationName(a.nation))} army ${a.id}</b><span><b>${short(a.strength)}</b> <span class="sub">strength</span></span></div>
     <div class="progress" title="strength against full size and supply"><span style="width:${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))};background:${a.strength > 0.6 * a.full_strength ? cssVar("--good") : a.strength > 0.3 * a.full_strength ? cssVar("--brass") : cssVar("--danger")}"></span></div>
     <p class="sub">${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))} of full strength ${short(a.full_strength)} · ${short(a.men)} / ${short(a.target)} men · ${d.name} · at ${where.name}${dest}
-      ${a.coming > 0.05 ? ` · ${short(a.coming)} recruits marching out, the first in ${a.coming_days} days` : ""}</p>`;
+      ${a.coming > 0.05 ? ` · ${short(a.coming)} recruits marching out, the first in ${a.coming_days} days` : ""}
+      ${a.retreating ? ` · <span class="bad">falling back after a lost battle: no orders until home</span>` : ""}</p>`;
   if (!open) return html + `</div>`;
   const supply = Object.keys(d.needs).map((g) => {
     const v = a.supply[g] ?? 0;
@@ -1569,7 +1597,7 @@ function armyCard(a, mine) {
   if (mine) {
     const n = me();
     html += `<div class="row">
-      <button class="primary" data-move="${a.id}">March…</button>
+      ${a.retreating ? "" : `<button class="primary" data-move="${a.id}">March…</button>`}
       <label>Size <input type="number" min="0" max="${Math.floor(n.max_army_size)}" step="1" value="${Math.round(a.target)}" class="num" data-target-for="${a.id}"></label><button data-set-target="${a.id}">Set</button>
       ${n.best_doctrine > a.doctrine ? `<button data-cmd="/armies/${a.id}/upgrade">Upgrade to ${world.doctrines[n.best_doctrine].name}</button>` : ""}
       ${state.regions[a.region].nation === a.nation ? `<button class="danger" data-cmd="/armies/${a.id}/disband">Disband</button>` : ""}

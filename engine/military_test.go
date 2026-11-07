@@ -116,6 +116,7 @@ func TestRailwaysSpeedMarches(t *testing.T) {
 		w := newQuietGame(t)
 		m := nationByName(w, "Montara")
 		for _, name := range []string{"11", "21", "31"} { // inland, where ships don't help
+			w.Annex(regionByName(w, name).ID, m.ID) // its own, so its supply lines reach
 			w.SetInfra(regionByName(w, name).ID, infra)
 		}
 		a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, 1)
@@ -205,9 +206,9 @@ func TestEnemyTilesNeedWarAndHoldOutLonger(t *testing.T) {
 	}
 }
 
-// A battle bleeds both sides; the side that falls far behind is destroyed,
-// and half its remaining men find their way home.
-func TestBattleDestroysTheLoser(t *testing.T) {
+// A battle bleeds both sides; the side that falls far behind falls back to
+// its nearest home tile, out of the fight.
+func TestBattleBeatenArmyFallsBack(t *testing.T) {
 	w := newNeighbourGame(t)
 	w.Migration, w.Demography = false, false
 	w.DeclareWar(0, 1)
@@ -216,18 +217,76 @@ func TestBattleDestroysTheLoser(t *testing.T) {
 	small, _ := w.RaiseArmy(1, home.ID, 0)
 	big.Men, small.Men = 50, 12
 	big.Region, small.Region = field.ID, field.ID
-	people := home.Population()
-	for i := 0; i < 100 && w.ArmyByID(small.ID) != nil; i++ {
+	for i := 0; i < 100 && !small.Retreating; i++ {
 		w.battles()
 	}
-	if w.ArmyByID(small.ID) != nil || w.ArmyByID(big.ID) == nil {
-		t.Fatalf("after the battle: small %v, big %v", w.ArmyByID(small.ID), w.ArmyByID(big.ID))
+	if w.ArmyByID(small.ID) == nil || !small.Retreating || big.Retreating {
+		t.Fatalf("after the battle: small %v (retreating %v), big retreating %v", w.ArmyByID(small.ID), small.Retreating, big.Retreating)
 	}
-	if big.Men >= 50 {
-		t.Errorf("the winner took no casualties: %v", big.Men)
+	if big.Men >= 50 || small.Men >= 12 {
+		t.Errorf("no casualties: %v, %v", big.Men, small.Men)
 	}
-	if got := home.Population() - people; got <= 0 || got >= 6 {
-		t.Errorf("%v survivors came home from an army of 12", got)
+	if len(small.Path) == 0 || small.Path[len(small.Path)-1] != home.ID {
+		t.Errorf("falls back along %v, want to %d", small.Path, home.ID)
+	}
+	men := small.Men
+	w.battles() // it no longer fights
+	if small.Men != men {
+		t.Error("a retreating army fought")
+	}
+	if err := w.MoveArmy(small.ID, field.ID); !errors.Is(err, ErrRetreating) {
+		t.Errorf("orders to a retreating army: %v", err)
+	}
+	for i := 0; i < 60 && len(small.Path) > 0; i++ {
+		w.march(small)
+	}
+	w.march(small)
+	if small.Region != home.ID || small.Retreating {
+		t.Errorf("after the retreat: at %d, retreating %v", small.Region, small.Retreating)
+	}
+}
+
+// A beaten army with no way home that isn't barred by the enemy is
+// surrounded: it fights on until it is destroyed.
+func TestSurroundedArmyFightsToTheEnd(t *testing.T) {
+	w := newNeighbourGame(t)
+	w.Migration, w.Demography = false, false
+	w.DeclareWar(0, 1)
+	field := regionByName(w, "02")
+	big, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
+	small, _ := w.RaiseArmy(1, regionByName(w, "01").ID, 0)
+	big.Men, small.Men = 50, 12
+	big.Region, small.Region = field.ID, field.ID
+	// the enemy holds every tile around the field
+	for _, nb := range HexNeighbors(field.Row, field.Col, w.Rows, w.Cols) {
+		r := w.Regions[nb[0]*w.Cols+nb[1]]
+		if w.tileTaken(big.Nation, r.ID, nil) {
+			continue
+		}
+		g := &Army{ID: 900 + r.ID, Nation: big.Nation, Region: r.ID, Men: 5, Supply: make([]float64, NumGoods), Stock: make([]float64, NumGoods)}
+		w.Armies = append(w.Armies, g)
+	}
+	for i := 0; i < 200 && w.ArmyByID(small.ID) != nil; i++ {
+		w.battles()
+		if small.Retreating {
+			t.Fatal("a surrounded army fell back")
+		}
+	}
+	if w.ArmyByID(small.ID) != nil {
+		t.Errorf("the surrounded army survived with %v men", small.Men)
+	}
+}
+
+// Armies only march into tiles their nation holds or borders: supply lines.
+func TestArmiesKeepToTheFront(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, 1)
+	if err := w.MoveArmy(a.ID, regionByName(w, "22").ID); err != nil {
+		t.Errorf("into a tile next to home: %v", err)
+	}
+	if err := w.MoveArmy(a.ID, regionByName(w, "33").ID); !errors.Is(err, ErrNoPath) {
+		t.Errorf("deep into free land: %v", err)
 	}
 }
 
@@ -515,9 +574,11 @@ func TestBattlesAreQuickAndFreezeOccupation(t *testing.T) {
 	}
 	p := enemy.Siege.Progress
 	y, _ := w.RaiseArmy(1, enemy.ID, 0)
-	y.Men = 30 // with home ground, close to even
+	y.Men = 30                           // with home ground, close to even
+	w.Annex(regionByName(w, "02").ID, 1) // somewhere for the loser to fall back to
+	decided := func(a *Army) bool { return w.ArmyByID(a.ID) == nil || a.Retreating }
 	days := 0
-	for ; w.ArmyByID(x.ID) != nil && w.ArmyByID(y.ID) != nil && days < 100; days++ {
+	for ; !decided(x) && !decided(y) && days < 100; days++ {
 		w.battles()
 		w.sieges()
 		if enemy.Battle > 0 && enemy.Siege != nil && enemy.Siege.Progress != p {
@@ -536,7 +597,7 @@ func TestFieldArmiesAreReinforced(t *testing.T) {
 	w := newQuietGame(t)
 	m := nationByName(w, "Montara")
 	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, w.MobilizationCap(m))
-	if err := w.MoveArmy(a.ID, regionByName(w, "33").ID); err != nil {
+	if err := w.MoveArmy(a.ID, regionByName(w, "22").ID); err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 200 && len(a.Path) > 0; i++ {

@@ -223,11 +223,12 @@ type ArmyState struct {
 	FullStrength  float64            `json:"full_strength"` // at full size, fully supplied
 	DailyLoss     float64            `json:"daily_loss"`    // share of men lost today outside battle
 	Path          []int              `json:"path"`
-	Attack        []engine.Modifier  `json:"attack"`    // strength per soldier, factor by factor
-	Defense       []engine.Modifier  `json:"defense"`   // extra factors when defending at home
-	Attrition     []engine.Modifier  `json:"attrition"` // daily losses
-	Depot         int                `json:"depot"`     // where supplies are bought (-1: cut off)
-	Transport     float64            `json:"transport"` // transport today's supplies needed
+	Retreating    bool               `json:"retreating"` // falling back after a lost battle
+	Attack        []engine.Modifier  `json:"attack"`     // strength per soldier, factor by factor
+	Defense       []engine.Modifier  `json:"defense"`    // extra factors when defending at home
+	Attrition     []engine.Modifier  `json:"attrition"`  // daily losses
+	Depot         int                `json:"depot"`      // where supplies are bought (-1: cut off)
+	Transport     float64            `json:"transport"`  // transport today's supplies needed
 }
 
 type TurnState struct {
@@ -278,8 +279,10 @@ type FirmState struct {
 	Enabled   bool              `json:"enabled"`
 	Requires  string            `json:"requires"` // tech that unlocks it, if any
 	Sector    string            `json:"sector"`
-	State     bool              `json:"state"`   // a state university
-	Bonuses   []engine.Modifier `json:"bonuses"` // productivity, factor by factor
+	State     bool              `json:"state"`      // a public service
+	Bonuses   []engine.Modifier `json:"bonuses"`    // productivity, factor by factor
+	Wanted    float64           `json:"wanted"`     // workers it wanted (and could pay) today
+	PerWorker float64           `json:"per_worker"` // value added per worker today
 }
 
 type MarketState struct {
@@ -443,7 +446,7 @@ func worldState(w *engine.World) State {
 		att, def, attr := w.Breakdown(a)
 		depot, transport := a.SupplyLine()
 		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, a.Doctrine,
-			a.Effectiveness(), a.Strength(), sup, days, src, off, coming, cost, pay, comingDays, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...),
+			a.Effectiveness(), a.Strength(), sup, days, src, off, coming, cost, pay, comingDays, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...), a.Retreating,
 			att, def, attr, depot, transport})
 	}
 	for i := range w.Regions {
@@ -532,7 +535,11 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, f.Bonuses(r.Nation)}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, f.Bonuses(r.Nation), 0, 0}
+		fs.Wanted = f.PlanLabor
+		if f.Labor > 1e-9 {
+			fs.PerWorker = f.ValueAdded(r.Markets[f.Output].Price, r.Wage) / f.Labor
+		}
 		if e := f.Expansion; e != nil {
 			fs.Expansion = &Expansion{e.Delivered, e.Public}
 		}

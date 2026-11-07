@@ -66,6 +66,9 @@ type Army struct {
 	March float64 // days marched towards Path[0]
 	// Coming are recruits marching out to the army from home.
 	Coming []Draft
+	// Retreating armies fall back to a home tile after a lost battle: they
+	// march at double speed through anything and don't fight or occupy.
+	Retreating bool
 
 	// this tick's supply order
 	depot    *Region   // its nearest home tile, where recruits set out from
@@ -89,7 +92,7 @@ const (
 	marchDaysPerHop = 8.0    // days to march one hop of cost 1 (roads and rails shorten it)
 	battleRate      = 0.04   // men lost per day per unit of enemy strength
 	defenderHome    = 1.2    // defending one's own tile
-	retreatRatio    = 0.3    // on a battle's first day, a side weaker than this fraction of its enemy breaks
+	retreatRatio    = 0.3    // on a battle's first day, a side weaker than this fraction of its enemy breaks and falls back
 	occupationDays  = 180.0  // days an unopposed army needs to take unowned land (techs change the pace)
 	ownedTileFactor = 2.0    // taking another nation's tile takes this many times longer
 	minOccupiers    = 1.0    // an army needs at least this many men to occupy or fight
@@ -114,6 +117,7 @@ var (
 	ErrNoPath      = errors.New("the army can't get there")
 	ErrMobilized   = errors.New("that exceeds how many people the nation can mobilize")
 	ErrArmySize    = errors.New("that is more men than one army can field (techs raise it)")
+	ErrRetreating  = errors.New("the army is falling back and takes no orders until it is home")
 	ErrTileTaken   = errors.New("another of the nation's armies already holds or is heading for that tile")
 	ErrNoUpgrade   = errors.New("the nation knows no better doctrine")
 	ErrAtWar       = errors.New("already at war")
@@ -309,6 +313,24 @@ func (w *World) passable(n *Nation, r *Region) bool {
 	return r.Nation == nil || r.Nation == n || n.AtWar[r.Nation.ID]
 }
 
+// reachable reports whether a nation's armies may march into a tile: one
+// they may enter, and their own or next to one of their own, so that their
+// supply lines are intact.
+func (w *World) reachable(n *Nation, r *Region) bool {
+	if !w.passable(n, r) {
+		return false
+	}
+	if r.Nation == n {
+		return true
+	}
+	for _, nb := range HexNeighbors(r.Row, r.Col, w.Rows, w.Cols) {
+		if w.Regions[nb[0]*w.Cols+nb[1]].Nation == n {
+			return true
+		}
+	}
+	return false
+}
+
 // neighbours lists (region, hop cost) for each link of a tile.
 func (w *World) neighbours(id int) [][2]float64 {
 	if w.adj == nil {
@@ -373,6 +395,9 @@ func (w *World) MoveArmy(id, dest int) error {
 	if err != nil {
 		return err
 	}
+	if a.Retreating {
+		return ErrRetreating
+	}
 	if dest < 0 || dest >= len(w.Regions) {
 		return ErrNoPath
 	}
@@ -380,13 +405,13 @@ func (w *World) MoveArmy(id, dest int) error {
 		a.Path, a.March = nil, 0
 		return nil
 	}
-	if !w.passable(a.Nation, w.Regions[dest]) {
+	if !w.reachable(a.Nation, w.Regions[dest]) {
 		return ErrNoPath
 	}
 	if w.tileTaken(a.Nation, dest, a) {
 		return ErrTileTaken
 	}
-	dist, prev := w.shortestPaths(a.Region, func(r *Region) bool { return w.passable(a.Nation, r) })
+	dist, prev := w.shortestPaths(a.Region, func(r *Region) bool { return w.reachable(a.Nation, r) })
 	if math.IsInf(dist[dest], 1) {
 		return ErrNoPath
 	}
@@ -498,6 +523,7 @@ func (w *World) makePeace(a, b int) error {
 		r := w.Regions[ar.Region]
 		if (ar.Nation == na && r.Nation == nb) || (ar.Nation == nb && r.Nation == na) {
 			w.sendHome(ar)
+			ar.Retreating = len(ar.Path) > 0 // marching home through land it may no longer enter
 		}
 	}
 	for _, r := range w.Regions {
@@ -747,6 +773,34 @@ func (w *World) armies() {
 	}
 }
 
+// fallBack sends a beaten army back to the nearest of its nation's tiles
+// that none of its other armies holds (not the one it was beaten on), along
+// a way no enemy army bars. It reports false if there is none: the army is
+// surrounded.
+func (w *World) fallBack(a *Army) bool {
+	barred := make([]bool, len(w.Regions))
+	for _, e := range w.Armies {
+		if e.Nation != a.Nation && a.Nation.AtWar[e.Nation.ID] && !e.Retreating && e.Men >= minOccupiers {
+			barred[e.Region] = true
+		}
+	}
+	dist, prev := w.shortestPaths(a.Region, func(r *Region) bool { return !barred[r.ID] })
+	best := -1
+	for _, r := range a.Nation.Regions {
+		if r.ID == a.Region || w.tileTaken(a.Nation, r.ID, a) || math.IsInf(dist[r.ID], 1) {
+			continue
+		}
+		if best < 0 || dist[r.ID] < dist[best] {
+			best = r.ID
+		}
+	}
+	if best < 0 {
+		return false
+	}
+	a.Path, a.March, a.Retreating = pathTo(prev, a.Region, best), 0, true
+	return true
+}
+
 // destroyArmy takes a defeated army off the map: some of its men find their
 // way home to the nation's nearest tile, the rest are lost.
 func (w *World) destroyArmy(a *Army) {
@@ -859,14 +913,18 @@ func (w *World) demobilize(a *Army) {
 // cheaper and so marches faster.
 func (w *World) march(a *Army) {
 	if len(a.Path) == 0 {
+		a.Retreating = false // home: it is an army again
 		return
 	}
 	next := a.Path[0]
-	if !w.passable(a.Nation, w.Regions[next]) {
-		a.Path, a.March = nil, 0 // the way is closed (peace, or the tile changed hands)
+	if !a.Retreating && !w.reachable(a.Nation, w.Regions[next]) {
+		a.Path, a.March = nil, 0 // the way is closed (peace, the tile changed hands, the supply line is cut)
 		return
 	}
 	a.March++
+	if a.Retreating {
+		a.March++ // a retreat is a hurried march
+	}
 	if a.March >= marchDaysPerHop*w.hopBetween(a.Region, next) {
 		a.Region, a.Path, a.March = next, a.Path[1:], 0
 	}
@@ -882,13 +940,13 @@ func (w *World) hopBetween(a, b int) float64 {
 }
 
 // battles: wherever armies of nations at war share a tile, each side loses
-// men in proportion to the other's strength; a side that falls far behind is
-// destroyed.
+// men in proportion to the other's strength; a side that falls far behind
+// falls back home; a surrounded one fights on until it is destroyed.
 func (w *World) battles() {
 	for _, r := range w.Regions {
 		var here []*Army
 		for _, a := range w.Armies {
-			if a.Region == r.ID && a.Men >= minOccupiers {
+			if a.Region == r.ID && a.Men >= minOccupiers && !a.Retreating {
 				here = append(here, a)
 			}
 		}
@@ -925,7 +983,7 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 		var armies []*Army
 		power, men := 0.0, 0.0
 		for _, a := range here {
-			if a.Nation == n && a.Men >= minOccupiers {
+			if a.Nation == n && a.Men >= minOccupiers && !a.Retreating {
 				armies = append(armies, a)
 				power += a.Strength()
 				men += a.Men
@@ -952,10 +1010,23 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 	lose(ax, mx, math.Min(mx, battleRate*py))
 	lose(ay, my, math.Min(my, battleRate*px))
 	defeat := func(armies []*Army, n, enemy *Nation) {
+		fled, lost := 0, 0
 		for _, a := range armies {
-			w.destroyArmy(a)
+			switch {
+			case w.fallBack(a):
+				fled++
+			case a.Men < 2*minOccupiers: // surrounded, and all but gone
+				w.destroyArmy(a)
+				lost++
+			}
+			// otherwise surrounded: it stands and fights on
 		}
-		w.emit(-1, "battle", r.ID, "%s destroys %s's army at tile %s", enemy.Name, n.Name, r.Name)
+		switch {
+		case lost > 0:
+			w.emit(-1, "battle", r.ID, "%s destroys %s's surrounded army at tile %s", enemy.Name, n.Name, r.Name)
+		case fled > 0:
+			w.emit(-1, "battle", r.ID, "%s defeats %s at tile %s; the beaten army falls back", enemy.Name, n.Name, r.Name)
+		}
 	}
 	br := breakRatio(day)
 	switch {
@@ -982,7 +1053,7 @@ func (w *World) sieges() {
 		var occupier *Nation
 		biggest, defended := 0.0, false
 		for _, a := range w.Armies {
-			if a.Region != r.ID || len(a.Path) > 0 || a.Men < minOccupiers {
+			if a.Region != r.ID || len(a.Path) > 0 || a.Men < minOccupiers || a.Retreating {
 				continue
 			}
 			if a.Nation == r.Nation {

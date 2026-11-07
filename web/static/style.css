@@ -224,3 +224,4 @@ tr.branch th { text-align: left; text-transform: capitalize; color: var(--text);
 .unis td { white-space: nowrap; }
 .unis td:first-child { white-space: normal; }
 .unis button { min-height: 26px; padding: 0 7px; }
+.nowrap { white-space: nowrap; }

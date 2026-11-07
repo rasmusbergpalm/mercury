@@ -279,3 +279,9 @@ func cap1(s string) string {
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
 }
+
+// ValueAdded is what the firm added today: its output at the given price,
+// less the goods it used up (wages are part of the value it added).
+func (f *Firm) ValueAdded(price, wage float64) float64 {
+	return f.LastOutput*price - math.Max(0, f.tickCost-f.Labor*wage)
+}
