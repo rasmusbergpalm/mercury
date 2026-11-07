@@ -389,15 +389,27 @@ func (n *Nation) plan(w *World) {
 	// limit, building goes at the pace the economy can supply, and what the
 	// orders can cost is known, so the treasury is never overdrawn
 	needs := 0.0
-	avgPrice := make([]float64, NumGoods) // the nation's average price of each good
+	// the nation's average price of each good where it is actually sold
+	// (weighted by what was offered; markets with nothing for sale don't count)
+	avgPrice, offered := make([]float64, NumGoods), make([]float64, NumGoods)
 	for _, r := range n.Regions {
 		for g, m := range r.Markets {
-			avgPrice[g] += m.Price / float64(len(n.Regions))
+			avgPrice[g] += m.Price * m.Supply
+			offered[g] += m.Supply
+		}
+	}
+	for g := range avgPrice {
+		if offered[g] > 0 {
+			avgPrice[g] /= offered[g]
 		}
 	}
 	addTo := func(r *Region, c claim) {
 		m := r.Markets[c.good]
-		c.qty = math.Min(c.qty, stateBuyMargin*m.Supply+stateBuyFloor)
+		margin, floor := stateBuyMargin, stateBuyFloor
+		if c.kind == armyClaim { // the armies press harder: a shortage must drive the price up
+			margin, floor = armyBuyMargin, armyBuyFloor
+		}
+		c.qty = math.Min(c.qty, margin*m.Supply+floor)
 		// where a good costs far more than elsewhere in the nation, buy less
 		if ref := stateDearPrice * avgPrice[c.good]; m.Price > ref && ref > 0 {
 			c.qty *= ref / m.Price
@@ -452,6 +464,11 @@ const (
 	stateBuyMargin = 1.2
 	stateBuyFloor  = 0.2
 	stateDearPrice = 2.0 // above this times the nation's average price, the state buys less
+	// For its armies' supplies the state bids up to armyBuyMargin times what
+	// was offered (plus armyBuyFloor): a shortage shows as a big excess
+	// demand, which drives the price up until supply answers.
+	armyBuyMargin = 3.0
+	armyBuyFloor  = 1.0
 )
 
 // sortedGoods lists a map's goods in GoodID order, for determinism.

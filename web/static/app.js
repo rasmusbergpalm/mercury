@@ -174,7 +174,7 @@ $("import").addEventListener("change", async (ev) => {
 async function openGame(id) {
   stopPolling();
   gid = id;
-  selected = null; detail = null; selectedArmy = null; moving = false; hist = {};
+  selected = null; detail = null; selectedArmy = null; moving = false; hist = {}; seaRoutes.clear();
   world = await api("GET", `/api/games/${id}/world`);
   state = await api("GET", `/api/games/${id}/state`);
   const summary = (await api("GET", "/api/games")).find((g) => g.id === id);
@@ -950,6 +950,51 @@ function drawPaths() {
   }
 }
 
+// Sea routes sail through the ocean: from a port out to the nearest ocean
+// hex, along the coast, and in to the other port (a shortest path over the
+// ring of ocean tiles around the map).
+const cellNeighbours = (row, col) => {
+  const odd = row & 1;
+  return [[0, 1], [1, odd ? 1 : 0], [1, odd ? 0 : -1], [0, -1], [-1, odd ? 0 : -1], [-1, odd ? 1 : 0]].map(([dr, dc]) => [row + dr, col + dc]);
+};
+const isOcean = (row, col) => row >= -1 && row <= world.rows && col >= -1 && col <= world.cols && !grid[`${row},${col}`];
+const seaRoutes = new Map(); // "a-b" -> cells [[row, col], ...] between the two ports, or null
+function seaCells(a, b) {
+  const key = `${a}-${b}`;
+  if (seaRoutes.has(key)) return seaRoutes.get(key);
+  const ra = world.regions[a], rb = world.regions[b];
+  const goal = new Set(cellNeighbours(rb.row, rb.col).filter(([r, c]) => isOcean(r, c)).map(([r, c]) => `${r},${c}`));
+  const prev = new Map(), queue = [];
+  for (const [r, c] of cellNeighbours(ra.row, ra.col)) {
+    if (isOcean(r, c)) { prev.set(`${r},${c}`, null); queue.push([r, c]); }
+  }
+  let found = null;
+  while (queue.length && !found) {
+    const [r, c] = queue.shift();
+    if (goal.has(`${r},${c}`)) { found = `${r},${c}`; break; }
+    for (const [nr, nc] of cellNeighbours(r, c)) {
+      const k = `${nr},${nc}`;
+      if (isOcean(nr, nc) && !prev.has(k)) { prev.set(k, `${r},${c}`); queue.push([nr, nc]); }
+    }
+  }
+  let cells = null;
+  if (found) {
+    cells = [];
+    for (let k = found; k !== null; k = prev.get(k)) cells.unshift(k.split(",").map(Number));
+  }
+  seaRoutes.set(key, cells);
+  return cells;
+}
+
+// a polyline shifted sideways by off (to keep the two directions apart)
+function offsetLine(pts, off) {
+  return pts.map(([x, y], i) => {
+    const [px, py] = pts[Math.max(0, i - 1)], [nx, ny] = pts[Math.min(pts.length - 1, i + 1)];
+    const len = Math.hypot(nx - px, ny - py) || 1;
+    return [x - (ny - py) / len * off, y + (nx - px) / len * off];
+  });
+}
+
 function drawFlows() {
   const fg = $("flow-good").value, agg = new Map();
   for (const f of state.flows) {
@@ -962,16 +1007,29 @@ function drawFlows() {
   ctx.strokeStyle = ctx.fillStyle = cssVar("--flow");
   for (const [key, v] of agg) {
     if (v < max * 0.03) continue;
-    const sea = key >= 1e6, k = key % 1e6;
+    const sea = key >= 1e6, k = key % 1e6, from = Math.floor(k / 1000), to = k % 1000;
+    const w = 1 + 5 * Math.sqrt(v / max);
+    let pts = [center(world.regions[from]), center(world.regions[to])];
+    if (sea) {
+      const cells = seaCells(from, to);
+      if (cells) pts = [pts[0], ...cells.map(([row, col]) => center({ row, col })), pts[1]];
+    }
+    pts = offsetLine(pts, size * 0.12);
+    // trim the ends off the tiles' middles
+    const trim = (p, q, d) => { const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1; return [p[0] + (q[0] - p[0]) / len * d, p[1] + (q[1] - p[1]) / len * d]; };
+    pts[0] = trim(pts[0], pts[1], size * 0.35);
+    pts[pts.length - 1] = trim(pts[pts.length - 1], pts[pts.length - 2], size * 0.45);
     ctx.setLineDash(sea ? [8, 6] : []);
-    const [x1, y1] = center(world.regions[Math.floor(k / 1000)]), [x2, y2] = center(world.regions[k % 1000]);
-    const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
-    const sx = -uy * size * 0.12, sy = ux * size * 0.12, w = 1 + 5 * Math.sqrt(v / max);
-    const ax = x1 + ux * size * 0.35 + sx, ay = y1 + uy * size * 0.35 + sy, bx = x2 - ux * size * 0.45 + sx, by = y2 - uy * size * 0.45 + sy;
-    ctx.lineWidth = w; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    ctx.lineWidth = w; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(...pts[0]);
+    for (let i = 1; i < pts.length - 1; i++) { // smooth through the hexes' middles
+      const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
+      ctx.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
+    }
+    ctx.lineTo(...pts[pts.length - 1]); ctx.stroke();
     ctx.setLineDash([]);
-    const h = 4 + w;
+    const [bx, by] = pts[pts.length - 1], [px, py] = pts[pts.length - 2];
+    const len = Math.hypot(bx - px, by - py) || 1, ux = (bx - px) / len, uy = (by - py) / len, h = 4 + w;
     ctx.beginPath(); ctx.moveTo(bx + ux * h, by + uy * h); ctx.lineTo(bx - uy * h * 0.6, by + ux * h * 0.6); ctx.lineTo(bx + uy * h * 0.6, by - ux * h * 0.6);
     ctx.closePath(); ctx.fill();
   }

@@ -575,3 +575,29 @@ func TestOverCapStillAllowsCuts(t *testing.T) {
 		t.Errorf("raising an over-cap target: %v", err)
 	}
 }
+
+// The state presses harder for its armies' supplies than for construction:
+// a shortage shows as a big excess demand, so the price rises until supply
+// answers.
+func TestArmiesBidHardForScarceSupplies(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	m.Treasury = 1e4
+	w.GrantTech(m.ID, "Drill") // line infantry needs artillery
+	home := regionByName(w, "11")
+	a, _ := w.RaiseArmy(m.ID, home.ID, 8)
+	a.Men = 8
+	art := G("artillery")
+	for _, r := range m.Regions {
+		r.Markets[art].Supply = 0
+	}
+	home.Markets[art].Supply = 0.1
+	m.plan(w)
+	bid := home.publicBid[art]
+	if limit := stateBuyMargin*0.1 + stateBuyFloor; bid <= limit {
+		t.Errorf("artillery bid %v, no more than construction's limit %v", bid, limit)
+	}
+	if bid > armyBuyMargin*0.1+armyBuyFloor+1e-9 {
+		t.Errorf("artillery bid %v above the army's limit", bid)
+	}
+}
