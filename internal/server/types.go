@@ -71,7 +71,8 @@ type WorldInfo struct {
 	Nations   []NationInfo   `json:"nations"`
 	Infra     []InfraInfo    `json:"infra_levels"`
 	Techs     []TechInfo     `json:"techs"`
-	Budgets   []string       `json:"budgets"`
+	Spending  []string       `json:"spending"`  // categories of NationState.SpentOn
+	UniStaff  float64        `json:"uni_staff"` // scholars per funded university level
 	Branches  []string       `json:"branches"`
 	LevelCost float64        `json:"level_cost"` // construction per firm building level
 	Port      PortInfo       `json:"port"`
@@ -119,7 +120,21 @@ type RegionState struct {
 	Growth     float64     `json:"growth"` // population growth per year
 	Occupation *Occupation `json:"occupation"`
 	Battle     int         `json:"battle"` // days the battle on the tile has lasted (0: none)
+	University *University `json:"university"`
 	Project    *Project    `json:"project"`
+}
+
+// University is a tile's state university.
+type University struct {
+	Levels    int      `json:"levels"`
+	Funded    int      `json:"funded"`
+	MaxLevels int      `json:"max_levels"`
+	Staff     float64  `json:"staff"`
+	Research  float64  `json:"research"`  // today
+	PerLevel  float64  `json:"per_level"` // research per funded level, fully staffed
+	Cost      float64  `json:"cost"`      // wages per funded level per day
+	Building  *float64 `json:"building"`  // progress of a new level (0..1), or null
+	Enabled   bool     `json:"enabled"`
 }
 
 type Occupation struct {
@@ -148,7 +163,11 @@ type NationState struct {
 	TariffRevenue  float64   `json:"tariff_revenue"`
 	Rebate         float64   `json:"rebate"`
 	Spending       float64   `json:"spending"`
-	Budget         []float64 `json:"budget"` // economy, science, military
+	SpentOn        []float64 `json:"spent_on"`   // today, by category: economy, science, military
+	AutoBuild      bool      `json:"auto_build"` // the computer builds roads and expands firms
+	PayOwed        float64   `json:"pay_owed"`   // soldiers' pay due today
+	Paid           float64   `json:"paid"`       // share of today's bills the treasury covered
+	ResearchDay    float64   `json:"research_per_day"`
 	Tariff         []float64 `json:"tariff"` // per good
 	Embargo        []bool    `json:"embargo"`
 	Researching    int       `json:"researching"`
@@ -188,6 +207,8 @@ type ArmyState struct {
 	Sources       map[string]int     `json:"sources"`       // tile each good was bought in today (-1: none)
 	Offered       map[string]float64 `json:"offered"`       // how much of each its source's market offered
 	Coming        float64            `json:"coming"`        // recruits marching out to it
+	Cost          map[string]float64 `json:"cost"`          // today, per supply good (and "transport")
+	Pay           float64            `json:"pay"`           // soldiers' pay today
 	ComingDays    int                `json:"coming_days"`   // until the first of them arrive (-1: none)
 	FullStrength  float64            `json:"full_strength"` // at full size, fully supplied
 	DailyLoss     float64            `json:"daily_loss"`    // share of men lost today outside battle
@@ -288,7 +309,7 @@ type RegionDetail struct {
 }
 
 func worldInfo(w *engine.World) WorldInfo {
-	info := WorldInfo{Rows: w.Rows, Cols: w.Cols, Budgets: engine.BudgetNames[:], Branches: engine.Branches,
+	info := WorldInfo{Rows: w.Rows, Cols: w.Cols, Spending: engine.SpendingNames[:], UniStaff: engine.UniStaff, Branches: engine.Branches,
 		Eras: engine.Eras, StartYear: engine.StartYear,
 		LevelCost: engine.LevelCost, Port: PortInfo{engine.PortCost, map[string]float64{}}}
 	for g, q := range engine.PortMaterials {
@@ -363,6 +384,16 @@ func regionState(w *engine.World, i int) RegionState {
 	if r.Nation != nil {
 		st.Nation = r.Nation.ID
 	}
+	if f := r.University(); f != nil {
+		us := r.UniversityStats()
+		u := &University{Levels: f.Levels, Funded: f.Funded, MaxLevels: f.MaxLevels, Staff: us.Staff,
+			Research: us.Research, PerLevel: us.PerLevel, Cost: us.Cost, Enabled: f.Enabled}
+		if e := f.Expansion; e != nil {
+			p := e.Delivered / engine.LevelCost
+			u.Building = &p
+		}
+		st.University = u
+	}
 	if s := r.Siege; s != nil {
 		st.Occupation = &Occupation{s.Nation.ID, s.Progress}
 	}
@@ -387,10 +418,15 @@ func worldState(w *engine.World) State {
 			}
 		}
 		coming, comingDays := a.Reinforcements(w.Tick)
+		goods, pay := a.Costs()
+		cost := map[string]float64{}
+		for g, x := range goods {
+			cost[engine.Goods[g].Name] = x
+		}
 		att, def, attr := w.Breakdown(a)
 		depot, transport := a.SupplyLine()
 		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, a.Doctrine,
-			a.Effectiveness(), a.Strength(), sup, days, src, off, coming, comingDays, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...),
+			a.Effectiveness(), a.Strength(), sup, days, src, off, coming, cost, pay, comingDays, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...),
 			att, def, attr, depot, transport})
 	}
 	for i := range w.Regions {
@@ -406,12 +442,18 @@ func worldState(w *engine.World) State {
 		ns := NationState{ID: n.ID, Controller: "human", Eliminated: n.Eliminated(), Tiles: len(n.Regions),
 			Treasury: n.Treasury, TaxRate: n.TaxRate, Income: n.IncomeEMA, Revenue: n.Revenue,
 			TariffRevenue: n.TariffRevenue, Rebate: n.Rebate, Spending: n.Spending,
-			Budget: append([]float64(nil), n.Budget[:]...), Tariff: n.Tariff, Embargo: n.Embargo,
+			SpentOn: append([]float64(nil), n.SpentOn[:]...), AutoBuild: n.AutoBuild, Tariff: n.Tariff, Embargo: n.Embargo,
 			Researching: n.Researching, Points: n.ResearchPoints, Known: n.Known,
 			Queue: append([]int{}, n.Queue...), AtWar: n.AtWar, PeaceOffer: n.PeaceOffer,
 			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch,
 			MaxArmySize: n.MaxArmySize(), Drill: n.Drill, Temperament: n.Temper.Describe()}
 		ns.Soldiers, _ = w.Mobilized(n)
+		ns.PayOwed, ns.Paid = n.PayBill()
+		for _, r := range n.Regions {
+			if f := r.University(); f != nil {
+				ns.ResearchDay += f.LastOutput
+			}
+		}
 		ns.BestDoctrine = bestDoctrine(n)
 		ns.Exports, ns.Imports = trade.NationOut[n.ID], trade.NationIn[n.ID]
 		pop := 0.0

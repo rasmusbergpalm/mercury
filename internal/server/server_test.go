@@ -158,11 +158,26 @@ func TestNationCommands(t *testing.T) {
 	var st State
 	e.do("POST", "/api/games/"+g.ID+"/step?n=150", tok, nil, 200, &st)
 
-	e.do("POST", base+"budget?economy=0.3&science=0.3&military=0.4", tok, nil, 200, &st)
-	if b := st.Nations[0].Budget; b[0] != 0.3 || b[1] != 0.3 || b[2] != 0.4 {
-		t.Errorf("budget %v", b)
+	e.do("POST", base+"auto?on=true", tok, nil, 200, &st)
+	if !st.Nations[0].AutoBuild {
+		t.Error("automated construction not on")
 	}
-	e.do("POST", base+"budget?economy=0.5&science=0.5&military=0.5", tok, nil, 400, nil)
+	// universities: fund fewer levels, build one, close one
+	home := 0 // tile 00 is Montara's
+	uni := "/api/games/" + g.ID + "/regions/0/university"
+	e.do("POST", uni+"?funded=1", tok, nil, 200, &st)
+	if u := st.Regions[home].University; u == nil || u.Funded != 1 || u.Levels != 2 {
+		t.Fatalf("university after funding 1: %+v", u)
+	}
+	e.do("POST", uni+"?funded=9", tok, nil, 400, nil)
+	e.do("POST", uni+"/close", tok, nil, 200, &st)
+	if u := st.Regions[home].University; u.Levels != 1 || u.Funded != 1 {
+		t.Errorf("university after closing a level: %+v", u)
+	}
+	e.do("POST", uni+"/expand", tok, nil, 200, &st)
+	if u := st.Regions[home].University; u.Building == nil {
+		t.Errorf("no university level being built: %+v", u)
+	}
 	e.do("POST", base+"tariff?rate=0.3", tok, nil, 200, &st)
 	e.do("POST", base+"tariff?rate=0.5&good=tea", tok, nil, 200, &st)
 	if st.Nations[0].Tariff[0] != 0.3 || st.Nations[0].Tariff[engine.G("tea")] != 0.5 {

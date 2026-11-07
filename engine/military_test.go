@@ -70,17 +70,19 @@ func TestRaiseArmyRecruitsFromTheNation(t *testing.T) {
 }
 
 func TestSupplyShortagesHurt(t *testing.T) {
-	run := func(military float64) float64 {
+	run := func(broke bool) float64 {
 		w := newQuietGame(t)
 		m := nationByName(w, "Montara")
-		m.SetBudget([NumBudgets]float64{0.4, 0.2, military})
 		a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, w.MobilizationCap(m))
 		for i := 0; i < 200; i++ {
+			if broke {
+				m.Treasury = 0 // nothing to pay with
+			}
 			w.Step()
 		}
 		return a.Effectiveness()
 	}
-	funded, unfunded := run(0.3), run(0)
+	funded, unfunded := run(false), run(true)
 	if unfunded >= funded || unfunded > 0.5*Doctrines[0].Power {
 		t.Errorf("effectiveness %v funded, %v unfunded", funded, unfunded)
 	}
@@ -280,7 +282,6 @@ func TestOccupationCostsMen(t *testing.T) {
 func TestSupplyStockBuffersShortages(t *testing.T) {
 	w := newQuietGame(t)
 	m := nationByName(w, "Montara")
-	m.SetBudget([NumBudgets]float64{0.4, 0.2, 0.3})
 	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, w.MobilizationCap(m))
 	for i := 0; i < 300; i++ {
 		w.Step()
@@ -289,8 +290,8 @@ func TestSupplyStockBuffersShortages(t *testing.T) {
 		t.Fatalf("only %v days of bread in stock", d)
 	}
 	before := a.Effectiveness()
-	m.SetBudget([NumBudgets]float64{0.4, 0.2, 0})
 	for i := 0; i < 10; i++ {
+		m.Treasury = 0 // nothing to pay with
 		w.Step()
 	}
 	if after := a.Effectiveness(); after < 0.95*before {

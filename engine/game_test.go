@@ -168,35 +168,43 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 	}
 }
 
-func TestScienceBudgetDrivesResearch(t *testing.T) {
-	points := func(science float64) float64 {
+// Research comes from the universities the state funds: none funded, none
+// made; more funded levels, more research, at more cost.
+func TestFundedUniversitiesDriveResearch(t *testing.T) {
+	run := func(levels int) (points, spent float64) {
 		w := newTestGame(t)
-		if err := w.Nations[0].SetBudget([NumBudgets]float64{0.4, science, 0.2}); err != nil {
-			t.Fatal(err)
+		n := w.Nations[0]
+		for _, r := range n.Regions {
+			f := r.University()
+			f.Levels = levels
+			if err := w.SetFunding(r.ID, levels); err != nil {
+				t.Fatal(err)
+			}
 		}
 		for i := 0; i < 300; i++ {
 			w.Step()
+			spent += n.SpentOn[Science]
 		}
-		n := w.Nations[0] // all research done: what's banked plus what was spent on techs
-		total := n.ResearchPoints
-		for i, k := range n.Known {
+		points = n.ResearchPoints
+		for i, k := range n.Known { // plus what was spent on techs
 			if k {
-				total += Techs[i].Cost
+				points += n.TechCost(i, w.Nations)
 			}
 		}
-		return total
+		return
 	}
-	if p := points(0); p != 0 {
-		t.Errorf("unfunded research made %v points", p)
+	if p, c := run(0); p != 0 || c > 1e-9 {
+		t.Errorf("unfunded universities made %v points and cost %v", p, c)
 	}
-	if lo, hi := points(0.1), points(0.4); hi <= lo {
-		t.Errorf("a bigger science budget should mean more research: %v vs %v", lo, hi)
+	lo, loCost := run(1)
+	hi, hiCost := run(3)
+	if hi <= lo || hiCost <= loCost {
+		t.Errorf("more funded levels should mean more research at more cost: %v (%v) vs %v (%v)", lo, loCost, hi, hiCost)
 	}
-	n := newTestGame(t).Nations[0]
-	for _, b := range [][NumBudgets]float64{{-0.1, 0.2, 0.2}, {0.5, 0.4, 0.3}} {
-		if err := n.SetBudget(b); !errors.Is(err, ErrBadBudget) {
-			t.Errorf("budget %v: %v", b, err)
-		}
+	w := newTestGame(t)
+	r := w.Nations[0].Regions[0]
+	if err := w.SetFunding(r.ID, r.University().Levels+1); !errors.Is(err, ErrBadFunding) {
+		t.Errorf("funding beyond the levels: %v", err)
 	}
 }
 

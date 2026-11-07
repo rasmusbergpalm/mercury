@@ -64,10 +64,10 @@ func New(static fs.FS, dataDir string) *Server {
 	for _, cmd := range []string{"move", "target", "upgrade", "disband"} {
 		m.HandleFunc("POST /api/games/{gid}/armies/{aid}/"+cmd, s.game(s.armyCommand(cmd)))
 	}
-	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "queue", "budget", "drill", "war", "peace", "armies"} {
+	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "queue", "auto", "drill", "war", "peace", "armies"} {
 		m.HandleFunc("POST /api/games/{gid}/nations/{nid}/"+cmd, s.game(s.nationCommand(cmd)))
 	}
-	for _, cmd := range []string{"build", "cancel", "port"} {
+	for _, cmd := range []string{"build", "cancel", "port", "university", "university/expand", "university/close"} {
 		m.HandleFunc("POST /api/games/{gid}/regions/{id}/"+cmd, s.game(s.regionCommand(cmd)))
 	}
 	m.HandleFunc("POST /api/games/{gid}/regions/{id}/firms/{firm}/expand", s.game(s.regionCommand("expand")))
@@ -171,6 +171,8 @@ func statusOf(err error) int {
 		return he.status
 	case errors.Is(err, ErrNotPlayer), errors.Is(err, ErrNotInGame):
 		return http.StatusForbidden
+	case errors.Is(err, engine.ErrBadFunding):
+		return http.StatusBadRequest
 	}
 	return http.StatusConflict
 }
@@ -481,24 +483,8 @@ func (s *Server) nationCommand(cmd string) gameHandler {
 			if err := n.SetResearch(tech); err != nil {
 				return err
 			}
-		case "budget":
-			var b [engine.NumBudgets]float64
-			for i, name := range engine.BudgetNames {
-				if b[i], err = queryFloat(r, name); err != nil {
-					return err
-				}
-			}
-			if err := n.SetBudget(b); err != nil {
-				return fail(http.StatusBadRequest, err)
-			}
-		case "drill":
-			level, err := queryFloat(r, "level")
-			if err != nil {
-				return err
-			}
-			if err := n.SetDrill(level); err != nil {
-				return fail(http.StatusBadRequest, err)
-			}
+		case "auto": // automate construction
+			n.AutoBuild = q.Get("on") != "false"
 		case "queue":
 			var q []int
 			if v := q0(r, "techs"); v != "" {
@@ -671,6 +657,16 @@ func (s *Server) regionCommand(cmd string) gameHandler {
 			err = g.w.CancelBuild(id)
 		case "port":
 			err = g.w.BuildPort(id)
+		case "university": // fund this many levels
+			var k int
+			if k, err = strconv.Atoi(r.URL.Query().Get("funded")); err != nil {
+				return badRequest("funded must be a number of levels")
+			}
+			err = g.w.SetFunding(id, k)
+		case "university/expand":
+			err = g.w.ExpandUniversity(id)
+		case "university/close":
+			err = g.w.CloseUniversityLevel(id)
 		case "expand":
 			var firm int
 			if firm, err = pathIndex(r, "firm", len(g.w.Regions[id].Firms)); err == nil {

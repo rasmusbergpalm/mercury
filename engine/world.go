@@ -111,6 +111,9 @@ func (w *World) Step() {
 	for _, r := range w.Regions {
 		r.Produce()
 		for _, f := range r.Firms {
+			if f.State {
+				continue
+			}
 			// keep cash for what the firm wants to spend, but no more than it
 			// can grow into: twice what it actually spent today
 			r.PayDividends(&f.Cash, f.CashBuffer, math.Min(f.DesiredSpend, 2*f.tickCost+f.CashBuffer), r.owners())

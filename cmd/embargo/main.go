@@ -40,7 +40,7 @@ func main() {
 			fmt.Println()
 		}
 		for _, n := range w.Nations {
-			fmt.Printf("  %-9s budget %.2f income %.0f treasury %.0f tiles %d\n", n.Name, n.Budget, n.IncomeEMA, n.Treasury, len(n.Regions))
+			fmt.Printf("  %-9s spent %.0f income %.0f treasury %.0f tiles %d\n", n.Name, n.SpentOn, n.IncomeEMA, n.Treasury, len(n.Regions))
 		}
 	}
 }

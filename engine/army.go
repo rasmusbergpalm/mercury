@@ -73,6 +73,7 @@ type Army struct {
 	need     []float64 // what it uses today
 	order    []float64 // what it buys today: today's use plus refilling its stock
 	source   []*Region // where it buys each good today
+	spent    []float64 // what its supplies cost today, per good (transport under Transport)
 	tau      []float64
 	got      []float64
 	transit  float64 // transport needed this tick
@@ -525,9 +526,10 @@ func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 			a.need, a.order = make([]float64, NumGoods), make([]float64, NumGoods)
 			a.tau, a.got = make([]float64, NumGoods), make([]float64, NumGoods)
 			a.source = make([]*Region, NumGoods)
+			a.spent = make([]float64, NumGoods)
 		}
 		for g := range a.need {
-			a.need[g], a.order[g], a.tau[g], a.got[g], a.source[g] = 0, 0, 0, 0, nil
+			a.need[g], a.order[g], a.tau[g], a.got[g], a.source[g], a.spent[g] = 0, 0, 0, 0, nil, 0
 		}
 		for g, per := range Doctrines[a.Doctrine].Needs {
 			a.need[g] = a.Men * per * drill
@@ -621,6 +623,70 @@ func (a *Army) settleSupply() {
 	}
 }
 
+// Soldiers are paid: each draws soldierPay times the nation's average wage
+// a day from the treasury, which goes to the people (their families and the
+// shops they buy from). Unpaid soldiers desert: losses grow by unpaidDesertion
+// times the share of pay that went unpaid.
+const (
+	soldierPay      = 1.0
+	unpaidDesertion = 4.0
+)
+
+// unpaidMult is how much faster soldiers desert when their pay falls short.
+func (n *Nation) unpaidMult() float64 { return 1 + unpaidDesertion*(1-n.payScale) }
+
+// averageWage is the nation's wage, weighted by its workers.
+func (n *Nation) averageWage() float64 {
+	sum, workers := 0.0, 0.0
+	for _, r := range n.Regions {
+		k := sizeOf(r.ClassPops(Workers))
+		sum += r.Wage * k
+		workers += k
+	}
+	if workers <= 0 {
+		return 0
+	}
+	return sum / workers
+}
+
+// soldiersPay is what the nation's soldiers are owed today.
+func (w *World) soldiersPay(n *Nation) float64 {
+	men, _ := w.Mobilized(n)
+	return men * soldierPay * n.averageWage()
+}
+
+// paySoldiers pays (what the treasury could cover of) the soldiers' pay to
+// the nation's people.
+func (w *World) paySoldiers(n *Nation) {
+	pay := n.payBill * n.payScale
+	people := n.population()
+	if pay <= 0 || people <= 0 {
+		return
+	}
+	n.Treasury -= pay
+	n.SpentOn[Defense] += pay
+	for _, r := range n.Regions {
+		for _, p := range r.Pops {
+			r.payIncome(p, pay*p.Size/people)
+		}
+	}
+}
+
+// Costs is what the army cost its nation today: each supply good (transport
+// under Transport) and the soldiers' pay.
+func (a *Army) Costs() (goods map[GoodID]float64, pay float64) {
+	goods = map[GoodID]float64{}
+	for g, x := range a.spent {
+		if x > 0 {
+			goods[GoodID(g)] = x
+		}
+	}
+	return goods, a.Men * soldierPay * a.Nation.averageWage() * a.Nation.payScale
+}
+
+// PayBill is what the nation's soldiers were owed today, and the share paid.
+func (n *Nation) PayBill() (owed, paid float64) { return n.payBill, n.payScale }
+
 // lose takes a share of the army's men, and kit times that share of its
 // stock (at most all of it).
 func (a *Army) lose(share, kit float64) {
@@ -649,7 +715,7 @@ func (w *World) armies() {
 		w.demobilize(a)
 		a.arrivals(w.Tick)
 		hunger := 1 - a.Supply[G("bread")]
-		loss := a.Men * (baseAttrition + hungerAttrition*hunger) * a.Nation.desertionMult()
+		loss := a.Men * (baseAttrition + hungerAttrition*hunger) * a.Nation.desertionMult() * a.Nation.unpaidMult()
 		a.lose(loss/math.Max(a.Men, 1e-12), 1)
 		w.march(a)
 	}
@@ -1026,6 +1092,9 @@ func (w *World) Breakdown(a *Army) (attack []Modifier, defense []Modifier, attri
 			attrition = append(attrition, Modifier{t.Name, t.Desertion, "multiplies the losses above", false})
 		}
 	}
+	if m := a.Nation.unpaidMult(); m > 1.0001 {
+		attrition = append(attrition, Modifier{"Unpaid", m, fmt.Sprintf("only %.0f%% of pay could be paid", 100*a.Nation.payScale), false})
+	}
 	if s := w.sieging(a); s > 0 {
 		attrition = append(attrition, Modifier{"Occupying", 1 - math.Exp(-s), "a full occupation costs about 40% of the army (15% on free land)", true})
 	}
@@ -1045,7 +1114,7 @@ func (w *World) sieging(a *Army) float64 {
 // DailyLoss is the share of its men the army loses today outside battle.
 func (w *World) DailyLoss(a *Army) float64 {
 	hunger := 1 - a.Supply[G("bread")]
-	base := (baseAttrition + hungerAttrition*hunger) * a.Nation.desertionMult()
+	base := (baseAttrition + hungerAttrition*hunger) * a.Nation.desertionMult() * a.Nation.unpaidMult()
 	return 1 - (1-base)*math.Exp(-w.sieging(a))
 }
 

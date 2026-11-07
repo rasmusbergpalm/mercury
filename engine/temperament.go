@@ -10,10 +10,10 @@ import (
 // all pursue the same strategy. Each nation draws one from the game's seed
 // when the game is built; every trait is a multiplier around 1.
 type Temperament struct {
-	Militarism float64 // military spending and men kept under arms
-	Learning   float64 // science spending
+	Militarism float64 // men kept under arms and peacetime drill
+	Learning   float64 // how much it invests in universities
 	Aggression float64 // how readily it starts wars and seeks battle
-	Expansion  float64 // how hard it pushes into free land
+	Expansion  float64 // how many men it fields to take free land
 }
 
 func drawTemperament(seed int64, nation int) Temperament {
@@ -46,27 +46,6 @@ func (t Temperament) Describe() string {
 		return "even-tempered"
 	}
 	return strings.Join(w, ", ")
-}
-
-// budget leans a base budget towards the nation's temperament (and a little
-// noise), keeping the total share spent.
-func (t Temperament) budget(base [NumBudgets]float64, noise func(k int) float64) [NumBudgets]float64 {
-	total := 0.0
-	for _, x := range base {
-		total += x
-	}
-	b := base
-	b[Science] *= t.Learning
-	b[Defense] *= t.Militarism
-	sum := 0.0
-	for i := range b {
-		b[i] *= 1 + 0.1*noise(10+i)
-		sum += b[i]
-	}
-	for i := range b {
-		b[i] *= total / sum
-	}
-	return b
 }
 
 // noise is a deterministic pseudo-random number in [-1, 1] for a nation's

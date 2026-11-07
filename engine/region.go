@@ -119,7 +119,7 @@ func (r *Region) planInvestment() {
 		payback *= r.Nation.paybackMult()
 	}
 	for _, f := range r.Firms {
-		if f.Expansion == nil && f.Enabled && f.Levels < f.MaxLevels && f.Age > investMinAge {
+		if f.Expansion == nil && !f.State && f.Enabled && f.Levels < f.MaxLevels && f.Age > investMinAge {
 			perLevel := f.ProfitEMA / float64(f.Levels)
 			if perLevel > 0 && perLevel*payback > LevelCost*price {
 				f.Expansion = &Expansion{}
@@ -146,6 +146,12 @@ func (r *Region) settleFirms() {
 		if e := f.Expansion; e != nil && e.Delivered >= LevelCost-1e-9 {
 			f.Levels++
 			f.Expansion = nil
+			if f.State {
+				f.Funded++ // a new university level is funded once built
+			}
+		}
+		if f.State {
+			continue // the state decides about its universities
 		}
 		if f.ProfitEMA < 0 && f.Levels > 1 {
 			f.LossTicks++
@@ -335,6 +341,9 @@ func (r *Region) GoodsMarkets() {
 // Produce decays unsold stock, then lets every firm produce.
 func (r *Region) Produce() {
 	for _, f := range r.Firms {
+		if f.State {
+			continue // universities produce for their nation (settleUniversities)
+		}
 		f.Inventory *= 1 - Goods[f.Output].Spoilage
 		f.Produce()
 	}

@@ -90,8 +90,8 @@ func TestAIArmsWhenThreatened(t *testing.T) {
 	big, _ := w.RaiseArmy(b.ID, regionByName(w, "01").ID, 0)
 	big.Men = 1000
 	w.think(a)
-	if a.Drill != MaxDrill || a.Budget[Defense] < 0.4 { // a war footing, leaned by temperament
-		t.Errorf("AI facing a much bigger neighbour kept budget %v, drill %v", a.Budget, a.Drill)
+	if a.Drill != MaxDrill { // a war footing
+		t.Errorf("AI facing a much bigger neighbour kept drill %v", a.Drill)
 	}
 	if len(w.ArmiesOf(a)) == 0 {
 		t.Error("AI raised no army")
@@ -107,11 +107,11 @@ func TestPlayersNationsAreLeftAlone(t *testing.T) {
 	w := newAIGame(t)
 	human := w.Nations[1]
 	human.AI = false
-	budget := human.Budget
+	drill := human.Drill
 	for i := 0; i < 400; i++ {
 		w.Step()
 	}
-	if human.Budget != budget || len(w.ArmiesOf(human)) != 0 {
+	if human.Drill != drill || len(w.ArmiesOf(human)) != 0 {
 		t.Error("the AI acted for a player's nation")
 	}
 	for _, r := range human.Regions {

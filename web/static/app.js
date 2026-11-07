@@ -312,7 +312,7 @@ $("save").onclick = async () => {
 };
 
 // ---- tabs ----------------------------------------------------------------------
-const TABS = ["tile", "nation", "trade", "armies", "world", "news"];
+const TABS = ["tile", "nation", "research", "trade", "armies", "world", "news"];
 function setTab(t) {
   tab = t;
   for (const b of document.querySelectorAll(".tabs button")) b.classList.toggle("active", b.dataset.tab === t);
@@ -348,7 +348,7 @@ function renderPanel(force) {
   const el = $(`tab-${tab}`);
   if (!force && busy(el)) return;
   if (chartHover && el.contains(chartHover)) return; // never pull a chart from under the pointer
-  const panels = { tile: tilePanel, nation: nationPanel, trade: tradePanel, armies: armiesPanel, world: worldPanel, news: newsPanel };
+  const panels = { tile: tilePanel, nation: nationPanel, research: researchPanel, trade: tradePanel, armies: armiesPanel, world: worldPanel, news: newsPanel };
   const scroll = el.scrollTop;
   charts.clear();
   el.innerHTML = panels[tab]();
@@ -1194,8 +1194,7 @@ function nationPanel() {
   </div>`;
   html += `<h3>The national ledger</h3>` + nationChart(h, n);
   html += societyBlock(n);
-  if (mine) html += budgetBlock(n) + researchBlock(n);
-  else html += `<h3>Research</h3><p class="sub">Researching ${n.researching >= 0 ? `${world.techs[n.researching].name} (${pct(Math.min(1, n.research_points / n.tech_costs[n.researching]))})` : "nothing"}.</p>`;
+  html += accountsBlock(n, mine);
   return html;
 }
 
@@ -1222,18 +1221,52 @@ function societyBlock(n) {
     <div class="legend-inline">${sc.map(([s, v, col]) => `<span><span class="swatch" style="background:${col}"></span>${s} ${pct(v)}</span>`).join("")}</div>`;
 }
 
-function budgetBlock(n) {
-  const kept = Math.max(0, 1 - n.budget.reduce((a, b) => a + b, 0));
-  const sliders = world.budgets.map((name, i) =>
-    `<label>${cap(name)}<input type="range" min="0" max="100" step="5" value="${Math.round(100 * n.budget[i])}" data-budget="${i}" aria-label="${name} budget"><span class="pct" id="pct-${i}">${pct(n.budget[i])}</span></label>`).join("");
-  return `<h3>The budget</h3>
-    <div class="budget">${sliders}</div>
-    <div class="row"><span class="sub" id="kept">${pct(kept)} kept in the treasury</span><button class="primary" id="apply-budget">Apply</button></div>
-    <p class="sub">Economy pays for roads, upkeep and firm expansions; science buys research; military buys your armies' food, clothing and equipment.</p>
-    <div class="row"><label>Tax <input id="tax" type="number" min="0" max="90" step="1" value="${Math.round(100 * n.tax_rate)}" class="num">%</label><button data-input="tax">Set</button></div>
-    <table style="margin-top:8px"><tr><td>Tax</td><td>£${fmt(n.revenue, 1)}</td></tr><tr><td>Tariffs</td><td>£${fmt(n.tariff_revenue, 1)}</td></tr>
-    <tr><td>Spent</td><td>−£${fmt(n.spending, 1)}</td></tr><tr><td>Returned to the people</td><td>−£${fmt(n.rebate, 1)}</td></tr>
-    <tr class="total"><td>Treasury</td><td>£${fmt(n.treasury, 0)}</td></tr></table>`;
+// the state's accounts today: what came in, what it paid for, and the treasury
+function accountsBlock(n, mine) {
+  const spent = n.spent_on.reduce((a, b) => a + b, 0);
+  const row = (label, v, note = "") => `<tr><td>${label}${note ? `<br><span class="sub">${note}</span>` : ""}</td><td>${v < 0 ? "−" : ""}£${fmt(Math.abs(v), 1)}</td></tr>`;
+  const names = { economy: "Roads, upkeep and construction", science: "Universities' staff", military: "Armies: supplies and soldiers' pay" };
+  let html = `<h3>The state's accounts, today</h3>
+    <table>${row("Income tax", n.revenue)}${row("Tariffs", n.tariff_revenue)}
+    ${world.spending.map((k, i) => row(names[k] || cap(k), -n.spent_on[i], k === "military" && n.pay_owed > 0 ? `of which pay £${fmt(n.pay_owed * n.paid, 1)}` : "")).join("")}
+    ${row("Returned to the people", -n.rebate, "a tenth a day of the treasury above its reserve")}
+    <tr class="total"><td>Treasury</td><td>£${fmt(n.treasury, 0)}</td></tr></table>
+    <p class="sub" style="margin-top:6px">The state pays for everything it needs; when the treasury can't cover a day's bills, everything is cut alike${n.paid < 0.999 ? ` — <span class="bad">today only ${pct(n.paid)} could be paid</span>` : ""}.</p>`;
+  if (mine) {
+    html += `<div class="row"><label>Tax <input id="tax" type="number" min="0" max="90" step="1" value="${Math.round(100 * n.tax_rate)}" class="num">%</label><button data-input="tax">Set</button></div>
+      <h3>Construction</h3>
+      <label class="check"><input type="checkbox" id="auto-build" ${n.auto_build ? "checked" : ""}> Automate construction</label>
+      <p class="sub">Each month the state builds roads, railways and ports where traffic is heaviest, and expands the most profitable firms. Universities stay yours to run (Research tab).</p>`;
+  }
+  return html;
+}
+
+// ---- research panel ------------------------------------------------------------
+function researchPanel() {
+  const n = state.nations[viewNation], mine = n.id === state.you;
+  const tiles = world.regions.filter((r) => state.regions[r.id].nation === n.id && state.regions[r.id].university);
+  let lv = 0, fu = 0, staff = 0, made = 0, cost = 0;
+  const rows = tiles.map((r) => {
+    const u = state.regions[r.id].university;
+    lv += u.levels; fu += u.funded; staff += u.staff; made += u.research; cost += u.funded * u.cost;
+    const btn = (label, path, title, off) => mine ? `<button data-cmd="/regions/${r.id}/${path}" title="${title}" ${off ? "disabled" : ""}>${label}</button>` : "";
+    const building = u.building !== null ? `<br><span class="sub">building ${pct(u.building)}</span>` : "";
+    return `<tr><td>${esc(r.name)}${state.regions[r.id].city ? " · city" : ""}</td>
+      <td>${btn("−", "university/close", "Close a level", u.levels <= 0)} ${u.levels} ${btn("+", "university/expand", `Build a level (${world.level_cost} construction)`, u.building !== null || u.levels >= u.max_levels)}${building}</td>
+      <td>${btn("−", `university?funded=${u.funded - 1}`, "Fund one level fewer", u.funded <= 0)} ${u.funded} ${btn("+", `university?funded=${u.funded + 1}`, "Fund one more level", u.funded >= u.levels)}</td>
+      <td>${fmt(u.per_level)}</td><td>£${fmt(u.cost)}</td><td>${fmt(u.research)}</td><td>£${fmt(u.funded * u.cost)}</td></tr>`;
+  }).join("");
+  const days = n.researching >= 0 && made > 0 ? Math.max(0, (n.tech_costs[n.researching] - n.research_points) / made) : null;
+  let html = nationPicker() + `<h2>Research</h2>
+    <div class="stats">${stat(fmt(made, 1), "research / day")}${stat("£" + fmt(cost, 0), "staff wages / day")}${stat(days === null ? "–" : `${short(days / 365 * 12)} mo`, "to the next tech")}</div>
+    <h3>Universities</h3>
+    <div class="table-scroll"><table class="unis"><tr><th>tile</th><th>levels</th><th>funded</th><th>per level</th><th>wages per level</th><th>research</th><th>cost</th></tr>${rows}
+    <tr class="total"><td>Total</td><td>${lv}</td><td>${fu}</td><td></td><td></td><td>${fmt(made, 1)}</td><td>£${fmt(cost, 1)}</td></tr></table></div>
+    <p class="sub">Universities are the state's. Each funded level employs ${world.uni_staff ?? 2} scholars at the tile's wage, paid from the treasury; what they find is the nation's research.
+    A level yields more in a big city (its size bonus) and with better science. Building a level costs ${world.level_cost} construction; unfunded levels stand idle and cost nothing.</p>`;
+  if (mine) html += researchBlock(n);
+  else html += `<h3>Researching</h3><p class="sub">${n.researching >= 0 ? `${world.techs[n.researching].name} (${pct(Math.min(1, n.research_points / n.tech_costs[n.researching]))})` : "nothing"}.</p>`;
+  return html;
 }
 
 function researchBlock(n) {
@@ -1267,22 +1300,6 @@ function researchBlock(n) {
     <div class="row">${queue}</div>
     <div class="table-scroll"><table>${branches}</table></div>`;
 }
-
-// keep the three budget shares within 100% while dragging
-$("tab-nation").addEventListener("input", (ev) => {
-  if (ev.target.dataset.budget === undefined) return;
-  const ranges = [...document.querySelectorAll("[data-budget]")];
-  let over = ranges.reduce((a, r) => a + +r.value, 0) - 100;
-  for (const r of ranges) {
-    if (over <= 0) break;
-    if (r === ev.target) continue;
-    const cut = Math.min(+r.value, over);
-    r.value = +r.value - cut;
-    over -= cut;
-  }
-  ranges.forEach((r, i) => { $(`pct-${i}`).textContent = `${r.value}%`; });
-  $("kept").textContent = `${100 - ranges.reduce((a, r) => a + +r.value, 0)}% kept in the treasury`;
-});
 
 // ---- trade panel ---------------------------------------------------------------
 function tradePanel() {
@@ -1344,7 +1361,13 @@ function armiesPanel() {
   let html = "";
   if (n) {
     html += `<h2>Your armies</h2>
+      ${(() => {
+        let goods = 0, transport = 0, pay = 0;
+        for (const a of mine) { for (const [g, v] of Object.entries(a.cost || {})) g === "transport" ? (transport += v) : (goods += v); pay += a.pay; }
+        return `<div class="stats">${stat("£" + fmt(goods, 0), "supplies / day")}${stat("£" + fmt(transport, 0), "transport / day")}${stat("£" + fmt(pay, 0), "pay / day")}</div>`;
+      })()}
       <p class="sub">${short(n.soldiers)} soldiers of ${short(n.mobilize_cap)} allowed (${pct(n.mobilization)} of your people), up to ${short(n.max_army_size)} per army.
+      Armies cost £${fmt(n.spent_on[world.spending.indexOf("military")], 0)} today of £${fmt(n.income, 0)} income.
       Best doctrine: ${world.doctrines[n.best_doctrine].name}. Raise armies from a tile of yours.</p>
       <div class="budget"><label>Peacetime drill<input type="range" min="20" max="80" step="5" value="${Math.round(100 * n.drill)}" id="drill" aria-label="Peacetime drill"><span class="pct" id="drill-pct">${pct(n.drill)}</span></label></div>
       <p class="sub">In peace your armies use this share of their wartime supplies: minimal drills cost little, realistic ones keep the arms industries busy so they can supply a war. At war they use everything. ${n.at_war.some(Boolean) ? "<b>You are at war now.</b>" : ""}</p>`;
@@ -1384,6 +1407,15 @@ function armyCard(a, mine) {
   const attr = (a.attrition || []).map((m) => `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td>
     <td>${m.add ? `${(100 * m.value).toFixed(2)}%` : mult(m.value)}</td></tr>`).join("");
   const depot = a.depot >= 0 ? `Each good is bought where it lands cheapest among your tiles that make enough of it, and shipped here (${fmt(a.transport, 1)} transport today)` : `<span class="bad">Cut off: no tile of yours can reach it</span>`;
+  // what the army costs a day: each good, the transport to bring it, and pay
+  const goods = Object.entries(a.cost || {}).filter(([g]) => g !== "transport");
+  const goodsTotal = goods.reduce((t, [, v]) => t + v, 0), transport = (a.cost || {}).transport || 0;
+  html += `<h3>Cost a day</h3><table class="mods">
+    ${goods.map(([g, v]) => `<tr><td>${esc(g)}</td><td>£${fmt(v, 2)}</td></tr>`).join("")}
+    <tr><td>Transport<br><span class="sub">carrying the goods to the army</span></td><td>£${fmt(transport, 2)}</td></tr>
+    <tr><td>Soldiers' pay<br><span class="sub">${short(a.men)} men at the nation's average wage</span></td><td>£${fmt(a.pay, 2)}</td></tr>
+    <tr class="total"><td>Total</td><td>£${fmt(goodsTotal + transport + a.pay, 2)}</td></tr></table>
+    <p class="sub" style="margin-top:4px">Goods include restocking towards 30 days of wartime needs, so a depleted army costs more while it refills.</p>`;
   html += `<h3>Supplies</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">${depot}. The army keeps up to 30 days of wartime needs in stock and fights from its stock; in peace it uses only the drill share.</p>
     <h3>Strength in battle</h3>
     <table class="mods"><tr><th>factor</th><th>effect</th></tr>${att}
@@ -1524,10 +1556,7 @@ side.addEventListener("click", (ev) => {
     const q = [...me().queue]; q.splice(+b.dataset.unqueue, 1);
     command(`/nations/${state.you}/queue?techs=${q.join(",")}`);
   }
-  if (b.id === "apply-budget") {
-    const q = world.budgets.map((name, i) => `${name}=${+document.querySelector(`[data-budget="${i}"]`).value / 100}`).join("&");
-    command(`/nations/${state.you}/budget?${q}`);
-  }
+
   if (b.dataset.input === "tax") command(`/nations/${state.you}/tax?rate=${(+$("tax").value / 100).toFixed(3)}`);
   if (b.dataset.input === "tariff") command(`/nations/${state.you}/tariff?rate=${(+$("tariff").value / 100).toFixed(3)}`);
 });
@@ -1536,6 +1565,7 @@ side.addEventListener("input", (ev) => {
 });
 side.addEventListener("change", (ev) => {
   if (ev.target.id === "drill") command(`/nations/${state.you}/drill?level=${+ev.target.value / 100}`);
+  if (ev.target.id === "auto-build") command(`/nations/${state.you}/auto?on=${ev.target.checked}`);
   const t = ev.target.dataset.embargo;
   if (t !== undefined) command(`/nations/${state.you}/embargo?target=${t}&on=${ev.target.checked}`);
   if (ev.target.id === "autopause") setPref("autopause", ev.target.checked);

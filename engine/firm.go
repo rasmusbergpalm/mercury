@@ -65,6 +65,10 @@ type Firm struct {
 	Inventory  float64   // stock of own output, for sale
 	Inputs     []float64 // goods bought this tick, indexed by good
 	Labor      float64   // labor employed this tick
+	// State firms (universities) are run by the tile's nation: it funds
+	// Funded of their levels and takes their output; see university.go.
+	State      bool
+	Funded     int
 	LastOutput float64
 	// DesiredSpend is the unconstrained cost of the optimal plan.
 	DesiredSpend float64
@@ -132,7 +136,7 @@ func (f *Firm) unitCost(fc Factor, prices []float64, wage float64) float64 {
 //
 // Composite factors are then split into their cheapest goods mix.
 func (f *Firm) Plan(prices []float64, wage float64) {
-	if !f.Enabled {
+	if !f.Enabled || f.State { // the state staffs its universities itself
 		f.PlanLabor, f.DesiredSpend = 0, 0
 		for i := range f.PlanQty {
 			f.PlanQty[i], f.PlanHas[i] = 0, false

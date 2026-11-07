@@ -6,13 +6,6 @@ import "math"
 // simulation: deterministic, so saved games and replays continue exactly.
 const aiInterval = 30
 
-// AI budgets: (economy, science, military).
-var (
-	aiPeaceBudget  = [NumBudgets]float64{0.45, 0.3, 0.15}
-	aiExpandBudget = [NumBudgets]float64{0.4, 0.25, 0.25}
-	aiWarBudget    = [NumBudgets]float64{0.25, 0.15, 0.55}
-)
-
 // AI war policy.
 const (
 	aiGraceYears    = 15  // no wars of choice before this
@@ -28,8 +21,13 @@ func (w *World) runAI() {
 		return
 	}
 	for _, n := range w.Nations {
-		if n.AI && !n.Eliminated() {
+		switch {
+		case n.Eliminated():
+		case n.AI:
 			w.think(n)
+		case n.AutoBuild: // a player who leaves construction to the computer
+			w.aiBuild(n)
+			w.aiExpandFirm(n)
 		}
 	}
 }
@@ -68,23 +66,17 @@ func (w *World) think(n *Nation) {
 	}
 	targets := w.expansionTargets(n)
 	war := w.atWar(n)
-	t, noise := n.Temper, func(k int) float64 { return w.noise(n, k) }
+	t := n.Temper
 	switch {
 	case war || invaded || threat > 1.3*own+1:
-		n.SetBudget(t.budget(aiWarBudget, noise))
 		n.SetDrill(MaxDrill) // keep the arms works busy for what's coming
-	case len(targets) > 0:
-		b := aiExpandBudget
-		b[Defense] *= t.Expansion // land-hungry nations field more men to take it
-		n.SetBudget(t.budget(b, noise))
-		n.SetDrill(DefaultDrill)
 	default:
-		n.SetBudget(t.budget(aiPeaceBudget, noise))
 		n.SetDrill(math.Min(MaxDrill, math.Max(MinDrill, DefaultDrill*t.Militarism)))
 	}
 	w.aiDiplomacy(n, own)
 	w.aiBuild(n)
 	w.aiExpandFirm(n)
+	w.aiUniversities(n, war || invaded)
 	w.aiArmies(n, targets)
 }
 
@@ -146,7 +138,11 @@ func (w *World) aiDiplomacy(n *Nation, own float64) {
 // invaded tiles, attack the enemy's weakest border tile, or occupy free land.
 func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 	war := w.atWar(n)
-	share := clamp01(aiPeaceMobilize * n.Temper.Militarism)
+	share := aiPeaceMobilize * n.Temper.Militarism
+	if len(targets) > 0 {
+		share *= n.Temper.Expansion // land-hungry nations field more men to take it
+	}
+	share = clamp01(share)
 	if war {
 		share = 1
 	}
@@ -354,12 +350,50 @@ func (w *World) aiBuild(n *Nation) {
 	}
 }
 
+// aiUniversities funds every university level while the treasury holds
+// (cutting to half when it runs low or the nation is at war) and builds new
+// levels, in its biggest tiles, while science costs less than its learning
+// says it should: aiScience of income, times its Learning.
+const aiScience = 0.12
+
+func (w *World) aiUniversities(n *Nation, war bool) {
+	low := n.payScale < 0.999 // it couldn't pay all its bills
+	for _, r := range n.Regions {
+		if f := r.University(); f != nil {
+			funded := f.Levels
+			if low || war {
+				funded = (f.Levels + 1) / 2
+			}
+			w.SetFunding(r.ID, funded)
+		}
+	}
+	if war || low || n.universityBill() > aiScience*n.Temper.Learning*n.IncomeEMA {
+		return
+	}
+	var best *Region
+	for _, r := range n.Regions {
+		f := r.University()
+		if f == nil || !f.Enabled || f.Levels >= f.MaxLevels {
+			continue
+		}
+		if f.Expansion != nil {
+			return // one at a time
+		}
+		if best == nil || r.Population() > best.Population() {
+			best = r
+		}
+	}
+	if best != nil {
+		w.ExpandUniversity(best.ID)
+	}
+}
+
 // aiExpandFirm keeps one state-funded firm expansion going, on the firm with
 // the best profit per building level.
 func (w *World) aiExpandFirm(n *Nation) {
 	for _, r := range n.Regions {
 		for _, f := range r.Firms {
-			if f.Expansion != nil && f.Expansion.Public {
+			if f.Expansion != nil && f.Expansion.Public && !f.State {
 				return
 			}
 		}
@@ -368,7 +402,7 @@ func (w *World) aiExpandFirm(n *Nation) {
 	best := 0.0
 	for _, r := range n.Regions {
 		for i, f := range r.Firms {
-			if f.Expansion != nil || !f.Enabled || f.Levels >= f.MaxLevels {
+			if f.Expansion != nil || f.State || !f.Enabled || f.Levels >= f.MaxLevels {
 				continue
 			}
 			if p := f.ProfitEMA / float64(f.Levels); p > best {

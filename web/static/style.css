@@ -194,7 +194,7 @@ tr.branch th { text-align: left; text-transform: capitalize; color: var(--text);
   .game { grid-template-columns: 1fr; padding: 8px; gap: 8px; }
   .side { max-height: none; overflow: visible; }
   .tabs { position: sticky; top: 0; z-index: 2; padding: 6px 4px 0; }
-  .tabs button { font-size: 14px; padding: 2px 1px; }
+  .tabs button { font-size: clamp(11px, 3.3vw, 14px); padding: 2px 0; letter-spacing: 0; }
   .tab { padding: 12px 10px 16px; }
   .stats.four { grid-template-columns: repeat(2, 1fr); }
   .you { padding: 6px 10px; font-size: 14px; }
@@ -218,3 +218,7 @@ tr.branch th { text-align: left; text-transform: capitalize; color: var(--text);
 .tech-choice button { grid-row: 1 / span 2; grid-column: 2; }
 .tech-choice.now { background: var(--paper); margin: 0 -8px; padding: 8px; border-radius: 4px; }
 @media (max-width: 860px) { .dialog { padding: 8px; align-items: flex-end; } .dialog-card header h2 { font-size: 22px; } }
+
+.unis td { white-space: nowrap; }
+.unis td:first-child { white-space: normal; }
+.unis button { min-height: 26px; padding: 0 7px; }

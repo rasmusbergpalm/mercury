@@ -92,9 +92,9 @@ type Nation struct {
 	// (infrastructure, upkeep, firm expansions), science and the military
 	// (supplies and pay).
 	SpentOn   [NumSpending]float64
-	AutoBuild bool // the computer builds roads and expands firms for it
-	payBill   float64 // soldiers' pay due today
-	payScale  float64 // share of today's bills the treasury could cover
+	AutoBuild bool        // the computer builds roads and expands firms for it
+	payBill   float64     // soldiers' pay due today
+	payScale  float64     // share of today's bills the treasury could cover
 	Drill     float64     // share of wartime supplies armies use in peace
 	Temper    Temperament // how the computer plays it
 	IncomeEMA float64     // moving average of tax and tariff income per tick
@@ -132,8 +132,6 @@ var SpendingNames = [NumSpending]string{"economy", "science", "military"}
 
 func spendingOf(k claimKind) int {
 	switch k {
-	case researchClaim:
-		return Science
 	case armyClaim:
 		return Defense
 	}
@@ -310,7 +308,6 @@ const (
 	infraClaim
 	materialClaim
 	expansionClaim
-	researchClaim
 	armyClaim
 )
 
@@ -322,12 +319,11 @@ type claim struct {
 	qty  float64
 }
 
-// plan decides what the nation buys in each of its tiles today. It pays
-// for everything it needs: upkeep, infrastructure (construction and
-// materials), state firm expansions, its armies' supplies and their pay.
-// What income is left over (and a little of any treasury above its reserve)
-// buys research. Only when the treasury can't cover it all does everything
-// shrink alike.
+// plan decides what the nation pays for today: everything it needs, which
+// is upkeep, infrastructure (construction and materials), state firm
+// expansions, its armies' supplies and their pay, and its universities'
+// staff. Only when the treasury can't cover it all does everything shrink
+// alike.
 func (n *Nation) plan(w *World) {
 	n.Revenue, n.TariffRevenue, n.Rebate, n.Spending = 0, 0, 0, 0
 	n.SpentOn = [NumSpending]float64{}
@@ -335,7 +331,6 @@ func (n *Nation) plan(w *World) {
 	if n.Eliminated() {
 		return
 	}
-	tiles := float64(len(n.Regions))
 	rate := n.MaxBuildRate * n.buildRateMult()
 	for _, r := range n.Regions {
 		r.claims = r.claims[:0]
@@ -353,7 +348,7 @@ func (n *Nation) plan(w *World) {
 	}
 	w.planSupply(n, addTo)
 	n.payBill = w.soldiersPay(n)
-	needs += n.payBill
+	needs += n.payBill + n.universityBill()
 	for _, r := range n.Regions {
 		add := func(c claim) { addTo(r, c) }
 		add(claim{kind: upkeepClaim, good: Construction, qty: InfraLevels[r.Infra].Upkeep})
@@ -371,19 +366,12 @@ func (n *Nation) plan(w *World) {
 			}
 		}
 	}
-	// research gets what's left of the day's income
-	science := 0.0
-	if n.Researching >= 0 {
-		science = math.Max(0, n.IncomeEMA-needs) + researchFromReserve*math.Max(0, n.Treasury-n.Reserve)
-		for _, r := range n.Regions {
-			addTo(r, claim{kind: researchClaim, good: Research, qty: science / tiles / r.Markets[Research].Price})
-		}
-	}
 	// the treasury caps the total
 	n.payScale = 1.0
-	if budget := 0.9 * math.Max(n.Treasury, 0); needs+science > budget {
-		n.payScale = budget / (needs + science)
+	if budget := 0.9 * math.Max(n.Treasury, 0); needs > budget {
+		n.payScale = budget / needs
 	}
+	n.staffUniversities(n.payScale)
 	for _, r := range n.Regions {
 		for g := range r.publicBid {
 			r.publicBid[g], r.publicGot[g] = 0, 0
@@ -395,10 +383,6 @@ func (n *Nation) plan(w *World) {
 		}
 	}
 }
-
-// researchFromReserve is the share of the treasury above its reserve that
-// goes to research each day, on top of the day's surplus income.
-const researchFromReserve = 0.01
 
 // sortedGoods lists a map's goods in GoodID order, for determinism.
 func sortedGoods(m map[GoodID]float64) []GoodID {
@@ -432,9 +416,8 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 				r.Project.Materials[c.good] += got
 			case expansionClaim:
 				c.exp.Delivered += got
-			case researchClaim:
-				n.ResearchPoints += got
 			case armyClaim:
+				c.army.spent[c.good] += got * w.TradePrices[r.ID][c.good]
 				if c.good == Transport {
 					c.army.gotT += got
 				} else {
@@ -460,6 +443,8 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 	for _, a := range w.ArmiesOf(n) {
 		a.settleSupply()
 	}
+	n.settleUniversities()
+	w.paySoldiers(n)
 	income := n.Revenue + n.TariffRevenue
 	if n.IncomeEMA == 0 {
 		n.IncomeEMA = income

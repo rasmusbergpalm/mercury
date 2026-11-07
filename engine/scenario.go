@@ -203,6 +203,9 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 		for _, f := range firms {
 			f.Requires = FirmTech[f.Name]
 			f.Enabled = f.Requires == ""
+			if f.Name == "University" {
+				f.State, f.Levels, f.Funded, f.Cash = true, uniStartLevels, uniStartLevels, 0
+			}
 		}
 	}
 	return firms
