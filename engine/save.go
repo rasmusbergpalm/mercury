@@ -37,7 +37,7 @@ type SiegeSnap struct {
 }
 
 // SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 11
+const SnapshotVersion = 12
 
 type MarketSnap struct {
 	Price, Supply, Demand float64
@@ -57,15 +57,16 @@ type FirmSnap struct {
 }
 
 type RegionSnap struct {
-	Wage, Neglect, UtilityEMA float64
-	HouseCash                 float64
-	Infra, Battle             int
-	Port                      bool
-	Project                   *Project
-	Siege                     *SiegeSnap
-	Markets                   []MarketSnap
-	Pops                      []PopSnap
-	Firms                     []FirmSnap
+	Wage, Neglect, UtilityEMA  float64
+	HouseCash                  float64
+	Collect, Educated, Healthy float64
+	Infra, Battle              int
+	Port                       bool
+	Project                    *Project
+	Siege                      *SiegeSnap
+	Markets                    []MarketSnap
+	Pops                       []PopSnap
+	Firms                      []FirmSnap
 }
 
 type TraderSnap struct {
@@ -73,22 +74,23 @@ type TraderSnap struct {
 }
 
 type NationSnap struct {
-	Regions                                           []int // in order
-	Treasury, TaxRate, Reserve, RebateRate, BuildRate float64
-	Tariff                                            []float64
-	Embargo                                           []bool
-	AutoBuild                                         bool
-	PayScale                                          float64
-	IncomeEMA, ResearchPoints                         float64
-	Researching                                       int
-	Known                                             []bool
-	Queue                                             []int
-	TradeWith                                         []float64
-	AtWar, PeaceOffer                                 []bool
-	WarSince                                          []int
-	AI, ChooseResearch                                bool
-	Drill                                             float64
-	Revenue, TariffRevenue, Rebate, Spending          float64
+	Regions                                []int // in order
+	Treasury, TaxRate, SpendEMA, BuildRate float64
+	Tariff                                 []float64
+	Embargo                                []bool
+	AutoBuild, AutoTax                     bool
+	Pension                                int
+	PayScale                               float64
+	IncomeEMA, ResearchPoints              float64
+	Researching                            int
+	Known                                  []bool
+	Queue                                  []int
+	TradeWith                              []float64
+	AtWar, PeaceOffer                      []bool
+	WarSince                               []int
+	AI, ChooseResearch                     bool
+	Drill                                  float64
+	Revenue, TariffRevenue, Spending       float64
 }
 
 // ErrNotAGame is returned when snapshotting a world that wasn't built by BuildGame.
@@ -101,7 +103,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	}
 	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick, Ports: append([]int(nil), w.Ports...)}
 	for _, r := range w.Regions {
-		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Infra: r.Infra, Battle: r.Battle, Port: r.Port}
+		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Collect: r.Collect, Educated: r.Educated, Healthy: r.Healthy, Infra: r.Infra, Battle: r.Battle, Port: r.Port}
 		if r.Siege != nil {
 			rs.Siege = &SiegeSnap{r.Siege.Nation.ID, r.Siege.Progress}
 		}
@@ -135,15 +137,14 @@ func (w *World) Snapshot() (*Snapshot, error) {
 		s.Traders = append(s.Traders, TraderSnap{t.Q, t.StockOrigin, t.StockDest, t.RelMargin, t.Shipped, t.Margin})
 	}
 	for _, n := range w.Nations {
-		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, Reserve: n.Reserve,
-			RebateRate: n.RebateRate, BuildRate: n.MaxBuildRate,
+		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, SpendEMA: n.SpendEMA, BuildRate: n.MaxBuildRate,
 			Tariff: append([]float64(nil), n.Tariff...), Embargo: append([]bool(nil), n.Embargo...),
-			AutoBuild: n.AutoBuild, PayScale: n.payScale, Drill: n.Drill, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints,
+			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Drill: n.Drill, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints,
 			Researching: n.Researching, Known: append([]bool(nil), n.Known...), AI: n.AI, ChooseResearch: n.ChooseResearch,
 			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
 			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
 			PeaceOffer: append([]bool(nil), n.PeaceOffer...),
-			Revenue:    n.Revenue, TariffRevenue: n.TariffRevenue, Rebate: n.Rebate, Spending: n.Spending}
+			Revenue:    n.Revenue, TariffRevenue: n.TariffRevenue, Spending: n.Spending}
 		for _, r := range n.Regions {
 			ns.Regions = append(ns.Regions, r.ID)
 		}
@@ -202,6 +203,7 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 		r.Wage, r.Neglect, r.UtilityEMA, r.Infra, r.Project, r.Nation = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Infra, rs.Project, nil
 		r.House.Cash, r.Battle = rs.HouseCash, rs.Battle
+		r.Collect, r.Educated, r.Healthy = rs.Collect, rs.Educated, rs.Healthy
 		if r.Infra < 0 || r.Infra >= len(InfraLevels) || (r.Project != nil && !r.Project.Port && (r.Project.Target <= 0 || r.Project.Target >= len(InfraLevels))) {
 			return bad("infrastructure in " + r.Name)
 		}
@@ -239,7 +241,7 @@ func Restore(s *Snapshot) (*World, error) {
 		if len(ns.Tariff) != NumGoods || len(ns.Embargo) != len(w.Nations) || len(ns.Known) != len(Techs) {
 			return bad("nation " + n.Name)
 		}
-		n.Treasury, n.TaxRate, n.Reserve, n.RebateRate, n.MaxBuildRate = ns.Treasury, ns.TaxRate, ns.Reserve, ns.RebateRate, ns.BuildRate
+		n.Treasury, n.TaxRate, n.SpendEMA, n.MaxBuildRate = ns.Treasury, ns.TaxRate, ns.SpendEMA, ns.BuildRate
 		n.Tariff, n.Embargo, n.AutoBuild, n.IncomeEMA, n.ResearchPoints = ns.Tariff, ns.Embargo, ns.AutoBuild, ns.IncomeEMA, ns.ResearchPoints
 		if len(ns.TradeWith) != len(w.Nations) || len(ns.AtWar) != len(w.Nations) || len(ns.WarSince) != len(w.Nations) ||
 			len(ns.PeaceOffer) != len(w.Nations) {
@@ -254,12 +256,15 @@ func Restore(s *Snapshot) (*World, error) {
 			return bad("research")
 		}
 		n.Researching, n.Known, n.AI, n.Queue = ns.Researching, ns.Known, ns.AI, ns.Queue
-		n.ChooseResearch, n.payScale = ns.ChooseResearch, ns.PayScale
+		n.ChooseResearch, n.payScale, n.AutoTax = ns.ChooseResearch, ns.PayScale, ns.AutoTax
+		if err := n.SetPension(ns.Pension); err != nil {
+			return bad("nation " + n.Name)
+		}
 		if err := n.SetDrill(ns.Drill); err != nil {
 			return bad("nation " + n.Name)
 		}
 		n.TradeWith, n.AtWar, n.WarSince, n.PeaceOffer = ns.TradeWith, ns.AtWar, ns.WarSince, ns.PeaceOffer
-		n.Revenue, n.TariffRevenue, n.Rebate, n.Spending = ns.Revenue, ns.TariffRevenue, ns.Rebate, ns.Spending
+		n.Revenue, n.TariffRevenue, n.Spending = ns.Revenue, ns.TariffRevenue, ns.Spending
 		for _, id := range ns.Regions {
 			if id < 0 || id >= len(w.Regions) || w.Regions[id].Nation != nil {
 				return bad("nation " + n.Name + " tiles")

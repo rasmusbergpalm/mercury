@@ -64,11 +64,14 @@ func New(static fs.FS, dataDir string) *Server {
 	for _, cmd := range []string{"move", "target", "upgrade", "disband"} {
 		m.HandleFunc("POST /api/games/{gid}/armies/{aid}/"+cmd, s.game(s.armyCommand(cmd)))
 	}
-	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "queue", "auto", "drill", "war", "peace", "armies"} {
+	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "queue", "auto", "auto-tax", "pension", "drill", "war", "peace", "armies"} {
 		m.HandleFunc("POST /api/games/{gid}/nations/{nid}/"+cmd, s.game(s.nationCommand(cmd)))
 	}
-	for _, cmd := range []string{"build", "cancel", "port", "university", "university/expand", "university/close"} {
+	for _, cmd := range []string{"build", "cancel", "port"} {
 		m.HandleFunc("POST /api/games/{gid}/regions/{id}/"+cmd, s.game(s.regionCommand(cmd)))
+	}
+	for _, cmd := range []string{"fund", "expand", "close"} { // public services, by index
+		m.HandleFunc("POST /api/games/{gid}/regions/{id}/services/{svc}/"+cmd, s.game(s.regionCommand("service/"+cmd)))
 	}
 	m.HandleFunc("POST /api/games/{gid}/regions/{id}/firms/{firm}/expand", s.game(s.regionCommand("expand")))
 	m.HandleFunc("GET /api/saves", s.handleListSaves)
@@ -485,6 +488,16 @@ func (s *Server) nationCommand(cmd string) gameHandler {
 			}
 		case "auto": // automate construction
 			n.AutoBuild = q.Get("on") != "false"
+		case "auto-tax":
+			n.AutoTax = q.Get("on") != "false"
+		case "pension":
+			level, err := strconv.Atoi(q.Get("level"))
+			if err != nil {
+				return badRequest("level must be 0-%d", engine.MaxPension)
+			}
+			if err := n.SetPension(level); err != nil {
+				return fail(http.StatusBadRequest, err)
+			}
 		case "queue":
 			var q []int
 			if v := q0(r, "techs"); v != "" {
@@ -657,16 +670,24 @@ func (s *Server) regionCommand(cmd string) gameHandler {
 			err = g.w.CancelBuild(id)
 		case "port":
 			err = g.w.BuildPort(id)
-		case "university": // fund this many levels
+		case "service/fund", "service/expand", "service/close":
 			var k int
-			if k, err = strconv.Atoi(r.URL.Query().Get("funded")); err != nil {
-				return badRequest("funded must be a number of levels")
+			if k, err = pathIndex(r, "svc", int(engine.NumServices)); err != nil {
+				return err
 			}
-			err = g.w.SetFunding(id, k)
-		case "university/expand":
-			err = g.w.ExpandUniversity(id)
-		case "university/close":
-			err = g.w.CloseUniversityLevel(id)
+			svc := engine.Public(k)
+			switch cmd {
+			case "service/fund": // fund this many levels
+				var n int
+				if n, err = strconv.Atoi(r.URL.Query().Get("levels")); err != nil {
+					return badRequest("levels must be a number of levels")
+				}
+				err = g.w.SetServiceFunding(id, svc, n)
+			case "service/expand":
+				err = g.w.ExpandService(id, svc)
+			case "service/close":
+				err = g.w.CloseServiceLevel(id, svc)
+			}
 		case "expand":
 			var firm int
 			if firm, err = pathIndex(r, "firm", len(g.w.Regions[id].Firms)); err == nil {

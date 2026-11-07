@@ -131,8 +131,8 @@ func (t *Trader) border() (tariff float64, blocked bool) {
 	if dn == nil || dn == on {
 		return 0, false
 	}
-	if on != nil && (dn.Embargo[on.ID] || on.Embargo[dn.ID]) {
-		return 0, true
+	if on != nil && (dn.Embargo[on.ID] || on.Embargo[dn.ID] || on.AtWar[dn.ID]) {
+		return 0, true // embargoed, or at war: no trade with the enemy
 	}
 	return dn.Tariff[t.Good], false
 }

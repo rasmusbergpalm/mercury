@@ -39,6 +39,9 @@ type Tech struct {
 	Doctrine        string  // unlocks this army doctrine
 	Mobilization    float64 // raises the share of the population that can serve (the highest counts)
 	ArmySize        float64 // raises how many men one army can field (the highest counts)
+	AdminMult       float64 // multiplies what each official administers
+	SchoolMult      float64 // multiplies what each teacher teaches
+	HealthMult      float64 // multiplies what public health staff cover
 	Defense         float64 // multiplies defenders' strength and slows sieges of the nation's tiles
 	Attack          float64 // multiplies the army's strength
 	Desertion       float64 // multiplies losses to hunger and desertion
@@ -92,8 +95,8 @@ var Techs = []Tech{
 		Effect: "Foundries +30%; attack +10%", FirmTFP: firms("Foundry", 1.3), Attack: 1.1},
 	{Name: "Fortifications", Branch: BranchMilitary, Era: 0, Cost: era1, Effect: "Defence +50%",
 		Defense: 1.5},
-	{Name: "Administration", Branch: BranchPolitics, Era: 0, Cost: era1, Effect: "Sieges progress 50% faster",
-		OccupySpeed: 1.5},
+	{Name: "Administration", Branch: BranchPolitics, Era: 0, Cost: era1, Effect: "Sieges progress 50% faster; officials administer 25% more",
+		OccupySpeed: 1.5, AdminMult: 1.25},
 	{Name: "Nationalism", Branch: BranchPolitics, Era: 0, Cost: era1, Requires: []string{"Administration"},
 		Effect: "Defence +25%, sieges 25% faster", Defense: 1.25, OccupySpeed: 1.25},
 	{Name: "Printing press", Branch: BranchScience, Era: 0, Cost: era1, Effect: "Universities +25%",
@@ -127,14 +130,15 @@ var Techs = []Tech{
 		Effect: "Supplies need 30% less transport; desertion −30%; armies of up to 60 men", SupplyTransport: 0.7, Desertion: 0.7,
 		ArmySize: 60},
 	{Name: "Bureaucracy", Branch: BranchPolitics, Era: 1, Cost: era2, Requires: []string{"Administration"},
-		Effect: "Construction +40%; projects can take twice as much per day", BuildRate: 2,
-		FirmTFP: firms("Construction", 1.4)},
+		Effect: "Construction +40%; projects can take twice as much per day; officials administer 30% more", BuildRate: 2,
+		FirmTFP: firms("Construction", 1.4), AdminMult: 1.3},
 	{Name: "Banking", Branch: BranchPolitics, Era: 1, Cost: era2, Requires: []string{"Bureaucracy"},
 		Effect: "Firms invest more readily (payback horizon +50%)", InvestPayback: 1.5},
 	{Name: "Scientific method", Branch: BranchScience, Era: 1, Cost: era2, Requires: []string{"Printing press"},
 		Effect: "Universities +30%", FirmTFP: firms("University", 1.3)},
 	{Name: "Public education", Branch: BranchScience, Era: 1, Cost: era2, Requires: []string{"Scientific method"},
-		Effect: "Universities +30%, all industry +5%", FirmTFP: firms("University", 1.3), IndustryTFP: 1.05},
+		Effect: "Universities +30%, all industry +5%; teachers teach 40% more", FirmTFP: firms("University", 1.3), IndustryTFP: 1.05,
+		SchoolMult: 1.4},
 
 	// ---- era 3: Second industrial revolution, 1870s–90s
 	{Name: "Steel", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Steam power"},
@@ -165,7 +169,7 @@ var Techs = []Tech{
 	{Name: "General staff", Branch: BranchMilitary, Era: 2, Cost: era3, Requires: []string{"Military logistics"},
 		Effect: "Attack +20%, sieges 30% faster; armies of up to 120 men", Attack: 1.2, OccupySpeed: 1.3, ArmySize: 120},
 	{Name: "Public health", Branch: BranchPolitics, Era: 2, Cost: era3, Requires: []string{"Bureaucracy"},
-		Effect: "Population growth +0.6% a year", PopGrowth: 0.006},
+		Effect: "Population growth +0.6% a year; public health staff cover 60% more", PopGrowth: 0.006, HealthMult: 1.6},
 	{Name: "Central bank", Branch: BranchPolitics, Era: 2, Cost: era3, Requires: []string{"Banking"},
 		Effect: "Firms invest more readily (payback horizon +30%)", InvestPayback: 1.3},
 	{Name: "Telegraph", Branch: BranchScience, Era: 2, Cost: era3, Requires: []string{"Scientific method", "Railways"},
@@ -204,7 +208,7 @@ var Techs = []Tech{
 	{Name: "Propaganda", Branch: BranchPolitics, Era: 3, Cost: era4, Requires: []string{"Nationalism"},
 		Effect: "Desertion −50%, defence +10%", Desertion: 0.5, Defense: 1.1},
 	{Name: "Social insurance", Branch: BranchPolitics, Era: 3, Cost: era4, Requires: []string{"Public health"},
-		Effect: "Population growth +0.4% a year; firms invest more readily", PopGrowth: 0.004, InvestPayback: 1.2},
+		Effect: "Population growth +0.4% a year; firms invest more readily; public health staff cover 30% more", PopGrowth: 0.004, InvestPayback: 1.2, HealthMult: 1.3},
 	{Name: "Radio", Branch: BranchScience, Era: 3, Cost: era4, Requires: []string{"Telegraph", "Electricity"},
 		Effect:  "Universities +30%; ideas from trade partners spread 50% better",
 		FirmTFP: firms("University", 1.3), Diffusion: 1.5},

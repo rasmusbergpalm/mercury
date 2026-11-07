@@ -52,7 +52,6 @@ var ProcessingRecipes = []Recipe{
 // unlocked by technology.
 var GameRecipes = []Recipe{
 	{"Construction", "construction", 1.5, []Factor{Labor(0.5), Input("wood", 0.2)}},
-	{"University", "research", 1.0, []Factor{Labor(0.6)}},
 	{"Armory", "arms", 1.0, []Factor{Labor(0.3), Input("iron", 0.25), Input("wood", 0.1)}},
 	{"Foundry", "artillery", 0.8, []Factor{Labor(0.3), Input("iron", 0.3), Input("coal", 0.1)}},
 	{"Munitions plant", "munitions", 1.5, []Factor{Labor(0.3), Input("iron", 0.2), Input("coal", 0.2)}},
@@ -201,12 +200,13 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 		firms = append(firms, f)
 	}
 	if game {
+		for k := Public(0); k < NumServices; k++ {
+			firms = append(firms, newServiceFirm(k))
+		}
 		for _, f := range firms {
 			f.Requires = FirmTech[f.Name]
 			f.Enabled = f.Requires == ""
-			if f.Name == "University" {
-				f.State, f.Levels, f.Funded, f.Cash = true, uniStartLevels, uniStartLevels, 0
-			}
+
 		}
 	}
 	return firms
@@ -244,6 +244,7 @@ func buildWorld(transportCost float64, gameMap []string, game bool) (*World, err
 			reg := NewRegion(len(regions), fmt.Sprintf("%d%d", r, c), makeFirms(t, coastal, game), 2, 50, 500)
 			if game {
 				addOwnerClasses(reg)
+				reg.Educated = startEducated
 			}
 			reg.Row, reg.Col, reg.Terrain, reg.BaseMove, reg.Coastal = r, c, t.Name, t.MoveCost, coastal
 			grid[r][c] = reg

@@ -61,27 +61,29 @@ type TechInfo struct {
 
 // WorldInfo is the static description of a game's world.
 type WorldInfo struct {
-	Rows      int            `json:"rows"`
-	Cols      int            `json:"cols"`
-	Goods     []GoodInfo     `json:"goods"`
-	Tiers     []string       `json:"tiers"`
-	Terrains  []TerrainInfo  `json:"terrains"`
-	Regions   []RegionInfo   `json:"regions"`
-	Links     []LinkInfo     `json:"links"`
-	Nations   []NationInfo   `json:"nations"`
-	Infra     []InfraInfo    `json:"infra_levels"`
-	Techs     []TechInfo     `json:"techs"`
-	Spending  []string       `json:"spending"`  // categories of NationState.SpentOn
-	UniStaff  float64        `json:"uni_staff"` // scholars per funded university level
-	Branches  []string       `json:"branches"`
-	LevelCost float64        `json:"level_cost"` // construction per firm building level
-	Port      PortInfo       `json:"port"`
-	Eras      []string       `json:"eras"`
-	Doctrines []DoctrineInfo `json:"doctrines"`
-	StartYear int            `json:"start_year"`
-	Consumer  []int          `json:"consumer_goods"` // the order of RegionHistory.Prices
-	Classes   []string       `json:"classes"`
-	Sectors   []string       `json:"sectors"`
+	Rows       int            `json:"rows"`
+	Cols       int            `json:"cols"`
+	Goods      []GoodInfo     `json:"goods"`
+	Tiers      []string       `json:"tiers"`
+	Terrains   []TerrainInfo  `json:"terrains"`
+	Regions    []RegionInfo   `json:"regions"`
+	Links      []LinkInfo     `json:"links"`
+	Nations    []NationInfo   `json:"nations"`
+	Infra      []InfraInfo    `json:"infra_levels"`
+	Techs      []TechInfo     `json:"techs"`
+	Spending   []string       `json:"spending"`    // categories of NationState.SpentOn
+	Services   []string       `json:"services"`    // the public services, by index
+	Staff      float64        `json:"staff"`       // staff per funded service level
+	MaxPension int            `json:"max_pension"` // pension levels
+	Branches   []string       `json:"branches"`
+	LevelCost  float64        `json:"level_cost"` // construction per firm building level
+	Port       PortInfo       `json:"port"`
+	Eras       []string       `json:"eras"`
+	Doctrines  []DoctrineInfo `json:"doctrines"`
+	StartYear  int            `json:"start_year"`
+	Consumer   []int          `json:"consumer_goods"` // the order of RegionHistory.Prices
+	Classes    []string       `json:"classes"`
+	Sectors    []string       `json:"sectors"`
 }
 
 type DoctrineInfo struct {
@@ -104,34 +106,40 @@ type Project struct {
 }
 
 type RegionState struct {
-	ID         int         `json:"id"`
-	Wage       float64     `json:"wage"`
-	Utility    float64     `json:"utility"`
-	Population float64     `json:"population"`
-	Employed   float64     `json:"employed"`
-	TierSpend  []float64   `json:"tier_spend"`
-	Prices     []float64   `json:"prices"`
-	Nation     int         `json:"nation"` // -1 if unowned
-	Infra      int         `json:"infra"`
-	MoveCost   float64     `json:"move_cost"`
-	Port       bool        `json:"port"`
-	City       bool        `json:"city"`
-	CityBonus  float64     `json:"city_bonus"`
-	Growth     float64     `json:"growth"` // population growth per year
-	Occupation *Occupation `json:"occupation"`
-	Battle     int         `json:"battle"` // days the battle on the tile has lasted (0: none)
-	University *University `json:"university"`
-	Project    *Project    `json:"project"`
+	ID         int             `json:"id"`
+	Wage       float64         `json:"wage"`
+	Utility    float64         `json:"utility"`
+	Population float64         `json:"population"`
+	Employed   float64         `json:"employed"`
+	TierSpend  []float64       `json:"tier_spend"`
+	Prices     []float64       `json:"prices"`
+	Nation     int             `json:"nation"` // -1 if unowned
+	Infra      int             `json:"infra"`
+	MoveCost   float64         `json:"move_cost"`
+	Port       bool            `json:"port"`
+	City       bool            `json:"city"`
+	CityBonus  float64         `json:"city_bonus"`
+	Growth     float64         `json:"growth"` // population growth per year
+	Occupation *Occupation     `json:"occupation"`
+	Battle     int             `json:"battle"`   // days the battle on the tile has lasted (0: none)
+	Services   []*ServiceState `json:"services"` // indexed like WorldInfo.Services
+	Collect    float64         `json:"collect"`  // share of its taxes collected
+	Educated   float64         `json:"educated"` // share of its people schooled
+	Healthy    float64         `json:"healthy"`  // share of its crowding covered
+	Crowding   float64         `json:"crowding"` // 0..1
+	Project    *Project        `json:"project"`
 }
 
 // University is a tile's state university.
-type University struct {
+type ServiceState struct {
 	Levels    int      `json:"levels"`
 	Funded    int      `json:"funded"`
 	MaxLevels int      `json:"max_levels"`
 	Staff     float64  `json:"staff"`
-	Research  float64  `json:"research"`  // today
-	PerLevel  float64  `json:"per_level"` // research per funded level, fully staffed
+	Need      float64  `json:"need"`      // staff needed to cover the tile fully (0: none)
+	Coverage  float64  `json:"coverage"`  // share of the need met today
+	Research  float64  `json:"research"`  // universities: today
+	PerLevel  float64  `json:"per_level"` // universities: research per funded level, fully staffed
 	Cost      float64  `json:"cost"`      // wages per funded level per day
 	Building  *float64 `json:"building"`  // progress of a new level (0..1), or null
 	Enabled   bool     `json:"enabled"`
@@ -161,7 +169,9 @@ type NationState struct {
 	Income         float64   `json:"income"` // moving average, tax and tariffs
 	Revenue        float64   `json:"revenue"`
 	TariffRevenue  float64   `json:"tariff_revenue"`
-	Rebate         float64   `json:"rebate"`
+	SpendEMA       float64   `json:"spend_avg"` // average spending a day
+	AutoTax        bool      `json:"auto_tax"`  // the computer sets the tax
+	Pension        int       `json:"pension"`   // 0..max_pension
 	Spending       float64   `json:"spending"`
 	SpentOn        []float64 `json:"spent_on"`   // today, by category: economy, science, military
 	AutoBuild      bool      `json:"auto_build"` // the computer builds roads and expands firms
@@ -311,7 +321,7 @@ type RegionDetail struct {
 }
 
 func worldInfo(w *engine.World) WorldInfo {
-	info := WorldInfo{Rows: w.Rows, Cols: w.Cols, Spending: engine.SpendingNames[:], UniStaff: engine.UniStaff, Branches: engine.Branches,
+	info := WorldInfo{Rows: w.Rows, Cols: w.Cols, Spending: engine.SpendingNames[:], Services: engine.ServiceNames(), Staff: engine.ServiceStaff, MaxPension: engine.MaxPension, Branches: engine.Branches,
 		Eras: engine.Eras, StartYear: engine.StartYear,
 		LevelCost: engine.LevelCost, Port: PortInfo{engine.PortCost, map[string]float64{}}}
 	for g, q := range engine.PortMaterials {
@@ -386,15 +396,20 @@ func regionState(w *engine.World, i int) RegionState {
 	if r.Nation != nil {
 		st.Nation = r.Nation.ID
 	}
-	if f := r.University(); f != nil {
-		us := r.UniversityStats()
-		u := &University{Levels: f.Levels, Funded: f.Funded, MaxLevels: f.MaxLevels, Staff: us.Staff,
-			Research: us.Research, PerLevel: us.PerLevel, Cost: us.Cost, Enabled: f.Enabled}
+	st.Collect, st.Educated, st.Healthy, st.Crowding = r.Collect, r.Educated, r.Healthy, r.Crowding()
+	for k := engine.Public(0); k < engine.NumServices; k++ {
+		f := r.Service(k)
+		if f == nil {
+			continue
+		}
+		ss := w.ServiceStats(r, k)
+		sv := &ServiceState{Levels: f.Levels, Funded: f.Funded, MaxLevels: f.MaxLevels, Staff: ss.Staff, Need: ss.Need,
+			Coverage: ss.Coverage, Research: ss.Research, PerLevel: ss.PerLevel, Cost: ss.Cost, Enabled: f.Enabled}
 		if e := f.Expansion; e != nil {
 			p := e.Delivered / engine.LevelCost
-			u.Building = &p
+			sv.Building = &p
 		}
-		st.University = u
+		st.Services = append(st.Services, sv)
 	}
 	if s := r.Siege; s != nil {
 		st.Occupation = &Occupation{s.Nation.ID, s.Progress}
@@ -443,7 +458,7 @@ func worldState(w *engine.World) State {
 	for _, n := range w.Nations {
 		ns := NationState{ID: n.ID, Controller: "human", Eliminated: n.Eliminated(), Tiles: len(n.Regions),
 			Treasury: n.Treasury, TaxRate: n.TaxRate, Income: n.IncomeEMA, Revenue: n.Revenue,
-			TariffRevenue: n.TariffRevenue, Rebate: n.Rebate, Spending: n.Spending,
+			TariffRevenue: n.TariffRevenue, Spending: n.Spending, SpendEMA: n.SpendEMA, AutoTax: n.AutoTax, Pension: n.Pension,
 			SpentOn: append([]float64(nil), n.SpentOn[:]...), AutoBuild: n.AutoBuild, Tariff: n.Tariff, Embargo: n.Embargo,
 			Researching: n.Researching, Points: n.ResearchPoints, Known: n.Known,
 			Queue: append([]int{}, n.Queue...), AtWar: n.AtWar, PeaceOffer: n.PeaceOffer,

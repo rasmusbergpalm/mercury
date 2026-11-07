@@ -720,9 +720,18 @@ func (w *World) armies() {
 	for _, a := range append([]*Army(nil), w.Armies...) {
 		w.demobilize(a)
 		a.arrivals(w.Tick)
+		// a few die of disease and accidents; hungry and unpaid soldiers
+		// desert and go home (they rejoin the people of the nearest home tile)
 		hunger := 1 - a.Supply[G("bread")]
-		loss := a.Men * (baseAttrition + hungerAttrition*hunger) * a.Nation.desertionMult() * a.Nation.unpaidMult()
-		a.lose(loss/math.Max(a.Men, 1e-12), 1)
+		mult := a.Nation.desertionMult()
+		died := a.Men * baseAttrition * mult
+		deserted := a.Men * (baseAttrition*mult*(a.Nation.unpaidMult()-1) + hungerAttrition*hunger*mult)
+		if share := (died + deserted) / math.Max(a.Men, 1e-12); share > 0 {
+			a.lose(share, 1)
+			if a.depot != nil && deserted > 0 {
+				addPeople(a.depot, deserted)
+			}
+		}
 		w.march(a)
 	}
 	w.battles()

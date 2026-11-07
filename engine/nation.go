@@ -78,10 +78,8 @@ type Nation struct {
 	Regions  []*Region
 	TaxRate  float64 // share of pop income (wages and dividends) taken as tax
 	Treasury float64
-	// Reserve is the treasury the nation keeps; RebateRate of anything above it
-	// is returned to its pops per head each tick.
-	Reserve    float64
-	RebateRate float64
+	// SpendEMA is a moving average of what the state spends a day.
+	SpendEMA float64
 	// MaxBuildRate caps construction units bought per tick per project.
 	MaxBuildRate float64
 
@@ -91,13 +89,16 @@ type Nation struct {
 	// SpentOn is what the nation spent today on each of the economy
 	// (infrastructure, upkeep, firm expansions), science and the military
 	// (supplies and pay).
-	SpentOn   [NumSpending]float64
-	AutoBuild bool        // the computer builds roads and expands firms for it
-	payBill   float64     // soldiers' pay due today
-	payScale  float64     // share of today's bills the treasury could cover
-	Drill     float64     // share of wartime supplies armies use in peace
-	Temper    Temperament // how the computer plays it
-	IncomeEMA float64     // moving average of tax and tariff income per tick
+	SpentOn     [NumSpending]float64
+	AutoBuild   bool // the computer builds roads and expands firms for it
+	AutoTax     bool // the computer sets its tax to keep a month's spending in the treasury
+	Pension     int  // pension level, 0..MaxPension: pensioners get Pension/MaxPension of the average wage
+	pensionBill float64
+	payBill     float64     // soldiers' pay due today
+	payScale    float64     // share of today's bills the treasury could cover
+	Drill       float64     // share of wartime supplies armies use in peace
+	Temper      Temperament // how the computer plays it
+	IncomeEMA   float64     // moving average of tax and tariff income per tick
 
 	ResearchPoints float64 // research delivered towards the current tech
 	Researching    int     // index into Techs, or -1 to pick automatically
@@ -116,7 +117,7 @@ type Nation struct {
 	ChooseResearch bool
 
 	// last tick's flows
-	Revenue, TariffRevenue, Rebate, Spending float64
+	Revenue, TariffRevenue, Spending float64
 }
 
 // Spending categories.
@@ -124,11 +125,15 @@ const (
 	Economy = iota
 	Science
 	Defense
+	Admin
+	Education
+	HealthCare
+	Pensions
 	NumSpending
 )
 
 // SpendingNames name the spending categories.
-var SpendingNames = [NumSpending]string{"economy", "science", "military"}
+var SpendingNames = [NumSpending]string{"economy", "science", "military", "administration", "education", "health", "pensions"}
 
 func spendingOf(k claimKind) int {
 	switch k {
@@ -151,6 +156,7 @@ var (
 	ErrNotAdjacent = errors.New("tile does not border the nation")
 	ErrTreasury    = errors.New("treasury cannot afford it")
 	ErrBadTech     = errors.New("tech unknown, already known, or missing prerequisites")
+	ErrBadPension  = errors.New("the pension level must be between 0 and 4")
 	ErrBadDrill    = errors.New("peacetime drill must be between 20% and 80% of wartime needs")
 	ErrFirmMax     = errors.New("firm cannot grow further here")
 	ErrExpanding   = errors.New("firm is already expanding")
@@ -163,8 +169,8 @@ var (
 
 func newNation(id int, name, color string, nNations int, taxRate float64) *Nation {
 	return &Nation{ID: id, Name: name, Color: color, TaxRate: taxRate,
-		Reserve: 1000, RebateRate: 0.1, MaxBuildRate: 5,
-		Tariff: make([]float64, NumGoods), Embargo: make([]bool, nNations),
+		MaxBuildRate: 5,
+		Tariff:       make([]float64, NumGoods), Embargo: make([]bool, nNations),
 		Drill: DefaultDrill, payScale: 1, Researching: -1, Known: make([]bool, len(Techs)),
 		TradeWith: make([]float64, nNations), AtWar: make([]bool, nNations), WarSince: make([]int, nNations),
 		PeaceOffer: make([]bool, nNations)}
@@ -202,6 +208,46 @@ const (
 	MaxDrill     = 0.8
 	DefaultDrill = 0.5
 )
+
+// Pensions: the state pays the elderly (pensionerShare of the people) a
+// share of the nation's average wage, in MaxPension steps up to all of it.
+// The money goes straight to the people; it needs no buildings or staff.
+const (
+	MaxPension     = 4
+	pensionerShare = 0.08
+)
+
+// SetPension sets the pension level (0..MaxPension).
+func (n *Nation) SetPension(level int) error {
+	if level < 0 || level > MaxPension {
+		return ErrBadPension
+	}
+	n.Pension = level
+	return nil
+}
+
+// pensions is what the nation's pensions cost today.
+func (n *Nation) pensions() float64 {
+	return n.population() * pensionerShare * n.averageWage() * float64(n.Pension) / MaxPension
+}
+
+// payPensions pays (what the treasury could cover of) today's pensions to
+// the people, per head.
+func (n *Nation) payPensions() {
+	pay, people := n.pensionBill*n.payScale, n.population()
+	if pay <= 0 || people <= 0 {
+		return
+	}
+	n.Treasury -= pay
+	n.SpentOn[Pensions] += pay
+	for _, r := range n.Regions {
+		for _, p := range r.Pops {
+			x := pay * p.Size / people
+			p.Cash += x
+			p.Income += x
+		}
+	}
+}
 
 // SetDrill sets the share of wartime supplies armies use in peace.
 func (n *Nation) SetDrill(x float64) error {
@@ -293,7 +339,7 @@ func (r *Region) payIncome(p *Pop, amount float64) {
 		p.Income += amount
 		return
 	}
-	tax := amount * r.Nation.TaxRate
+	tax := amount * r.Nation.TaxRate * r.Collect // what its administration collects
 	p.Cash += amount - tax
 	p.Income += amount - tax
 	r.Nation.Treasury += tax
@@ -325,7 +371,7 @@ type claim struct {
 // staff. Only when the treasury can't cover it all does everything shrink
 // alike.
 func (n *Nation) plan(w *World) {
-	n.Revenue, n.TariffRevenue, n.Rebate, n.Spending = 0, 0, 0, 0
+	n.Revenue, n.TariffRevenue, n.Spending = 0, 0, 0
 	n.SpentOn = [NumSpending]float64{}
 	n.pickResearch()
 	if n.Eliminated() {
@@ -338,17 +384,33 @@ func (n *Nation) plan(w *World) {
 	// what a claim will cost: no more than the market offered yesterday can
 	// be bought, so an order for a good nobody sells (whose price runs away)
 	// doesn't count as spending
+	// every order is capped at what the market offered yesterday (and a
+	// margin, so demand still shows): the state can't bid a price up without
+	// limit, building goes at the pace the economy can supply, and what the
+	// orders can cost is known, so the treasury is never overdrawn
 	needs := 0.0
+	avgPrice := make([]float64, NumGoods) // the nation's average price of each good
+	for _, r := range n.Regions {
+		for g, m := range r.Markets {
+			avgPrice[g] += m.Price / float64(len(n.Regions))
+		}
+	}
 	addTo := func(r *Region, c claim) {
+		m := r.Markets[c.good]
+		c.qty = math.Min(c.qty, stateBuyMargin*m.Supply+stateBuyFloor)
+		// where a good costs far more than elsewhere in the nation, buy less
+		if ref := stateDearPrice * avgPrice[c.good]; m.Price > ref && ref > 0 {
+			c.qty *= ref / m.Price
+		}
 		if c.qty > 0 {
 			r.claims = append(r.claims, c)
-			m := r.Markets[c.good]
-			needs += math.Min(c.qty, m.Supply) * m.Price
+			needs += c.qty * m.Price
 		}
 	}
 	w.planSupply(n, addTo)
 	n.payBill = w.soldiersPay(n)
-	needs += n.payBill + n.universityBill()
+	n.pensionBill = n.pensions()
+	needs += n.payBill + n.serviceBill() + n.pensionBill
 	for _, r := range n.Regions {
 		add := func(c claim) { addTo(r, c) }
 		add(claim{kind: upkeepClaim, good: Construction, qty: InfraLevels[r.Infra].Upkeep})
@@ -371,7 +433,7 @@ func (n *Nation) plan(w *World) {
 	if budget := 0.9 * math.Max(n.Treasury, 0); needs > budget {
 		n.payScale = budget / needs
 	}
-	n.staffUniversities(n.payScale)
+	n.staffServices(n.payScale)
 	for _, r := range n.Regions {
 		for g := range r.publicBid {
 			r.publicBid[g], r.publicGot[g] = 0, 0
@@ -383,6 +445,14 @@ func (n *Nation) plan(w *World) {
 		}
 	}
 }
+
+// The state buys up to stateBuyMargin times what a market offered yesterday,
+// plus stateBuyFloor.
+const (
+	stateBuyMargin = 1.2
+	stateBuyFloor  = 0.2
+	stateDearPrice = 2.0 // above this times the nation's average price, the state buys less
+)
 
 // sortedGoods lists a map's goods in GoodID order, for determinism.
 func sortedGoods(m map[GoodID]float64) []GoodID {
@@ -443,8 +513,17 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 	for _, a := range w.ArmiesOf(n) {
 		a.settleSupply()
 	}
-	n.settleUniversities()
+	n.settleServices()
 	w.paySoldiers(n)
+	n.payPensions()
+	spent := 0.0
+	for _, x := range n.SpentOn {
+		spent += x
+	}
+	if n.SpendEMA == 0 {
+		n.SpendEMA = spent
+	}
+	n.SpendEMA = 0.95*n.SpendEMA + 0.05*spent
 	income := n.Revenue + n.TariffRevenue
 	if n.IncomeEMA == 0 {
 		n.IncomeEMA = income
@@ -512,23 +591,6 @@ func (n *Nation) applyTech() {
 		for _, f := range r.Firms {
 			f.TFP = f.BaseTFP * n.firmMult(f)
 			f.Enabled = firmEnabled(f, n)
-		}
-	}
-}
-
-// rebate returns part of the treasury above the reserve to the pops, per head.
-func (n *Nation) rebate() {
-	excess := n.Treasury - n.Reserve
-	if excess <= 0 || n.Eliminated() {
-		return
-	}
-	amount := n.RebateRate * excess
-	pop := n.population()
-	n.Treasury -= amount
-	n.Rebate = amount
-	for _, r := range n.Regions {
-		for _, p := range r.Pops {
-			p.Cash += amount * p.Size / pop
 		}
 	}
 }

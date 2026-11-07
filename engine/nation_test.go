@@ -12,6 +12,9 @@ func newTestGame(t *testing.T) *World {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, n := range w.Nations {
+		n.AutoTax = false // tests set the tax themselves
+	}
 	return w
 }
 
@@ -114,33 +117,6 @@ func TestTaxRateDrivesRevenue(t *testing.T) {
 	lo, hi := revenue(0.05), revenue(0.2)
 	if !(hi > 2*lo) {
 		t.Errorf("revenue at 20%% (%v) should be well above revenue at 5%% (%v)", hi, lo)
-	}
-}
-
-func TestRebateReturnsSurplusPerHead(t *testing.T) {
-	w := newTestGame(t)
-	n := w.Nations[0]
-	n.Treasury = n.Reserve + 500
-	before := make([]float64, 0)
-	for _, r := range n.Regions {
-		for _, p := range r.Pops {
-			before = append(before, p.Cash)
-		}
-	}
-	money := w.Money()
-	n.rebate()
-	want := n.RebateRate * 500 / n.population()
-	i := 0
-	for _, r := range n.Regions {
-		for _, p := range r.Pops {
-			if got := (p.Cash - before[i]) / p.Size; math.Abs(got-want) > 1e-9 {
-				t.Errorf("rebate per head %v, want %v", got, want)
-			}
-			i++
-		}
-	}
-	if relDiff(w.Money(), money) > 1e-12 {
-		t.Errorf("rebate changed the money supply")
 	}
 }
 
@@ -281,6 +257,9 @@ func TestNeglectedRoadsDecay(t *testing.T) {
 	spec := DefaultGame
 	spec.TaxRate = 0 // no revenue, so no upkeep can be paid
 	w, _ := BuildGame(spec)
+	for _, n := range w.Nations {
+		n.AutoTax = false
+	}
 	r := regionByName(w, "13")
 	w.SetInfra(r.ID, 2)
 	for i := 0; i < 200 && r.Infra == 2; i++ {

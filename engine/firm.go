@@ -71,8 +71,10 @@ type Firm struct {
 	Labor      float64   // labor employed this tick
 	// State firms (universities) are run by the tile's nation: it funds
 	// Funded of their levels and takes their output; see university.go.
-	State  bool
-	Funded int
+	State   bool
+	Funded  int
+	Public  Public  // which public service, for state firms
+	EduMult float64 // productivity from the tile's schooling (industry and services)
 	// Site and SiteMult: where a land-bound producer's productivity comes
 	// from (its terrain, or the coast) and how much it multiplies it.
 	Site       string
@@ -112,13 +114,13 @@ func (f *Firm) exponentSum() float64 {
 
 // effectiveTFP is TFP * Levels^(1-s): productivity of the firm's variable factors.
 func (f *Firm) effectiveTFP() float64 {
-	return f.TFP * math.Pow(float64(f.Levels), 1-f.exponentSum()) * f.Agglom
+	return f.TFP * math.Pow(float64(f.Levels), 1-f.exponentSum()) * f.Agglom * f.EduMult
 }
 
 // NewFirm makes a firm.
 func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash float64) *Firm {
 	return &Firm{Name: name, Output: output, TFP: tfp, BaseTFP: tfp, Factors: factors, Cash: cash,
-		Levels: 1, MaxLevels: 8, Enabled: true, Agglom: 1,
+		Levels: 1, MaxLevels: 8, Enabled: true, Agglom: 1, EduMult: 1,
 		CashBuffer: 20, Inputs: make([]float64, NumGoods),
 		PlanQty: make([]float64, NumGoods), PlanHas: make([]bool, NumGoods)}
 }
@@ -261,6 +263,9 @@ func (f *Firm) Bonuses(n *Nation) []Modifier {
 	}
 	if f.Agglom != 1 {
 		out = append(out, Modifier{"Tile size", f.Agglom, "industry and services gain from the people around them", false})
+	}
+	if f.EduMult != 1 {
+		out = append(out, Modifier{"Schooling", f.EduMult, "the tile's educated share", false})
 	}
 	if f.Levels > 1 {
 		out = append(out, Modifier{"Buildings", math.Pow(float64(f.Levels), 1-f.exponentSum()), fmt.Sprintf("%d levels", f.Levels), false})

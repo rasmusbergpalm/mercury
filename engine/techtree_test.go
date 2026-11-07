@@ -13,6 +13,9 @@ func TestTechTreeIsWellFormed(t *testing.T) {
 	for _, rc := range append(append(append(append([]Recipe(nil), RawRecipes...), ProcessingRecipes...), GameRecipes...), GameRawRecipes...) {
 		firms[rc.Firm] = true
 	}
+	for k := Public(0); k < NumServices; k++ {
+		firms[services[k].Firm] = true
+	}
 	for _, tech := range Techs {
 		if seen[tech.Name] {
 			t.Errorf("tech %q listed twice", tech.Name)

@@ -25,9 +25,15 @@ func (w *World) runAI() {
 		case n.Eliminated():
 		case n.AI:
 			w.think(n)
-		case n.AutoBuild: // a player who leaves construction to the computer
-			w.aiBuild(n)
-			w.aiExpandFirm(n)
+		default: // a player's nation: only what they left to the computer
+			if n.AutoBuild {
+				w.aiBuild(n)
+				w.aiExpandFirm(n)
+				w.aiServices(n, w.atWar(n), false, false) // builds services; funding stays the player's
+			}
+			if n.AutoTax {
+				w.aiTax(n)
+			}
 		}
 	}
 }
@@ -76,7 +82,8 @@ func (w *World) think(n *Nation) {
 	w.aiDiplomacy(n, own)
 	w.aiBuild(n)
 	w.aiExpandFirm(n)
-	w.aiUniversities(n, war || invaded)
+	w.aiServices(n, war || invaded, true, true)
+	w.aiTax(n)
 	w.aiArmies(n, targets)
 }
 
@@ -350,42 +357,110 @@ func (w *World) aiBuild(n *Nation) {
 	}
 }
 
-// aiUniversities funds every university level while the treasury holds
-// (cutting to half when it runs low or the nation is at war) and builds new
-// levels, in its biggest tiles, while science costs less than its learning
-// says it should: aiScience of income, times its Learning.
-const aiScience = 0.12
+// The computer's public services: it funds every level (universities only
+// half when it can't pay its bills or is at war), and builds a level of a
+// service where it falls furthest short: administration and public health
+// to cover the need, schools to its Learning (aiSchooling of children at
+// Learning 1), universities while they cost less than aiScience of income
+// times its Learning. One level of each service at a time, and only while
+// the treasury holds a month of spending.
+const (
+	aiScience   = 0.12
+	aiSchooling = 0.6
+)
 
-func (w *World) aiUniversities(n *Nation, war bool) {
-	low := n.payScale < 0.999 // it couldn't pay all its bills
-	for _, r := range n.Regions {
-		if f := r.University(); f != nil {
-			funded := f.Levels
-			if low || war {
-				funded = (f.Levels + 1) / 2
+func (w *World) aiServices(n *Nation, war, funding, universities bool) {
+	short := n.payScale < 0.999
+	if funding {
+		for _, r := range n.Regions {
+			for _, f := range r.Firms {
+				if !f.State {
+					continue
+				}
+				funded := f.Levels
+				if f.Public == University && (short || war) {
+					funded = (f.Levels + 1) / 2
+				}
+				w.SetServiceFunding(r.ID, f.Public, funded)
 			}
-			w.SetFunding(r.ID, funded)
 		}
 	}
-	if war || low || n.universityBill() > aiScience*n.Temper.Learning*n.IncomeEMA {
+	if short || n.Treasury < 0.5*aiTreasuryDays*n.SpendEMA {
 		return
 	}
-	var best *Region
-	for _, r := range n.Regions {
-		f := r.University()
-		if f == nil || !f.Enabled || f.Levels >= f.MaxLevels {
+	for k := Public(0); k < NumServices; k++ {
+		if k == University && (!universities || war || n.serviceBillOf(University) > aiScience*n.Temper.Learning*n.IncomeEMA) {
 			continue
 		}
-		if f.Expansion != nil {
-			return // one at a time
+		target := 1.0
+		if k == Schools {
+			target = math.Min(1, aiSchooling*n.Temper.Learning)
 		}
-		if best == nil || r.Population() > best.Population() {
-			best = r
+		var best *Region
+		bestCov := 2.0
+		busy := false
+		for _, r := range n.Regions {
+			f := r.Service(k)
+			if f == nil || !f.Enabled {
+				continue
+			}
+			if f.Expansion != nil {
+				busy = true
+				break
+			}
+			if f.Levels >= f.MaxLevels {
+				continue
+			}
+			cov := 0.0
+			if k == University {
+				cov = -r.Population() // the biggest tile first
+			} else if need := w.ServiceNeed(r, k); need > 0 {
+				cov = float64(f.Levels) * ServiceStaff / need // what its levels could cover
+				if cov >= target {
+					continue
+				}
+			} else {
+				continue
+			}
+			if cov < bestCov {
+				best, bestCov = r, cov
+			}
+		}
+		if !busy && best != nil {
+			w.ExpandService(best.ID, k)
 		}
 	}
-	if best != nil {
-		w.ExpandUniversity(best.ID)
+}
+
+// serviceBillOf is what the nation's funded levels of one service cost today.
+func (n *Nation) serviceBillOf(k Public) float64 {
+	s := 0.0
+	for _, r := range n.Regions {
+		if f := r.Service(k); f != nil && f.Enabled {
+			s += float64(f.Funded) * ServiceStaff * r.Wage
+		}
 	}
+	return s
+}
+
+// aiTax is a predictive controller: once a month it sets the tax rate whose
+// predicted income covers the average day's spending and closes the gap to
+// aiTreasuryDays of spending within aiTaxHorizon days. Income is predicted
+// as proportional to the rate (today's income per point of tax). Computer
+// nations do it always, players who ask for it (AutoTax) too.
+const (
+	aiTreasuryDays = 30.0
+	aiTaxHorizon   = 30.0
+)
+
+func (w *World) aiTax(n *Nation) {
+	if n.TaxRate <= 0 || n.IncomeEMA <= 0 {
+		n.SetTaxRate(math.Max(n.TaxRate, 0.05)) // nothing to predict from yet
+		return
+	}
+	perPoint := n.IncomeEMA / n.TaxRate
+	want := n.SpendEMA + (aiTreasuryDays*n.SpendEMA-n.Treasury)/aiTaxHorizon
+	n.SetTaxRate(math.Max(0.005, math.Min(0.6, want/perPoint)))
 }
 
 // aiExpandFirm keeps one state-funded firm expansion going, on the firm with

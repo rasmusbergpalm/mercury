@@ -163,21 +163,28 @@ func TestNationCommands(t *testing.T) {
 		t.Error("automated construction not on")
 	}
 	// universities: fund fewer levels, build one, close one
-	home := 0 // tile 00 is Montara's
-	uni := "/api/games/" + g.ID + "/regions/0/university"
-	e.do("POST", uni+"?funded=1", tok, nil, 200, &st)
-	if u := st.Regions[home].University; u == nil || u.Funded != 1 || u.Levels != 2 {
+	home := 0                                              // tile 00 is Montara's
+	uni := "/api/games/" + g.ID + "/regions/0/services/0/" // universities
+	e.do("POST", uni+"fund?levels=1", tok, nil, 200, &st)
+	if u := st.Regions[home].Services[0]; u == nil || u.Funded != 1 || u.Levels != 2 {
 		t.Fatalf("university after funding 1: %+v", u)
 	}
-	e.do("POST", uni+"?funded=9", tok, nil, 400, nil)
-	e.do("POST", uni+"/close", tok, nil, 200, &st)
-	if u := st.Regions[home].University; u.Levels != 1 || u.Funded != 1 {
+	e.do("POST", uni+"fund?levels=9", tok, nil, 400, nil)
+	e.do("POST", uni+"close", tok, nil, 200, &st)
+	if u := st.Regions[home].Services[0]; u.Levels != 1 || u.Funded != 1 {
 		t.Errorf("university after closing a level: %+v", u)
 	}
-	e.do("POST", uni+"/expand", tok, nil, 200, &st)
-	if u := st.Regions[home].University; u.Building == nil {
+	e.do("POST", uni+"expand", tok, nil, 200, &st)
+	if u := st.Regions[home].Services[0]; u.Building == nil {
 		t.Errorf("no university level being built: %+v", u)
 	}
+	e.do("POST", "/api/games/"+g.ID+"/regions/0/services/9/expand", tok, nil, 404, nil)
+	e.do("POST", base+"pension?level=2", tok, nil, 200, &st)
+	e.do("POST", base+"auto-tax?on=true", tok, nil, 200, &st)
+	if st.Nations[0].Pension != 2 || !st.Nations[0].AutoTax {
+		t.Errorf("pension %d, auto tax %v", st.Nations[0].Pension, st.Nations[0].AutoTax)
+	}
+	e.do("POST", base+"pension?level=5", tok, nil, 400, nil)
 	e.do("POST", base+"tariff?rate=0.3", tok, nil, 200, &st)
 	e.do("POST", base+"tariff?rate=0.5&good=tea", tok, nil, 200, &st)
 	if st.Nations[0].Tariff[0] != 0.3 || st.Nations[0].Tariff[engine.G("tea")] != 0.5 {

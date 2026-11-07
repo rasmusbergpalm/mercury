@@ -353,7 +353,7 @@ func TestConquestEliminatesANation(t *testing.T) {
 	beta := regionByName(w, "01")
 	d, _ := w.RaiseArmy(1, beta.ID, 0)
 	a, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
-	a.Men, a.Region = 50, beta.ID
+	a.Men, a.Region = 20, beta.ID // an army its taxes can pay
 	money := w.Money()
 	for i := 0; i < 2*int(occupationDays*ownedTileFactor) && !w.Nations[1].Eliminated(); i++ {
 		w.Step()

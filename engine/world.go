@@ -128,7 +128,9 @@ func (w *World) Step() {
 	changed := false
 	for _, n := range w.Nations {
 		changed = n.settle(w) || changed
-		n.rebate()
+	}
+	if w.Spec != nil {
+		w.serviceEffects()
 	}
 	w.openNewPorts()
 	if changed {
@@ -388,7 +390,7 @@ func (w *World) migrate() {
 		}
 		gap := math.Min((to.UtilityEMA-from.UtilityEMA)/from.UtilityEMA, 0.3)
 		pop := from.Population()
-		n := math.Min(migrationRate*gap*pop/(1+l.Hop), pop-minPopulation)
+		n := math.Min(migrationRate*gap*pop/(1+l.Hop), sizeOf(movable(from))-minPopulation) // never below minPopulation workers
 		if n > 1e-9 {
 			movePeople(from, to, n)
 		}

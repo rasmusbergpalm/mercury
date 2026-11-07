@@ -103,6 +103,7 @@ func (g *Game) join(nation int) (string, error) {
 	token := randomHex(16)
 	g.players[token] = nation
 	n.AI = false
+	n.AutoTax = true // players start with the tax automated; they can take it over
 	return token, nil
 }
 

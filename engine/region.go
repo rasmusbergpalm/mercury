@@ -23,6 +23,9 @@ type Region struct {
 	Project  *Project // infrastructure under construction, or nil
 	Neglect  float64  // accumulated unmet upkeep
 	Siege    *Siege   // a foreign army working to take the tile, or nil
+	Collect  float64  // share of its taxes the administration collects
+	Educated float64  // share of its people who were schooled
+	Healthy  float64  // share of its crowding public health covers
 	Battle   int      // days the current battle on the tile has lasted (0: none)
 
 	UtilityEMA float64 // smoothed utility per person; migration follows it
@@ -43,7 +46,7 @@ func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash f
 	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1, BaseMove: 1,
 		outbound: make([][]*Trader, NumGoods), inbound: make([][]*Trader, NumGoods),
 		prices: make([]float64, NumGoods), publicBid: make([]float64, NumGoods),
-		publicGot: make([]float64, NumGoods)}
+		publicGot: make([]float64, NumGoods), Collect: 1, Healthy: 1}
 	for i := 0; i < nPops; i++ {
 		r.Pops = append(r.Pops, NewPop(popSize, popCash))
 		r.popDemand = append(r.popDemand, make([]float64, NumGoods))
@@ -220,7 +223,7 @@ func (r *Region) LaborMarket() {
 		}
 	}
 	excess := (totalD - supply) / supply
-	r.Wage *= math.Exp(r.WageSpeed * clip(excess))
+	r.Wage = math.Max(minPrice, math.Min(maxPrice, r.Wage*math.Exp(r.WageSpeed*clip(excess)))) // bounded, like prices
 }
 
 type agentKind int
@@ -416,10 +419,10 @@ func (r *Region) SizeBonus() float64 {
 }
 
 func (r *Region) updateAgglomeration() {
-	b := r.SizeBonus()
+	b, e := r.SizeBonus(), 1+educationBonus*r.Educated
 	for _, f := range r.Firms {
 		if f.Sector != Primary {
-			f.Agglom = b
+			f.Agglom, f.EduMult = b, e
 		}
 	}
 }
@@ -456,7 +459,10 @@ func (r *Region) BasicNeedsMet() float64 {
 
 // GrowthRate is the tile's population growth per year at current consumption.
 func (r *Region) GrowthRate() float64 {
-	g := popGrowthSlope * (r.BasicNeedsMet() - popGrowthNeutral)
+	g := popGrowthSlope*(r.BasicNeedsMet()-popGrowthNeutral) - r.crowdingPenalty()
+	if r.Urban { // game worlds: public health
+		g += r.healthBonus()
+	}
 	if r.Nation != nil {
 		g += r.Nation.popGrowthBonus()
 	}

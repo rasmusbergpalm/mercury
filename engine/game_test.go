@@ -275,6 +275,9 @@ func TestProfitableFirmsInvest(t *testing.T) {
 	grew := 0
 	for _, r := range w.Regions {
 		for _, f := range r.Firms {
+			if f.State {
+				continue // public services are the state's to build
+			}
 			if f.Levels > f.MaxLevels || f.Levels < 1 {
 				t.Errorf("%s in %s has %d levels (max %d)", f.Name, r.Name, f.Levels, f.MaxLevels)
 			}
