@@ -586,7 +586,7 @@ func TestArmiesBidHardForScarceSupplies(t *testing.T) {
 	w.GrantTech(m.ID, "Drill") // line infantry needs artillery
 	home := regionByName(w, "11")
 	a, _ := w.RaiseArmy(m.ID, home.ID, 8)
-	a.Men = 8
+	a.Men = 100 // an order (~0.6 a day) between construction's limit and the army's
 	art := G("artillery")
 	for _, r := range m.Regions {
 		r.Markets[art].Supply = 0
