@@ -55,11 +55,13 @@ type ArmyHistory struct {
 	Effectiveness []float64 `json:"effectiveness"`
 }
 
-// GDP is the value of a tile's output at today's prices.
+// GDP is the value the tile's firms added today, in pounds: their output at
+// today's prices less the goods they used up, so coal burnt in a smithy is not
+// counted twice.
 func (r *Region) GDP() float64 {
 	s := 0.0
 	for _, f := range r.Firms {
-		s += f.LastOutput * r.Markets[f.Output].Price
+		s += f.ValueAdded(r.Markets[f.Output].Price)
 	}
 	return s
 }

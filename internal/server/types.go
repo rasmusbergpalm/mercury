@@ -282,7 +282,7 @@ type FirmState struct {
 	State     bool              `json:"state"`      // a public service
 	Bonuses   []engine.Modifier `json:"bonuses"`    // productivity, factor by factor
 	Wanted    float64           `json:"wanted"`     // workers it wanted (and could pay) today
-	PerWorker float64           `json:"per_worker"` // value added per worker today
+	PerWorker float64           `json:"per_worker"` // profit per worker today: value added per worker less the wage
 }
 
 type MarketState struct {
@@ -538,7 +538,7 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, f.Bonuses(r.Nation), 0, 0}
 		fs.Wanted = f.PlanLabor
 		if f.Labor > 1e-9 {
-			fs.PerWorker = f.ValueAdded(r.Markets[f.Output].Price, r.Wage) / f.Labor
+			fs.PerWorker = f.ValueAdded(r.Markets[f.Output].Price)/f.Labor - r.Wage
 		}
 		if e := f.Expansion; e != nil {
 			fs.Expansion = &Expansion{e.Delivered, e.Public}

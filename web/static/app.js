@@ -6,6 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 const fmt = (x, d = 2) => (Math.abs(x) >= 1000 ? Math.round(x).toLocaleString("en") : x.toFixed(d));
 const pct = (x) => `${Math.round(100 * x)}%`;
 // compact numbers for axes and plaques: 950, 9.5k, 1.2M
+const money = (v) => (v < 0 ? "−£" : "£") + short(Math.abs(v));
 function short(x) {
   const a = Math.abs(x);
   if (a >= 1e9) return (x / 1e9).toFixed(a >= 1e10 ? 0 : 1) + "bn";
@@ -1029,9 +1030,13 @@ function drawFlows() {
   const max = Math.max(1e-9, ...agg.values());
   ctx.strokeStyle = ctx.fillStyle = cssVar("--flow");
   for (const [key, v] of agg) {
-    if (v < max * 0.03) continue;
+    // width grows with the square root of the value, relative to the biggest
+    // route, so area tracks value; tiny routes fade out
+    const rel = Math.sqrt(v / max);
+    if (rel < 0.12) continue;
     const sea = key >= 1e6, k = key % 1e6, from = Math.floor(k / 1000), to = k % 1000;
-    const w = 1 + 5 * Math.sqrt(v / max);
+    const w = Math.max(0.8, size * 0.2 * rel);
+    ctx.globalAlpha = 0.35 + 0.65 * rel;
     let pts = [center(world.regions[from]), center(world.regions[to])];
     if (sea) {
       const cells = seaCells(from, to);
@@ -1052,10 +1057,11 @@ function drawFlows() {
     ctx.lineTo(...pts[pts.length - 1]); ctx.stroke();
     ctx.setLineDash([]);
     const [bx, by] = pts[pts.length - 1], [px, py] = pts[pts.length - 2];
-    const len = Math.hypot(bx - px, by - py) || 1, ux = (bx - px) / len, uy = (by - py) / len, h = 4 + w;
+    const len = Math.hypot(bx - px, by - py) || 1, ux = (bx - px) / len, uy = (by - py) / len, h = 3 + w * 1.1;
     ctx.beginPath(); ctx.moveTo(bx + ux * h, by + uy * h); ctx.lineTo(bx - uy * h * 0.6, by + ux * h * 0.6); ctx.lineTo(bx + uy * h * 0.6, by - ux * h * 0.6);
     ctx.closePath(); ctx.fill();
   }
+  ctx.globalAlpha = 1;
 }
 
 function drawLegend(sc) {
@@ -1151,9 +1157,9 @@ function tilePanel() {
       ${stat(short(s.population), "people", `<span class="${s.growth >= 0 ? "good" : "bad"}">${s.growth >= 0 ? "+" : ""}${(100 * s.growth).toFixed(1)}%/yr</span>`)}
       ${stat(fmt(s.wage), "daily wage", trend(h, "wage"))}
       ${stat(fmt(s.utility), "living standard", trend(h, "utility"))}
-      ${stat(short(d.gdp), "output / day", trend(h, "gdp"))}
-      ${stat(short(exp), "exports / day")}
-      ${stat(short(imp), "imports / day")}
+      ${stat("£" + short(d.gdp), "GDP / day", trend(h, "gdp"))}
+      ${stat("£" + short(exp), "exports / day")}
+      ${stat("£" + short(imp), "imports / day")}
     </div>`;
   if (s.services) html += `<p class="sub" style="margin-top:8px">Public services: ${s.nation >= 0 ? `taxes collected ${pct(s.collect)} · ` : ""}educated ${pct(s.educated)} ·
     health covers ${pct(s.healthy)}${s.crowding > 0 ? ` · <span class="${s.healthy < 0.999 ? "bad" : ""}">crowded ${pct(s.crowding)}</span>` : ""}</p>`;
@@ -1176,8 +1182,8 @@ function tilePanel() {
       const tip = (f.bonuses || []).map((m) => `${m.name}: ×${m.value.toFixed(2)} (${m.note})`).join("\n");
       if (f.state) return `<tr class="dim"><td>${esc(f.name)}<br><span class="sub">public · ${f.levels} levels, run from the ${f.name === "University" ? "Research" : "State"} tab</span></td><td>${f.name === "University" ? "research" : "service"}</td><td>${fmt(f.labor, 1)}</td><td colspan="3"></td></tr>`;
       const m = d.markets.find((x) => x.good === f.output) || { supply: 0, demand: 0 };
-      // productivity: the value each worker adds a day (output less the goods used up), against the wage
-      const per = f.labor > 0.01 ? `<span class="${f.per_worker >= s.wage ? "good" : "bad"}">£${fmt(f.per_worker)}</span>` : "–";
+      // profit per worker: the value each worker adds a day (output less the goods used up) less the wage
+      const per = f.labor > 0.01 ? `<span class="${f.per_worker >= 0 ? "good" : "bad"}">${f.per_worker < 0 ? "−" : ""}£${fmt(Math.abs(f.per_worker))}</span>` : "–";
       return `<tr title="${esc(tip)}\nproductivity ×${total.toFixed(2)}\nprofit £${fmt(f.profit, 2)} a day"><td>${esc(f.name)}<br><span class="sub">${f.sector}${bon ? ` · ${bon}` : ""}</span></td>
         <td>${G[f.output].name}<br><span class="sub">${fmt(f.produced, 1)} a day</span></td>
         <td class="nowrap">${fmt(f.labor, 1)} / ${fmt(f.wanted, 1)}</td><td class="nowrap">${fmt(m.supply, 1)} / ${fmt(m.demand, 1)}</td><td>${per}</td><td class="nowrap">${f.levels}/${f.max_levels}${grow ? `<br>${grow}` : ""}</td></tr>`;
@@ -1185,8 +1191,8 @@ function tilePanel() {
   const employed = d.firms.reduce((t, f) => t + f.labor, 0), workers = (d.classes.find((c) => c.class === "workers") || { size: 0 }).size;
   html += `<h3>Production</h3>
     <div class="stats">${stat(fmt(s.wage), "the tile's daily wage")}${stat(`${short(employed)} / ${short(workers)}`, "workers employed")}${stat(pct(workers > 0 ? employed / workers : 0), "employment")}</div>
-    <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th class="nowrap">workers<br>/ wanted</th><th class="nowrap">supply<br>/ demand</th><th class="nowrap">per<br>worker</th><th>levels</th></tr>${firms}</table></div>
-    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay. <b>Per worker</b> is productivity: the value each worker adds a day (output less the goods used up), green when it beats the wage. Supply and demand are the tile's market for what the firm makes. Under each firm, what multiplies its productivity: its site, technology, the tile's size and its buildings (hover for the details and profit). ★ expansion paid by the state; the rest by owners.</p>`;
+    <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th class="nowrap">workers<br>/ wanted</th><th class="nowrap">supply<br>/ demand</th><th class="nowrap">profit /<br>worker</th><th>levels</th></tr>${firms}</table></div>
+    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay. <b>Profit / worker</b> is what each worker earns the owners a day: the value they add (output less the goods used up) less their wage. Red means the firm is losing money on its workers. Supply and demand are the tile's market for what the firm makes. Under each firm, what multiplies its productivity: its site, technology, the tile's size and its buildings (hover for the details and profit). ★ expansion paid by the state; the rest by owners.</p>`;
   // the market: local supply and demand, and what ships in and out
   const ex = {}, im = {};
   for (const f of d.exports) ex[f.good] = (ex[f.good] || 0) + f.qty;
@@ -1208,18 +1214,18 @@ function tilePanel() {
 }
 
 function tileChart(h) {
-  const [k, row] = seg("tile", [["population", "People"], ["wage", "Wage"], ["utility", "Living"], ["gdp", "Output"], ["trade", "Trade"], ["classes", "Classes"], ["prices", "Prices"]], "population");
+  const [k, row] = seg("tile", [["population", "People"], ["wage", "Wage"], ["utility", "Living"], ["gdp", "GDP"], ["trade", "Trade"], ["classes", "Classes"], ["prices", "Prices"]], "population");
   if (!h || !h.data) return row + lineChart(null, []);
   const d = h.data, T = h.ticks;
   const one = (name, values, f) => lineChart(T, [{ name, color: series(0), values }], { f });
   let chart;
-  if (k === "trade") chart = lineChart(T, [{ name: "exports", color: series(1), values: d.exports }, { name: "imports", color: series(2), values: d.imports }]);
+  if (k === "trade") chart = lineChart(T, [{ name: "exports", color: series(1), values: d.exports }, { name: "imports", color: series(2), values: d.imports }], { f: money });
   else if (k === "classes") chart = lineChart(T, world.classes.map((c, i) => ({ name: c, color: series(i), values: d.class_income[i] })), { f: (v) => fmt(v) }) + `<p class="sub">Income per head per day.</p>`;
   else if (k === "prices") {
     const [g, prow] = seg("tile-price", world.consumer_goods.map((g) => [String(g), world.goods[g].name]), String(world.consumer_goods[0]));
     const idx = world.consumer_goods.indexOf(+g);
     chart = prow + lineChart(T, [{ name: `${world.goods[+g].name} price`, color: series(0), values: d.prices[idx] }], { f: (v) => fmt(v) });
-  } else chart = one({ population: "people", wage: "wage", utility: "living standard", gdp: "output per day" }[k], d[k], k === "population" || k === "gdp" ? short : (v) => fmt(v));
+  } else chart = one({ population: "people", wage: "wage", utility: "living standard", gdp: "GDP per day" }[k], d[k], k === "population" ? short : k === "gdp" ? money : (v) => fmt(v));
   return row + chart;
 }
 
@@ -1309,7 +1315,7 @@ function nationPanel() {
   const known = n.known.filter(Boolean).length;
   html += `<div class="stats four">
     ${stat(short(n.population), "people", trend(h, "population"))}
-    ${stat(short(n.gdp), "output / day", trend(h, "gdp"))}
+    ${stat("£" + short(n.gdp), "GDP / day", trend(h, "gdp"))}
     ${stat("£" + short(n.income), "state income / day", trend(h, "income"))}
     ${stat("£" + short(n.treasury), "treasury")}
     ${stat(fmt(n.utility), "living standard", trend(h, "utility"))}
@@ -1323,15 +1329,15 @@ function nationPanel() {
 }
 
 function nationChart(h, n) {
-  const [k, row] = seg("nation", [["population", "People"], ["gdp", "Output"], ["income", "Revenue"], ["treasury", "Treasury"], ["utility", "Living"],
+  const [k, row] = seg("nation", [["population", "People"], ["gdp", "GDP"], ["income", "Revenue"], ["treasury", "Treasury"], ["utility", "Living"],
     ["classes", "Classes"], ["labor", "Labour"], ["soldiers", "Soldiers"], ["strength", "Might"], ["techs", "Techs"], ["tiles", "Tiles"]], "population");
   if (!h || !h.data) return row + lineChart(null, []);
   const d = h.data, T = h.ticks, c = nationColor(n.id);
-  const names = { population: "people", gdp: "output per day", income: "state income per day", treasury: "treasury", utility: "living standard",
+  const names = { population: "people", gdp: "GDP per day", income: "state income per day", treasury: "treasury", utility: "living standard",
     soldiers: "soldiers", strength: "military strength", techs: "techs known", tiles: "tiles" };
   if (k === "classes") return row + lineChart(T, world.classes.map((cl, i) => ({ name: cl, color: series(i), values: d.class_income[i] })), { f: (v) => fmt(v) }) + `<p class="sub">Income per head per day.</p>`;
   if (k === "labor") return row + lineChart(T, world.sectors.map((s, i) => ({ name: s, color: series(i), values: d.labor[i] })), { share: true }) + `<p class="sub">Share of workers by sector: the march from the fields into the mills.</p>`;
-  return row + lineChart(T, [{ name: names[k], color: c, values: d[k] }], { f: k === "utility" ? (v) => fmt(v) : short });
+  return row + lineChart(T, [{ name: names[k], color: c, values: d[k] }], { f: k === "utility" ? (v) => fmt(v) : ["gdp", "income", "treasury"].includes(k) ? money : short });
 }
 
 function societyBlock(n) {
@@ -1473,9 +1479,9 @@ function tradePanel() {
   let html = nationPicker() + `<h2>Trade of ${esc(world.nations[n.id].name)}</h2>
     <p class="sub">Goods crossing its frontiers, valued at the prices where they were loaded.</p>
     <div class="stats">
-      ${stat(short(exp), "exports / day", trend(h, "exports"))}
-      ${stat(short(imp), "imports / day", trend(h, "imports"))}
-      ${stat(`<span class="${exp >= imp ? "good" : "bad"}">${exp >= imp ? "+" : "−"}${short(Math.abs(exp - imp))}</span>`, "balance / day")}
+      ${stat("£" + short(exp), "exports / day", trend(h, "exports"))}
+      ${stat("£" + short(imp), "imports / day", trend(h, "imports"))}
+      ${stat(`<span class="${exp >= imp ? "good" : "bad"}">${exp >= imp ? "+" : "−"}£${short(Math.abs(exp - imp))}</span>`, "balance / day")}
     </div>`;
   // partners today, from the shipments on the map
   const partners = {};
@@ -1487,7 +1493,7 @@ function tradePanel() {
   }
   const plist = Object.entries(partners).sort((x, y) => (y[1].out + y[1].in) - (x[1].out + x[1].in));
   html += `<h3>Partners today</h3>` + (plist.length
-    ? `<table><tr><th>with</th><th>exports</th><th>imports</th></tr>${plist.map(([o, p]) => `<tr><td>${chip(+o)} ${esc(nationName(+o))}</td><td>${fmt(p.out, 1)}</td><td>${fmt(p.in, 1)}</td></tr>`).join("")}</table>`
+    ? `<table><tr><th>with</th><th>exports</th><th>imports</th></tr>${plist.map(([o, p]) => `<tr><td>${chip(+o)} ${esc(nationName(+o))}</td><td>£${fmt(p.out, 1)}</td><td>£${fmt(p.in, 1)}</td></tr>`).join("")}</table>`
     : `<p class="hint">No goods cross its frontiers today.</p>`);
   // by good
   const goods = world.goods.map((g, i) => i).filter((i) => n.exports[i] > 1e-6 || n.imports[i] > 1e-6)
@@ -1496,13 +1502,13 @@ function tradePanel() {
   const pick = goods.includes(+chartPick.tradeGood) ? +chartPick.tradeGood : null;
   html += `<h3>Over time</h3>`;
   if (!h || !h.data) html += lineChart(null, []);
-  else if (pick === null) html += lineChart(h.ticks, [{ name: "exports", color: series(1), values: h.data.exports }, { name: "imports", color: series(2), values: h.data.imports }]);
+  else if (pick === null) html += lineChart(h.ticks, [{ name: "exports", color: series(1), values: h.data.exports }, { name: "imports", color: series(2), values: h.data.imports }], { f: money });
   else html += `<div class="row" style="margin:0"><span class="sub">${esc(world.goods[pick].name)} only</span><button data-pick="tradeGood" data-val="">All goods</button></div>` +
-    lineChart(h.ticks, [{ name: "exports", color: series(1), values: h.data.exports_by_good[pick] }, { name: "imports", color: series(2), values: h.data.imports_by_good[pick] }]);
+    lineChart(h.ticks, [{ name: "exports", color: series(1), values: h.data.exports_by_good[pick] }, { name: "imports", color: series(2), values: h.data.imports_by_good[pick] }], { f: money });
   html += `<h3>By good, today</h3>` + (goods.length ? `<table><tr><th>good</th><th>exports</th><th></th><th>imports</th><th></th></tr>${goods.map((i) =>
     `<tr><td><button data-pick="tradeGood" data-val="${i}" title="Chart ${esc(world.goods[i].name)}" class="${pick === i ? "primary" : ""}">${esc(world.goods[i].name)}</button></td>
-     <td>${fmt(n.exports[i], 1)}</td><td><div class="hbar"><span style="width:${pct(n.exports[i] / max)};background:${series(1)}"></span></div></td>
-     <td>${fmt(n.imports[i], 1)}</td><td><div class="hbar"><span style="width:${pct(n.imports[i] / max)};background:${series(2)}"></span></div></td></tr>`).join("")}</table>
+     <td>£${fmt(n.exports[i], 1)}</td><td><div class="hbar"><span style="width:${pct(n.exports[i] / max)};background:${series(1)}"></span></div></td>
+     <td>£${fmt(n.imports[i], 1)}</td><td><div class="hbar"><span style="width:${pct(n.imports[i] / max)};background:${series(2)}"></span></div></td></tr>`).join("")}</table>
      <p class="sub">Tap a good to chart it.</p>` : `<p class="hint">Nothing today.</p>`);
   if (mine) {
     const tradable = world.goods.map((g, i) => i).filter((i) => !["transport", "construction", "research"].includes(world.goods[i].name));
@@ -1623,15 +1629,15 @@ function worldPanel() {
     }
     const war = o.at_war.map((w, i) => (w ? world.nations[i].name : null)).filter(Boolean);
     return `<tr><td>${chip(o.id)} ${esc(info.name)}<br><span class="sub">${who}</span></td><td>${o.eliminated ? "fallen" : o.tiles}</td>
-      <td>${short(o.population)}</td><td>${short(o.gdp)}</td><td>${short(o.soldiers)}</td><td>${o.known.filter(Boolean).length}</td>
+      <td>${short(o.population)}</td><td>£${short(o.gdp)}</td><td class="nowrap">out £${short(o.exports.reduce((t, v) => t + v, 0))}<br><span class="sub">in £${short(o.imports.reduce((t, v) => t + v, 0))}</span></td><td>${short(o.soldiers)}</td><td>${o.known.filter(Boolean).length}</td>
       <td>${war.length ? `<span class="bad">⚔ ${war.map(esc).join(", ")}</span>` : "peace"}${diplo ? `<br>${diplo}` : ""}</td></tr>`;
   }).join("");
   const hs = world.nations.map((o) => getHist(`nations/${o.id}`));
-  const [k, row] = seg("world", [["population", "People"], ["gdp", "Output"], ["utility", "Living"], ["soldiers", "Soldiers"], ["strength", "Might"], ["techs", "Techs"], ["tiles", "Tiles"]], "gdp");
+  const [k, row] = seg("world", [["population", "People"], ["gdp", "GDP"], ["utility", "Living"], ["soldiers", "Soldiers"], ["strength", "Might"], ["techs", "Techs"], ["tiles", "Tiles"]], "gdp");
   const ready = hs.every((h) => h && h.data);
-  const chart = ready ? lineChart(hs[0].ticks, world.nations.map((o, i) => ({ name: o.name, color: nationColor(o.id), values: hs[i].data[k] })), { f: k === "utility" ? (v) => fmt(v) : short }) : lineChart(null, []);
+  const chart = ready ? lineChart(hs[0].ticks, world.nations.map((o, i) => ({ name: o.name, color: nationColor(o.id), values: hs[i].data[k] })), { f: k === "utility" ? (v) => fmt(v) : k === "gdp" ? money : short }) : lineChart(null, []);
   return `<h2>The powers</h2><div class="table-scroll"><table>
-    <tr><th>nation</th><th>tiles</th><th>people</th><th>output</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
+    <tr><th>nation</th><th>tiles</th><th>people</th><th>GDP / day</th><th>trade / day</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
     <h3>The race</h3>${row}${chart}
     <p class="sub" style="margin-top:8px">You can only go to war with a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless.</p>
     <p class="sub">Money in the world: ${short(state.money)} (conserved).</p>`;

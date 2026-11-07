@@ -100,7 +100,7 @@ func (r *Region) Plan() {
 	}
 	prices := r.refreshPrices()
 	for _, f := range r.Firms {
-		f.tickRevenue, f.tickCost, f.investWant = 0, 0, 0
+		f.tickRevenue, f.tickCost, f.tickInputs, f.investWant = 0, 0, 0, 0
 		f.Plan(prices, r.Wage)
 	}
 }
@@ -310,6 +310,7 @@ func (r *Region) GoodsMarkets() {
 			case firmAgent:
 				r.Firms[ref.idx].Inputs[g] += got
 				r.Firms[ref.idx].tickCost += got * price
+				r.Firms[ref.idx].tickInputs += got * price
 			case traderAgent:
 				t := r.outbound[g][ref.idx]
 				t.Receive(gid, got)

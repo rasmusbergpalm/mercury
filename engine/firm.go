@@ -92,6 +92,7 @@ type Firm struct {
 	ProfitEMA             float64
 	LossTicks, Age        int // ticks of losses in a row; ticks alive
 	tickRevenue, tickCost float64
+	tickInputs            float64 // what the goods it used up cost this tick
 	investWant            float64 // construction to buy this tick for a private expansion
 }
 
@@ -281,7 +282,7 @@ func cap1(s string) string {
 }
 
 // ValueAdded is what the firm added today: its output at the given price,
-// less the goods it used up (wages are part of the value it added).
-func (f *Firm) ValueAdded(price, wage float64) float64 {
-	return f.LastOutput*price - math.Max(0, f.tickCost-f.Labor*wage)
+// less the goods it used up (wages and profits are the value it added).
+func (f *Firm) ValueAdded(price float64) float64 {
+	return f.LastOutput*price - f.tickInputs
 }
