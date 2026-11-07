@@ -255,19 +255,21 @@ type Expansion struct {
 }
 
 type FirmState struct {
-	Name      string     `json:"name"`
-	Output    int        `json:"output"`
-	Labor     float64    `json:"labor"`
-	Produced  float64    `json:"produced"`
-	Inventory float64    `json:"inventory"`
-	Cash      float64    `json:"cash"`
-	Levels    int        `json:"levels"`
-	MaxLevels int        `json:"max_levels"`
-	Profit    float64    `json:"profit"`
-	Expansion *Expansion `json:"expansion"`
-	Enabled   bool       `json:"enabled"`
-	Requires  string     `json:"requires"` // tech that unlocks it, if any
-	Sector    string     `json:"sector"`
+	Name      string            `json:"name"`
+	Output    int               `json:"output"`
+	Labor     float64           `json:"labor"`
+	Produced  float64           `json:"produced"`
+	Inventory float64           `json:"inventory"`
+	Cash      float64           `json:"cash"`
+	Levels    int               `json:"levels"`
+	MaxLevels int               `json:"max_levels"`
+	Profit    float64           `json:"profit"`
+	Expansion *Expansion        `json:"expansion"`
+	Enabled   bool              `json:"enabled"`
+	Requires  string            `json:"requires"` // tech that unlocks it, if any
+	Sector    string            `json:"sector"`
+	State     bool              `json:"state"`   // a state university
+	Bonuses   []engine.Modifier `json:"bonuses"` // productivity, factor by factor
 }
 
 type MarketState struct {
@@ -515,7 +517,7 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String()}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, f.Bonuses(r.Nation)}
 		if e := f.Expansion; e != nil {
 			fs.Expansion = &Expansion{e.Delivered, e.Public}
 		}

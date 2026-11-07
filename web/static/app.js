@@ -341,7 +341,7 @@ function render(force) {
   const m = $("mode");
   const a = selectedArmy !== null && armyById(selectedArmy);
   m.hidden = !(moving && a);
-  if (moving && a) m.innerHTML = `<span>Tap a tile to march army ${a.id} there</span><button id="cancel-move">Cancel</button>`;
+  if (moving && a) m.innerHTML = `<span>Choose where army ${a.id} marches</span><button id="cancel-move">Cancel</button>`;
   renderPanel(force);
 }
 function renderPanel(force) {
@@ -698,6 +698,7 @@ function draw() {
   for (const r of world.regions) if (state.regions[r.id].battle > 0) drawBattle(...center(r));
   drawPaths();
   drawArmies();
+  drawBoots();
   if (selected !== null) {
     const [x, y] = center(world.regions[selected]);
     hexPath(x, y, size * 0.93); ctx.lineWidth = 3; ctx.strokeStyle = cssVar("--select"); ctx.stroke();
@@ -906,6 +907,34 @@ function drawBattle(x, y) {
   ctx.moveTo(cx + r * 0.75, cy + r * 0.45); ctx.lineTo(cx + r * 0.45, cy + r * 0.75); ctx.stroke();
 }
 
+// The march button: a pair of boots on your army in the selected tile. Tap
+// it, then tap where the army should go.
+let boots = null;
+const myArmyOn = (tile) => state.armies.find((a) => a.region === tile && a.nation === state.you && state.you >= 0);
+const canvasXY = (ev) => { const rect = canvas.getBoundingClientRect(); return [ev.clientX - rect.left, ev.clientY - rect.top]; };
+function drawBoots() {
+  boots = null;
+  const a = selected !== null && myArmyOn(selected);
+  if (!a) return;
+  const here = state.armies.filter((x) => x.region === selected);
+  const [x, y] = center(world.regions[selected]);
+  const [bx, by] = armySpot(x, y, here.indexOf(a), here.length);
+  const r = Math.max(11, size * 0.15), cx = bx + size * 0.3, cy = by - size * 0.24;
+  boots = { x: cx, y: cy, r, army: a.id };
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+  ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
+  ctx.fillStyle = moving && selectedArmy === a.id ? cssVar("--select") : cssVar("--accent"); ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.lineWidth = 1.5; ctx.strokeStyle = "#e7c776"; ctx.stroke();
+  // a boot: shaft, heel and toe
+  const u = r * 0.11, ox = cx - u * 1.5, oy = cy + u * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(ox - 2 * u, oy - 5 * u); ctx.lineTo(ox + 1.5 * u, oy - 5 * u); ctx.lineTo(ox + 1.5 * u, oy - 0.5 * u);
+  ctx.quadraticCurveTo(ox + 5.5 * u, oy - 0.2 * u, ox + 5.5 * u, oy + 2 * u); ctx.lineTo(ox - 2 * u, oy + 2 * u); ctx.closePath();
+  ctx.fillStyle = cssVar("--accent-text"); ctx.fill();
+  ctx.fillStyle = cssVar("--accent"); ctx.fillRect(ox - 2 * u, oy + 0.9 * u, 7.5 * u, 0.5 * u); // the sole's seam
+}
+
 // the marching route of the selected army (and the routes of your others, faintly)
 function drawPaths() {
   for (const a of state.armies) {
@@ -984,6 +1013,11 @@ function armyAt(ev, region) {
   return null;
 }
 canvas.addEventListener("click", async (ev) => {
+  if (boots && Math.hypot(...canvasXY(ev).map((v, i) => v - [boots.x, boots.y][i])) < boots.r * 1.4) {
+    selectedArmy = boots.army; moving = true; // march: now pick the destination
+    render(true);
+    return;
+  }
   const r = regionAt(ev);
   if (!r) return;
   if (moving && selectedArmy !== null) {
@@ -992,18 +1026,17 @@ canvas.addEventListener("click", async (ev) => {
     return;
   }
   const a = armyAt(ev, r);
-  if (a) {
-    selectedArmy = a.id;
-    setTab("armies");
-    render(true);
-    return;
-  }
+  if (a) selectedArmy = a.id;
+  const changed = selected !== r.id;
   selected = r.id;
-  setTab("tile");
+  if (changed || !a) setTab("tile");
   try { detail = await api("GET", `/api/games/${gid}/regions/${r.id}`); } catch (e) { showError("game-err", e); }
   render(true);
-  if (window.innerWidth <= 860) document.querySelector(".tabs").scrollIntoView({ behavior: "smooth", block: "start" });
+  // on a phone, show the tile's panel, unless the tap was to command an army here
+  if (window.innerWidth <= 860 && !myArmyOn(r.id)) document.querySelector(".tabs").scrollIntoView({ behavior: "smooth", block: "start" });
 });
+$("mode").addEventListener("click", (ev) => { if (ev.target.closest("#cancel-move")) { moving = false; render(true); } });
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && moving) { moving = false; render(true); } });
 canvas.addEventListener("mousemove", (ev) => {
   const r = regionAt(ev), tip = $("tooltip");
   if (!r || !state) { tip.hidden = true; return; }
@@ -1053,15 +1086,20 @@ function tilePanel() {
       if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="5">locked: needs ${esc(f.requires)}</td></tr>`;
       let grow = "";
       if (f.expansion) grow = `${pct(f.expansion.delivered / world.level_cost)}${f.expansion.public ? " ★" : ""}`;
-      else if (mine && f.levels < f.max_levels) grow = `<button data-cmd="/regions/${selected}/firms/${f.i}/expand" title="Your nation pays ${world.level_cost} construction for a level">+1</button>`;
-      return `<tr><td>${esc(f.name)}<br><span class="sub">${f.sector}</span></td><td>${G[f.output].name}</td><td>${fmt(f.produced, 1)}</td><td>${f.levels}/${f.max_levels}</td><td>${fmt(f.labor, 1)}</td>
+      else if (mine && !f.state && f.levels < f.max_levels) grow = `<button data-cmd="/regions/${selected}/firms/${f.i}/expand" title="Your nation pays ${world.level_cost} construction for a level">+1</button>`;
+      // productivity bonuses: everything but the recipe's base, as ×factors
+      const bon = (f.bonuses || []).slice(1).map((m) => `${esc(m.name.toLowerCase())} ×${m.value.toFixed(2)}`).join(" · ");
+      const total = (f.bonuses || []).reduce((t, m) => t * m.value, 1);
+      const tip = (f.bonuses || []).map((m) => `${m.name}: ×${m.value.toFixed(2)} (${m.note})`).join("\n");
+      if (f.state) return `<tr><td>${esc(f.name)}<br><span class="sub">state · ${f.levels} levels, run from the Research tab</span></td><td>research</td><td colspan="5"></td></tr>`;
+      return `<tr title="${esc(tip)}\nproductivity ×${total.toFixed(2)}"><td>${esc(f.name)}<br><span class="sub">${f.sector}${bon ? ` · ${bon}` : ""}</span></td><td>${G[f.output].name}</td><td>${fmt(f.produced, 1)}</td><td>${f.levels}/${f.max_levels}</td><td>${fmt(f.labor, 1)}</td>
         <td class="${f.profit < 0 ? "bad" : ""}">${fmt(f.profit, 1)}</td><td>${grow}</td></tr>`;
     }).join("");
   const employed = d.firms.reduce((t, f) => t + f.labor, 0), workers = (d.classes.find((c) => c.class === "workers") || { size: 0 }).size;
   html += `<h3>Production</h3>
     <div class="stats">${stat(fmt(s.wage), "the tile's daily wage")}${stat(`${short(employed)} / ${short(workers)}`, "workers employed")}${stat(pct(workers > 0 ? employed / workers : 0), "employment")}</div>
     <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th>output</th><th>levels</th><th>workers</th><th>profit</th><th></th></tr>${firms}</table></div>
-    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay. ★ expansion paid by the state; the rest by owners.</p>`;
+    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay. Under each firm, what multiplies its productivity: its site, technology, the tile's size and its buildings (hover for the details). ★ expansion paid by the state; the rest by owners.</p>`;
   // the market: local supply and demand, and what ships in and out
   const ex = {}, im = {};
   for (const f of d.exports) ex[f.good] = (ex[f.good] || 0) + f.qty;
@@ -1537,7 +1575,6 @@ document.addEventListener("keydown", (ev) => {
 // ---- panel actions -------------------------------------------------------------
 side.addEventListener("click", (ev) => {
   const b = ev.target.closest("button");
-  if (b && b.id === "cancel-move") { moving = false; render(true); return; }
   if (!b) {
     const card = ev.target.closest("[data-select-army]");
     if (card && +card.dataset.selectArmy !== selectedArmy) { selectedArmy = +card.dataset.selectArmy; render(true); }

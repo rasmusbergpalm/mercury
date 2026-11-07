@@ -119,7 +119,7 @@ canvas { display: block; max-width: 100%; border-radius: 4px; cursor: pointer; t
 .side { min-width: 0; max-height: calc(100vh - 130px); display: flex; flex-direction: column; overflow: hidden; }
 .tabs { display: flex; flex: none; gap: 2px; padding: 8px 8px 0; background: var(--paper); border-bottom: 1px solid var(--rule); }
 .tabs button { flex: 1; min-width: 0; padding: 2px 4px; border: 1px solid var(--border); border-bottom: 0; border-radius: 6px 6px 0 0;
-  background: var(--surface-2); color: var(--muted); font-family: var(--display); font-size: 15px; box-shadow: none; }
+  background: var(--surface-2); color: var(--muted); font-family: var(--display); font-size: 14px; letter-spacing: 0; box-shadow: none; }
 .tabs button.active { background: var(--surface); color: var(--text); border-color: var(--rule); margin-bottom: -1px; }
 .tab { padding: 14px 16px 18px; overflow: auto; }
 .tab h2 { margin-bottom: 2px; }
@@ -170,8 +170,10 @@ tr.branch th { text-align: left; text-transform: capitalize; color: var(--text);
 .chart-tip .k { display: inline-block; width: 10px; height: 2px; vertical-align: 4px; margin-right: 5px; }
 .chart .empty { font-style: italic; color: var(--muted); font-size: 14px; padding: 18px 0; text-align: center; }
 
-.mode { padding: 8px 14px; background: var(--accent); color: var(--accent-text); display: flex; gap: 8px; align-items: center; justify-content: space-between; }
-.mode button { min-height: 30px; }
+.mode { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 4; max-width: calc(100% - 20px);
+  padding: 6px 8px 6px 14px; border-radius: 999px; background: var(--accent); color: var(--accent-text); box-shadow: 0 3px 10px rgba(0,0,0,.3);
+  display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 15px; }
+.mode button { min-height: 30px; border-radius: 999px; }
 .supply { display: grid; grid-template-columns: 90px 1fr 40px; gap: 4px 8px; align-items: center; font-size: 14px; }
 .supply .meter { height: 8px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
 .supply .meter span { display: block; height: 100%; }

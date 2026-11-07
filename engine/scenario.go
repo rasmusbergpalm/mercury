@@ -170,23 +170,24 @@ func HexNeighbors(r, c, rows, cols int) [][2]int {
 
 func makeFirms(t Terrain, coastal, game bool) []*Firm {
 	var firms []*Firm
-	addRaw := func(recipes []Recipe, bonuses []Bonus) {
+	addRaw := func(recipes []Recipe, bonuses []Bonus, site string) {
 		for _, rc := range recipes {
 			for _, b := range bonuses {
 				if b.Firm == rc.Firm {
 					f := NewFirm(rc.Firm, G(rc.Output), rc.TFP*b.Mult, rc.Factors, 50)
 					f.MaxLevels, f.Sector = RawMaxLevels, Primary
+					f.Site, f.SiteMult = site, b.Mult
 					firms = append(firms, f)
 				}
 			}
 		}
 	}
-	addRaw(RawRecipes, t.Raw)
+	addRaw(RawRecipes, t.Raw, t.Name)
 	if coastal {
-		addRaw(RawRecipes, CoastRaw)
+		addRaw(RawRecipes, CoastRaw, "the coast")
 	}
 	if game {
-		addRaw(GameRawRecipes, GameTerrainRaw[t.Name])
+		addRaw(GameRawRecipes, GameTerrainRaw[t.Name], t.Name)
 	}
 	recipes := ProcessingRecipes
 	if game {

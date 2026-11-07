@@ -1,6 +1,10 @@
 package engine
 
-import "math"
+import (
+	"fmt"
+	"math"
+	"strings"
+)
 
 // FactorKind says what a production factor is.
 type FactorKind int
@@ -67,8 +71,12 @@ type Firm struct {
 	Labor      float64   // labor employed this tick
 	// State firms (universities) are run by the tile's nation: it funds
 	// Funded of their levels and takes their output; see university.go.
-	State      bool
-	Funded     int
+	State  bool
+	Funded int
+	// Site and SiteMult: where a land-bound producer's productivity comes
+	// from (its terrain, or the coast) and how much it multiplies it.
+	Site       string
+	SiteMult   float64
 	LastOutput float64
 	// DesiredSpend is the unconstrained cost of the optimal plan.
 	DesiredSpend float64
@@ -216,4 +224,53 @@ func (f *Firm) Produce() float64 {
 	}
 	f.LastOutput = q
 	return q
+}
+
+// Bonuses explains the firm's productivity factor by factor: its recipe's
+// base, its site (terrain or coast), each technology of its nation, the
+// tile's size (industry and services), and its building levels. Their
+// product is the productivity of its workers and inputs.
+func (f *Firm) Bonuses(n *Nation) []Modifier {
+	site := 1.0
+	if f.SiteMult > 0 {
+		site = f.SiteMult
+	}
+	out := []Modifier{{"Base", f.BaseTFP / site, "the recipe's productivity", false}}
+	if f.SiteMult > 0 {
+		out = append(out, Modifier{cap1(f.Site), f.SiteMult, "how well the site suits it", false})
+	}
+	if n != nil {
+		for i, t := range Techs {
+			if !n.Known[i] {
+				continue
+			}
+			m := 1.0
+			if x, ok := t.FirmTFP[f.Name]; ok {
+				m *= x
+			}
+			if f.Sector == Primary && t.PrimaryTFP != 0 {
+				m *= t.PrimaryTFP
+			}
+			if f.Sector == Industry && t.IndustryTFP != 0 {
+				m *= t.IndustryTFP
+			}
+			if m != 1 {
+				out = append(out, Modifier{t.Name, m, "technology", false})
+			}
+		}
+	}
+	if f.Agglom != 1 {
+		out = append(out, Modifier{"Tile size", f.Agglom, "industry and services gain from the people around them", false})
+	}
+	if f.Levels > 1 {
+		out = append(out, Modifier{"Buildings", math.Pow(float64(f.Levels), 1-f.exponentSum()), fmt.Sprintf("%d levels", f.Levels), false})
+	}
+	return out
+}
+
+func cap1(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }
