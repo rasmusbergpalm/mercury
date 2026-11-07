@@ -64,21 +64,24 @@ type Army struct {
 	Stock []float64
 	Path  []int   // tiles still to march through
 	March float64 // days marched towards Path[0]
+	// Coming are recruits marching out to the army from home.
+	Coming []Draft
 
 	// this tick's supply order
-	depot   *Region
-	need    []float64 // what it uses today
-	order   []float64 // what it buys today: today's use plus refilling its stock
-	source  []*Region // where it buys each good today
-	tau     []float64
-	got     []float64
-	transit float64 // transport needed this tick
-	gotT    float64
+	depot    *Region   // its nearest home tile, where recruits set out from
+	homeDays float64   // days' march from there
+	need     []float64 // what it uses today
+	order    []float64 // what it buys today: today's use plus refilling its stock
+	source   []*Region // where it buys each good today
+	tau      []float64
+	got      []float64
+	transit  float64 // transport needed this tick
+	gotT     float64
 }
 
 // Army and war rules.
 const (
-	recruitRate     = 0.002  // share of a tile's people that can be drafted per day
+	recruitRate     = 0.002  // share of each tile's people that can be drafted per day, nation-wide
 	demobilizeRate  = 0.01   // share of an army sent home per day when over its target
 	baseAttrition   = 0.0002 // share of men lost per day even when well supplied
 	hungerAttrition = 0.004  // extra share lost per day when food is entirely missing
@@ -543,6 +546,7 @@ func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 			a.depot = nil
 			continue
 		}
+		a.homeDays = marchDaysPerHop * dist[a.depot.ID]
 		perHop := w.Spec.TransportCost * n.supplyTransportMult()
 		for _, g := range sortedGoods(Doctrines[a.Doctrine].Needs) {
 			use, wartime := a.need[g], a.Men*Doctrines[a.Doctrine].Needs[g]
@@ -640,8 +644,10 @@ func (a *Army) StockDays(g GoodID) float64 {
 // armies runs a day of military life: recruitment, attrition, marching,
 // battles and sieges.
 func (w *World) armies() {
+	w.recruitAll()
 	for _, a := range append([]*Army(nil), w.Armies...) {
-		w.recruit(a)
+		w.demobilize(a)
+		a.arrivals(w.Tick)
 		hunger := 1 - a.Supply[G("bread")]
 		loss := a.Men * (baseAttrition + hungerAttrition*hunger) * a.Nation.desertionMult()
 		a.lose(loss/math.Max(a.Men, 1e-12), 1)
@@ -670,32 +676,102 @@ func (w *World) destroyArmy(a *Army) {
 			home = r
 		}
 	}
-	if home != nil && a.Men > 0 {
-		addPeople(home, survivorsHome*a.Men)
+	if home != nil {
+		if n := survivorsHome*a.Men + a.coming(); n > 0 {
+			addPeople(home, n) // recruits on the way turn back too
+		}
 	}
-	a.Men = 0
+	a.Men, a.Coming = 0, nil
 	w.removeArmy(a)
 }
 
-// recruit drafts soldiers from (or sends them back to) the army's tile while
-// it stands at home and isn't marching.
-func (w *World) recruit(a *Army) {
+// Draft is a group of recruits on their way to an army.
+type Draft struct {
+	Men    float64
+	Arrive int // tick
+}
+
+// coming is how many recruits are on their way to the army.
+func (a *Army) coming() float64 {
+	s := 0.0
+	for _, d := range a.Coming {
+		s += d.Men
+	}
+	return s
+}
+
+// arrivals adds the recruits that have reached the army.
+func (a *Army) arrivals(tick int) {
+	kept := a.Coming[:0]
+	for _, d := range a.Coming {
+		if d.Arrive <= tick {
+			a.Men += d.Men
+		} else {
+			kept = append(kept, d)
+		}
+	}
+	a.Coming = kept
+}
+
+// recruitAll drafts recruits for each nation's armies that are below their
+// targets, from all its tiles: each tile gives up to recruitRate of its
+// people a day (never leaving fewer than minPopulation workers), shared
+// among the armies by how short they are. An army at home gets them at once;
+// one in the field when they have marched out to it. A cut-off army gets none.
+func (w *World) recruitAll() {
+	for _, n := range w.Nations {
+		armies := w.ArmiesOf(n)
+		short, need := make([]float64, len(armies)), 0.0
+		for i, a := range armies {
+			if a.depot == nil && w.Regions[a.Region].Nation != n {
+				continue // cut off
+			}
+			if s := a.Target - a.Men - a.coming(); s > 1e-9 {
+				short[i] = s
+				need += s
+			}
+		}
+		if need <= 0 {
+			continue
+		}
+		avail, pool := make([]float64, len(n.Regions)), 0.0
+		for i, r := range n.Regions {
+			avail[i] = math.Max(0, math.Min(recruitRate*r.Population(), sizeOf(movable(r))-minPopulation))
+			pool += avail[i]
+		}
+		if pool <= 0 {
+			continue
+		}
+		draft := math.Min(pool, need)
+		for i, r := range n.Regions {
+			if avail[i] > 0 {
+				removePeople(r, draft*avail[i]/pool)
+			}
+		}
+		for i, a := range armies {
+			if short[i] <= 0 {
+				continue
+			}
+			men := draft * short[i] / need
+			if w.Regions[a.Region].Nation == n || a.homeDays < 1 {
+				a.Men += men
+			} else {
+				a.Coming = append(a.Coming, Draft{men, w.Tick + int(math.Ceil(a.homeDays))})
+			}
+		}
+	}
+}
+
+// demobilize sends men above an army's target home while it stands on its
+// own soil.
+func (w *World) demobilize(a *Army) {
 	r := w.Regions[a.Region]
-	if r.Nation != a.Nation || len(a.Path) > 0 {
+	if r.Nation != a.Nation || len(a.Path) > 0 || a.Men <= a.Target {
 		return
 	}
-	if a.Men < a.Target {
-		n := math.Min(a.Target-a.Men, recruitRate*r.Population())
-		n = math.Min(n, sizeOf(movable(r))-minPopulation)
-		if n > 0 {
-			removePeople(r, n)
-			a.Men += n
-		}
-	} else if a.Men > a.Target {
-		n := math.Min(a.Men-a.Target, math.Max(demobilizeRate*a.Men, 0.5))
-		addPeople(r, n)
-		a.Men -= n
-	}
+	n := math.Min(a.Men-a.Target, math.Max(demobilizeRate*a.Men, 0.5))
+	addPeople(r, n)
+	a.Men -= n
 }
 
 // march moves an army a day along its path. Roads and railways make hops
@@ -980,6 +1056,19 @@ func (a *Army) SupplyLine() (depot int, transport float64) {
 		return -1, 0
 	}
 	return a.depot.ID, a.transit
+}
+
+// Reinforcements are the recruits marching out to the army, and the days
+// until the first of them arrive.
+func (a *Army) Reinforcements(tick int) (men float64, days int) {
+	days = -1
+	for _, d := range a.Coming {
+		men += d.Men
+		if days < 0 || d.Arrive-tick < days {
+			days = d.Arrive - tick
+		}
+	}
+	return
 }
 
 // Source is the tile the army bought a good in today, or -1.

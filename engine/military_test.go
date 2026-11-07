@@ -14,7 +14,7 @@ func newQuietGame(t *testing.T) *World {
 	return w
 }
 
-func TestRaiseArmyRecruitsFromItsTile(t *testing.T) {
+func TestRaiseArmyRecruitsFromTheNation(t *testing.T) {
 	w := newQuietGame(t)
 	m := nationByName(w, "Montara")
 	home := regionByName(w, "11") // Montara's capital
@@ -25,7 +25,14 @@ func TestRaiseArmyRecruitsFromItsTile(t *testing.T) {
 	if _, err := w.RaiseArmy(m.ID, home.ID, cap*1.5); !errors.Is(err, ErrMobilized) {
 		t.Errorf("raising beyond the mobilization cap: %v", err)
 	}
-	pop := home.Population()
+	people := func() float64 {
+		s := 0.0
+		for _, r := range m.Regions {
+			s += r.Population()
+		}
+		return s
+	}
+	pop := people()
 	a, err := w.RaiseArmy(m.ID, home.ID, cap)
 	if err != nil {
 		t.Fatal(err)
@@ -36,8 +43,13 @@ func TestRaiseArmyRecruitsFromItsTile(t *testing.T) {
 	if a.Men <= 0 || a.Men > cap+1e-9 {
 		t.Fatalf("army has %v men (cap %v)", a.Men, cap)
 	}
-	if drafted := pop - home.Population(); drafted < a.Men-1e-9 {
-		t.Errorf("tile lost %v people but the army has %v", drafted, a.Men)
+	if drafted := pop - people(); drafted < a.Men-1e-9 { // some have since deserted or died
+		t.Errorf("the nation lost %v people but the army has %v", drafted, a.Men)
+	}
+	for _, r := range m.Regions { // every tile gave its share
+		if r != home && r.Population() >= 100 {
+			t.Errorf("tile %s gave no recruits", r.Name)
+		}
 	}
 	if err := w.SetArmyTarget(a.ID, cap*2); !errors.Is(err, ErrMobilized) {
 		t.Errorf("target beyond the cap: %v", err)
@@ -515,4 +527,29 @@ func TestBattlesAreQuickAndFreezeOccupation(t *testing.T) {
 		t.Errorf("an even battle lasted %d days", days)
 	}
 	t.Logf("battle decided in %d days", days)
+}
+
+// Armies in the field are reinforced: recruits drafted at home march out and
+// join after the march; a cut-off army gets none.
+func TestFieldArmiesAreReinforced(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, w.MobilizationCap(m))
+	if err := w.MoveArmy(a.ID, regionByName(w, "33").ID); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 200 && len(a.Path) > 0; i++ {
+		w.Step()
+	}
+	a.Men = 1 // heavy losses
+	w.Step()
+	if a.coming() <= 0 || len(a.Coming) == 0 || a.Coming[0].Arrive <= w.Tick {
+		t.Fatalf("no recruits on the way: %+v", a.Coming)
+	}
+	for i := 0; i < 90; i++ {
+		w.Step()
+	}
+	if a.Men < 0.8*a.Target {
+		t.Errorf("after 90 days of reinforcements: %v of %v men", a.Men, a.Target)
+	}
 }

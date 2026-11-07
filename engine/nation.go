@@ -354,10 +354,14 @@ func (n *Nation) plan(w *World) {
 		}
 		return Economy
 	}
+	// what a claim will cost: no more than the market offered yesterday can
+	// be bought, so an order for a good nobody sells (whose price runs away)
+	// doesn't eat the budget of everything else in its category
 	addTo := func(r *Region, c claim) {
 		if c.qty > 0 {
 			r.claims = append(r.claims, c)
-			spend[category(c.kind)] += c.qty * r.Markets[c.good].Price
+			m := r.Markets[c.good]
+			spend[category(c.kind)] += math.Min(c.qty, m.Supply) * m.Price
 		}
 	}
 	w.planSupply(n, addTo)

@@ -1130,7 +1130,7 @@ function armiesHere(s, mine) {
     html += `<h3>Raise an army here</h3>
       <div class="row"><label>Soldiers <input id="raise-men" type="number" min="0" max="${Math.floor(n.max_army_size)}" step="1" value="${Math.floor(Math.min(room, n.max_army_size))}" class="num"></label>
       <button class="primary" id="raise">Raise</button></div>
-      <p class="sub">Drafted from this tile's workers over the coming weeks. One army can field up to ${short(n.max_army_size)} men (military techs raise this);
+      <p class="sub">Recruits are drafted from all your tiles (each gives up to 0.2% of its people a day) and join at once at home; armies in the field get them after the march. One army can field up to ${short(n.max_army_size)} men (military techs raise this);
       room for ${short(room)} more within your mobilisation cap (${pct(n.mobilization)} of your people), so field several armies if you need more.</p>`;
   }
   return html;
@@ -1362,14 +1362,15 @@ function armyCard(a, mine) {
   let html = `<div class="army-card ${open ? "selected" : ""}" data-select-army="${a.id}">
     <div class="title"><b>${chip(a.nation)} ${esc(nationName(a.nation))} army ${a.id}</b><span><b>${short(a.strength)}</b> <span class="sub">strength</span></span></div>
     <div class="progress" title="strength against full size and supply"><span style="width:${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))};background:${a.strength > 0.6 * a.full_strength ? cssVar("--good") : a.strength > 0.3 * a.full_strength ? cssVar("--brass") : cssVar("--danger")}"></span></div>
-    <p class="sub">${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))} of full strength ${short(a.full_strength)} · ${short(a.men)} / ${short(a.target)} men · ${d.name} · at ${where.name}${dest}</p>`;
+    <p class="sub">${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))} of full strength ${short(a.full_strength)} · ${short(a.men)} / ${short(a.target)} men · ${d.name} · at ${where.name}${dest}
+      ${a.coming > 0.05 ? ` · ${short(a.coming)} recruits marching out, the first in ${a.coming_days} days` : ""}</p>`;
   if (!open) return html + `</div>`;
   const supply = Object.keys(d.needs).map((g) => {
     const v = a.supply[g] ?? 0;
     const color = v > 0.8 ? cssVar("--good") : v > 0.4 ? cssVar("--brass") : cssVar("--danger");
-    const days = a.stock_days[g] ?? 0, from = a.sources[g] ?? -1;
+    const days = a.stock_days[g] ?? 0, from = a.sources[g] ?? -1, none = from >= 0 && !(a.offered[g] > 0);
     return `<span>${g}</span><span class="meter" title="${Math.round(days)} days in stock"><span style="width:${pct(v)};background:${color}"></span></span><span>${pct(v)}</span>
-      <span></span><span class="sub" style="grid-column:2/4">${days >= 1 ? `${Math.round(days)} days in stock` : `<span class="bad">no stock left</span>`}${from >= 0 ? ` · bought at ${world.regions[from].name}` : ""}</span>`;
+      <span></span><span class="sub" style="grid-column:2/4">${days >= 1 ? `${Math.round(days)} days in stock` : `<span class="bad">no stock left</span>`}${none ? ` · <span class="bad">none of your tiles sells any</span>` : from >= 0 ? ` · bought at ${world.regions[from].name}` : ""}</span>`;
   }).join("");
   // strength: the doctrine's base power times each factor
   const mult = (v) => `<span class="${v > 1.0001 ? "good" : v < 0.9999 ? "bad" : ""}">×${v.toFixed(2)}</span>`;

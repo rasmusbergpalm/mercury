@@ -183,12 +183,8 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 			continue
 		}
 		atHome := w.Regions[a.Region].Nation == n
-		if !atHome && a.Men < aiRefill*a.Target && !w.underAttack(n) {
-			w.sendHome(a) // worn down: go home to recruit
-			continue
-		}
 		if atHome && a.Men < aiRefill*a.Target && !w.underAttack(n) {
-			continue // recruiting
+			continue // let a new army fill up before it marches (field armies are reinforced where they stand)
 		}
 		here := w.Regions[a.Region]
 		if here.Nation != n && here.Siege != nil && here.Siege.Nation == n {
@@ -203,8 +199,8 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 // The computer only seeks battle when its side is this many times as strong.
 const aiFightOdds = 1.2
 
-// An army below this share of its target goes home to refill (unless the
-// nation is being invaded).
+// An army at home waits until it has this share of its target before it
+// marches (unless the nation is being invaded).
 const aiRefill = 0.6
 
 // underAttack reports whether an enemy army stands on the nation's soil.

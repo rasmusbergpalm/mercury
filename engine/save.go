@@ -28,6 +28,7 @@ type ArmySnap struct {
 	Men, Target, March           float64
 	Supply, Stock                []float64
 	Path                         []int
+	Coming                       []Draft
 }
 
 type SiegeSnap struct {
@@ -36,7 +37,7 @@ type SiegeSnap struct {
 }
 
 // SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 9
+const SnapshotVersion = 10
 
 type MarketSnap struct {
 	Price, Supply, Demand float64
@@ -152,7 +153,8 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	}
 	for _, a := range w.Armies {
 		s.Armies = append(s.Armies, ArmySnap{a.ID, a.Nation.ID, a.Region, a.Doctrine, a.Men, a.Target, a.March,
-			append([]float64(nil), a.Supply...), append([]float64(nil), a.Stock...), append([]int(nil), a.Path...)})
+			append([]float64(nil), a.Supply...), append([]float64(nil), a.Stock...), append([]int(nil), a.Path...),
+			append([]Draft(nil), a.Coming...)})
 	}
 	s.NextArmyID = w.NextArmyID
 	s.Events = append([]Event(nil), w.Events...)
@@ -284,7 +286,7 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 		w.Armies = append(w.Armies, &Army{ID: as.ID, Nation: w.Nations[as.Nation], Region: as.Region,
 			Doctrine: as.Doctrine, Men: as.Men, Target: as.Target, March: as.March, Supply: as.Supply,
-			Stock: as.Stock, Path: as.Path})
+			Stock: as.Stock, Path: as.Path, Coming: as.Coming})
 	}
 	w.NextArmyID = s.NextArmyID
 	w.Events = append([]Event(nil), s.Events...)

@@ -186,6 +186,9 @@ type ArmyState struct {
 	Supply        map[string]float64 `json:"supply"`        // per needed good, 0..1
 	StockDays     map[string]float64 `json:"stock_days"`    // days of each good it carries
 	Sources       map[string]int     `json:"sources"`       // tile each good was bought in today (-1: none)
+	Offered       map[string]float64 `json:"offered"`       // how much of each its source's market offered
+	Coming        float64            `json:"coming"`        // recruits marching out to it
+	ComingDays    int                `json:"coming_days"`   // until the first of them arrive (-1: none)
 	FullStrength  float64            `json:"full_strength"` // at full size, fully supplied
 	DailyLoss     float64            `json:"daily_loss"`    // share of men lost today outside battle
 	Path          []int              `json:"path"`
@@ -375,16 +378,19 @@ func worldState(w *engine.World) State {
 	st := State{Tick: w.Tick, Date: w.Date().Format("2 January 2006"), Money: w.Money(), You: -1,
 		Flows: []Flow{}, Armies: []ArmyState{}}
 	for _, a := range w.Armies {
-		sup, days, src := map[string]float64{}, map[string]float64{}, map[string]int{}
+		sup, days, src, off := map[string]float64{}, map[string]float64{}, map[string]int{}, map[string]float64{}
 		for g := range engine.Doctrines[a.Doctrine].Needs {
-			sup[engine.Goods[g].Name] = a.Supply[g]
-			days[engine.Goods[g].Name] = a.StockDays(g)
-			src[engine.Goods[g].Name] = a.Source(g)
+			name := engine.Goods[g].Name
+			sup[name], days[name], src[name] = a.Supply[g], a.StockDays(g), a.Source(g)
+			if s := a.Source(g); s >= 0 {
+				off[name] = w.Regions[s].Markets[g].Supply
+			}
 		}
+		coming, comingDays := a.Reinforcements(w.Tick)
 		att, def, attr := w.Breakdown(a)
 		depot, transport := a.SupplyLine()
 		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, a.Doctrine,
-			a.Effectiveness(), a.Strength(), sup, days, src, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...),
+			a.Effectiveness(), a.Strength(), sup, days, src, off, coming, comingDays, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...),
 			att, def, attr, depot, transport})
 	}
 	for i := range w.Regions {
