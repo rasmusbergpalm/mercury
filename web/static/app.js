@@ -1170,6 +1170,8 @@ function tilePanel() {
   const total = s.tier_spend.reduce((a, b) => a + b, 0) || 1, tc = TIER_COLORS();
   html += `<h3>What people buy</h3><div class="bar-stack">${world.tiers.map((t, i) => `<span style="width:${(100 * s.tier_spend[i] / total).toFixed(1)}%;background:${tc[i]}"></span>`).join("")}</div>
     <div class="legend-inline">${world.tiers.map((t, i) => `<span><span class="swatch" style="background:${tc[i]}"></span>${t} ${pct(s.tier_spend[i] / total)}</span>`).join("")}</div>`;
+  const cons = world.goods.findIndex((g) => g.name === "construction");
+  const levelPrice = world.level_cost * ((d.markets.find((x) => x.good === cons) || { price: 0 }).price);
   const firms = d.firms.map((f, i) => ({ ...f, i })).filter((f) => !f.enabled || f.labor > 0.05 || f.produced > 0.05 || f.levels > 1)
     .sort((a, b) => (b.enabled - a.enabled) || (b.state - a.state) || (b.labor - a.labor)).map((f) => {
       if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="4">locked: needs ${esc(f.requires)}</td></tr>`;
@@ -1186,13 +1188,13 @@ function tilePanel() {
       const per = f.labor > 0.01 ? `<span class="${f.per_worker >= 0 ? "good" : "bad"}">${f.per_worker < 0 ? "−" : ""}£${fmt(Math.abs(f.per_worker))}</span>` : "–";
       return `<tr title="${esc(tip)}\nproductivity ×${total.toFixed(2)}\nprofit £${fmt(f.profit, 2)} a day"><td>${esc(f.name)}<br><span class="sub">${f.sector}${bon ? ` · ${bon}` : ""}</span></td>
         <td>${G[f.output].name}<br><span class="sub">${fmt(f.produced, 1)} a day</span></td>
-        <td class="nowrap">${fmt(f.labor, 1)} / ${fmt(f.wanted, 1)}</td><td class="nowrap">${fmt(m.supply, 1)} / ${fmt(m.demand, 1)}</td><td>${per}</td><td class="nowrap">${f.levels}/${f.max_levels}${grow ? `<br>${grow}` : ""}</td></tr>`;
+        <td class="nowrap">${fmt(f.labor, 1)} / ${fmt(f.wanted, 1)}</td><td class="nowrap">${fmt(m.supply, 1)} / ${fmt(m.demand, 1)}</td><td>${per}</td><td>${f.levels}/${f.max_levels}${grow ? `<br>${grow}` : ""}${f.level_gain > 0.005 && !f.expansion ? `<br><span class="sub" title="Extra output a day one more level would bring, from the same workers and inputs: a level (£${fmt(levelPrice, 0)}) pays for itself in about ${Math.round(levelPrice / f.level_gain)} days">+£${fmt(f.level_gain, 1)}</span>` : ""}</td></tr>`;
     }).join("");
   const employed = d.firms.reduce((t, f) => t + f.labor, 0), workers = (d.classes.find((c) => c.class === "workers") || { size: 0 }).size;
   html += `<h3>Production</h3>
     <div class="stats">${stat(fmt(s.wage), "the tile's daily wage")}${stat(`${short(employed)} / ${short(workers)}`, "workers employed")}${stat(pct(workers > 0 ? employed / workers : 0), "employment")}</div>
     <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th class="nowrap">workers<br>/ wanted</th><th class="nowrap">supply<br>/ demand</th><th class="nowrap">profit /<br>worker</th><th>levels</th></tr>${firms}</table></div>
-    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay. <b>Profit / worker</b> is what each worker earns the owners a day: the value they add (output less the goods used up) less their wage. Red means the firm is losing money on its workers. Supply and demand are the tile's market for what the firm makes. Under each firm, what multiplies its productivity: its site, technology, the tile's size and its buildings (hover for the details and profit). ★ expansion paid by the state; the rest by owners.</p>`;
+    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay. <b>Profit / worker</b> is what each worker earns the owners a day: the value they add (output less the goods used up) less their wage. Red means the firm is losing money on its workers. Supply and demand are the tile's market for what the firm makes. Under each firm, what multiplies its productivity: its site, technology, the tile's size and schooling, and crowding: how much more productive it would be with one more building level (hover for the details and profit). Under the levels, the £ a day one more level would add from the same workers and inputs (hover for how soon it pays for itself). ★ expansion paid by the state; the rest by owners.</p>`;
   // the market: local supply and demand, and what ships in and out
   const ex = {}, im = {};
   for (const f of d.exports) ex[f.good] = (ex[f.good] || 0) + f.qty;

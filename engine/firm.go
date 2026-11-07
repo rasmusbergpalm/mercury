@@ -231,8 +231,9 @@ func (f *Firm) Produce() float64 {
 
 // Bonuses explains the firm's productivity factor by factor: its recipe's
 // base, its site (terrain or coast), each technology of its nation, the
-// tile's size (industry and services), and its building levels. Their
-// product is the productivity of its workers and inputs.
+// tile's size (industry and services), its schooling, and the crowding
+// malus: how much less productive it is than it would be with one more
+// building level.
 func (f *Firm) Bonuses(n *Nation) []Modifier {
 	site := 1.0
 	if f.SiteMult > 0 {
@@ -268,10 +269,24 @@ func (f *Firm) Bonuses(n *Nation) []Modifier {
 	if f.EduMult != 1 {
 		out = append(out, Modifier{"Schooling", f.EduMult, "the tile's educated share", false})
 	}
-	if f.Levels > 1 {
-		out = append(out, Modifier{"Buildings", math.Pow(float64(f.Levels), 1-f.exponentSum()), fmt.Sprintf("%d levels", f.Levels), false})
+	if !f.State && f.Levels > 0 {
+		m := f.NextLevelMult()
+		note := fmt.Sprintf("%d levels; one more would make every worker and input %.0f%% more productive", f.Levels, 100*(m-1))
+		if f.Levels >= f.MaxLevels {
+			note = fmt.Sprintf("%d levels, the most it can have here", f.Levels)
+		}
+		out = append(out, Modifier{"Crowding", 1 / m, note, false})
 	}
 	return out
+}
+
+// NextLevelMult is how much one more building level would multiply the
+// firm's output from the same workers and inputs: ((n+1)/n)^(1-s). Output is
+// constant-returns in levels and the variable factors together, so the gain
+// depends only on the number of levels.
+func (f *Firm) NextLevelMult() float64 {
+	n := float64(max(f.Levels, 1))
+	return math.Pow((n+1)/n, 1-f.exponentSum())
 }
 
 func cap1(s string) string {

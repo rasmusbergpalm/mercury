@@ -283,6 +283,7 @@ type FirmState struct {
 	Bonuses   []engine.Modifier `json:"bonuses"`    // productivity, factor by factor
 	Wanted    float64           `json:"wanted"`     // workers it wanted (and could pay) today
 	PerWorker float64           `json:"per_worker"` // profit per worker today: value added per worker less the wage
+	LevelGain float64           `json:"level_gain"` // extra output value a day one more level would bring, same workers and inputs
 }
 
 type MarketState struct {
@@ -535,8 +536,11 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, f.Bonuses(r.Nation), 0, 0}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, f.Bonuses(r.Nation), 0, 0, 0}
 		fs.Wanted = f.PlanLabor
+		if !f.State && f.Levels < f.MaxLevels {
+			fs.LevelGain = f.LastOutput * r.Markets[f.Output].Price * (f.NextLevelMult() - 1)
+		}
 		if f.Labor > 1e-9 {
 			fs.PerWorker = f.ValueAdded(r.Markets[f.Output].Price)/f.Labor - r.Wage
 		}
