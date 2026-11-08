@@ -189,7 +189,7 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 			continue // let a new army fill up (to what it keeps under arms now) before it marches; field armies are reinforced where they stand
 		}
 		here := w.Regions[a.Region]
-		if here.Nation != n && here.Siege != nil && here.Siege.Nation == n {
+		if here.Nation != n && here.Siege != nil && here.Siege.Nation == n && a.canOccupy() {
 			continue // besieging
 		}
 		if dest := w.aiDestination(n, a, targets); dest >= 0 && dest != a.Region {
@@ -297,6 +297,13 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 		if best >= 0 {
 			return best
 		}
+	}
+	// too weak to take ground: home to refill
+	if !a.canOccupy() {
+		if w.Regions[a.Region].Nation != n {
+			w.sendHome(a)
+		}
+		return -1
 	}
 	// then take land: enemy border tiles it can win, the weakest held and
 	// then the most populous first

@@ -265,10 +265,21 @@ func (a *Army) Strength() float64 {
 	return a.Men * a.Effectiveness() * a.Nation.attackMult()
 }
 
-// FullStrength is the strength the army would have at its full size, fully
-// supplied.
+// FullStrength is the strength the army would have with every man it keeps
+// under arms now (its target at war, its mobilization share in peace),
+// fully supplied.
 func (a *Army) FullStrength() float64 {
-	return math.Max(a.Men, a.Target) * Doctrines[a.Doctrine].Power * a.Nation.attackMult()
+	return math.Max(a.Men, a.underArms()) * Doctrines[a.Doctrine].Power * a.Nation.attackMult()
+}
+
+// occupyMinStrength is the share of its full strength an army needs to
+// occupy a tile (free land, or an enemy's left undefended): a broken army
+// can hold its ground but takes none.
+const occupyMinStrength = 0.5
+
+// canOccupy reports whether the army is strong enough to take ground.
+func (a *Army) canOccupy() bool {
+	return a.Strength() >= occupyMinStrength*a.FullStrength()-1e-12
 }
 
 func (w *World) army(id int) (*Army, error) {
@@ -1051,9 +1062,13 @@ func callUpRate(a *Army) float64 { return a.Target / mobilizeDays }
 
 // UnderArms is how many men an army keeps: its target at war, and its
 // nation's standing share of it in peace (the rest are reservists at home).
-func (w *World) UnderArms(a *Army) float64 {
-	if w.atWar(a.Nation) {
-		return a.Target
+func (w *World) UnderArms(a *Army) float64 { return a.underArms() }
+
+func (a *Army) underArms() float64 {
+	for _, war := range a.Nation.AtWar {
+		if war {
+			return a.Target
+		}
 	}
 	return a.Target * a.Nation.Standing
 }
@@ -1227,7 +1242,7 @@ func (w *World) sieges() {
 			}
 			if a.Nation == r.Nation {
 				defended = true
-			} else if w.passable(a.Nation, r) && a.Men > biggest {
+			} else if w.passable(a.Nation, r) && a.canOccupy() && a.Men > biggest {
 				occupier, biggest = a.Nation, a.Men
 			}
 		}

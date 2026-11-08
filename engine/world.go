@@ -374,6 +374,11 @@ const (
 // migrate moves people along each link from the tile with lower (smoothed)
 // utility to the one with higher. Cheaper hops mean more migration. People
 // take their cash with them.
+// foreignMigration is how much slower people move between tiles under
+// different flags (or between a nation and free land) than within one
+// nation: language, law and distance from home hold them back.
+const foreignMigration = 0.25
+
 func (w *World) migrate() {
 	for _, r := range w.Regions {
 		u := r.Utility()
@@ -395,7 +400,11 @@ func (w *World) migrate() {
 		}
 		gap := math.Min((to.UtilityEMA-from.UtilityEMA)/from.UtilityEMA, 0.3)
 		pop := from.Population()
-		n := math.Min(migrationRate*gap*pop/(1+l.Hop), sizeOf(movable(from))-minPopulation) // never below minPopulation workers
+		rate := migrationRate
+		if from.Nation != to.Nation {
+			rate *= foreignMigration // leaving one's country is a bigger step
+		}
+		n := math.Min(rate*gap*pop/(1+l.Hop), sizeOf(movable(from))-minPopulation) // never below minPopulation workers
 		if n > 1e-9 {
 			movePeople(from, to, n)
 		}

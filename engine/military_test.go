@@ -459,6 +459,9 @@ func TestConquestEliminatesANation(t *testing.T) {
 	a.Men, a.Region = 20, beta.ID // an army its taxes can pay
 	money := w.Money()
 	for i := 0; i < 2*int(occupationDays*ownedTileFactor) && !w.Nations[1].Eliminated(); i++ {
+		for g := range a.Supply { // kept supplied, at full strength: it can take ground
+			a.Supply[g] = 1
+		}
 		w.Step()
 	}
 	if !w.Nations[1].Eliminated() || beta.Nation != w.Nations[0] {
@@ -704,8 +707,8 @@ func TestFieldArmiesAreReinforced(t *testing.T) {
 // even when the nation is over its cap (e.g. after losing tiles).
 func TestOverCapStillAllowsCuts(t *testing.T) {
 	w := newQuietGame(t)
-	m := nationByName(w, "Montara")
-	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, 5)
+	m := nationByName(w, "Thalassa")
+	a, _ := w.RaiseArmy(m.ID, regionByName(w, "54").ID, 5)
 	a.Target = m.MaxArmySize() // over the cap of about 8, within the army size limit
 	if a.Target <= w.MobilizationCap(m) {
 		t.Fatalf("the cap %v is not below %v", w.MobilizationCap(m), a.Target)
@@ -713,7 +716,7 @@ func TestOverCapStillAllowsCuts(t *testing.T) {
 	if err := w.SetArmyTarget(a.ID, a.Target-1); err != nil {
 		t.Errorf("lowering an over-cap target: %v", err)
 	}
-	if _, err := w.RaiseArmy(m.ID, regionByName(w, "10").ID, 0); err != nil {
+	if _, err := w.RaiseArmy(m.ID, regionByName(w, "53").ID, 0); err != nil {
 		t.Errorf("raising an empty army while over the cap: %v", err)
 	}
 	if err := w.SetArmyTarget(a.ID, a.Target+0.5); !errors.Is(err, ErrMobilized) {
@@ -765,5 +768,43 @@ func TestArmySizeTechsFadeIn(t *testing.T) {
 	n.now = 100 + militaryAdoptDays
 	if got := n.MaxArmySize(); got != Techs[drill].ArmySize {
 		t.Errorf("after %d days: armies of %v, want %v", militaryAdoptDays, got, Techs[drill].ArmySize)
+	}
+}
+
+// An army below half its full strength takes no ground: on free land its
+// occupation doesn't start (or lapses); at half strength or more it does.
+func TestWeakArmiesTakeNoGround(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	m.SetStanding(MaxStanding)
+	home := regionByName(w, "11")
+	a, err := w.RaiseArmy(m.ID, home.ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.Target, a.Men = 10, 10
+	for g := range a.Supply {
+		a.Supply[g] = 1
+	}
+	var free *Region
+	for _, nb := range HexNeighbors(home.Row, home.Col, w.Rows, w.Cols) {
+		if r := w.Regions[nb[0]*w.Cols+nb[1]]; r.Nation == nil && w.reachable(m, r) {
+			free = r
+			break
+		}
+	}
+	if free == nil {
+		t.Fatal("no free tile next to Montara's capital")
+	}
+	a.Region = free.ID
+	a.Men = 4 // 40% of its full strength
+	w.sieges()
+	if free.Siege != nil {
+		t.Errorf("an army at %.0f%% strength started occupying", 100*a.Strength()/a.FullStrength())
+	}
+	a.Men = 10
+	w.sieges()
+	if free.Siege == nil || free.Siege.Progress <= 0 {
+		t.Error("a full-strength army didn't occupy free land")
 	}
 }

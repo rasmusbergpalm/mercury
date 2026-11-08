@@ -1563,7 +1563,8 @@ function armyCard(a, mine) {
     <div class="progress" title="strength against full size and supply"><span style="width:${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))};background:${a.strength > 0.6 * a.full_strength ? cssVar("--good") : a.strength > 0.3 * a.full_strength ? cssVar("--brass") : cssVar("--danger")}"></span></div>
     <p class="sub">${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))} of full strength ${short(a.full_strength)} · ${short(a.men)} / ${short(a.under_arms)} men${a.under_arms < a.target - 0.05 ? ` (${short(a.target)} at war; the rest are reservists)` : ""} · ${d.name} · at ${where.name}${dest}
       ${a.coming > 0.05 ? ` · ${short(a.coming)} recruits marching out, the first in ${a.coming_days} days` : ""}
-      ${a.retreating ? ` · <span class="bad">falling back after a lost battle: no orders until home</span>` : ""}</p>`;
+      ${a.retreating ? ` · <span class="bad">falling back after a lost battle: no orders until home</span>` : ""}
+      ${!a.retreating && a.strength < 0.5 * a.full_strength ? ` · <span class="bad">below half strength: it can fight, but can't take ground</span>` : ""}</p>`;
   if (!open) return html + `</div>`;
   const supply = Object.keys(d.needs).map((g) => {
     const v = a.supply[g] ?? 0;

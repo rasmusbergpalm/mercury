@@ -294,13 +294,15 @@ type GameSpec struct {
 }
 
 // DefaultGame is the default game scenario on DefaultMap: three nations of
-// four tiles each; the rest of the map is unowned and can be annexed.
+// four or five tiles, about equal in people and output once the map has
+// settled (Montara's mountains are poor, so it has a rich forest too); the
+// rest of the map is unowned and can be annexed.
 var DefaultGame = GameSpec{
 	Map: DefaultMap,
 	NationMap: []string{
 		"AA..BB",
 		"AA.BB.",
-		"......",
+		"A.....",
 		"......",
 		"...CC.",
 		"...CC.",
