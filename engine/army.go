@@ -115,7 +115,7 @@ const (
 	retreatRatio    = 0.3    // on a battle's first day, a side weaker than this fraction of its enemy breaks and falls back
 	occupationDays  = 180.0  // days an unopposed army needs to take unowned land (techs change the pace)
 	ownedTileFactor = 2.0    // taking another nation's tile takes this many times longer
-	minOccupiers    = 1.0    // an army needs at least this many men to occupy or fight
+	minOccupiers    = 0.5    // an army needs at least this many men to occupy or fight
 	stockDays       = 30.0   // days of supplies an army keeps in stock
 	refillDays      = 10.0   // an empty stock is refilled over this many days (at most doubling the order)
 	// Occupying is costly: over a full occupation an army loses about 40% of
@@ -277,10 +277,17 @@ func (a *Army) FullStrength() float64 {
 // can hold its ground but takes none.
 const occupyMinStrength = 0.5
 
-// canOccupy reports whether the army is strong enough to take ground.
+// canOccupy reports whether the army can take ground: enough men, at half
+// its full strength or more.
 func (a *Army) canOccupy() bool {
-	return a.Strength() >= occupyMinStrength*a.FullStrength()-1e-12
+	return a.Men >= minOccupiers && a.Strength() >= occupyMinStrength*a.FullStrength()-1e-12
 }
+
+// CanOccupy reports whether the army can take ground (see canOccupy).
+func (a *Army) CanOccupy() bool { return a.canOccupy() }
+
+// MinOccupiers is how many men an army needs to occupy a tile or fight.
+const MinOccupiers = minOccupiers
 
 func (w *World) army(id int) (*Army, error) {
 	for _, a := range w.Armies {

@@ -61,29 +61,30 @@ type TechInfo struct {
 
 // WorldInfo is the static description of a game's world.
 type WorldInfo struct {
-	Rows       int            `json:"rows"`
-	Cols       int            `json:"cols"`
-	Goods      []GoodInfo     `json:"goods"`
-	Tiers      []string       `json:"tiers"`
-	Terrains   []TerrainInfo  `json:"terrains"`
-	Regions    []RegionInfo   `json:"regions"`
-	Links      []LinkInfo     `json:"links"`
-	Nations    []NationInfo   `json:"nations"`
-	Infra      []InfraInfo    `json:"infra_levels"`
-	Techs      []TechInfo     `json:"techs"`
-	Spending   []string       `json:"spending"`    // categories of NationState.SpentOn
-	Services   []string       `json:"services"`    // the public services, by index
-	Staff      float64        `json:"staff"`       // staff per funded service level
-	MaxPension int            `json:"max_pension"` // pension levels
-	Branches   []string       `json:"branches"`
-	LevelCost  float64        `json:"level_cost"` // construction per firm building level
-	Port       PortInfo       `json:"port"`
-	Eras       []string       `json:"eras"`
-	Doctrines  []DoctrineInfo `json:"doctrines"`
-	StartYear  int            `json:"start_year"`
-	Consumer   []int          `json:"consumer_goods"` // the order of RegionHistory.Prices
-	Classes    []string       `json:"classes"`
-	Sectors    []string       `json:"sectors"`
+	Rows         int            `json:"rows"`
+	Cols         int            `json:"cols"`
+	Goods        []GoodInfo     `json:"goods"`
+	Tiers        []string       `json:"tiers"`
+	Terrains     []TerrainInfo  `json:"terrains"`
+	Regions      []RegionInfo   `json:"regions"`
+	Links        []LinkInfo     `json:"links"`
+	Nations      []NationInfo   `json:"nations"`
+	Infra        []InfraInfo    `json:"infra_levels"`
+	Techs        []TechInfo     `json:"techs"`
+	Spending     []string       `json:"spending"`    // categories of NationState.SpentOn
+	Services     []string       `json:"services"`    // the public services, by index
+	Staff        float64        `json:"staff"`       // staff per funded service level
+	MaxPension   int            `json:"max_pension"` // pension levels
+	Branches     []string       `json:"branches"`
+	LevelCost    float64        `json:"level_cost"`    // construction per firm building level
+	MinOccupiers float64        `json:"min_occupiers"` // men an army needs to occupy a tile or fight
+	Port         PortInfo       `json:"port"`
+	Eras         []string       `json:"eras"`
+	Doctrines    []DoctrineInfo `json:"doctrines"`
+	StartYear    int            `json:"start_year"`
+	Consumer     []int          `json:"consumer_goods"` // the order of RegionHistory.Prices
+	Classes      []string       `json:"classes"`
+	Sectors      []string       `json:"sectors"`
 }
 
 type DoctrineInfo struct {
@@ -220,6 +221,7 @@ type ArmyState struct {
 	Men           float64                  `json:"men"`
 	Target        float64                  `json:"target"`     // at full strength (war)
 	UnderArms     float64                  `json:"under_arms"` // kept now: the target at war, its standing share in peace
+	CanOccupy     bool                     `json:"can_occupy"` // enough men, at half strength or more, to take ground
 	Doctrine      int                      `json:"doctrine"`
 	Effectiveness float64                  `json:"effectiveness"`
 	Strength      float64                  `json:"strength"`
@@ -339,7 +341,7 @@ type RegionDetail struct {
 func worldInfo(w *engine.World) WorldInfo {
 	info := WorldInfo{Rows: w.Rows, Cols: w.Cols, Spending: engine.SpendingNames[:], Services: engine.ServiceNames(), Staff: engine.ServiceStaff, MaxPension: engine.MaxPension, Branches: engine.Branches,
 		Eras: engine.Eras, StartYear: engine.StartYear,
-		LevelCost: engine.LevelCost, Port: PortInfo{engine.PortCost, map[string]float64{}}}
+		LevelCost: engine.LevelCost, MinOccupiers: engine.MinOccupiers, Port: PortInfo{engine.PortCost, map[string]float64{}}}
 	for g, q := range engine.PortMaterials {
 		info.Port.Materials[engine.Goods[g].Name] = q
 	}
@@ -461,7 +463,7 @@ func worldState(w *engine.World) State {
 		}
 		att, def, attr := w.Breakdown(a)
 		depot, transport := a.SupplyLine()
-		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, w.UnderArms(a), a.Doctrine,
+		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, w.UnderArms(a), a.CanOccupy(), a.Doctrine,
 			a.Effectiveness(), a.Strength(), sup, days, src, off, shares, coming, cost, pay, comingDays, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...), a.Retreating,
 			att, def, attr, depot, transport})
 	}

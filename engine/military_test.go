@@ -808,3 +808,28 @@ func TestWeakArmiesTakeNoGround(t *testing.T) {
 		t.Error("a full-strength army didn't occupy free land")
 	}
 }
+
+// An army with too few men takes no ground, however well supplied, and the
+// computer doesn't send it to.
+func TestTooFewMenTakeNoGround(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	a, err := w.RaiseArmy(m.ID, m.Regions[0].ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.Target, a.Men = 0.4, 0.4
+	for g := range a.Supply {
+		a.Supply[g] = 1
+	}
+	if a.Strength() < occupyMinStrength*a.FullStrength() {
+		t.Fatal("set-up: not at full strength")
+	}
+	if a.canOccupy() {
+		t.Errorf("%v men can take ground (minimum %v)", a.Men, minOccupiers)
+	}
+	a.Target, a.Men = 1, 1
+	if !a.canOccupy() {
+		t.Error("a full-strength army of 1 man can't take ground")
+	}
+}
