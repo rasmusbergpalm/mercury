@@ -157,6 +157,11 @@ func (t *Trader) Plan() {
 	}
 	t.Margin = pDest*t.Arriving*(1-tariff) - pOrig - t.Tau*pT
 	rel := clip(t.Margin / pDest)
+	if pd[t.Good].Local <= 0 {
+		// nobody at the other end wants it, whatever its price says (a good
+		// no one has sold yet has a price that means nothing): no margin
+		t.Margin, rel = -(pOrig + t.Tau*pT), -1
+	}
 	// grow with the margin, but brake when the margin is shrinking (damps cycles)
 	signal := rel + t.Damping*(rel-t.RelMargin)
 	t.RelMargin = rel

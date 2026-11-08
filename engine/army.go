@@ -872,7 +872,7 @@ func (w *World) recruitAll() {
 			if a.depot == nil && w.Regions[a.Region].Nation != n {
 				continue // cut off
 			}
-			if s := w.UnderArms(a) - a.Men - a.coming(); s > 1e-9 {
+			if s := math.Min(w.UnderArms(a)-a.Men-a.coming(), callUpRate(a)); s > 1e-9 {
 				short[i] = s
 				need += s
 			}
@@ -907,6 +907,15 @@ func (w *World) recruitAll() {
 		}
 	}
 }
+
+// mobilizeDays is how long filling an army takes: its ranks grow by at most
+// 1/mobilizeDays of its full strength a day, so a full mobilization from
+// nothing takes this many days (from the lowest peacetime share a little
+// less), plus the march out.
+const mobilizeDays = 90.0
+
+// callUpRate is how many men an army takes in a day.
+func callUpRate(a *Army) float64 { return a.Target / mobilizeDays }
 
 // UnderArms is how many men an army keeps: its target at war, and its
 // nation's standing share of it in peace (the rest are reservists at home).

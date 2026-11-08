@@ -302,7 +302,14 @@ func (r *Region) GoodsMarkets() {
 		}
 
 		price := market.Price // what trade happens at; Clear then moves the price
+		local := 0.0          // what the tile itself wants: everyone but merchants shipping out
+		for i, ref := range bidRefs {
+			if ref.kind != traderAgent {
+				local += bids[i].Qty
+			}
+		}
 		bidFills, askFills := market.Clear(bids, asks)
+		market.Local = local
 
 		for i, ref := range bidRefs {
 			got := bidFills[i]
@@ -340,6 +347,34 @@ func (r *Region) GoodsMarkets() {
 					r.Nation.TariffRevenue += duty
 				}
 			}
+		}
+	}
+	r.capUnsuppliedPrices()
+}
+
+// unsuppliedPriceCap is how far above the tile's typical price (the median
+// price of the goods it has sellers for) a good nobody sells there may climb.
+// A shortage still pulls in imports and producers, but a good no one can
+// make yet doesn't build up a price that means nothing, which the first
+// producer and merchants would then take at face value.
+const unsuppliedPriceCap = 10.0
+
+// capUnsuppliedPrices holds the price of goods with no supply here to
+// unsuppliedPriceCap times the tile's typical price.
+func (r *Region) capUnsuppliedPrices() {
+	var sold []float64
+	for _, m := range r.Markets {
+		if m.Supply > 0 {
+			sold = append(sold, m.Price)
+		}
+	}
+	if len(sold) == 0 {
+		return
+	}
+	limit := unsuppliedPriceCap * median(sold)
+	for _, m := range r.Markets {
+		if m.Supply <= 0 && m.Price > limit {
+			m.Price = limit
 		}
 	}
 }

@@ -1545,8 +1545,8 @@ function armiesPanel() {
       <p class="sub">${short(n.soldiers)} soldiers of ${short(n.mobilize_cap)} allowed (${pct(n.mobilization)} of your people), up to ${short(n.max_army_size)} per army.
       Armies cost £${fmt(n.spent_on[world.spending.indexOf("military")], 0)} today of £${fmt(n.income, 0)} income.
       Best doctrine: ${world.doctrines[n.best_doctrine].name}. Raise armies from a tile of yours.</p>
-      <div class="budget"><label>Standing army<input type="range" min="10" max="100" step="5" value="${Math.round(100 * n.standing)}" id="standing" aria-label="Standing army"><span class="pct" id="standing-pct">${pct(n.standing)}</span></label></div>
-      <p class="sub">In peace each army keeps this share of its full strength under arms; the rest are reservists, at home working as ordinary people. At war they are called up, from across your tiles, which takes weeks. A big standing army is ready but costs pay and supplies; a small one is cheap but slow to mobilize. ${n.at_war.some(Boolean) ? "<b>You are at war now: every reservist is called up.</b>" : ""}</p>`;
+      <div class="budget"><label>Mobilization<input type="range" min="10" max="100" step="5" value="${Math.round(100 * n.standing)}" id="standing" aria-label="Mobilization in peace"><span class="pct" id="standing-pct">${pct(n.standing)}</span></label></div>
+      <p class="sub">In peace each army keeps this share of its full strength under arms; the rest are reservists, at home working as ordinary people. At war they are called up from across your tiles: an army fills by a ninetieth of its full strength a day, so mobilizing from 10% takes about 80 days, plus the march to the army. High mobilization is ready but costs pay and supplies; low is cheap but leaves you weak for months. ${n.at_war.some(Boolean) ? "<b>You are at war now: every reservist is called up.</b>" : ""}</p>`;
     html += mine.length ? mine.map((a) => armyCard(a, true)).join("") : `<p class="hint">You have no armies.</p>`;
   }
   html += `<h3>Other armies</h3>` + (others.length ? others.map((a) => armyCard(a, false)).join("") : `<p class="hint">None.</p>`);
