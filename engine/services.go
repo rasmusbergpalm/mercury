@@ -278,8 +278,7 @@ func (w *World) serviceEffects() {
 	for _, r := range w.Regions {
 		if r.Nation != nil {
 			r.Collect = taxFarmed + (1-taxFarmed)*w.Coverage(r, Administration)
-			r.Disloyalty *= allegianceGrowth
-			r.applyAllegiance()
+			r.driftLoyalties()
 		}
 		enrolled := w.Coverage(r, Schools)
 		r.Educated += (enrolled - r.Educated) / (schoolYears * TicksPerYear)

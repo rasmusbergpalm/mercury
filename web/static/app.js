@@ -1161,7 +1161,11 @@ function tilePanel() {
       ${stat("£" + short(exp), "exports / day")}
       ${stat("£" + short(imp), "imports / day")}
     </div>`;
-  if (s.nation >= 0 && s.allegiance < 0.995) html += `<p class="sub" style="margin-top:8px"><b>Allegiance ${pct(s.allegiance)}</b>: its people don't yet stand by ${esc(nationName(s.nation))}, so it produces and pays taxes at ×${(0.5 + 0.5 * s.allegiance).toFixed(2)} and gives ${pct(s.allegiance)} of the recruits. It grows towards loyalty over the years (about 70% after ten); conquered tiles start at nothing, settled free land at 40%.</p>`;
+  if (s.nation >= 0 && s.allegiance < 0.995) {
+    const split = (s.loyalties || []).map((v, i) => [i, v]).filter(([, v]) => v > 0.005).sort((a, b) => b[1] - a[1])
+      .map(([i, v]) => `${i < world.nations.length ? esc(world.nations[i].name) : "nobody"} ${pct(v)}`).join(", ");
+    html += `<p class="sub" style="margin-top:8px"><b>Allegiance ${pct(s.allegiance)}</b>: its people stand by ${split}. Until they stand by ${esc(nationName(s.nation))} it produces and pays taxes at ×${(0.5 + 0.5 * s.allegiance).toFixed(2)} and gives ${pct(s.allegiance)} of the recruits. Loyalty drifts to the owner over the years (about 70% after ten), and people who answer to nobody count 40%; a tile lost and soon retaken still mostly stands by you.</p>`;
+  }
   if (s.services) html += `<p class="sub" style="margin-top:8px">Public services: ${s.nation >= 0 ? `taxes collected ${pct(s.collect)} · ` : ""}educated ${pct(s.educated)} ·
     health covers ${pct(s.healthy)}${s.crowding > 0 ? ` · <span class="${s.healthy < 0.999 ? "bad" : ""}">crowded ${pct(s.crowding)}</span>` : ""}</p>`;
   html += `<h3>Over time</h3>` + tileChart(h);

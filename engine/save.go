@@ -67,7 +67,7 @@ type RegionSnap struct {
 	Wage, Neglect, UtilityEMA  float64
 	HouseCash                  float64
 	Collect, Educated, Healthy float64
-	Disloyalty                 float64 // absent before version 14: loyal
+	Loyalties                  []float64 `json:",omitempty"` // absent in older saves: each tile wholly loyal to its owner
 	Infra, Battle              int
 	Port                       bool
 	Project                    *Project
@@ -117,7 +117,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	}
 	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick, Ports: append([]int(nil), w.Ports...)}
 	for _, r := range w.Regions {
-		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Collect: r.Collect, Educated: r.Educated, Healthy: r.Healthy, Disloyalty: r.Disloyalty, Infra: r.Infra, Battle: r.Battle, Port: r.Port}
+		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Collect: r.Collect, Educated: r.Educated, Healthy: r.Healthy, Loyalties: append([]float64(nil), r.Loyalties...), Infra: r.Infra, Battle: r.Battle, Port: r.Port}
 		if r.Siege != nil {
 			rs.Siege = &SiegeSnap{r.Siege.Nation.ID, r.Siege.Progress}
 		}
@@ -219,11 +219,12 @@ func Restore(s *Snapshot) (*World, error) {
 		r.Wage, r.Neglect, r.UtilityEMA, r.Infra, r.Project, r.Nation = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Infra, rs.Project, nil
 		r.House.Cash, r.Battle = rs.HouseCash, rs.Battle
 		r.Collect, r.Educated, r.Healthy = rs.Collect, rs.Educated, rs.Healthy
-		if !(rs.Disloyalty >= 0 && rs.Disloyalty <= 1) {
-			return bad("allegiance in " + r.Name)
+		if rs.Loyalties != nil {
+			if len(rs.Loyalties) != len(r.Loyalties) {
+				return bad("allegiance in " + r.Name)
+			}
+			copy(r.Loyalties, rs.Loyalties)
 		}
-		r.Disloyalty = rs.Disloyalty
-		r.applyAllegiance()
 		r.Real = rs.Real.clone()
 		if !r.Real.valid() {
 			return bad("real GDP in " + r.Name)
@@ -336,6 +337,21 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 	}
 	w.History = s.History
+	// allegiance: older saves have none, so each tile stands wholly by the
+	// owner it was saved with
+	for i, r := range w.Regions {
+		if s.Regions[i].Loyalties == nil {
+			for k := range r.Loyalties {
+				r.Loyalties[k] = 0
+			}
+			if r.Nation != nil {
+				r.Loyalties[r.Nation.ID] = 1
+			} else {
+				r.Loyalties[len(r.Loyalties)-1] = 1
+			}
+		}
+		r.applyAllegiance()
+	}
 	// firm gating follows the (restored) owners' technology
 	for _, r := range w.Regions {
 		if r.Nation == nil {

@@ -391,6 +391,7 @@ func buildGame(spec GameSpec, settle bool) (*World, error) {
 	for _, n := range w.Nations {
 		n.applyTech()
 	}
+	w.initLoyalties()
 	w.refreshAllHops()
 	return w, nil
 }

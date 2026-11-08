@@ -97,3 +97,26 @@ func TestAllegianceGrowsAfterConquest(t *testing.T) {
 		t.Errorf("after %v years: allegiance %v, want about %v", allegianceYears, a, 1-math.Exp(-1))
 	}
 }
+
+// Loyalties are kept per nation: a tile lost and soon retaken still mostly
+// stands by the nation that retook it.
+func TestRetakenTilesStayLoyal(t *testing.T) {
+	w := newQuietGame(t)
+	m, v := nationByName(w, "Montara"), nationByName(w, "Verdania")
+	home := m.Regions[0]
+	w.transfer(home, v)
+	for i := 0; i < int(TicksPerYear); i++ { // a year under Verdania
+		w.serviceEffects()
+	}
+	w.transfer(home, m)
+	if a, want := home.Allegiance(), math.Exp(-1/allegianceYears); math.Abs(a-want) > 0.01 {
+		t.Errorf("retaken after a year: allegiance %v, want about %v", a, want)
+	}
+	sum := 0.0
+	for _, x := range home.Loyalties {
+		sum += x
+	}
+	if math.Abs(sum-1) > 1e-9 {
+		t.Errorf("loyalties add up to %v", sum)
+	}
+}

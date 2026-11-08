@@ -346,12 +346,6 @@ func (w *World) transfer(r *Region, n *Nation) {
 			w.emit(-1, "eliminated", r.ID, "%s has fallen", old.Name)
 		}
 	}
-	if r.Nation != nil {
-		r.Disloyalty = 1 // conquered: they stand by the old owner
-	} else {
-		r.Disloyalty = 1 - freeLandAllegiance
-	}
-	r.applyAllegiance()
 	r.Siege = nil
 	r.Project = nil
 	for _, f := range r.Firms {
@@ -363,6 +357,7 @@ func (w *World) transfer(r *Region, n *Nation) {
 	// (the new owner's applyTech below sets productivity and which firms work)
 	r.Nation = n
 	n.Regions = append(n.Regions, r)
+	r.applyAllegiance() // its people's loyalties stay as they were: to the old owner, or to the new one if it had it before
 	n.applyTech()
 	w.refreshAllHops()
 }
