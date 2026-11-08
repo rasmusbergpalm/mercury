@@ -3,7 +3,7 @@ package engine
 import "errors"
 
 // Balance of power: when one nation grows far stronger than all the others,
-// they ally against it. An alliance forms when the strongest nation's might
+// they ally against it, and embargo it while the alliance lasts. An alliance forms when the strongest nation's might
 // is at least allianceForm times every other's, and breaks up when it falls
 // below allianceBreak times the next strongest (or the leader or a member
 // falls). Allies can't make war on each other, and when one of them is at war

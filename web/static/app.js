@@ -1657,7 +1657,7 @@ function worldPanel() {
     <tr><th>nation</th><th>tiles</th><th>people</th><th>real GDP<br>/ day</th><th>trade / day</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
     <h3>The race</h3>${row}${chart}
     ${k === "gdp" ? `<p class="sub">${GDP_NOTE}</p>` : ""}
-    <p class="sub" style="margin-top:8px">Balance of power: when one nation's might is half again every other's, the rest ally against it (until it falls below 1.2 times the next); allies can't fight each other, and join each other's wars against it.</p>
+    <p class="sub" style="margin-top:8px">Balance of power: when one nation's might is half again every other's, the rest ally against it (until it falls below 1.2 times the next): they embargo it, can't fight each other, and join each other's wars against it.</p>
     <p class="sub">You can only go to war with a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless.</p>
     <p class="sub">Money in the world: ${short(state.money)} (conserved).</p>`;
 }

@@ -155,3 +155,36 @@ func TestAlliesDontTakeTheSameTile(t *testing.T) {
 		t.Errorf("Verdania's army heads for the enemy tile its ally is already marching on")
 	}
 }
+
+// An alliance embargoes the nation it stands against, both ways, for as long
+// as it lasts.
+func TestAlliesEmbargoTheirFoe(t *testing.T) {
+	w := newQuietGame(t)
+	m, th := nationByName(w, "Montara"), nationByName(w, "Thalassa")
+	route := func(from, to *Nation) *Trader {
+		for _, tr := range w.Traders {
+			if tr.Origin.Nation == from && tr.Dest.Nation == to {
+				return tr
+			}
+		}
+		return nil
+	}
+	w.Annex(regionByName(w, "12").ID, th.ID) // a Thalassan tile next to Montara
+	there, back := route(m, th), route(th, m)
+	if there == nil || back == nil {
+		t.Fatal("set-up: no trade route between Montara and Thalassa")
+	}
+	if _, blocked := there.border(); blocked {
+		t.Fatal("trade blocked before any alliance")
+	}
+	m.Coalition = th.ID + 1
+	for _, tr := range []*Trader{there, back} {
+		if _, blocked := tr.border(); !blocked {
+			t.Errorf("%s: trade with the nation Montara is allied against", tr.Name())
+		}
+	}
+	m.Coalition = 0
+	if _, blocked := there.border(); blocked {
+		t.Error("trade still blocked after the alliance broke up")
+	}
+}
