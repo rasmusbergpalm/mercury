@@ -65,3 +65,52 @@ func (w *World) noise(n *Nation, k int) float64 {
 
 // clamp01 keeps x in [0, 1].
 func clamp01(x float64) float64 { return math.Max(0, math.Min(1, x)) }
+
+// drawResearch picks a computer nation's next tech at random among those it
+// can research: cheaper ones are likelier (by the square of the cheapest's
+// cost over theirs), and its temperament leans it towards a branch (science
+// by Learning, military by Militarism, politics by Aggression, transport by
+// Expansion, each squared). The draw is deterministic: the game's seed, the
+// nation and the day. -1 if nothing is left.
+func (n *Nation) drawResearch() int {
+	var ids []int
+	cheapest := math.Inf(1)
+	for i := range Techs {
+		if n.CanResearch(i) {
+			ids = append(ids, i)
+			cheapest = math.Min(cheapest, Techs[i].Cost)
+		}
+	}
+	if len(ids) == 0 {
+		return -1
+	}
+	t := n.Temper
+	lean := map[string]float64{BranchScience: t.Learning, BranchMilitary: t.Militarism, BranchPolitics: t.Aggression, BranchTransport: t.Expansion}
+	weights, total := make([]float64, len(ids)), 0.0
+	for k, i := range ids {
+		w := math.Pow(cheapest/Techs[i].Cost, 2)
+		if l, ok := lean[Techs[i].Branch]; ok && l > 0 {
+			w *= l * l
+		}
+		weights[k] = w
+		total += w
+	}
+	x := n.random(len(ids)) * total
+	for k, w := range weights {
+		if x < w {
+			return ids[k]
+		}
+		x -= w
+	}
+	return ids[len(ids)-1]
+}
+
+// random is a deterministic pseudo-random number in [0, 1) for the nation's
+// k-th choice today.
+func (n *Nation) random(k int) float64 {
+	x := uint64(n.seed)*0x9E3779B97F4A7C15 ^ uint64(n.ID+1)*0xBF58476D1CE4E5B9 ^ uint64(n.now)*0x94D049BB133111EB ^ uint64(k+1)*0xC2B2AE3D27D4EB4F
+	x ^= x >> 31
+	x *= 0x9E3779B97F4A7C15
+	x ^= x >> 29
+	return float64(x>>11) / float64(1<<53)
+}

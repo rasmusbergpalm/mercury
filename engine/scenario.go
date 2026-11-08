@@ -367,6 +367,7 @@ func buildGame(spec GameSpec, settle bool) (*World, error) {
 		n := newNation(i, ns.Name, ns.Color, len(spec.Nations), spec.TaxRate)
 		n.AI = spec.AI
 		n.Temper = drawTemperament(spec.Seed, i)
+		n.seed = spec.Seed
 		if err := n.SetTaxRate(spec.TaxRate); err != nil {
 			return nil, err
 		}

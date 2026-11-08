@@ -99,6 +99,7 @@ type Nation struct {
 	payScale    float64     // share of today's bills the treasury could cover
 	Standing    float64     // share of each army's wartime size kept under arms in peace
 	Temper      Temperament // how the computer plays it
+	seed        int64       // the game's seed, for its deterministic choices
 	IncomeEMA   float64     // moving average of tax and tariff income per tick
 
 	ResearchPoints float64 // research delivered towards the current tech
@@ -605,6 +606,10 @@ func (n *Nation) pickResearch() {
 			n.Queue = append(n.Queue[:qi:qi], n.Queue[qi+1:]...)
 			return
 		}
+	}
+	if n.AI {
+		n.Researching = n.drawResearch()
+		return
 	}
 	// else the cheapest available tech, preferring the branch the nation
 	// knows least of (so research stays balanced)
