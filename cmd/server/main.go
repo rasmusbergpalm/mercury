@@ -3,6 +3,7 @@ package main
 
 import (
 	"flag"
+	"github.com/rasmusbergpalm/mercury/engine"
 	"log"
 	"net/http"
 	"os"
@@ -22,6 +23,10 @@ func main() {
 		if _, err := s.CreateGame("The Three Crowns", 1, 0); err != nil {
 			log.Fatal(err)
 		}
+	} else {
+		// settle the map now (engine.SettleYears), so the first new game
+		// doesn't wait for it
+		go engine.BuildGame(engine.DefaultGame)
 	}
 	go s.Run(make(chan struct{}))
 	log.Printf("Mercury on http://localhost%s (saves in %q)", *addr, *data)

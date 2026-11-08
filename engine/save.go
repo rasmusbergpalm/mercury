@@ -178,7 +178,7 @@ func Restore(s *Snapshot) (*World, error) {
 	if s.Version < oldestSnapshot || s.Version > SnapshotVersion {
 		return nil, fmt.Errorf("snapshot version %d, this build reads %d to %d", s.Version, oldestSnapshot, SnapshotVersion)
 	}
-	w, err := BuildGame(s.Spec)
+	w, err := buildGame(s.Spec, false) // the snapshot holds the settled state
 	if err != nil {
 		return nil, err
 	}

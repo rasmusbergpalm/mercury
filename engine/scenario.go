@@ -318,7 +318,15 @@ var DefaultGame = GameSpec{
 // trade under tariffs, research technology and build infrastructure, with
 // Construction and University firms on every tile, investing firms and
 // migrating people.
+//
+// The game opens on a settled world: see SettleYears.
 func BuildGame(spec GameSpec) (*World, error) {
+	return buildGame(spec, true)
+}
+
+// baseGameWorld builds a game's map with every tile urban, before any
+// nation or settling.
+func baseGameWorld(spec GameSpec) (*World, error) {
 	if math.IsInf(spec.TransportCost, 0) || math.IsNaN(spec.TransportCost) || spec.TransportCost < 0 {
 		return nil, fmt.Errorf("transport cost must be a non-negative number")
 	}
@@ -326,15 +334,32 @@ func BuildGame(spec GameSpec) (*World, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(spec.NationMap) != w.Rows {
-		return nil, fmt.Errorf("nation map has %d rows, want %d", len(spec.NationMap), w.Rows)
-	}
-	w.Investment, w.Migration, w.Demography = true, true, true
-	w.Spec = &spec
 	for _, r := range w.Regions {
 		r.Urban = true
 		r.updateAgglomeration()
 	}
+	return w, nil
+}
+
+// buildGame builds a game, settled first or not (a save restores its own
+// state over it).
+func buildGame(spec GameSpec, settle bool) (*World, error) {
+	w, err := baseGameWorld(spec)
+	if err != nil {
+		return nil, err
+	}
+	if len(spec.NationMap) != w.Rows {
+		return nil, fmt.Errorf("nation map has %d rows, want %d", len(spec.NationMap), w.Rows)
+	}
+	if settle {
+		b, err := settledBase(spec)
+		if err != nil {
+			return nil, err
+		}
+		w.settleFrom(b)
+	}
+	w.Investment, w.Migration, w.Demography = true, true, true
+	w.Spec = &spec
 	bySymbol := map[byte]*Nation{}
 	for i, ns := range spec.Nations {
 		n := newNation(i, ns.Name, ns.Color, len(spec.Nations), spec.TaxRate)
