@@ -771,9 +771,10 @@ func TestArmySizeTechsFadeIn(t *testing.T) {
 	}
 }
 
-// An army below half its full strength takes no ground: on free land its
-// occupation doesn't start (or lapses); at half strength or more it does.
-func TestWeakArmiesTakeNoGround(t *testing.T) {
+// Regression: an army needs a strength of occupyMinStrength to take ground,
+// whatever its full size (a big army isn't held back for being under
+// strength, a token force can't take land however full it is).
+func TestOccupationNeedsStrengthOne(t *testing.T) {
 	w := newQuietGame(t)
 	m := nationByName(w, "Montara")
 	m.SetStanding(MaxStanding)
@@ -782,7 +783,6 @@ func TestWeakArmiesTakeNoGround(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.Target, a.Men = 10, 10
 	for g := range a.Supply {
 		a.Supply[g] = 1
 	}
@@ -797,39 +797,66 @@ func TestWeakArmiesTakeNoGround(t *testing.T) {
 		t.Fatal("no free tile next to Montara's capital")
 	}
 	a.Region = free.ID
-	a.Men = 4 // 40% of its full strength
+	// a token force at full strength: 0.9 men of levies, strength 0.63
+	a.Target, a.Men = 0.9, 0.9
 	w.sieges()
 	if free.Siege != nil {
-		t.Errorf("an army at %.0f%% strength started occupying", 100*a.Strength()/a.FullStrength())
+		t.Errorf("an army of strength %.2f started occupying", a.Strength())
 	}
-	a.Men = 10
+	// a big army at a fraction of its full size, but strong enough
+	a.Target, a.Men = 20, 2
+	if a.Strength() < occupyMinStrength {
+		t.Fatalf("set-up: strength %v", a.Strength())
+	}
 	w.sieges()
 	if free.Siege == nil || free.Siege.Progress <= 0 {
-		t.Error("a full-strength army didn't occupy free land")
+		t.Errorf("an army of strength %.2f (a tenth of its full size) didn't occupy free land", a.Strength())
 	}
 }
 
-// An army with too few men takes no ground, however well supplied, and the
-// computer doesn't send it to.
-func TestTooFewMenTakeNoGround(t *testing.T) {
-	w := newQuietGame(t)
-	m := nationByName(w, "Montara")
-	a, err := w.RaiseArmy(m.ID, m.Regions[0].ID, 0)
+// Regression: a computer army besieging (or marching to take) land must
+// break off to defend its own soil when it can beat the invader there (with
+// the defender's bonus).
+func TestAIDefendsBeforeTakingLand(t *testing.T) {
+	w := newNeighbourGame(t)
+	alpha, beta := w.Nations[0], w.Nations[1]
+	alpha.AI = true
+	home := alpha.Regions[0]
+	var free *Region
+	for _, nb := range HexNeighbors(home.Row, home.Col, w.Rows, w.Cols) {
+		if r := w.Regions[nb[0]*w.Cols+nb[1]]; r.Nation == nil && w.reachable(alpha, r) {
+			free = r
+			break
+		}
+	}
+	if free == nil {
+		t.Fatal("no free tile next to Alpha")
+	}
+	full := func(a *Army, men float64) {
+		a.Target, a.Men = men, men
+		for g := range a.Supply {
+			a.Supply[g] = 1
+		}
+	}
+	w.DeclareWar(beta.ID, alpha.ID)
+	a, err := w.RaiseArmy(alpha.ID, home.ID, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.Target, a.Men = 0.4, 0.4
-	for g := range a.Supply {
-		a.Supply[g] = 1
+	full(a, 10)
+	a.Region = free.ID
+	free.Siege = &Siege{Nation: alpha, Progress: 0.5} // halfway through taking it
+	e, err := w.RaiseArmy(beta.ID, beta.Regions[0].ID, 0)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if a.Strength() < occupyMinStrength*a.FullStrength() {
-		t.Fatal("set-up: not at full strength")
+	full(e, 10) // as strong as ours: only the defender's bonus makes it beatable
+	e.Region = home.ID
+	if s := w.newAIScope(alpha, a); s.advantage(home) < s.odds {
+		t.Fatalf("set-up: advantage %v below the odds %v", s.advantage(home), s.odds)
 	}
-	if a.canOccupy() {
-		t.Errorf("%v men can take ground (minimum %v)", a.Men, minOccupiers)
-	}
-	a.Target, a.Men = 1, 1
-	if !a.canOccupy() {
-		t.Error("a full-strength army of 1 man can't take ground")
+	w.aiArmies(alpha, w.expansionTargets(alpha))
+	if len(a.Path) == 0 || a.Path[len(a.Path)-1] != home.ID {
+		t.Errorf("the besieging army didn't march to defend tile %s: path %v", home.Name, a.Path)
 	}
 }

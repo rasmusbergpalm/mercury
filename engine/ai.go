@@ -206,7 +206,24 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 		}
 	}
 	for _, a := range armies {
-		if len(a.Path) > 0 || a.Retreating {
+		if a.Retreating {
+			continue
+		}
+		// fights come first, even for an army on the march or besieging:
+		// defend our soil, then engage enemies it can beat
+		if fight := w.aiFight(n, a); fight >= 0 {
+			if going := a.Region; len(a.Path) > 0 {
+				going = a.Path[len(a.Path)-1]
+				if going == fight {
+					continue
+				}
+			} else if going == fight {
+				continue
+			}
+			w.MoveArmy(a.ID, fight)
+			continue
+		}
+		if len(a.Path) > 0 {
 			continue
 		}
 		atHome := w.Regions[a.Region].Nation == n
@@ -264,50 +281,77 @@ func (w *World) aiArmyHome(n *Nation) *Region {
 }
 
 // aiDestination picks where an idle army should go, or -1.
-func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int {
-	// strength of the armies of nations at war with n, and of n, in a tile
-	forces := func(r int) (enemy, own float64) {
-		for _, e := range w.Armies {
-			if e.Region != r || e == a {
-				continue
-			}
-			if e.Nation == n {
-				own += e.Strength()
-			} else if n.AtWar[e.Nation.ID] {
-				enemy += e.Strength()
-			}
-		}
-		return
-	}
-	odds := aiFightOdds / math.Sqrt(n.Temper.Aggression) * (1 + 0.1*w.noise(n, 100+a.ID))
+// aiScope is what an army weighs its options with: the forces in a tile,
+// its advantage there, the odds it seeks battle at, and how far tiles are.
+type aiScope struct {
+	w    *World
+	n    *Nation
+	a    *Army
+	odds float64
+	dist []float64
+	best int
+	top  float64
+}
+
+func (w *World) newAIScope(n *Nation, a *Army) *aiScope {
 	dist, _ := w.shortestPaths(a.Region, func(*Region) bool { return true })
-	// its advantage in tile r, with our armies already there: our strength
-	// over theirs, the defender's bonus to whoever owns the tile (none on
-	// free land); it seeks battle from odds up
-	advantage := func(r *Region) float64 {
-		enemy, own := forces(r.ID)
-		mine, theirs := own+a.Strength(), enemy
-		switch {
-		case r.Nation == n:
-			mine *= defenderHome * n.defenseMult()
-		case r.Nation != nil:
-			theirs *= defenderHome * r.Nation.defenseMult()
+	return &aiScope{w: w, n: n, a: a, dist: dist, best: -1, top: math.Inf(-1),
+		odds: aiFightOdds / math.Sqrt(n.Temper.Aggression) * (1 + 0.1*w.noise(n, 100+a.ID))}
+}
+
+// forces is the strength of the armies at war with n, and of n's other
+// armies, in tile r.
+func (s *aiScope) forces(r int) (enemy, own float64) {
+	for _, e := range s.w.Armies {
+		if e.Region != r || e == s.a {
+			continue
 		}
-		if theirs <= 0 {
-			return math.Inf(1)
-		}
-		return mine / theirs
-	}
-	best, bestScore := -1, math.Inf(-1)
-	pick := func(r *Region, score float64) {
-		if score -= 0.01 * dist[r.ID]; score > bestScore {
-			best, bestScore = r.ID, score
+		if e.Nation == s.n {
+			own += e.Strength()
+		} else if s.n.AtWar[e.Nation.ID] {
+			enemy += e.Strength()
 		}
 	}
-	// first defend: enemy armies on our soil that it can beat (with our home
-	// bonus); then engage: enemy armies anywhere it can reach and beat (on
-	// their soil they have the defender's bonus); in each, the one it beats
-	// by the widest margin
+	return
+}
+
+// advantage is the army's edge in tile r, with our armies already there:
+// our strength over theirs, the defender's bonus to whoever owns the tile
+// (none on free land). It seeks battle from odds up.
+func (s *aiScope) advantage(r *Region) float64 {
+	enemy, own := s.forces(r.ID)
+	mine, theirs := own+s.a.Strength(), enemy
+	switch {
+	case r.Nation == s.n:
+		mine *= defenderHome * s.n.defenseMult()
+	case r.Nation != nil:
+		theirs *= defenderHome * r.Nation.defenseMult()
+	}
+	if theirs <= 0 {
+		return math.Inf(1)
+	}
+	return mine / theirs
+}
+
+// pick keeps the best-scoring tile (a little less for distance).
+func (s *aiScope) pick(r *Region, score float64) {
+	if score -= 0.01 * s.dist[r.ID]; score > s.top {
+		s.best, s.top = r.ID, score
+	}
+}
+
+// aiFight is where the army should fight, or -1: first defend (enemy armies
+// on our soil it can beat, with our home bonus), then engage (enemy armies
+// anywhere it can reach and beat, with their home bonus on their soil); in
+// each, the one it beats by the widest margin. Fights come before any
+// march or siege.
+func (w *World) aiFight(n *Nation, a *Army) int {
+	s := w.newAIScope(n, a)
+	return s.fight()
+}
+
+func (s *aiScope) fight() int {
+	w, n, a := s.w, s.n, s.a
 	for _, home := range []bool{true, false} {
 		for _, e := range w.Armies {
 			r := w.Regions[e.Region]
@@ -315,14 +359,26 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 				w.tileTaken(n, r.ID, a) || !w.reachable(n, r) {
 				continue
 			}
-			if adv := advantage(r); adv >= odds {
-				pick(r, adv)
+			if adv := s.advantage(r); adv >= s.odds {
+				s.pick(r, adv)
 			}
 		}
-		if best >= 0 {
-			return best
+		if s.best >= 0 {
+			return s.best
 		}
 	}
+	return -1
+}
+
+// aiDestination picks where an idle army should go, or -1: a fight (see
+// aiFight), else enemy land, else free land.
+func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int {
+	s := w.newAIScope(n, a)
+	if f := s.fight(); f >= 0 {
+		return f
+	}
+	forces, advantage, odds := s.forces, s.advantage, s.odds
+	pick := s.pick
 	// too weak to take ground: home to refill
 	if !a.canOccupy() {
 		if w.Regions[a.Region].Nation != n {
@@ -339,13 +395,13 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 		enemy, _ := forces(r.ID)
 		pick(r, -enemy*1000+r.Population())
 	}
-	if best >= 0 {
-		return best
+	if s.best >= 0 {
+		return s.best
 	}
 	// expand: free land, where it is stronger than any other nation's armies
 	// (the strongest there occupies it; a weaker army would only wait to be
 	// beaten)
-	bestScore = 0
+	best, bestScore := -1, 0.0
 	for _, t := range targets {
 		if w.tileTaken(n, t.region.ID, a) || !w.strongestOn(n, a, t.region.ID) {
 			continue

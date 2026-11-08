@@ -272,16 +272,18 @@ func (a *Army) FullStrength() float64 {
 	return math.Max(a.Men, a.underArms()) * Doctrines[a.Doctrine].Power * a.Nation.attackMult()
 }
 
-// occupyMinStrength is the share of its full strength an army needs to
-// occupy a tile (free land, or an enemy's left undefended): a broken army
-// can hold its ground but takes none.
-const occupyMinStrength = 0.5
+// occupyMinStrength is the strength an army needs to occupy a tile (free
+// land, or an enemy's left undefended): a token force can hold its ground
+// but takes none.
+const occupyMinStrength = 1.0
 
-// canOccupy reports whether the army can take ground: enough men, at half
-// its full strength or more.
+// canOccupy reports whether the army is strong enough to take ground.
 func (a *Army) canOccupy() bool {
-	return a.Men >= minOccupiers && a.Strength() >= occupyMinStrength*a.FullStrength()-1e-12
+	return a.Men >= minOccupiers && a.Strength() >= occupyMinStrength
 }
+
+// OccupyMinStrength is the strength an army needs to take ground.
+const OccupyMinStrength = occupyMinStrength
 
 // CanOccupy reports whether the army can take ground (see canOccupy).
 func (a *Army) CanOccupy() bool { return a.canOccupy() }
