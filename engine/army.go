@@ -646,12 +646,28 @@ func (w *World) makePeace(a, b int) error {
 	na.AtWar[b], nb.AtWar[a] = false, false
 	na.WarSince[b], nb.WarSince[a] = w.Tick, w.Tick // now: when peace was made
 	na.PeaceOffer[b], nb.PeaceOffer[a] = false, false
+	// armies on the other's land go home, and so do armies of the two that
+	// share a tile anywhere (free land, a third nation's): at war they'd have
+	// fought, at peace they'd stand on one square
+	facing := func(ar *Army) bool {
+		for _, o := range w.Armies {
+			if o.Region == ar.Region && ((ar.Nation == na && o.Nation == nb) || (ar.Nation == nb && o.Nation == na)) {
+				return true
+			}
+		}
+		return false
+	}
+	var leave []*Army
 	for _, ar := range w.Armies {
 		r := w.Regions[ar.Region]
-		if (ar.Nation == na && r.Nation == nb) || (ar.Nation == nb && r.Nation == na) {
-			w.sendHome(ar)
-			ar.Retreating = len(ar.Path) > 0 // marching home through land it may no longer enter
+		if (ar.Nation == na && r.Nation == nb) || (ar.Nation == nb && r.Nation == na) ||
+			((ar.Nation == na || ar.Nation == nb) && r.Nation != ar.Nation && facing(ar)) {
+			leave = append(leave, ar)
 		}
+	}
+	for _, ar := range leave {
+		w.sendHome(ar)
+		ar.Retreating = len(ar.Path) > 0 // marching home through land it may no longer enter
 	}
 	for _, r := range w.Regions {
 		if s := r.Siege; s != nil && ((s.Nation == na && r.Nation == nb) || (s.Nation == nb && r.Nation == na)) {

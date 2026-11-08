@@ -120,3 +120,38 @@ func TestRetakenTilesStayLoyal(t *testing.T) {
 		t.Errorf("loyalties add up to %v", sum)
 	}
 }
+
+// Regression: allies at war with the same enemy don't both go for the same
+// enemy tile (only one can occupy it): the second leaves it to the first.
+func TestAlliesDontTakeTheSameTile(t *testing.T) {
+	w := newQuietGame(t)
+	m, v, th := nationByName(w, "Montara"), nationByName(w, "Verdania"), nationByName(w, "Thalassa")
+	m.Coalition, v.Coalition = th.ID+1, th.ID+1
+	for _, n := range []*Nation{m, v} {
+		n.AtWar[th.ID], th.AtWar[n.ID] = true, true
+	}
+	// a tile of Thalassa's next to both allies
+	target := regionByName(w, "12")
+	w.Annex(target.ID, th.ID)
+	if !w.borders(m, target) || !w.borders(v, target) {
+		t.Fatal("set-up: tile 12 should border Montara and Verdania")
+	}
+	army := func(n *Nation) *Army {
+		x, err := w.RaiseArmy(n.ID, n.Regions[0].ID, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		x.Target, x.Men = 20, 20
+		for g := range x.Supply {
+			x.Supply[g] = 1
+		}
+		return x
+	}
+	a, b := army(m), army(v)
+	if err := w.MoveArmy(a.ID, target.ID); err != nil { // Montara's army marches on it
+		t.Fatal(err)
+	}
+	if dest := w.aiDestination(v, b, w.expansionTargets(v)); dest == target.ID {
+		t.Errorf("Verdania's army heads for the enemy tile its ally is already marching on")
+	}
+}

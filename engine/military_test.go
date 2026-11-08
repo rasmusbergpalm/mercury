@@ -860,3 +860,34 @@ func TestAIDefendsBeforeTakingLand(t *testing.T) {
 		t.Errorf("the besieging army didn't march to defend tile %s: path %v", home.Name, a.Path)
 	}
 }
+
+// Regression: at peace, armies of the two sides that share a tile (on free
+// land, where neither is at home) both march home instead of standing on
+// one square.
+func TestPeaceSeparatesArmiesOnOneTile(t *testing.T) {
+	w := newNeighbourGame(t)
+	alpha, beta := w.Nations[0], w.Nations[1]
+	w.DeclareWar(alpha.ID, beta.ID)
+	var free *Region
+	for _, r := range w.Regions {
+		if r.Nation == nil && w.reachable(alpha, r) && w.reachable(beta, r) {
+			free = r
+			break
+		}
+	}
+	if free == nil {
+		t.Fatal("no free tile next to both")
+	}
+	a, _ := w.RaiseArmy(alpha.ID, alpha.Regions[0].ID, 0)
+	b, _ := w.RaiseArmy(beta.ID, beta.Regions[0].ID, 0)
+	a.Men, a.Region = 5, free.ID
+	b.Men, b.Region = 5, free.ID
+	if err := w.makePeace(alpha.ID, beta.ID); err != nil {
+		t.Fatal(err)
+	}
+	for _, x := range []*Army{a, b} {
+		if len(x.Path) == 0 || w.Regions[x.Path[len(x.Path)-1]].Nation != x.Nation {
+			t.Errorf("%s's army stays on the shared tile after peace (path %v)", x.Nation.Name, x.Path)
+		}
+	}
+}

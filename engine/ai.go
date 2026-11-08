@@ -389,7 +389,7 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 	// then take land: enemy border tiles it can win, the weakest held and
 	// then the most populous first
 	for _, r := range w.Regions {
-		if r.Nation == nil || r.Nation == n || !n.AtWar[r.Nation.ID] || !w.borders(n, r) || w.tileTaken(n, r.ID, a) || advantage(r) < odds {
+		if r.Nation == nil || r.Nation == n || !n.AtWar[r.Nation.ID] || !w.borders(n, r) || w.tileTaken(n, r.ID, a) || w.allyTaken(n, r.ID) || advantage(r) < odds {
 			continue
 		}
 		enemy, _ := forces(r.ID)
@@ -403,7 +403,7 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 	// beaten)
 	best, bestScore := -1, 0.0
 	for _, t := range targets {
-		if w.tileTaken(n, t.region.ID, a) || !w.strongestOn(n, a, t.region.ID) {
+		if w.tileTaken(n, t.region.ID, a) || w.allyTaken(n, t.region.ID) || !w.strongestOn(n, a, t.region.ID) {
 			continue
 		}
 		if t.score > bestScore {
@@ -663,4 +663,15 @@ func (w *World) strongestOn(n *Nation, a *Army, r int) bool {
 		}
 	}
 	return true
+}
+
+// allyTaken reports whether an army of one of n's allies holds tile r or is
+// marching to it: only one can occupy it, so allies leave it to each other.
+func (w *World) allyTaken(n *Nation, r int) bool {
+	for _, o := range w.Nations {
+		if w.Allied(n, o) && w.tileTaken(o, r, nil) {
+			return true
+		}
+	}
+	return false
 }
