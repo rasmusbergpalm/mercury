@@ -1568,9 +1568,11 @@ function armyCard(a, mine) {
   const supply = Object.keys(d.needs).map((g) => {
     const v = a.supply[g] ?? 0;
     const color = v > 0.8 ? cssVar("--good") : v > 0.4 ? cssVar("--brass") : cssVar("--danger");
-    const days = a.stock_days[g] ?? 0, from = a.sources[g] ?? -1, none = from >= 0 && !(a.offered[g] > 0);
+    const days = a.stock_days[g] ?? 0, from = (a.source_shares || {})[g] || [], none = from.length > 0 && !(a.offered[g] > 0);
+    const where = from.length === 1 ? `bought at ${world.regions[from[0].tile].name}`
+      : `bought across ${from.length} tiles: ${from.slice(0, 3).map((s) => `${world.regions[s.tile].name} ${pct(s.share)}`).join(", ")}${from.length > 3 ? `, +${from.length - 3} more` : ""}`;
     return `<span>${g}</span><span class="meter" title="${Math.round(days)} days in stock"><span style="width:${pct(v)};background:${color}"></span></span><span>${pct(v)}</span>
-      <span></span><span class="sub" style="grid-column:2/4">${days >= 1 ? `${Math.round(days)} days in stock` : `<span class="bad">no stock left</span>`}${none ? ` · <span class="bad">none of your tiles sells any</span>` : from >= 0 ? ` · bought at ${world.regions[from].name}` : ""}</span>`;
+      <span></span><span class="sub" style="grid-column:2/4">${days >= 1 ? `${Math.round(days)} days in stock` : `<span class="bad">no stock left</span>`}${none ? ` · <span class="bad">none of your tiles sells any yet: ordered from ${from.length} that could make it</span>` : from.length ? ` · ${where}` : ""}</span>`;
   }).join("");
   // strength: the doctrine's base power times each factor
   const mult = (v) => `<span class="${v > 1.0001 ? "good" : v < 0.9999 ? "bad" : ""}">×${v.toFixed(2)}</span>`;
@@ -1583,7 +1585,7 @@ function armyCard(a, mine) {
   const def = (a.defense || []).map((m) => { home *= m.value; return `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td><td>${mult(m.value)}</td></tr>`; }).join("");
   const attr = (a.attrition || []).map((m) => `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td>
     <td>${m.add ? `${(100 * m.value).toFixed(2)}%` : mult(m.value)}</td></tr>`).join("");
-  const depot = a.depot >= 0 ? `Each good is bought where it lands cheapest among your tiles that make enough of it, and shipped here (${fmt(a.transport, 1)} transport today)` : `<span class="bad">Cut off: no tile of yours can reach it</span>`;
+  const depot = a.depot >= 0 ? `Each good is ordered from every tile of yours that sells it, in proportion to what each offers (among those where it lands no more than half again dearer than the cheapest), so all your works see the demand; it is shipped here (${fmt(a.transport, 1)} transport today)` : `<span class="bad">Cut off: no tile of yours can reach it</span>`;
   // what the army costs a day: each good, the transport to bring it, and pay
   const goods = Object.entries(a.cost || {}).filter(([g]) => g !== "transport");
   const goodsTotal = goods.reduce((t, [, v]) => t + v, 0), transport = (a.cost || {}).transport || 0;

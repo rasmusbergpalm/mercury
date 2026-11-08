@@ -204,33 +204,40 @@ type NationState struct {
 	Imports        []float64 `json:"imports"`
 }
 
+// SourceShare is one tile's part in an army's order for a good.
+type SourceShare struct {
+	Tile  int     `json:"tile"`
+	Share float64 `json:"share"`
+}
+
 type ArmyState struct {
-	ID            int                `json:"id"`
-	Nation        int                `json:"nation"`
-	Region        int                `json:"region"`
-	Men           float64            `json:"men"`
-	Target        float64            `json:"target"`     // at full strength (war)
-	UnderArms     float64            `json:"under_arms"` // kept now: the target at war, its standing share in peace
-	Doctrine      int                `json:"doctrine"`
-	Effectiveness float64            `json:"effectiveness"`
-	Strength      float64            `json:"strength"`
-	Supply        map[string]float64 `json:"supply"`        // per needed good, 0..1
-	StockDays     map[string]float64 `json:"stock_days"`    // days of each good it carries
-	Sources       map[string]int     `json:"sources"`       // tile each good was bought in today (-1: none)
-	Offered       map[string]float64 `json:"offered"`       // how much of each its source's market offered
-	Coming        float64            `json:"coming"`        // recruits marching out to it
-	Cost          map[string]float64 `json:"cost"`          // today, per supply good (and "transport")
-	Pay           float64            `json:"pay"`           // soldiers' pay today
-	ComingDays    int                `json:"coming_days"`   // until the first of them arrive (-1: none)
-	FullStrength  float64            `json:"full_strength"` // at full size, fully supplied
-	DailyLoss     float64            `json:"daily_loss"`    // share of men lost today outside battle
-	Path          []int              `json:"path"`
-	Retreating    bool               `json:"retreating"` // falling back after a lost battle
-	Attack        []engine.Modifier  `json:"attack"`     // strength per soldier, factor by factor
-	Defense       []engine.Modifier  `json:"defense"`    // extra factors when defending at home
-	Attrition     []engine.Modifier  `json:"attrition"`  // daily losses
-	Depot         int                `json:"depot"`      // where supplies are bought (-1: cut off)
-	Transport     float64            `json:"transport"`  // transport today's supplies needed
+	ID            int                      `json:"id"`
+	Nation        int                      `json:"nation"`
+	Region        int                      `json:"region"`
+	Men           float64                  `json:"men"`
+	Target        float64                  `json:"target"`     // at full strength (war)
+	UnderArms     float64                  `json:"under_arms"` // kept now: the target at war, its standing share in peace
+	Doctrine      int                      `json:"doctrine"`
+	Effectiveness float64                  `json:"effectiveness"`
+	Strength      float64                  `json:"strength"`
+	Supply        map[string]float64       `json:"supply"`        // per needed good, 0..1
+	StockDays     map[string]float64       `json:"stock_days"`    // days of each good it carries
+	Sources       map[string]int           `json:"sources"`       // tile most of each good was bought in today (-1: none)
+	Offered       map[string]float64       `json:"offered"`       // how much of each its sources' markets offered
+	SourceShares  map[string][]SourceShare `json:"source_shares"` // every tile each good is ordered from, and its share, biggest first
+	Coming        float64                  `json:"coming"`        // recruits marching out to it
+	Cost          map[string]float64       `json:"cost"`          // today, per supply good (and "transport")
+	Pay           float64                  `json:"pay"`           // soldiers' pay today
+	ComingDays    int                      `json:"coming_days"`   // until the first of them arrive (-1: none)
+	FullStrength  float64                  `json:"full_strength"` // at full size, fully supplied
+	DailyLoss     float64                  `json:"daily_loss"`    // share of men lost today outside battle
+	Path          []int                    `json:"path"`
+	Retreating    bool                     `json:"retreating"` // falling back after a lost battle
+	Attack        []engine.Modifier        `json:"attack"`     // strength per soldier, factor by factor
+	Defense       []engine.Modifier        `json:"defense"`    // extra factors when defending at home
+	Attrition     []engine.Modifier        `json:"attrition"`  // daily losses
+	Depot         int                      `json:"depot"`      // where supplies are bought (-1: cut off)
+	Transport     float64                  `json:"transport"`  // transport today's supplies needed
 }
 
 type TurnState struct {
@@ -433,11 +440,13 @@ func worldState(w *engine.World) State {
 		Flows: []Flow{}, Armies: []ArmyState{}}
 	for _, a := range w.Armies {
 		sup, days, src, off := map[string]float64{}, map[string]float64{}, map[string]int{}, map[string]float64{}
+		shares := map[string][]SourceShare{}
 		for g := range engine.Doctrines[a.Doctrine].Needs {
 			name := engine.Goods[g].Name
 			sup[name], days[name], src[name] = a.Supply[g], a.StockDays(g), a.Source(g)
-			if s := a.Source(g); s >= 0 {
-				off[name] = w.Regions[s].Markets[g].Supply
+			for _, s := range a.Sources(g) {
+				off[name] += w.Regions[s.Tile].Markets[g].Supply
+				shares[name] = append(shares[name], SourceShare{s.Tile, s.Share})
 			}
 		}
 		coming, comingDays := a.Reinforcements(w.Tick)
@@ -449,7 +458,7 @@ func worldState(w *engine.World) State {
 		att, def, attr := w.Breakdown(a)
 		depot, transport := a.SupplyLine()
 		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, w.UnderArms(a), a.Doctrine,
-			a.Effectiveness(), a.Strength(), sup, days, src, off, coming, cost, pay, comingDays, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...), a.Retreating,
+			a.Effectiveness(), a.Strength(), sup, days, src, off, shares, coming, cost, pay, comingDays, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...), a.Retreating,
 			att, def, attr, depot, transport})
 	}
 	for i := range w.Regions {

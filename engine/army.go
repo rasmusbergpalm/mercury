@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 )
 
@@ -89,12 +90,13 @@ type Army struct {
 	Retreating bool
 
 	// this tick's supply order
-	depot    *Region   // its nearest home tile, where recruits set out from
-	homeDays float64   // days' march from there
-	need     []float64 // what it uses today
-	order    []float64 // what it buys today: today's use plus refilling its stock
-	source   []*Region // where it buys each good today
-	spent    []float64 // what its supplies cost today, per good (transport under Transport)
+	depot    *Region         // its nearest home tile, where recruits set out from
+	homeDays float64         // days' march from there
+	need     []float64       // what it uses today
+	order    []float64       // what it buys today: today's use plus refilling its stock
+	source   []*Region       // where it buys most of each good today
+	shares   [][]supplyShare // every tile it orders each good from today, and its share
+	spent    []float64       // what its supplies cost today, per good (transport under Transport)
 	tau      []float64
 	got      []float64
 	transit  float64 // transport needed this tick
@@ -653,10 +655,11 @@ func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 			a.need, a.order = make([]float64, NumGoods), make([]float64, NumGoods)
 			a.tau, a.got = make([]float64, NumGoods), make([]float64, NumGoods)
 			a.source = make([]*Region, NumGoods)
+			a.shares = make([][]supplyShare, NumGoods)
 			a.spent = make([]float64, NumGoods)
 		}
 		for g := range a.need {
-			a.need[g], a.order[g], a.tau[g], a.got[g], a.source[g], a.spent[g] = 0, 0, 0, 0, nil, 0
+			a.need[g], a.order[g], a.tau[g], a.got[g], a.source[g], a.spent[g], a.shares[g] = 0, 0, 0, 0, nil, 0, nil
 		}
 		for g, per := range Doctrines[a.Doctrine].Needs {
 			a.need[g] = a.Men * per
@@ -685,7 +688,8 @@ func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 			q := use + math.Min(wartime, math.Max(0, stockDays*wartime-a.Stock[g])/refillDays)
 			a.order[g] = q
 			biggest := 0.0
-			for _, s := range w.supplySources(n, g, dist, perHop) {
+			a.shares[g] = w.supplySources(n, g, dist, perHop)
+			for _, s := range a.shares[g] {
 				if s.share > biggest {
 					a.source[g], biggest = s.region, s.share
 				}
@@ -1412,10 +1416,30 @@ func (a *Army) Reinforcements(tick int) (men float64, days int) {
 	return
 }
 
-// Source is the tile the army bought a good in today, or -1.
+// Source is the tile the army bought most of a good in today, or -1.
 func (a *Army) Source(g GoodID) int {
 	if a.source == nil || a.source[g] == nil {
 		return -1
 	}
 	return a.source[g].ID
+}
+
+// SupplyShare is one tile's part in an army's order for a good.
+type SupplyShare struct {
+	Tile  int
+	Share float64
+}
+
+// Sources lists the tiles the army ordered a good from today, with each
+// one's share of the order, biggest first.
+func (a *Army) Sources(g GoodID) []SupplyShare {
+	if a.shares == nil {
+		return nil
+	}
+	var out []SupplyShare
+	for _, s := range a.shares[g] {
+		out = append(out, SupplyShare{s.region.ID, s.share})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Share > out[j].Share })
+	return out
 }
