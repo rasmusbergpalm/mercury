@@ -1,5 +1,6 @@
-// Command realgdpsim runs the default map with a single computer nation from
-// 1820 to 1920 and prints its yearly real and nominal GDP as CSV.
+// Command realgdpsim runs the default map as a single computer nation holding
+// every tile, from 1820 to 1920, and prints its yearly real and nominal GDP
+// as CSV.
 package main
 
 import (
@@ -12,7 +13,7 @@ import (
 
 func main() {
 	spec := engine.DefaultGame
-	spec.NationMap = []string{"AA....", "AA....", "......", "......", "......", "......"}
+	spec.NationMap = []string{"AAAAAA", "AAAAAA", "AAAAAA", "AAAAAA", "AAAAAA", "AAAAAA"} // the whole map
 	spec.Nations = spec.Nations[:1]
 	spec.AI, spec.Seed = true, 1
 	w, err := engine.BuildGame(spec)
