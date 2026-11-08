@@ -3,6 +3,7 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"math"
 )
 
 // Snapshot is everything about a game world that carries from one tick to the
@@ -38,7 +39,11 @@ type SiegeSnap struct {
 }
 
 // SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 13
+const SnapshotVersion = 14
+
+// oldestSnapshot is the oldest format this build still reads: 12 lacks
+// retreats (none were under way) and 13 lacks real GDP (it starts afresh).
+const oldestSnapshot = 12
 
 type MarketSnap struct {
 	Price, Supply, Demand float64
@@ -68,6 +73,7 @@ type RegionSnap struct {
 	Markets                    []MarketSnap
 	Pops                       []PopSnap
 	Firms                      []FirmSnap
+	Real                       GDPChain // real GDP's chain (absent before version 14)
 }
 
 type TraderSnap struct {
@@ -83,6 +89,7 @@ type NationSnap struct {
 	Pension                                int
 	PayScale                               float64
 	IncomeEMA, ResearchPoints              float64
+	RealGDP                                float64
 	Researching                            int
 	Known                                  []bool
 	Queue                                  []int
@@ -132,6 +139,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 			}
 			rs.Firms = append(rs.Firms, fs)
 		}
+		rs.Real = r.Real.clone()
 		s.Regions = append(s.Regions, rs)
 	}
 	for _, t := range w.Traders {
@@ -140,7 +148,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	for _, n := range w.Nations {
 		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, SpendEMA: n.SpendEMA, BuildRate: n.MaxBuildRate,
 			Tariff: append([]float64(nil), n.Tariff...), Embargo: append([]bool(nil), n.Embargo...),
-			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Drill: n.Drill, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints,
+			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Drill: n.Drill, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints, RealGDP: n.RealGDP,
 			Researching: n.Researching, Known: append([]bool(nil), n.Known...), AI: n.AI, ChooseResearch: n.ChooseResearch,
 			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
 			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
@@ -167,8 +175,8 @@ func (w *World) Snapshot() (*Snapshot, error) {
 
 // Restore rebuilds a world from a snapshot.
 func Restore(s *Snapshot) (*World, error) {
-	if s.Version != SnapshotVersion {
-		return nil, fmt.Errorf("snapshot version %d, this build reads %d", s.Version, SnapshotVersion)
+	if s.Version < oldestSnapshot || s.Version > SnapshotVersion {
+		return nil, fmt.Errorf("snapshot version %d, this build reads %d to %d", s.Version, oldestSnapshot, SnapshotVersion)
 	}
 	w, err := BuildGame(s.Spec)
 	if err != nil {
@@ -205,6 +213,10 @@ func Restore(s *Snapshot) (*World, error) {
 		r.Wage, r.Neglect, r.UtilityEMA, r.Infra, r.Project, r.Nation = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Infra, rs.Project, nil
 		r.House.Cash, r.Battle = rs.HouseCash, rs.Battle
 		r.Collect, r.Educated, r.Healthy = rs.Collect, rs.Educated, rs.Healthy
+		r.Real = rs.Real.clone()
+		if !r.Real.valid() {
+			return bad("real GDP in " + r.Name)
+		}
 		if r.Infra < 0 || r.Infra >= len(InfraLevels) || (r.Project != nil && !r.Project.Port && (r.Project.Target <= 0 || r.Project.Target >= len(InfraLevels))) {
 			return bad("infrastructure in " + r.Name)
 		}
@@ -244,6 +256,7 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 		n.Treasury, n.TaxRate, n.SpendEMA, n.MaxBuildRate = ns.Treasury, ns.TaxRate, ns.SpendEMA, ns.BuildRate
 		n.Tariff, n.Embargo, n.AutoBuild, n.IncomeEMA, n.ResearchPoints = ns.Tariff, ns.Embargo, ns.AutoBuild, ns.IncomeEMA, ns.ResearchPoints
+		n.RealGDP = math.Max(0, ns.RealGDP)
 		if len(ns.TradeWith) != len(w.Nations) || len(ns.AtWar) != len(w.Nations) || len(ns.WarSince) != len(w.Nations) ||
 			len(ns.PeaceOffer) != len(w.Nations) {
 			return bad("nation " + n.Name)

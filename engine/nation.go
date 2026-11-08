@@ -78,6 +78,7 @@ type Nation struct {
 	Regions  []*Region
 	TaxRate  float64 // share of pop income (wages and dividends) taken as tax
 	Treasury float64
+	RealGDP  float64 // real GDP per day in pounds of the first month, linked monthly (realgdp.go)
 	// SpendEMA is a moving average of what the state spends a day.
 	SpendEMA float64
 	// MaxBuildRate caps construction units bought per tick per project.

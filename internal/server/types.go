@@ -476,10 +476,10 @@ func worldState(w *engine.World) State {
 			}
 		}
 		ns.BestDoctrine = bestDoctrine(n)
+		ns.GDP = n.RealGDP
 		ns.Exports, ns.Imports = trade.NationOut[n.ID], trade.NationIn[n.ID]
 		pop := 0.0
 		for _, r := range n.Regions {
-			ns.GDP += r.GDP()
 			pop += r.Population()
 		}
 		for _, r := range n.Regions {

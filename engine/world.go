@@ -153,8 +153,13 @@ func (w *World) Step() {
 		}
 	}
 	w.Tick++
-	if w.Spec != nil && w.Tick%HistoryEvery == 0 {
-		w.record()
+	if w.Spec != nil {
+		for _, r := range w.Regions {
+			r.accumulateGDP()
+		}
+		if w.Tick%HistoryEvery == 0 {
+			w.record()
+		}
 	}
 }
 

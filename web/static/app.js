@@ -1157,7 +1157,7 @@ function tilePanel() {
       ${stat(short(s.population), "people", `<span class="${s.growth >= 0 ? "good" : "bad"}">${s.growth >= 0 ? "+" : ""}${(100 * s.growth).toFixed(1)}%/yr</span>`)}
       ${stat(fmt(s.wage), "daily wage", trend(h, "wage"))}
       ${stat(fmt(s.utility), "living standard", trend(h, "utility"))}
-      ${stat("£" + short(d.gdp), "GDP / day", trend(h, "gdp"))}
+      ${stat("£" + short(d.gdp), "real GDP / day, 1820 £", trend(h, "gdp"))}
       ${stat("£" + short(exp), "exports / day")}
       ${stat("£" + short(imp), "imports / day")}
     </div>`;
@@ -1227,7 +1227,7 @@ function tileChart(h) {
     const [g, prow] = seg("tile-price", world.consumer_goods.map((g) => [String(g), world.goods[g].name]), String(world.consumer_goods[0]));
     const idx = world.consumer_goods.indexOf(+g);
     chart = prow + lineChart(T, [{ name: `${world.goods[+g].name} price`, color: series(0), values: d.prices[idx] }], { f: (v) => fmt(v) });
-  } else chart = one({ population: "people", wage: "wage", utility: "living standard", gdp: "GDP per day" }[k], d[k], k === "population" ? short : k === "gdp" ? money : (v) => fmt(v));
+  } else chart = one({ population: "people", wage: "wage", utility: "living standard", gdp: "real GDP per day (1820 £)" }[k], d[k], k === "population" ? short : k === "gdp" ? money : (v) => fmt(v));
   return row + chart;
 }
 
@@ -1317,7 +1317,7 @@ function nationPanel() {
   const known = n.known.filter(Boolean).length;
   html += `<div class="stats four">
     ${stat(short(n.population), "people", trend(h, "population"))}
-    ${stat("£" + short(n.gdp), "GDP / day", trend(h, "gdp"))}
+    ${stat("£" + short(n.gdp), "real GDP / day, 1820 £", trend(h, "gdp"))}
     ${stat("£" + short(n.income), "state income / day", trend(h, "income"))}
     ${stat("£" + short(n.treasury), "treasury")}
     ${stat(fmt(n.utility), "living standard", trend(h, "utility"))}
@@ -1330,15 +1330,19 @@ function nationPanel() {
   return html;
 }
 
+// what real GDP means, under its charts
+const GDP_NOTE = "Real GDP: what the firms add (their output less the goods they use up), valued at constant prices in pounds of January 1820, linked month by month. The money in the world is fixed, so prices fall as output grows; real GDP counts the goods, not the pounds.";
+
 function nationChart(h, n) {
   const [k, row] = seg("nation", [["population", "People"], ["gdp", "GDP"], ["income", "Revenue"], ["treasury", "Treasury"], ["utility", "Living"],
     ["classes", "Classes"], ["labor", "Labour"], ["soldiers", "Soldiers"], ["strength", "Might"], ["techs", "Techs"], ["tiles", "Tiles"]], "population");
   if (!h || !h.data) return row + lineChart(null, []);
   const d = h.data, T = h.ticks, c = nationColor(n.id);
-  const names = { population: "people", gdp: "GDP per day", income: "state income per day", treasury: "treasury", utility: "living standard",
+  const names = { population: "people", gdp: "real GDP per day (1820 £)", income: "state income per day", treasury: "treasury", utility: "living standard",
     soldiers: "soldiers", strength: "military strength", techs: "techs known", tiles: "tiles" };
   if (k === "classes") return row + lineChart(T, world.classes.map((cl, i) => ({ name: cl, color: series(i), values: d.class_income[i] })), { f: (v) => fmt(v) }) + `<p class="sub">Income per head per day.</p>`;
   if (k === "labor") return row + lineChart(T, world.sectors.map((s, i) => ({ name: s, color: series(i), values: d.labor[i] })), { share: true }) + `<p class="sub">Share of workers by sector: the march from the fields into the mills.</p>`;
+  if (k === "gdp") return row + lineChart(T, [{ name: names[k], color: c, values: d[k] }], { f: money }) + `<p class="sub">${GDP_NOTE}</p>`;
   return row + lineChart(T, [{ name: names[k], color: c, values: d[k] }], { f: k === "utility" ? (v) => fmt(v) : ["gdp", "income", "treasury"].includes(k) ? money : short });
 }
 
@@ -1639,8 +1643,9 @@ function worldPanel() {
   const ready = hs.every((h) => h && h.data);
   const chart = ready ? lineChart(hs[0].ticks, world.nations.map((o, i) => ({ name: o.name, color: nationColor(o.id), values: hs[i].data[k] })), { f: k === "utility" ? (v) => fmt(v) : k === "gdp" ? money : short }) : lineChart(null, []);
   return `<h2>The powers</h2><div class="table-scroll"><table>
-    <tr><th>nation</th><th>tiles</th><th>people</th><th>GDP / day</th><th>trade / day</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
+    <tr><th>nation</th><th>tiles</th><th>people</th><th>real GDP<br>/ day</th><th>trade / day</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
     <h3>The race</h3>${row}${chart}
+    ${k === "gdp" ? `<p class="sub">${GDP_NOTE}</p>` : ""}
     <p class="sub" style="margin-top:8px">You can only go to war with a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless.</p>
     <p class="sub">Money in the world: ${short(state.money)} (conserved).</p>`;
 }

@@ -92,8 +92,9 @@ type Firm struct {
 	ProfitEMA             float64
 	LossTicks, Age        int // ticks of losses in a row; ticks alive
 	tickRevenue, tickCost float64
-	tickInputs            float64 // what the goods it used up cost this tick
-	investWant            float64 // construction to buy this tick for a private expansion
+	tickInputs            float64   // what the goods it used up cost this tick
+	used                  []float64 // goods it used up producing this tick, by good
+	investWant            float64   // construction to buy this tick for a private expansion
 }
 
 // Expansion is a building level under construction for a firm.
@@ -222,6 +223,10 @@ func (f *Firm) Produce() float64 {
 		q *= math.Pow(f.FactorAmount(fc), fc.Exp)
 	}
 	f.Inventory += q
+	if f.used == nil {
+		f.used = make([]float64, len(f.Inputs))
+	}
+	copy(f.used, f.Inputs)
 	for i := range f.Inputs {
 		f.Inputs[i] = 0
 	}

@@ -19,7 +19,7 @@ type NationHistory struct {
 	Tiles       []float64             `json:"tiles"`
 	Income      []float64             `json:"income"` // tax and tariffs
 	Treasury    []float64             `json:"treasury"`
-	GDP         []float64             `json:"gdp"` // value of everything produced
+	GDP         []float64             `json:"gdp"` // real GDP per day, in pounds of the first month
 	Utility     []float64             `json:"utility"`
 	Soldiers    []float64             `json:"soldiers"`
 	Strength    []float64             `json:"strength"`
@@ -55,16 +55,10 @@ type ArmyHistory struct {
 	Effectiveness []float64 `json:"effectiveness"`
 }
 
-// GDP is the value the tile's firms added today, in pounds: their output at
-// today's prices less the goods they used up, so coal burnt in a smithy is not
-// counted twice.
-func (r *Region) GDP() float64 {
-	s := 0.0
-	for _, f := range r.Firms {
-		s += f.ValueAdded(r.Markets[f.Output].Price)
-	}
-	return s
-}
+// GDP is the tile's real GDP per day: the value its firms add (output less
+// the goods they used up, so coal burnt in a smithy is not counted twice) at
+// constant prices, in pounds of the first month; see GDPChain.
+func (r *Region) GDP() float64 { return r.Real.Level }
 
 // ClassIncome is a class's income per head on the tile this tick (0 if absent).
 func (r *Region) ClassIncome(c Class) float64 {
@@ -159,15 +153,15 @@ func (w *World) record() {
 			h.Regions = append(h.Regions, &RegionHistory{Prices: make([][]float64, len(ConsumerGoods))})
 		}
 	}
+	w.linkNationGDP()
 	idx := len(h.Ticks)
 	h.Ticks = append(h.Ticks, w.Tick)
 	trade := w.Trade()
 	for i, n := range w.Nations {
 		nh := h.Nations[i]
-		pop, gdp, util := 0.0, 0.0, 0.0
+		pop, util := 0.0, 0.0
 		for _, r := range n.Regions {
 			pop += r.Population()
-			gdp += r.GDP()
 		}
 		for _, r := range n.Regions {
 			util += r.Utility() * r.Population() / math.Max(pop, 1e-9)
@@ -190,7 +184,7 @@ func (w *World) record() {
 		push(&nh.Tiles, float64(len(n.Regions)))
 		push(&nh.Income, n.IncomeEMA)
 		push(&nh.Treasury, n.Treasury)
-		push(&nh.GDP, gdp)
+		push(&nh.GDP, n.RealGDP)
 		push(&nh.Utility, util)
 		push(&nh.Soldiers, men)
 		push(&nh.Strength, w.ArmyStrength(n))

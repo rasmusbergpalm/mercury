@@ -18,6 +18,8 @@ type Region struct {
 	Nation   *Nation  // owner, or nil
 	BaseMove float64  // terrain's movement cost
 	Infra    int      // index into InfraLevels
+	Real     GDPChain // real GDP, linked monthly
+	warm     bool     // past the real GDP chain's warm-up (set at each link)
 	Port     bool     // has a port: trades by sea with every other port
 	Urban    bool     // industry and services gain from the tile's size (game worlds)
 	Project  *Project // infrastructure under construction, or nil
