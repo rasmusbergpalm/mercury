@@ -20,6 +20,7 @@ func (w *World) runAI() {
 	if w.Tick%aiInterval != 0 {
 		return
 	}
+	w.updateAlliances()
 	for _, n := range w.Nations {
 		switch {
 		case n.Eliminated():
@@ -317,10 +318,12 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 	if best >= 0 {
 		return best
 	}
-	// expand: free land the army is strong enough to take in reasonable time
+	// expand: free land, where it is stronger than any other nation's armies
+	// (the strongest there occupies it; a weaker army would only wait to be
+	// beaten)
 	bestScore = 0
 	for _, t := range targets {
-		if w.tileTaken(n, t.region.ID, a) {
+		if w.tileTaken(n, t.region.ID, a) || !w.strongestOn(n, a, t.region.ID) {
 			continue
 		}
 		if t.score > bestScore {
@@ -558,4 +561,26 @@ func (w *World) expansionTargets(n *Nation) []expansionTarget {
 		}
 	}
 	return out
+}
+
+// strongestOn reports whether army a (with its nation's other armies there)
+// would be stronger in tile r than every other nation's armies on it.
+func (w *World) strongestOn(n *Nation, a *Army, r int) bool {
+	ours, theirs := a.Strength(), map[*Nation]float64{}
+	for _, e := range w.Armies {
+		if e.Region != r || e == a {
+			continue
+		}
+		if e.Nation == n {
+			ours += e.Strength()
+		} else {
+			theirs[e.Nation] += e.Strength()
+		}
+	}
+	for _, s := range theirs {
+		if s >= ours {
+			return false
+		}
+	}
+	return true
 }

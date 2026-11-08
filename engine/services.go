@@ -130,7 +130,7 @@ func (f *Firm) research() float64 {
 	if f.Funded <= 0 || f.Labor <= 0 {
 		return 0
 	}
-	return f.TFP * f.Agglom * f.EduMult * math.Pow(float64(f.Funded), 0.4) * math.Pow(f.Labor, 0.6)
+	return f.TFP * f.Agglom * f.EduMult * f.Loyal * math.Pow(float64(f.Funded), 0.4) * math.Pow(f.Labor, 0.6)
 }
 
 // staffMult is how much one of the nation's staff of a service achieves,
@@ -278,6 +278,8 @@ func (w *World) serviceEffects() {
 	for _, r := range w.Regions {
 		if r.Nation != nil {
 			r.Collect = taxFarmed + (1-taxFarmed)*w.Coverage(r, Administration)
+			r.Disloyalty *= allegianceGrowth
+			r.applyAllegiance()
 		}
 		enrolled := w.Coverage(r, Schools)
 		r.Educated += (enrolled - r.Educated) / (schoolYears * TicksPerYear)

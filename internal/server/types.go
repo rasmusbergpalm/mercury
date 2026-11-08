@@ -121,12 +121,13 @@ type RegionState struct {
 	CityBonus  float64         `json:"city_bonus"`
 	Growth     float64         `json:"growth"` // population growth per year
 	Occupation *Occupation     `json:"occupation"`
-	Battle     int             `json:"battle"`   // days the battle on the tile has lasted (0: none)
-	Services   []*ServiceState `json:"services"` // indexed like WorldInfo.Services
-	Collect    float64         `json:"collect"`  // share of its taxes collected
-	Educated   float64         `json:"educated"` // share of its people schooled
-	Healthy    float64         `json:"healthy"`  // share of its crowding covered
-	Crowding   float64         `json:"crowding"` // 0..1
+	Battle     int             `json:"battle"`     // days the battle on the tile has lasted (0: none)
+	Services   []*ServiceState `json:"services"`   // indexed like WorldInfo.Services
+	Collect    float64         `json:"collect"`    // share of its taxes collected
+	Allegiance float64         `json:"allegiance"` // how far its people stand by their owner, 0..1
+	Educated   float64         `json:"educated"`   // share of its people schooled
+	Healthy    float64         `json:"healthy"`    // share of its crowding covered
+	Crowding   float64         `json:"crowding"`   // 0..1
 	Project    *Project        `json:"project"`
 }
 
@@ -183,7 +184,8 @@ type NationState struct {
 	Researching    int       `json:"researching"`
 	Points         float64   `json:"research_points"`
 	Known          []bool    `json:"known"`
-	Adoption       []float64 `json:"adoption"` // per tech: how far its productivity and growth bonuses have come in
+	Adoption       []float64 `json:"adoption"`       // per tech: how far its productivity and growth bonuses have come in
+	AlliedAgainst  int       `json:"allied_against"` // the nation its alliance stands against, -1: none
 	Queue          []int     `json:"queue"`
 	ChooseResearch bool      `json:"choose_research"` // a tech finished: ask the player for the next
 	TechCosts      []float64 `json:"tech_costs"`      // after the discount from trade partners
@@ -410,6 +412,7 @@ func regionState(w *engine.World, i int) RegionState {
 		st.Nation = r.Nation.ID
 	}
 	st.Collect, st.Educated, st.Healthy, st.Crowding = r.Collect, r.Educated, r.Healthy, r.Crowding()
+	st.Allegiance = r.Allegiance()
 	for k := engine.Public(0); k < engine.NumServices; k++ {
 		f := r.Service(k)
 		if f == nil {
@@ -487,6 +490,10 @@ func worldState(w *engine.World) State {
 			}
 		}
 		ns.BestDoctrine = bestDoctrine(n)
+		ns.AlliedAgainst = -1
+		if h := w.AlliedAgainst(n); h != nil {
+			ns.AlliedAgainst = h.ID
+		}
 		ns.Adoption = make([]float64, len(engine.Techs))
 		for i := range engine.Techs {
 			ns.Adoption[i] = n.Adoption(i)

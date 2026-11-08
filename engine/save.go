@@ -67,6 +67,7 @@ type RegionSnap struct {
 	Wage, Neglect, UtilityEMA  float64
 	HouseCash                  float64
 	Collect, Educated, Healthy float64
+	Disloyalty                 float64 // absent before version 14: loyal
 	Infra, Battle              int
 	Port                       bool
 	Project                    *Project
@@ -93,7 +94,10 @@ type NationSnap struct {
 	RealGDP                                float64
 	Researching                            int
 	Known                                  []bool
-	LearnedAt                              []int `json:",omitempty"` // absent before version 14: fully adopted
+	Coalition                              int     `json:",omitempty"`
+	AllianceSince                          int     `json:",omitempty"`
+	MightEMA                               float64 `json:",omitempty"`
+	LearnedAt                              []int   `json:",omitempty"` // absent before version 14: fully adopted
 	Queue                                  []int
 	TradeWith                              []float64
 	AtWar, PeaceOffer                      []bool
@@ -113,7 +117,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	}
 	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick, Ports: append([]int(nil), w.Ports...)}
 	for _, r := range w.Regions {
-		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Collect: r.Collect, Educated: r.Educated, Healthy: r.Healthy, Infra: r.Infra, Battle: r.Battle, Port: r.Port}
+		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Collect: r.Collect, Educated: r.Educated, Healthy: r.Healthy, Disloyalty: r.Disloyalty, Infra: r.Infra, Battle: r.Battle, Port: r.Port}
 		if r.Siege != nil {
 			rs.Siege = &SiegeSnap{r.Siege.Nation.ID, r.Siege.Progress}
 		}
@@ -151,7 +155,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, SpendEMA: n.SpendEMA, BuildRate: n.MaxBuildRate,
 			Tariff: append([]float64(nil), n.Tariff...), Embargo: append([]bool(nil), n.Embargo...),
 			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Drill: n.Standing, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints, RealGDP: n.RealGDP,
-			Researching: n.Researching, Known: append([]bool(nil), n.Known...), LearnedAt: append([]int(nil), n.LearnedAt...), AI: n.AI, ChooseResearch: n.ChooseResearch,
+			Researching: n.Researching, Known: append([]bool(nil), n.Known...), Coalition: n.Coalition, AllianceSince: n.AllianceSince, MightEMA: n.MightEMA, LearnedAt: append([]int(nil), n.LearnedAt...), AI: n.AI, ChooseResearch: n.ChooseResearch,
 			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
 			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
 			PeaceOffer: append([]bool(nil), n.PeaceOffer...),
@@ -215,6 +219,11 @@ func Restore(s *Snapshot) (*World, error) {
 		r.Wage, r.Neglect, r.UtilityEMA, r.Infra, r.Project, r.Nation = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Infra, rs.Project, nil
 		r.House.Cash, r.Battle = rs.HouseCash, rs.Battle
 		r.Collect, r.Educated, r.Healthy = rs.Collect, rs.Educated, rs.Healthy
+		if !(rs.Disloyalty >= 0 && rs.Disloyalty <= 1) {
+			return bad("allegiance in " + r.Name)
+		}
+		r.Disloyalty = rs.Disloyalty
+		r.applyAllegiance()
 		r.Real = rs.Real.clone()
 		if !r.Real.valid() {
 			return bad("real GDP in " + r.Name)
@@ -260,6 +269,10 @@ func Restore(s *Snapshot) (*World, error) {
 		n.Tariff, n.Embargo, n.AutoBuild, n.IncomeEMA, n.ResearchPoints = ns.Tariff, ns.Embargo, ns.AutoBuild, ns.IncomeEMA, ns.ResearchPoints
 		n.RealGDP = math.Max(0, ns.RealGDP)
 		n.now = s.Tick
+		if ns.Coalition < 0 || ns.Coalition > len(s.Nations) || ns.Coalition == n.ID+1 {
+			return bad("alliance of " + n.Name)
+		}
+		n.Coalition, n.AllianceSince, n.MightEMA = ns.Coalition, ns.AllianceSince, ns.MightEMA
 		if len(ns.LearnedAt) == len(Techs) {
 			copy(n.LearnedAt, ns.LearnedAt)
 		}

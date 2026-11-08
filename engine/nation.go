@@ -105,6 +105,9 @@ type Nation struct {
 	Researching    int     // index into Techs, or -1 to pick automatically
 	Queue          []int   // techs to research next, in order
 	Known          []bool  // per tech
+	Coalition      int     // 1 + the nation it is allied against; 0: none (see alliance.go)
+	AllianceSince  int     // tick its alliance formed
+	MightEMA       float64 // its might, averaged over about a year (for alliances)
 	// LearnedAt is the tick each known tech was learned (0: always known, or
 	// granted outright: fully adopted); see Adoption.
 	LearnedAt []int
@@ -347,7 +350,7 @@ func (r *Region) payIncome(p *Pop, amount float64) {
 		p.Income += amount
 		return
 	}
-	tax := amount * r.Nation.TaxRate * r.Collect // what its administration collects
+	tax := amount * r.Nation.TaxRate * r.Collect * r.AllegianceMult() // what its administration collects, from people who pay
 	p.Cash += amount - tax
 	p.Income += amount - tax
 	r.Nation.Treasury += tax

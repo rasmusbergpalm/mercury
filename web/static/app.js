@@ -1161,6 +1161,7 @@ function tilePanel() {
       ${stat("£" + short(exp), "exports / day")}
       ${stat("£" + short(imp), "imports / day")}
     </div>`;
+  if (s.nation >= 0 && s.allegiance < 0.995) html += `<p class="sub" style="margin-top:8px"><b>Allegiance ${pct(s.allegiance)}</b>: its people don't yet stand by ${esc(nationName(s.nation))}, so it produces and pays taxes at ×${(0.5 + 0.5 * s.allegiance).toFixed(2)} and gives ${pct(s.allegiance)} of the recruits. It grows towards loyalty over the years (about 70% after ten); conquered tiles start at nothing, settled free land at 40%.</p>`;
   if (s.services) html += `<p class="sub" style="margin-top:8px">Public services: ${s.nation >= 0 ? `taxes collected ${pct(s.collect)} · ` : ""}educated ${pct(s.educated)} ·
     health covers ${pct(s.healthy)}${s.crowding > 0 ? ` · <span class="${s.healthy < 0.999 ? "bad" : ""}">crowded ${pct(s.crowding)}</span>` : ""}</p>`;
   html += `<h3>Over time</h3>` + tileChart(h);
@@ -1631,14 +1632,18 @@ function worldPanel() {
       if (n.at_war[o.id]) {
         diplo = n.peace_offer[o.id] ? `<span class="sub">peace offered</span>`
           : `<button data-cmd="/nations/${n.id}/peace?target=${o.id}">${o.peace_offer[n.id] ? "Accept peace" : "Offer peace"}</button>`;
+      } else if (n.allied_against >= 0 && n.allied_against === o.allied_against) {
+        diplo = `<span class="sub">your ally</span>`;
       } else {
         diplo = `<button class="danger" data-confirm="Declare war on ${esc(info.name)}?" data-cmd="/nations/${n.id}/war?target=${o.id}">Declare war</button>`;
       }
     }
     const war = o.at_war.map((w, i) => (w ? world.nations[i].name : null)).filter(Boolean);
+    const allies = o.allied_against >= 0 ? state.nations.filter((x) => x.id !== o.id && x.allied_against === o.allied_against).map((x) => world.nations[x.id].name) : [];
+    const alliance = o.allied_against >= 0 ? `<br><span class="sub">allied with ${allies.map(esc).join(", ")} against ${esc(world.nations[o.allied_against].name)}</span>` : "";
     return `<tr><td>${chip(o.id)} ${esc(info.name)}<br><span class="sub">${who}</span></td><td>${o.eliminated ? "fallen" : o.tiles}</td>
       <td>${short(o.population)}</td><td>£${short(o.gdp)}</td><td class="nowrap">out £${short(o.exports.reduce((t, v) => t + v, 0))}<br><span class="sub">in £${short(o.imports.reduce((t, v) => t + v, 0))}</span></td><td>${short(o.soldiers)}</td><td>${o.known.filter(Boolean).length}</td>
-      <td>${war.length ? `<span class="bad">⚔ ${war.map(esc).join(", ")}</span>` : "peace"}${diplo ? `<br>${diplo}` : ""}</td></tr>`;
+      <td>${war.length ? `<span class="bad">⚔ ${war.map(esc).join(", ")}</span>` : "peace"}${alliance}${diplo ? `<br>${diplo}` : ""}</td></tr>`;
   }).join("");
   const hs = world.nations.map((o) => getHist(`nations/${o.id}`));
   const [k, row] = seg("world", [["population", "People"], ["gdp", "GDP"], ["utility", "Living"], ["soldiers", "Soldiers"], ["strength", "Might"], ["techs", "Techs"], ["tiles", "Tiles"]], "gdp");
@@ -1648,7 +1653,8 @@ function worldPanel() {
     <tr><th>nation</th><th>tiles</th><th>people</th><th>real GDP<br>/ day</th><th>trade / day</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
     <h3>The race</h3>${row}${chart}
     ${k === "gdp" ? `<p class="sub">${GDP_NOTE}</p>` : ""}
-    <p class="sub" style="margin-top:8px">You can only go to war with a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless.</p>
+    <p class="sub" style="margin-top:8px">Balance of power: when one nation's might is half again every other's, the rest ally against it (until it falls below 1.2 times the next); allies can't fight each other, and join each other's wars against it.</p>
+    <p class="sub">You can only go to war with a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless.</p>
     <p class="sub">Money in the world: ${short(state.money)} (conserved).</p>`;
 }
 

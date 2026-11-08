@@ -26,9 +26,12 @@ type Region struct {
 	Neglect  float64  // accumulated unmet upkeep
 	Siege    *Siege   // a foreign army working to take the tile, or nil
 	Collect  float64  // share of its taxes the administration collects
-	Educated float64  // share of its people who were schooled
-	Healthy  float64  // share of its crowding public health covers
-	Battle   int      // days the current battle on the tile has lasted (0: none)
+	// Disloyalty is how far the tile's people are from standing by their
+	// owner: 0 loyal, 1 just conquered (see Allegiance).
+	Disloyalty float64
+	Educated   float64 // share of its people who were schooled
+	Healthy    float64 // share of its crowding public health covers
+	Battle     int     // days the current battle on the tile has lasted (0: none)
 
 	UtilityEMA float64 // smoothed utility per person; migration follows it
 
@@ -565,4 +568,33 @@ func (r *Region) TierSpend(prices []float64) [NumTiers]float64 {
 		}
 	}
 	return out
+}
+
+// Allegiance: a tile's people come to stand by their owner slowly. A
+// nation's starting tiles are loyal; a conquered tile starts at nothing (its
+// people stand by the old owner), free land at freeLandAllegiance (they
+// answer to nobody). It grows towards loyalty with a time constant of
+// allegianceYears, and until then the tile produces less, pays less tax and
+// gives fewer recruits.
+const (
+	allegianceYears    = 8.0
+	freeLandAllegiance = 0.4
+)
+
+// allegianceGrowth is how much disloyalty is left after a day.
+var allegianceGrowth = math.Exp(-1 / (allegianceYears * TicksPerYear))
+
+// Allegiance is how far the tile's people stand by their owner, 0..1.
+func (r *Region) Allegiance() float64 { return 1 - r.Disloyalty }
+
+// AllegianceMult is what allegiance does to the tile's production and taxes:
+// half at none, all of it when loyal.
+func (r *Region) AllegianceMult() float64 { return 0.5 + 0.5*r.Allegiance() }
+
+// applyAllegiance sets the tile's firms' productivity from its allegiance.
+func (r *Region) applyAllegiance() {
+	m := r.AllegianceMult()
+	for _, f := range r.Firms {
+		f.Loyal = m
+	}
 }

@@ -75,6 +75,7 @@ type Firm struct {
 	Funded  int
 	Public  Public  // which public service, for state firms
 	EduMult float64 // productivity from the tile's schooling (industry and services)
+	Loyal   float64 // productivity from the tile's allegiance to its owner (1: loyal)
 	// Site and SiteMult: where a land-bound producer's productivity comes
 	// from (its terrain, or the coast) and how much it multiplies it.
 	Site       string
@@ -116,13 +117,13 @@ func (f *Firm) exponentSum() float64 {
 
 // effectiveTFP is TFP * Levels^(1-s): productivity of the firm's variable factors.
 func (f *Firm) effectiveTFP() float64 {
-	return f.TFP * math.Pow(float64(f.Levels), 1-f.exponentSum()) * f.Agglom * f.EduMult
+	return f.TFP * math.Pow(float64(f.Levels), 1-f.exponentSum()) * f.Agglom * f.EduMult * f.Loyal
 }
 
 // NewFirm makes a firm.
 func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash float64) *Firm {
 	return &Firm{Name: name, Output: output, TFP: tfp, BaseTFP: tfp, Factors: factors, Cash: cash,
-		Levels: 1, MaxLevels: 8, Enabled: true, Agglom: 1, EduMult: 1,
+		Levels: 1, MaxLevels: 8, Enabled: true, Agglom: 1, EduMult: 1, Loyal: 1,
 		CashBuffer: 20, Inputs: make([]float64, NumGoods),
 		PlanQty: make([]float64, NumGoods), PlanHas: make([]bool, NumGoods)}
 }
@@ -266,6 +267,9 @@ func (f *Firm) Bonuses(n *Nation) []Modifier {
 	}
 	if f.Agglom != 1 {
 		out = append(out, Modifier{"Tile size", f.Agglom, "industry and services gain from the people around them", false})
+	}
+	if f.Loyal < 1 {
+		out = append(out, Modifier{"Allegiance", f.Loyal, "the tile's people don't yet stand by their new rulers", false})
 	}
 	if f.EduMult != 1 {
 		out = append(out, Modifier{"Schooling", f.EduMult, "the tile's educated share", false})

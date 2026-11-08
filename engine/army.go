@@ -319,7 +319,11 @@ func (w *World) Mobilized(n *Nation) (men, target float64) {
 
 // MobilizationCap is how many soldiers the nation may have.
 func (w *World) MobilizationCap(n *Nation) float64 {
-	return n.Mobilization() * (n.population() + func() float64 { m, _ := w.Mobilized(n); return m }())
+	loyal := 0.0 // disloyal people don't serve
+	for _, r := range n.Regions {
+		loyal += r.Population() * r.Allegiance()
+	}
+	return n.Mobilization() * (loyal + func() float64 { m, _ := w.Mobilized(n); return m }())
 }
 
 // bestDoctrine is the most powerful doctrine a nation knows.
@@ -584,6 +588,8 @@ func (w *World) DeclareWar(a, b int) error {
 		return ErrEliminated
 	case na.AtWar[b]:
 		return ErrAtWar
+	case w.Allied(na, nb):
+		return ErrAllied
 	case !w.nationsBorder(na, nb):
 		return ErrNotBordered
 	}
@@ -1025,7 +1031,7 @@ func (w *World) recruitAll() {
 		}
 		avail, pool := make([]float64, len(n.Regions)), 0.0
 		for i, r := range n.Regions {
-			avail[i] = math.Max(0, math.Min(recruitRate*r.Population(), sizeOf(movable(r))-minPopulation))
+			avail[i] = math.Max(0, math.Min(recruitRate*r.Population()*r.Allegiance(), sizeOf(movable(r))-minPopulation))
 			pool += avail[i]
 		}
 		if pool <= 0 {
