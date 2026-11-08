@@ -386,22 +386,66 @@ func TestPeaceNeedsBothSides(t *testing.T) {
 	}
 }
 
-func TestUpgradeArmy(t *testing.T) {
+// Doctrines form a ladder. An army takes up its nation's best doctrine by
+// itself; with none of the new kit it fights as before, and it reaches the
+// new doctrine's power as the kit comes in. A rung counts only as far as the
+// one beneath it: tanks are worth nothing without rifles. Losing the newest
+// kit drops it back down the ladder, not below.
+func TestDoctrineLadder(t *testing.T) {
 	w := newQuietGame(t)
 	m := nationByName(w, "Montara")
 	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, 5)
-	if err := w.UpgradeArmy(a.ID); !errors.Is(err, ErrNoUpgrade) {
-		t.Errorf("upgrade without a better doctrine: %v", err)
+	full := func() {
+		for g := range a.Supply {
+			a.Supply[g] = 1
+		}
 	}
+	full()
+	near := func(got, want float64, what string) {
+		t.Helper()
+		if math.Abs(got-want) > 1e-9 {
+			t.Errorf("%s: effectiveness %v, want %v", what, got, want)
+		}
+	}
+	near(a.Effectiveness(), Doctrines[0].Power, "levies, fully supplied")
+
 	w.GrantTech(m.ID, "Drill")
-	if err := w.UpgradeArmy(a.ID); err != nil {
-		t.Fatal(err)
+	a.followDoctrine()
+	if a.Doctrine != 1 || a.Supply[G("artillery")] != 0 {
+		t.Fatalf("after Drill: doctrine %d, artillery %v", a.Doctrine, a.Supply[G("artillery")])
 	}
-	if a.Doctrine != 1 || a.Supply[G("artillery")] != 0.2 || a.Supply[G("bread")] != 1 {
-		t.Errorf("after upgrade: doctrine %d, artillery %v, bread %v", a.Doctrine, a.Supply[G("artillery")], a.Supply[G("bread")])
+	// arms were the levies' full ration, now half of line infantry's
+	if got := a.Supply[G("arms")]; math.Abs(got-0.5) > 1e-9 {
+		t.Errorf("arms restated to %v of the new ration, want 0.5", got)
 	}
-	if a.Effectiveness() >= Doctrines[1].Power {
-		t.Error("new kit should take time to arrive")
+	// (its clothing ration is higher too: the old uniforms cover 75% of it)
+	near(a.Effectiveness(), Doctrines[0].Power*math.Pow(0.75, 0.1), "line infantry with none of its kit")
+	full()
+	near(a.Effectiveness(), Doctrines[1].Power, "line infantry fully supplied")
+
+	// up to combined arms, everything supplied
+	for _, tech := range []string{"Mass conscription", "Rifled muskets", "Breech-loading rifles", "Machine guns", "Tanks"} {
+		w.GrantTech(m.ID, tech)
+	}
+	a.followDoctrine()
+	top := len(Doctrines) - 1
+	if a.Doctrine != top {
+		t.Fatalf("doctrine %d, want %d", a.Doctrine, top)
+	}
+	full()
+	near(a.Effectiveness(), Doctrines[top].Power, "combined arms fully supplied")
+	// no oil, tanks or planes, nor its extra munitions: back to machine-gun
+	// infantry
+	for _, g := range []string{"oil", "vehicles", "aircraft"} {
+		a.Supply[G(g)] = 0
+	}
+	a.Supply[G("munitions")] = Doctrines[top-1].Needs[G("munitions")] / Doctrines[top].Needs[G("munitions")]
+	near(a.Effectiveness(), Doctrines[top-1].Power, "combined arms without its kit")
+	// tanks but no arms at all: every rung above the levies counts for nothing
+	full()
+	a.Supply[G("arms")] = 0
+	if e := a.Effectiveness(); e > Doctrines[0].Power {
+		t.Errorf("tanks without rifles: effectiveness %v, above even the levies' %v", e, Doctrines[0].Power)
 	}
 }
 
@@ -700,5 +744,26 @@ func TestArmiesBidHardForScarceSupplies(t *testing.T) {
 	}
 	if bid > armyBuyMargin*0.1+armyBuyFloor+1e-9 {
 		t.Errorf("artillery bid %v above the army's limit", bid)
+	}
+}
+
+// Techs that enlarge armies or the share of people who may serve come in
+// over militaryAdoptDays: nothing the day they are learned, all of it after.
+func TestArmySizeTechsFadeIn(t *testing.T) {
+	w := newQuietGame(t)
+	n := nationByName(w, "Montara")
+	drill := TechID("Drill")
+	n.Known[drill], n.LearnedAt[drill] = true, 100
+	n.now = 100
+	if got := n.MaxArmySize(); got != baseArmySize {
+		t.Errorf("the day Drill is learned: armies of %v, want %v", got, baseArmySize)
+	}
+	n.now = 100 + militaryAdoptDays/2
+	if got, want := n.MaxArmySize(), baseArmySize+(Techs[drill].ArmySize-baseArmySize)/2; math.Abs(got-want) > 0.05 {
+		t.Errorf("halfway: armies of %v, want about %v", got, want)
+	}
+	n.now = 100 + militaryAdoptDays
+	if got := n.MaxArmySize(); got != Techs[drill].ArmySize {
+		t.Errorf("after %d days: armies of %v, want %v", militaryAdoptDays, got, Techs[drill].ArmySize)
 	}
 }

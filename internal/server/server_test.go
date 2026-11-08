@@ -219,7 +219,6 @@ func TestNationCommands(t *testing.T) {
 	e.do("POST", apath+"move?to=8", tok, nil, 200, &st)  // tile 12, unowned
 	e.do("POST", apath+"move?to=10", tok, nil, 409, nil) // tile 14: Verdania, at peace
 	e.do("POST", apath+"target?men=0", tok, nil, 200, &st)
-	e.do("POST", apath+"upgrade", tok, nil, 409, nil) // no better doctrine yet
 	other := e.join(g.ID, 1)
 	e.do("POST", apath+"move?to=7", other, nil, 403, nil)
 	e.do("POST", fmt.Sprintf("/api/games/%s/armies/999/move?to=1", g.ID), tok, nil, 404, nil)

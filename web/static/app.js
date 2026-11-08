@@ -1611,7 +1611,6 @@ function armyCard(a, mine) {
     html += `<div class="row">
       ${a.retreating ? "" : `<button class="primary" data-move="${a.id}">March…</button>`}
       <label>Size <input type="number" min="0" max="${Math.floor(n.max_army_size)}" step="1" value="${Math.round(a.target)}" class="num" data-target-for="${a.id}"></label><button data-set-target="${a.id}">Set</button>
-      ${n.best_doctrine > a.doctrine ? `<button data-cmd="/armies/${a.id}/upgrade">Upgrade to ${world.doctrines[n.best_doctrine].name}</button>` : ""}
       ${state.regions[a.region].nation === a.nation ? `<button class="danger" data-cmd="/armies/${a.id}/disband">Disband</button>` : ""}
     </div>`;
   }

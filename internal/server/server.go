@@ -61,7 +61,7 @@ func New(static fs.FS, dataDir string) *Server {
 	m.HandleFunc("GET /api/games/{gid}/history/nations/{id}", s.game(s.handleNationHistory))
 	m.HandleFunc("GET /api/games/{gid}/history/regions/{id}", s.game(s.handleRegionHistory))
 	m.HandleFunc("GET /api/games/{gid}/history/armies/{id}", s.game(s.handleArmyHistory))
-	for _, cmd := range []string{"move", "target", "upgrade", "disband"} {
+	for _, cmd := range []string{"move", "target", "disband"} {
 		m.HandleFunc("POST /api/games/{gid}/armies/{aid}/"+cmd, s.game(s.armyCommand(cmd)))
 	}
 	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "queue", "auto", "auto-tax", "pension", "standing", "war", "peace", "armies"} {
@@ -578,8 +578,6 @@ func (s *Server) armyCommand(cmd string) gameHandler {
 			if men, err = queryFloat(r, "men"); err == nil {
 				err = g.w.SetArmyTarget(id, men)
 			}
-		case "upgrade":
-			err = g.w.UpgradeArmy(id)
 		case "disband":
 			err = g.w.DisbandArmy(id)
 		}

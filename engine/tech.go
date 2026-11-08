@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"math"
+	"sort"
 )
 
 // Branches of the tech tree.
@@ -349,26 +350,52 @@ const baseMobilization = 0.02
 // that may mobilize more needs several armies.
 const baseArmySize = 10.0
 
-// MaxArmySize is how many men one of the nation's armies can field.
-func (n *Nation) MaxArmySize() float64 {
-	m := baseArmySize
+// militaryAdoptDays is how long a tech that enlarges armies or the share of
+// people who may serve takes to come in: officers, depots and conscription
+// rolls take a couple of years to organise.
+const militaryAdoptDays = 2 * 365
+
+// adoptionOver is like Adoption, over the given number of days.
+func (n *Nation) adoptionOver(i, days int) float64 {
+	if !n.Known[i] {
+		return 0
+	}
+	if n.LearnedAt[i] <= 0 {
+		return 1
+	}
+	return math.Max(0, math.Min(1, float64(n.now-n.LearnedAt[i])/float64(days)))
+}
+
+// fadedMax is the highest value of an effect among the nation's techs (at
+// least base), each raise over the level below it coming in over
+// militaryAdoptDays.
+func (n *Nation) fadedMax(base float64, effect func(t *Tech) float64) float64 {
+	type step struct{ v, a float64 }
+	var steps []step
 	for i := range Techs {
-		if n.Known[i] && Techs[i].ArmySize > m {
-			m = Techs[i].ArmySize
+		if v := effect(&Techs[i]); n.Known[i] && v > base {
+			steps = append(steps, step{v, n.adoptionOver(i, militaryAdoptDays)})
+		}
+	}
+	sort.Slice(steps, func(a, b int) bool { return steps[a].v < steps[b].v })
+	m, below := base, base
+	for _, s := range steps {
+		if s.v > below {
+			m += (s.v - below) * s.a
+			below = s.v
 		}
 	}
 	return m
 }
 
+// MaxArmySize is how many men one of the nation's armies can field.
+func (n *Nation) MaxArmySize() float64 {
+	return n.fadedMax(baseArmySize, func(t *Tech) float64 { return t.ArmySize })
+}
+
 // Mobilization is the share of the nation's people that can serve in its armies.
 func (n *Nation) Mobilization() float64 {
-	m := baseMobilization
-	for i := range Techs {
-		if n.Known[i] && Techs[i].Mobilization > m {
-			m = Techs[i].Mobilization
-		}
-	}
-	return m
+	return n.fadedMax(baseMobilization, func(t *Tech) float64 { return t.Mobilization })
 }
 
 // CanBuildPorts reports whether the nation has a tech that allows ports.

@@ -181,7 +181,6 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 		}
 	}
 	for _, a := range armies {
-		w.UpgradeArmy(a.ID)
 		if len(a.Path) > 0 || a.Retreating {
 			continue
 		}

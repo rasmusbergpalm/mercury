@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 )
 
 // Doctrine is how an army fights and what it consumes. Needs are per soldier
@@ -51,8 +52,9 @@ var Doctrines = []Doctrine{
 		"vehicles", 0.016, "aircraft", 0.008, "oil", 0.048)},
 }
 
-// supplyWeight is how much each supplied good counts towards effectiveness:
-// food matters most, then clothing; the rest share what's left.
+// supplyWeight is how much food and clothing count on the first rung of
+// effectiveness (the levies' arms take the rest, equipmentWeight; kit above
+// counts by rung, see Effectiveness).
 func supplyWeight(d *Doctrine, g GoodID) float64 {
 	switch Goods[g].Name {
 	case "bread":
@@ -60,7 +62,7 @@ func supplyWeight(d *Doctrine, g GoodID) float64 {
 	case "clothes":
 		return 0.1
 	}
-	return 0.55 / float64(len(d.Needs)-2)
+	return 0
 }
 
 // Army is a body of soldiers on a tile.
@@ -135,22 +137,124 @@ var (
 	ErrArmySize    = errors.New("that is more men than one army can field (techs raise it)")
 	ErrRetreating  = errors.New("the army is falling back and takes no orders until it is home")
 	ErrTileTaken   = errors.New("another of the nation's armies already holds or is heading for that tile")
-	ErrNoUpgrade   = errors.New("the nation knows no better doctrine")
 	ErrAtWar       = errors.New("already at war")
 	ErrAtPeace     = errors.New("not at war")
 	ErrNotOwnTile  = errors.New("armies are raised and disbanded in the nation's own tiles")
 	ErrNotBordered = errors.New("the nations don't border each other")
 )
 
-// Effectiveness is the army's fighting power per soldier: its doctrine's
-// power, cut by whatever supplies are short.
+// Effectiveness is the army's fighting power per soldier. Doctrines form a
+// ladder: the first (levies) gives its power, cut by short food, clothing
+// and arms; each doctrine above multiplies it by its power over the one
+// below (rₖ), as far as the kit it adds is supplied, and never further than
+// the tier beneath it is (an army with tanks but no rifles fights like one
+// with no rifles):
+//
+//	levies power × food, clothing, arms × Π (1 + (rₖ - 1) × min(tier k filled, tier k-1))
+//
+// A new doctrine with none of its kit fights like the old one, and an army
+// that loses its newest kit falls back down the ladder.
 func (a *Army) Effectiveness() float64 {
-	d := &Doctrines[a.Doctrine]
-	e := d.Power
-	for _, g := range sortedGoods(d.Needs) {
-		e *= math.Pow(math.Max(a.Supply[g], 0.05), supplyWeight(d, g))
+	e := a.baseEffectiveness()
+	for _, t := range a.Rungs() {
+		e *= t.Mult
 	}
 	return e
+}
+
+// baseEffectiveness is the first rung: levies' power cut by short food and
+// clothing (to the current doctrine's rations) and by arms short of the
+// levies' ration.
+func (a *Army) baseEffectiveness() float64 {
+	d, base := &Doctrines[a.Doctrine], &Doctrines[0]
+	e := base.Power
+	for _, g := range []GoodID{G("bread"), G("clothes")} {
+		e *= math.Pow(math.Max(a.Supply[g], 0.05), supplyWeight(d, g))
+	}
+	return e * math.Pow(math.Max(a.tierFill(0), 0.05), equipmentWeight)
+}
+
+// equipmentWeight is how much the levies' arms count on the first rung:
+// what food and clothing leave.
+const equipmentWeight = 0.55
+
+// used is how much of good g each of the army's soldiers got (supply times
+// its doctrine's ration).
+func (a *Army) used(g GoodID) float64 {
+	return math.Min(1, a.Supply[g]) * Doctrines[a.Doctrine].Needs[g]
+}
+
+// equipment reports whether a good is kit (not food or clothing).
+func equipment(g GoodID) bool {
+	n := Goods[g].Name
+	return n != "bread" && n != "clothes"
+}
+
+// tierFill is how much of the kit doctrine k adds to the one below (for the
+// levies: their arms) the army has, 0..1: the average over the goods whose
+// ration it raises, each as the share of the raise supplied.
+func (a *Army) tierFill(k int) float64 {
+	sum, n := 0.0, 0
+	for _, g := range sortedGoods(Doctrines[k].Needs) {
+		if !equipment(g) {
+			continue
+		}
+		hi, lo := Doctrines[k].Needs[g], 0.0
+		if k > 0 {
+			lo = Doctrines[k-1].Needs[g]
+		}
+		if hi <= lo {
+			continue
+		}
+		sum += math.Max(0, math.Min(1, (a.used(g)-lo)/(hi-lo)))
+		n++
+	}
+	if n == 0 {
+		return 1
+	}
+	return sum / float64(n)
+}
+
+// Rung is one step of the army's doctrine ladder above the levies.
+type Rung struct {
+	Doctrine int
+	Ratio    float64 // its power over the doctrine below
+	Filled   float64 // its own kit supplied, 0..1
+	Counted  float64 // what counts: no more than the rung beneath
+	Mult     float64 // 1 + (Ratio-1) × Counted
+}
+
+// Rungs lists the army's rungs above the levies, up to its doctrine.
+func (a *Army) Rungs() []Rung {
+	var out []Rung
+	below := a.tierFill(0)
+	for k := 1; k <= a.Doctrine; k++ {
+		r := Doctrines[k].Power / Doctrines[k-1].Power
+		f := a.tierFill(k)
+		c := math.Min(f, below)
+		out = append(out, Rung{k, r, f, c, 1 + (r-1)*c})
+		below = c
+	}
+	return out
+}
+
+// followDoctrine moves the army onto its nation's best doctrine: rations
+// change, so each good's supply is restated against the new ration (new
+// goods start at nothing).
+func (a *Army) followDoctrine() {
+	best := a.Nation.bestDoctrine()
+	if best <= a.Doctrine {
+		return
+	}
+	old := Doctrines[a.Doctrine].Needs
+	for g, per := range Doctrines[best].Needs {
+		if was, ok := old[g]; ok && per > 0 {
+			a.Supply[g] = math.Min(1, a.Supply[g]) * was / per
+		} else {
+			a.Supply[g] = 0
+		}
+	}
+	a.Doctrine = best
 }
 
 // Strength is the army's fighting power: men times effectiveness times its
@@ -274,27 +378,6 @@ func (w *World) SetArmyTarget(id int, target float64) error {
 		return err
 	}
 	a.Target = target
-	return nil
-}
-
-// UpgradeArmy re-equips an army with the best doctrine its nation knows. New
-// kit arrives gradually: supplies of goods it didn't use before start low.
-func (w *World) UpgradeArmy(id int) error {
-	a, err := w.army(id)
-	if err != nil {
-		return err
-	}
-	best := a.Nation.bestDoctrine()
-	if best <= a.Doctrine {
-		return ErrNoUpgrade
-	}
-	old := Doctrines[a.Doctrine].Needs
-	a.Doctrine = best
-	for g := range Doctrines[best].Needs {
-		if _, had := old[g]; !had {
-			a.Supply[g] = 0.2
-		}
-	}
 	return nil
 }
 
@@ -565,6 +648,7 @@ type Siege struct {
 // loaded, in proportion to distance and bulk.
 func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 	for _, a := range w.ArmiesOf(n) {
+		a.followDoctrine()
 		if a.need == nil {
 			a.need, a.order = make([]float64, NumGoods), make([]float64, NumGoods)
 			a.tau, a.got = make([]float64, NumGoods), make([]float64, NumGoods)
@@ -1184,17 +1268,38 @@ type Modifier struct {
 	Add   bool    `json:"add"` // added, not multiplied (losses)
 }
 
-// Breakdown explains an army's strength per soldier: the doctrine's power,
-// each supplied good's effect, and its nation's technology; then what applies
-// when it defends its own tile, and its daily losses.
+// Breakdown explains an army's strength per soldier: the levies' power, food,
+// clothing and arms, each doctrine rung above as far as its kit counts, and
+// its nation's technology; then what applies when it defends its own tile,
+// and its daily losses.
 func (w *World) Breakdown(a *Army) (attack []Modifier, defense []Modifier, attrition []Modifier) {
 	d := &Doctrines[a.Doctrine]
-	attack = append(attack, Modifier{d.Name, d.Power, "doctrine's base power per soldier", false})
-	for _, g := range sortedGoods(d.Needs) {
-		s := math.Max(a.Supply[g], 0.05)
+	attack = append(attack, Modifier{Doctrines[0].Name, Doctrines[0].Power, "the first rung: power per soldier of a levy", false})
+	for _, g := range []GoodID{G("bread"), G("clothes")} {
 		wt := supplyWeight(d, g)
-		attack = append(attack, Modifier{Goods[g].Name + " supply", math.Pow(s, wt),
+		attack = append(attack, Modifier{Goods[g].Name + " supply", math.Pow(math.Max(a.Supply[g], 0.05), wt),
 			fmt.Sprintf("%.0f%% supplied, weight %.2f", 100*a.Supply[g], wt), false})
+	}
+	attack = append(attack, Modifier{"arms (levies' kit)", math.Pow(math.Max(a.tierFill(0), 0.05), equipmentWeight),
+		fmt.Sprintf("%.0f%% of the levies' arms", 100*a.tierFill(0)), false})
+	below := Doctrines[0].Name
+	for _, r := range a.Rungs() {
+		var kit []string
+		for _, g := range sortedGoods(Doctrines[r.Doctrine].Needs) {
+			if lo := Doctrines[r.Doctrine-1].Needs[g]; equipment(g) && Doctrines[r.Doctrine].Needs[g] > lo {
+				if lo > 0 {
+					kit = append(kit, "more "+Goods[g].Name)
+				} else {
+					kit = append(kit, Goods[g].Name)
+				}
+			}
+		}
+		note := fmt.Sprintf("%s: %.0f%% supplied, up to ×%.2f", strings.Join(kit, ", "), 100*r.Filled, r.Ratio)
+		if r.Counted < r.Filled-0.005 {
+			note += fmt.Sprintf("; counts only %.0f%%, as far as %s beneath it", 100*r.Counted, below)
+		}
+		attack = append(attack, Modifier{Doctrines[r.Doctrine].Name, r.Mult, note, false})
+		below = Doctrines[r.Doctrine].Name
 	}
 	for i, t := range Techs {
 		if a.Nation.Known[i] && t.Attack != 0 {
