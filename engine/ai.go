@@ -59,12 +59,17 @@ func (w *World) atWar(n *Nation) bool {
 
 func (w *World) think(n *Nation) {
 	own := w.ArmyStrength(n)
-	threat, invaded := 0.0, false
+	// how many to keep under arms: judged on what each side could field at
+	// full mobilization (its armies at full size and supply), not on what
+	// it has under arms now, which moves with the very decision; enough
+	// that its standing army is at least a third of the strongest
+	// neighbour's full strength, and everyone at war or when invaded
+	ownPot, threatPot, invaded := w.ArmyPotential(n), 0.0, false
 	for _, o := range w.Nations {
 		if o == n || o.Eliminated() || !w.nationsBorder(n, o) {
 			continue
 		}
-		threat = math.Max(threat, w.ArmyStrength(o))
+		threatPot = math.Max(threatPot, w.ArmyPotential(o))
 	}
 	for _, a := range w.Armies {
 		if a.Nation != n && w.Regions[a.Region].Nation == n {
@@ -74,18 +79,37 @@ func (w *World) think(n *Nation) {
 	targets := w.expansionTargets(n)
 	war := w.atWar(n)
 	t := n.Temper
-	switch {
-	case war || invaded || threat > 1.3*own+1:
-		n.SetStanding(MaxStanding) // call up the reserves for what's coming
-	default:
-		n.SetStanding(math.Min(MaxStanding, math.Max(MinStanding, DefaultStanding*t.Militarism)))
+	standing := math.Max(MinStanding, DefaultStanding*t.Militarism)
+	if ownPot > 0 {
+		standing = math.Max(standing, aiStandingVsThreat*threatPot/ownPot)
+	} else if threatPot > 0 {
+		standing = MaxStanding // nothing to stand against an armed neighbour with
 	}
+	if war || invaded {
+		standing = MaxStanding // call up the reserves
+	}
+	n.SetStanding(math.Min(MaxStanding, standing))
 	w.aiDiplomacy(n, own)
 	w.aiBuild(n)
 	w.aiExpandFirm(n)
 	w.aiServices(n, war || invaded, true, true)
 	w.aiTax(n)
 	w.aiArmies(n, targets)
+}
+
+// The computer keeps at least this share of its strongest neighbour's full
+// strength under arms in peace.
+const aiStandingVsThreat = 1.0 / 3
+
+// ArmyPotential is what a nation's armies could field: each at its full
+// (wartime) size and fully supplied. Unlike its might, it doesn't move when
+// the nation calls up or stands down its reserves.
+func (w *World) ArmyPotential(n *Nation) float64 {
+	s := 0.0
+	for _, a := range w.ArmiesOf(n) {
+		s += math.Max(a.Men, a.Target) * Doctrines[a.Doctrine].Power * n.attackMult()
+	}
+	return s
 }
 
 // nationsBorder reports whether any tiles of a and b are neighbours.
