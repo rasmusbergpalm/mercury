@@ -446,11 +446,14 @@ func (n *Nation) serviceBillOf(k Public) float64 {
 // aiTax is a predictive controller: once a month it sets the tax rate whose
 // predicted income covers the average day's spending and closes the gap to
 // aiTreasuryDays of spending within aiTaxHorizon days. Income is predicted
-// as proportional to the rate (today's income per point of tax). Computer
+// as proportional to the rate (today's income per point of tax). The rate
+// moves at most aiTaxStep a month: a sudden steep tax shrinks the economy it
+// is predicted from, and the controller would chase its own tail. Computer
 // nations do it always, players who ask for it (AutoTax) too.
 const (
 	aiTreasuryDays = 30.0
 	aiTaxHorizon   = 30.0
+	aiTaxStep      = 0.03
 )
 
 func (w *World) aiTax(n *Nation) {
@@ -460,7 +463,8 @@ func (w *World) aiTax(n *Nation) {
 	}
 	perPoint := n.IncomeEMA / n.TaxRate
 	want := n.SpendEMA + (aiTreasuryDays*n.SpendEMA-n.Treasury)/aiTaxHorizon
-	n.SetTaxRate(math.Max(0.005, math.Min(0.6, want/perPoint)))
+	rate := math.Max(n.TaxRate-aiTaxStep, math.Min(n.TaxRate+aiTaxStep, want/perPoint))
+	n.SetTaxRate(math.Max(0.005, math.Min(0.6, rate)))
 }
 
 // aiExpandFirm keeps one state-funded firm expansion going, on the firm with

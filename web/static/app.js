@@ -1372,7 +1372,7 @@ function accountsBlock(n, mine) {
     const steps = ["none", "¼ of the wage", "½ of the wage", "¾ of the wage", "the full wage"];
     html += `<div class="row"><label>Tax <input id="tax" type="number" min="0" max="90" step="1" value="${Math.round(100 * n.tax_rate)}" class="num" ${n.auto_tax ? "disabled" : ""}>%</label><button data-input="tax" ${n.auto_tax ? "disabled" : ""}>Set</button>
         <label class="check"><input type="checkbox" id="auto-tax" ${n.auto_tax ? "checked" : ""}> Automate</label></div>
-      <p class="sub">Automated, the tax rate moves a point a month to keep about 30 days of spending in the treasury.</p>
+      <p class="sub">Automated, the tax rate moves (up to three points a month) to keep about 30 days of spending in the treasury.</p>
       <div class="budget"><label>Pensions<input type="range" min="0" max="${world.max_pension}" step="1" value="${n.pension}" id="pension" aria-label="Pensions"><span class="pct" id="pension-label">${n.pension}/${world.max_pension}</span></label></div>
       <p class="sub">The elderly (8% of your people) get ${steps[n.pension]} a day, paid straight to them: no buildings, no staff. It's money back in your people's pockets.</p>
       <h3>Construction</h3>

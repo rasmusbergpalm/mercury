@@ -15,13 +15,29 @@ type Doctrine struct {
 	Needs map[GoodID]float64
 }
 
+// needs builds a doctrine's daily needs per soldier from a base ration,
+// scaled by armyGoodScale.
 func needs(pairs ...any) map[GoodID]float64 {
 	m := map[GoodID]float64{}
 	for i := 0; i < len(pairs); i += 2 {
-		m[G(pairs[i].(string))] = pairs[i+1].(float64)
+		name := pairs[i].(string)
+		scale, ok := armyGoodScale[name]
+		if !ok {
+			scale = armyEquipmentScale
+		}
+		m[G(name)] = pairs[i+1].(float64) * scale
 	}
 	return m
 }
+
+// Armies used to cost a tenth as much in goods as in pay; historically
+// materiel (provisions, clothing, arms, ordnance and powder) cost about as
+// much as pay, and more as the century went on. The rations in Doctrines are
+// scaled: food a little (a soldier already eats three times a civilian's
+// staples; the rest is forage and waste), clothing more, and equipment most.
+var armyGoodScale = map[string]float64{"bread": 1.5, "clothes": 4}
+
+const armyEquipmentScale = 10.0
 
 // Doctrines, from late-medieval levies to combined arms.
 var Doctrines = []Doctrine{

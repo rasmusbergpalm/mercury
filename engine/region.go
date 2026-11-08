@@ -434,10 +434,10 @@ func (r *Region) updateAgglomeration() {
 // growth = popGrowthSlope * (basic needs met - popGrowthNeutral) + tech bonus,
 // within [popGrowthMin, popGrowthMax].
 const (
-	popGrowthSlope   = 0.045
+	popGrowthSlope   = 0.035
 	popGrowthNeutral = 0.5
 	popGrowthMin     = -0.03
-	popGrowthMax     = 0.025
+	popGrowthMax     = 0.02
 )
 
 // BasicNeedsMet is how far the tile's people satisfy their basic needs, on

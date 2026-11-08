@@ -58,7 +58,7 @@ func (w *World) settleFrom(b *World) {
 		br := b.Regions[i]
 		r.Wage, r.UtilityEMA, r.House.Cash = br.Wage, br.UtilityEMA, br.House.Cash
 		for g, m := range br.Markets {
-			r.Markets[g].Price, r.Markets[g].Supply, r.Markets[g].Demand = m.Price, m.Supply, m.Demand
+			r.Markets[g].Price, r.Markets[g].Supply, r.Markets[g].Demand, r.Markets[g].Trend = m.Price, m.Supply, m.Demand, m.Trend
 		}
 		for j, bp := range br.Pops {
 			p := r.Pops[j]

@@ -37,12 +37,19 @@ func TestRealGDPCountsGoodsNotPounds(t *testing.T) {
 	// coal appears: it doesn't count until its second month
 	month(20, 2.5, 1, 100)
 	if math.Abs(r.Real.Level-40) > 1e-9 {
-		t.Errorf("new coal at a wild price: real GDP %v, want 40", r.Real.Level)
+		t.Errorf("new coal: real GDP %v, want 40", r.Real.Level)
 	}
 	// then twice the coal at the same price: bread £50 a day, coal £100 then
 	// £200, so up by 5/3
 	month(20, 2.5, 2, 100)
 	if math.Abs(r.Real.Level-40*5.0/3) > 1e-6 {
 		t.Errorf("coal doubles: real GDP %v, want %v", r.Real.Level, 40*5.0/3)
+	}
+	// coal's price falls tenfold as it doubles: not settled, so it counts
+	// for nothing this month
+	before := r.Real.Level
+	month(20, 2.5, 4, 10)
+	if math.Abs(r.Real.Level-before) > 1e-6 {
+		t.Errorf("coal doubles while its price falls tenfold: real GDP %v, want %v", r.Real.Level, before)
 	}
 }

@@ -64,10 +64,10 @@ func firms(pairs ...any) map[string]float64 {
 
 // Research costs per era.
 const (
-	era1 = 25000.0
-	era2 = 90000.0
-	era3 = 220000.0
-	era4 = 650000.0
+	era1 = 32000.0
+	era2 = 120000.0
+	era3 = 300000.0
+	era4 = 900000.0
 )
 
 // Techs is the tech tree, in a valid research order (prerequisites first).

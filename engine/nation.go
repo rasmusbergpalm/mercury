@@ -415,6 +415,12 @@ func (n *Nation) plan(w *World) {
 		if ref := stateDearPrice * avgPrice[c.good]; m.Price > ref && ref > 0 {
 			c.qty *= ref / m.Price
 		}
+		// and where it costs far more than it usually does, spend no more on
+		// it: the price still rises and calls up supply, but a shortage
+		// can't run the state's spending away (and drain the treasury)
+		if ref := stateTrendPrice * m.Trend; m.Price > ref && ref > 0 {
+			c.qty *= ref / m.Price
+		}
 		if c.qty > 0 {
 			r.claims = append(r.claims, c)
 			needs += c.qty * m.Price
@@ -465,6 +471,9 @@ const (
 	stateBuyMargin = 1.2
 	stateBuyFloor  = 0.2
 	stateDearPrice = 2.0 // above this times the nation's average price, the state buys less
+	// above this times a market's long-run price (Market.Trend), the state
+	// spends no more on it
+	stateTrendPrice = 2.0
 	// For its armies' supplies the state bids up to armyBuyMargin times what
 	// was offered (plus armyBuyFloor): a shortage shows as a big excess
 	// demand, which drives the price up until supply answers.

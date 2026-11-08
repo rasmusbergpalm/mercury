@@ -1,6 +1,9 @@
 package engine
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
 // publicSlot is the extra entry after the goods in a GDPChain's vectors:
 // public services, which nobody buys, counted at cost (their staff's wages).
@@ -26,8 +29,8 @@ const gdpWarmup = 90
 //
 // Only prices goods actually traded at count: a good nobody sells has a
 // price that means nothing. A good counts towards a month's growth only if
-// it traded in that month and the one before, at prices less than
-// settledMove apart.
+// it traded in that month and the one before, and its price moved less than
+// settledMove-fold against the typical good's.
 type GDPChain struct {
 	Level     float64   // real GDP per day, in pounds of the first month
 	PrevNet   []float64 `json:",omitempty"` // last month's average net output, per good
@@ -93,11 +96,22 @@ func (r *Region) linkGDP() gdpLink {
 		// only goods that traded in both months at settled prices link the
 		// chain: a new good's first prices are wild (it had drifted while
 		// nobody sold any) and fall fast as it comes in, so it joins once
-		// its price moves by less than half or double in a month
+		// its price moves by less than settledMove-fold in a month against
+		// the typical good's (so a general inflation or deflation doesn't
+		// unsettle every good at once)
+		var moves []float64
+		for g := range net {
+			if a, b := c.PrevPrice[g], price[g]; a > 0 && b > 0 {
+				moves = append(moves, b/a)
+			}
+		}
+		typical := median(moves)
 		p0, p1 := make([]float64, len(net)), make([]float64, len(net))
 		for g := range net {
-			if a, b := c.PrevPrice[g], price[g]; a > 0 && b > 0 && b < settledMove*a && a < settledMove*b {
-				p0[g], p1[g] = a, b
+			if a, b := c.PrevPrice[g], price[g]; a > 0 && b > 0 {
+				if m := b / a / typical; m < settledMove && m > 1/settledMove {
+					p0[g], p1[g] = a, b
+				}
 			}
 		}
 		k.l0, k.l1 = value(p0, c.PrevNet), value(p0, net)
@@ -118,14 +132,15 @@ func (r *Region) linkGDP() gdpLink {
 
 // chain moves a real GDP level on by a month: by the Fisher index, the
 // geometric mean of Laspeyres (last month's prices) and Paasche (this
-// month's) growth. With nothing to chain from it starts again at this
-// month's pounds.
+// month's) growth. With nothing to chain from it starts at this month's
+// pounds; a month that can't be measured (net output worth nothing at one
+// month's prices) leaves it where it was.
 func chain(level float64, k gdpLink) float64 {
 	switch {
-	case level <= 0 || k.l0 <= 0 || k.q0 <= 0:
+	case level <= 0:
 		return k.now
-	case k.l1 <= 0 || k.q1 <= 0:
-		return 0 // it used up more than it made
+	case k.l0 <= 0 || k.q0 <= 0 || k.l1 <= 0 || k.q1 <= 0:
+		return level
 	default:
 		return level * math.Sqrt(k.l1/k.l0*k.q1/k.q0)
 	}
@@ -168,6 +183,19 @@ func (w *World) linkNationGDP() {
 		if r.Nation != nil {
 			r.Real.Owner = r.Nation.ID + 1
 		}
+	}
+}
+
+// median of xs (1 if empty); xs is reordered.
+func median(xs []float64) float64 {
+	if len(xs) == 0 {
+		return 1
+	}
+	sort.Float64s(xs)
+	if n := len(xs); n%2 == 1 {
+		return xs[n/2]
+	} else {
+		return (xs[n/2-1] + xs[n/2]) / 2
 	}
 }
 
