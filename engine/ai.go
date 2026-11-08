@@ -75,9 +75,9 @@ func (w *World) think(n *Nation) {
 	t := n.Temper
 	switch {
 	case war || invaded || threat > 1.3*own+1:
-		n.SetDrill(MaxDrill) // keep the arms works busy for what's coming
+		n.SetStanding(MaxStanding) // call up the reserves for what's coming
 	default:
-		n.SetDrill(math.Min(MaxDrill, math.Max(MinDrill, DefaultDrill*t.Militarism)))
+		n.SetStanding(math.Min(MaxStanding, math.Max(MinStanding, DefaultStanding*t.Militarism)))
 	}
 	w.aiDiplomacy(n, own)
 	w.aiBuild(n)

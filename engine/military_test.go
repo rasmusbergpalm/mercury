@@ -459,27 +459,66 @@ func TestArmiesBuyWhereGoodsAreMade(t *testing.T) {
 	}
 }
 
-// In peace armies use only the drill share of their wartime supplies; in war
-// all of them.
-func TestPeacetimeDrill(t *testing.T) {
-	w := newNeighbourGame(t)
+// In peace an army keeps only its nation's standing share under arms: the
+// rest go home as reservists, spread over the nation's tiles by their
+// population, and live as ordinary people; they eat no army rations. At war
+// they are called up again. Nobody is lost on the way.
+func TestStandingArmyAndReserves(t *testing.T) {
+	w := newQuietGame(t)
 	n := w.Nations[0]
-	a, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
-	a.Men = 10
+	home := n.Regions[0]
+	a, _ := w.RaiseArmy(n.ID, home.ID, 0)
+	a.Target, a.Men = 20, 20
+	if err := n.SetStanding(0.05); !errors.Is(err, ErrBadStanding) {
+		t.Errorf("a standing army below 10%%: %v", err)
+	}
+	n.SetStanding(0.25)
+	if got := w.UnderArms(a); math.Abs(got-5) > 1e-9 {
+		t.Fatalf("under arms in peace %v, want 5", got)
+	}
+	people := func() float64 {
+		s := a.Men + a.coming()
+		for _, r := range n.Regions {
+			s += r.Population()
+		}
+		return s
+	}
+	before := make(map[*Region]float64)
+	for _, r := range n.Regions {
+		before[r] = r.Population()
+	}
+	total := people()
+	for i := 0; i < 200 && a.Men > 5+1e-6; i++ {
+		w.demobilize(a)
+	}
+	if math.Abs(a.Men-5) > 1e-6 {
+		t.Fatalf("after demobilizing %v men, want 5", a.Men)
+	}
+	if math.Abs(people()-total) > 1e-6 {
+		t.Errorf("demobilizing lost people: %v -> %v", total, people())
+	}
+	for _, r := range n.Regions { // each tile got its share of the 15, by population
+		got, want := r.Population()-before[r], 15*before[r]/(total-20)
+		if math.Abs(got-want) > 0.05*want+1e-6 {
+			t.Errorf("tile %s got %v reservists, want about %v", r.Name, got, want)
+		}
+	}
 	bread := G("bread")
-	wartime := a.Men * Doctrines[a.Doctrine].Needs[bread]
-	if err := n.SetDrill(0.1); !errors.Is(err, ErrBadDrill) {
-		t.Errorf("drill below 20%%: %v", err)
-	}
-	n.SetDrill(0.3)
 	w.planSupply(n, func(*Region, claim) {})
-	if got := a.need[bread]; math.Abs(got-0.3*wartime) > 1e-12 {
-		t.Errorf("peace: uses %v bread, want %v", got, 0.3*wartime)
+	if got, want := a.need[bread], a.Men*Doctrines[a.Doctrine].Needs[bread]; math.Abs(got-want) > 1e-12 {
+		t.Errorf("rations for %v men under arms: %v, want %v", a.Men, got, want)
 	}
-	w.DeclareWar(0, 1)
-	w.planSupply(n, func(*Region, claim) {})
-	if got := a.need[bread]; math.Abs(got-wartime) > 1e-12 {
-		t.Errorf("war: uses %v bread, want %v", got, wartime)
+	n.AtWar[1], w.Nations[1].AtWar[0] = true, true // (they share no border)
+	if got := w.UnderArms(a); got != a.Target {
+		t.Errorf("at war under arms %v, want the full %v", got, a.Target)
+	}
+	for i := 0; i < 120; i++ {
+		w.recruitAll()
+		a.arrivals(w.Tick)
+		w.Tick++
+	}
+	if a.Men < a.Target-1e-6 {
+		t.Errorf("after four months at war %v men, want %v called up", a.Men, a.Target)
 	}
 }
 
@@ -596,6 +635,7 @@ func TestBattlesAreQuickAndFreezeOccupation(t *testing.T) {
 func TestFieldArmiesAreReinforced(t *testing.T) {
 	w := newQuietGame(t)
 	m := nationByName(w, "Montara")
+	m.SetStanding(MaxStanding) // no reservists: the army fills to its target
 	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, w.MobilizationCap(m))
 	if err := w.MoveArmy(a.ID, regionByName(w, "22").ID); err != nil {
 		t.Fatal(err)

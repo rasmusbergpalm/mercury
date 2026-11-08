@@ -1,6 +1,9 @@
 package engine
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 // Branches of the tech tree.
 const (
@@ -245,21 +248,59 @@ func (n *Nation) techProduct(effect func(t *Tech) float64) float64 {
 	return m
 }
 
-// firmMult is the technology multiplier on a firm's productivity.
+// techAdoptDays is how long a tech's productivity and growth bonuses take
+// to come in fully: a new machine spreads through the works over years.
+const techAdoptDays = 5 * 365
+
+// Adoption is how far the nation has taken up a known tech's productivity
+// and growth bonuses: from 0 the day it is learned to 1 after techAdoptDays
+// (techs it always knew, or was granted outright, count as fully adopted).
+func (n *Nation) Adoption(i int) float64 {
+	if !n.Known[i] {
+		return 0
+	}
+	if n.LearnedAt[i] <= 0 {
+		return 1
+	}
+	return math.Max(0, math.Min(1, float64(n.now-n.LearnedAt[i])/techAdoptDays))
+}
+
+// adopting reports whether any known tech is still coming in (including
+// the day it is complete, so its last step is applied).
+func (n *Nation) adopting() bool {
+	for i := range Techs {
+		if n.Known[i] && n.LearnedAt[i] > 0 && n.now-n.LearnedAt[i] <= techAdoptDays {
+			return true
+		}
+	}
+	return false
+}
+
+// techFirmMult is a tech's full multiplier on a firm's productivity.
+func techFirmMult(t *Tech, f *Firm) float64 {
+	m := 1.0
+	if x, ok := t.FirmTFP[f.Name]; ok {
+		m *= x
+	}
+	if f.Sector == Primary && t.PrimaryTFP != 0 {
+		m *= t.PrimaryTFP
+	}
+	if f.Sector == Industry && t.IndustryTFP != 0 {
+		m *= t.IndustryTFP
+	}
+	return m
+}
+
+// firmMult is the technology multiplier on a firm's productivity, each
+// tech's bonus as far as it has been adopted.
 func (n *Nation) firmMult(f *Firm) float64 {
-	return n.techProduct(func(t *Tech) float64 {
-		m := 1.0
-		if x, ok := t.FirmTFP[f.Name]; ok {
-			m *= x
+	m := 1.0
+	for i := range Techs {
+		if n.Known[i] {
+			m *= 1 + (techFirmMult(&Techs[i], f)-1)*n.Adoption(i)
 		}
-		if f.Sector == Primary && t.PrimaryTFP != 0 {
-			m *= t.PrimaryTFP
-		}
-		if f.Sector == Industry && t.IndustryTFP != 0 {
-			m *= t.IndustryTFP
-		}
-		return m
-	})
+	}
+	return m
 }
 func (n *Nation) coastMult() float64 {
 	return n.techProduct(func(t *Tech) float64 { return t.CoastMove })
@@ -296,9 +337,7 @@ func (n *Nation) diffusionMult() float64 {
 func (n *Nation) popGrowthBonus() float64 {
 	s := 0.0
 	for i := range Techs {
-		if n.Known[i] {
-			s += Techs[i].PopGrowth
-		}
+		s += Techs[i].PopGrowth * n.Adoption(i)
 	}
 	return s
 }

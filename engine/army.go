@@ -557,18 +557,13 @@ type Siege struct {
 	Progress float64 // 0..1; the tile changes hands at 1
 }
 
-// planSupply works out what each army uses today (in peace only its
-// nation's drill share of its wartime needs) and orders that plus a refill
-// of its stock (up to stockDays of wartime needs). It buys each good where it
+// planSupply works out what each army uses today (its men's rations) and
+// orders that plus a refill of its stock (up to stockDays of needs). It buys each good where it
 // lands cheapest, among the nation's tiles whose markets offered enough of it
 // yesterday: arms come from the arms works, bread from the farms. The goods
 // travel by the cheapest path, needing transport bought where they are
 // loaded, in proportion to distance and bulk.
 func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
-	drill := 1.0
-	if !w.atWar(n) {
-		drill = n.Drill
-	}
 	for _, a := range w.ArmiesOf(n) {
 		if a.need == nil {
 			a.need, a.order = make([]float64, NumGoods), make([]float64, NumGoods)
@@ -580,7 +575,7 @@ func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 			a.need[g], a.order[g], a.tau[g], a.got[g], a.source[g], a.spent[g] = 0, 0, 0, 0, nil, 0
 		}
 		for g, per := range Doctrines[a.Doctrine].Needs {
-			a.need[g] = a.Men * per * drill
+			a.need[g] = a.Men * per
 		}
 		a.transit, a.gotT, a.depot = 0, 0, nil
 		if len(n.Regions) == 0 {
@@ -657,7 +652,7 @@ func (a *Army) settleSupply() {
 	for _, g := range sortedGoods(Doctrines[a.Doctrine].Needs) {
 		need := a.Men * Doctrines[a.Doctrine].Needs[g]
 		if a.need != nil {
-			need = a.need[g] // drill share in peace
+			need = a.need[g]
 		}
 		if a.got != nil {
 			a.Stock[g] += a.got[g] * carried
@@ -877,7 +872,7 @@ func (w *World) recruitAll() {
 			if a.depot == nil && w.Regions[a.Region].Nation != n {
 				continue // cut off
 			}
-			if s := a.Target - a.Men - a.coming(); s > 1e-9 {
+			if s := w.UnderArms(a) - a.Men - a.coming(); s > 1e-9 {
 				short[i] = s
 				need += s
 			}
@@ -913,16 +908,33 @@ func (w *World) recruitAll() {
 	}
 }
 
-// demobilize sends men above an army's target home while it stands on its
-// own soil.
+// UnderArms is how many men an army keeps: its target at war, and its
+// nation's standing share of it in peace (the rest are reservists at home).
+func (w *World) UnderArms(a *Army) float64 {
+	if w.atWar(a.Nation) {
+		return a.Target
+	}
+	return a.Target * a.Nation.Standing
+}
+
+// demobilize sends men above what an army keeps under arms home while it
+// stands on its own soil: they go back to work across the nation's tiles,
+// by their population.
 func (w *World) demobilize(a *Army) {
 	r := w.Regions[a.Region]
-	if r.Nation != a.Nation || len(a.Path) > 0 || a.Men <= a.Target {
+	keep := w.UnderArms(a)
+	if r.Nation != a.Nation || len(a.Path) > 0 || a.Men <= keep+1e-9 {
 		return
 	}
-	n := math.Min(a.Men-a.Target, math.Max(demobilizeRate*a.Men, 0.5))
-	addPeople(r, n)
-	a.Men -= n
+	men := math.Min(a.Men-keep, math.Max(demobilizeRate*a.Men, 0.5))
+	pop := 0.0
+	for _, t := range a.Nation.Regions {
+		pop += t.Population()
+	}
+	for _, t := range a.Nation.Regions {
+		addPeople(t, men*t.Population()/pop)
+	}
+	a.Men -= men
 }
 
 // march moves an army a day along its path. Roads and railways make hops

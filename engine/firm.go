@@ -253,19 +253,15 @@ func (f *Firm) Bonuses(n *Nation) []Modifier {
 			if !n.Known[i] {
 				continue
 			}
-			m := 1.0
-			if x, ok := t.FirmTFP[f.Name]; ok {
-				m *= x
+			full := techFirmMult(&t, f)
+			if full == 1 {
+				continue
 			}
-			if f.Sector == Primary && t.PrimaryTFP != 0 {
-				m *= t.PrimaryTFP
+			note := "technology"
+			if a := n.Adoption(i); a < 1 {
+				note = fmt.Sprintf("technology, %.0f%% adopted (of ×%.2f)", 100*a, full)
 			}
-			if f.Sector == Industry && t.IndustryTFP != 0 {
-				m *= t.IndustryTFP
-			}
-			if m != 1 {
-				out = append(out, Modifier{t.Name, m, "technology", false})
-			}
+			out = append(out, Modifier{t.Name, 1 + (full-1)*n.Adoption(i), note, false})
 		}
 	}
 	if f.Agglom != 1 {

@@ -64,7 +64,7 @@ func New(static fs.FS, dataDir string) *Server {
 	for _, cmd := range []string{"move", "target", "upgrade", "disband"} {
 		m.HandleFunc("POST /api/games/{gid}/armies/{aid}/"+cmd, s.game(s.armyCommand(cmd)))
 	}
-	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "queue", "auto", "auto-tax", "pension", "drill", "war", "peace", "armies"} {
+	for _, cmd := range []string{"tax", "tariff", "embargo", "research", "queue", "auto", "auto-tax", "pension", "standing", "war", "peace", "armies"} {
 		m.HandleFunc("POST /api/games/{gid}/nations/{nid}/"+cmd, s.game(s.nationCommand(cmd)))
 	}
 	for _, cmd := range []string{"build", "cancel", "port"} {
@@ -490,6 +490,14 @@ func (s *Server) nationCommand(cmd string) gameHandler {
 			n.AutoBuild = q.Get("on") != "false"
 		case "auto-tax":
 			n.AutoTax = q.Get("on") != "false"
+		case "standing":
+			x, err := strconv.ParseFloat(q.Get("share"), 64)
+			if err != nil {
+				return badRequest("share must be a number")
+			}
+			if err := n.SetStanding(x); err != nil {
+				return fail(http.StatusBadRequest, err)
+			}
 		case "pension":
 			level, err := strconv.Atoi(q.Get("level"))
 			if err != nil {

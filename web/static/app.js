@@ -1454,7 +1454,7 @@ function researchBlock(n) {
   const available = (t) => t.requires.every((r) => n.known[world.techs.findIndex((x) => x.name === r)]);
   const rows = (branch) => world.techs.map((t, i) => [t, i]).filter(([t]) => t.branch === branch).map(([t, i]) => {
     let action;
-    if (n.known[i]) action = "✓";
+    if (n.known[i]) action = n.adoption && n.adoption[i] < 0.999 ? `✓<br><span class="sub" title="Its productivity and growth bonuses come in over five years">adopted ${pct(n.adoption[i])}</span>` : "✓";
     else if (n.researching === i) action = pct(Math.min(1, n.research_points / n.tech_costs[i]));
     else {
       const now = available(t) ? `<button data-cmd="/nations/${n.id}/research?tech=${i}">Now</button>` : "";
@@ -1471,7 +1471,7 @@ function researchBlock(n) {
   }).join("");
   const prog = n.researching >= 0 ? Math.min(1, n.research_points / n.tech_costs[n.researching]) : 0;
   return `<h3>Research</h3>
-    <p class="sub">Researching ${current}. Techs your trade partners know are cheaper: ideas travel with trade.</p>
+    <p class="sub">Researching ${current}. Techs your trade partners know are cheaper: ideas travel with trade. A new tech's productivity and growth bonuses come in over five years as it spreads through the works; unlocks and military effects are immediate.</p>
     <div class="progress"><span style="width:${pct(prog)}"></span></div>
     <div class="row">${queue}</div>
     <div class="table-scroll"><table>${branches}</table></div>`;
@@ -1545,8 +1545,8 @@ function armiesPanel() {
       <p class="sub">${short(n.soldiers)} soldiers of ${short(n.mobilize_cap)} allowed (${pct(n.mobilization)} of your people), up to ${short(n.max_army_size)} per army.
       Armies cost £${fmt(n.spent_on[world.spending.indexOf("military")], 0)} today of £${fmt(n.income, 0)} income.
       Best doctrine: ${world.doctrines[n.best_doctrine].name}. Raise armies from a tile of yours.</p>
-      <div class="budget"><label>Peacetime drill<input type="range" min="20" max="80" step="5" value="${Math.round(100 * n.drill)}" id="drill" aria-label="Peacetime drill"><span class="pct" id="drill-pct">${pct(n.drill)}</span></label></div>
-      <p class="sub">In peace your armies use this share of their wartime supplies: minimal drills cost little, realistic ones keep the arms industries busy so they can supply a war. At war they use everything. ${n.at_war.some(Boolean) ? "<b>You are at war now.</b>" : ""}</p>`;
+      <div class="budget"><label>Standing army<input type="range" min="10" max="100" step="5" value="${Math.round(100 * n.standing)}" id="standing" aria-label="Standing army"><span class="pct" id="standing-pct">${pct(n.standing)}</span></label></div>
+      <p class="sub">In peace each army keeps this share of its full strength under arms; the rest are reservists, at home working as ordinary people. At war they are called up, from across your tiles, which takes weeks. A big standing army is ready but costs pay and supplies; a small one is cheap but slow to mobilize. ${n.at_war.some(Boolean) ? "<b>You are at war now: every reservist is called up.</b>" : ""}</p>`;
     html += mine.length ? mine.map((a) => armyCard(a, true)).join("") : `<p class="hint">You have no armies.</p>`;
   }
   html += `<h3>Other armies</h3>` + (others.length ? others.map((a) => armyCard(a, false)).join("") : `<p class="hint">None.</p>`);
@@ -1561,7 +1561,7 @@ function armyCard(a, mine) {
   let html = `<div class="army-card ${open ? "selected" : ""}" data-select-army="${a.id}">
     <div class="title"><b>${chip(a.nation)} ${esc(nationName(a.nation))} army ${a.id}</b><span><b>${short(a.strength)}</b> <span class="sub">strength</span></span></div>
     <div class="progress" title="strength against full size and supply"><span style="width:${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))};background:${a.strength > 0.6 * a.full_strength ? cssVar("--good") : a.strength > 0.3 * a.full_strength ? cssVar("--brass") : cssVar("--danger")}"></span></div>
-    <p class="sub">${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))} of full strength ${short(a.full_strength)} · ${short(a.men)} / ${short(a.target)} men · ${d.name} · at ${where.name}${dest}
+    <p class="sub">${pct(Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)))} of full strength ${short(a.full_strength)} · ${short(a.men)} / ${short(a.under_arms)} men${a.under_arms < a.target - 0.05 ? ` (${short(a.target)} at war; the rest are reservists)` : ""} · ${d.name} · at ${where.name}${dest}
       ${a.coming > 0.05 ? ` · ${short(a.coming)} recruits marching out, the first in ${a.coming_days} days` : ""}
       ${a.retreating ? ` · <span class="bad">falling back after a lost battle: no orders until home</span>` : ""}</p>`;
   if (!open) return html + `</div>`;
@@ -1592,8 +1592,8 @@ function armyCard(a, mine) {
     <tr><td>Transport<br><span class="sub">carrying the goods to the army</span></td><td>£${fmt(transport, 2)}</td></tr>
     <tr><td>Soldiers' pay<br><span class="sub">${short(a.men)} men at the nation's average wage</span></td><td>£${fmt(a.pay, 2)}</td></tr>
     <tr class="total"><td>Total</td><td>£${fmt(goodsTotal + transport + a.pay, 2)}</td></tr></table>
-    <p class="sub" style="margin-top:4px">Goods include restocking towards 30 days of wartime needs, so a depleted army costs more while it refills.</p>`;
-  html += `<h3>Supplies</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">${depot}. The army keeps up to 30 days of wartime needs in stock and fights from its stock; in peace it uses only the drill share.</p>
+    <p class="sub" style="margin-top:4px">Goods include restocking towards 30 days of needs, so a depleted army costs more while it refills.</p>`;
+  html += `<h3>Supplies</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">${depot}. The army keeps up to 30 days of needs in stock and fights from its stock. Only the men under arms eat and use kit; reservists live at home.</p>
     <h3>Strength in battle</h3>
     <table class="mods"><tr><th>factor</th><th>effect</th></tr>${att}
       <tr class="total"><td>Per soldier</td><td>${per.toFixed(2)}</td></tr>
@@ -1738,11 +1738,11 @@ side.addEventListener("click", (ev) => {
   if (b.dataset.input === "tariff") command(`/nations/${state.you}/tariff?rate=${(+$("tariff").value / 100).toFixed(3)}`);
 });
 side.addEventListener("input", (ev) => {
-  if (ev.target.id === "drill") $("drill-pct").textContent = `${ev.target.value}%`;
+  if (ev.target.id === "standing") $("standing-pct").textContent = `${ev.target.value}%`;
   if (ev.target.id === "pension") $("pension-label").textContent = `${ev.target.value}/${world.max_pension}`;
 });
 side.addEventListener("change", (ev) => {
-  if (ev.target.id === "drill") command(`/nations/${state.you}/drill?level=${+ev.target.value / 100}`);
+  if (ev.target.id === "standing") command(`/nations/${state.you}/standing?share=${+ev.target.value / 100}`);
   if (ev.target.id === "auto-build") command(`/nations/${state.you}/auto?on=${ev.target.checked}`);
   if (ev.target.id === "auto-tax") command(`/nations/${state.you}/auto-tax?on=${ev.target.checked}`);
   if (ev.target.id === "pension") command(`/nations/${state.you}/pension?level=${ev.target.value}`);

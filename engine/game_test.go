@@ -153,19 +153,41 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 	if err := n.SetResearch(TechID("Steam engine")); err != nil {
 		t.Errorf("Steam engine after Wagons: %v", err)
 	}
-	for _, r := range w.Regions {
-		f := firmIn(r, "Transport")
-		want := f.BaseTFP
-		switch {
-		case r.Nation == n:
-			want *= 1.3
-		case r.Nation != nil:
-			continue
-		}
-		if math.Abs(f.TFP-want) > 1e-12 {
-			t.Errorf("tile %s transport TFP %v, want %v", r.Name, f.TFP, want)
+	// its bonus (transport +30%) comes in over techAdoptDays: none yet, half
+	// halfway, all of it at the end
+	check := func(adopted float64) {
+		t.Helper()
+		for _, r := range w.Regions {
+			f := firmIn(r, "Transport")
+			want := f.BaseTFP
+			switch {
+			case r.Nation == n:
+				want *= 1 + 0.3*adopted
+			case r.Nation != nil:
+				continue
+			}
+			if math.Abs(f.TFP-want) > 1e-9 {
+				t.Errorf("%.0f%% adopted: tile %s transport TFP %v, want %v", 100*adopted, r.Name, f.TFP, want)
+			}
 		}
 	}
+	wagons := TechID("Wagons")
+	learned := n.LearnedAt[wagons]
+	if a := n.Adoption(wagons); a > 0.01 {
+		t.Errorf("Wagons %v adopted the day after it was learned", a)
+	}
+	check(n.Adoption(wagons))
+	for w.Tick-1-learned < techAdoptDays/2 {
+		w.Step()
+	}
+	if a := n.Adoption(wagons); math.Abs(a-0.5) > 0.01 {
+		t.Errorf("halfway: %v adopted", a)
+	}
+	check(n.Adoption(wagons))
+	for w.Tick-1-learned < techAdoptDays+10 {
+		w.Step()
+	}
+	check(1)
 }
 
 // Research comes from the universities the state funds: none funded, none

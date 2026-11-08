@@ -97,7 +97,7 @@ type Nation struct {
 	pensionBill float64
 	payBill     float64     // soldiers' pay due today
 	payScale    float64     // share of today's bills the treasury could cover
-	Drill       float64     // share of wartime supplies armies use in peace
+	Standing    float64     // share of each army's wartime size kept under arms in peace
 	Temper      Temperament // how the computer plays it
 	IncomeEMA   float64     // moving average of tax and tariff income per tick
 
@@ -105,6 +105,10 @@ type Nation struct {
 	Researching    int     // index into Techs, or -1 to pick automatically
 	Queue          []int   // techs to research next, in order
 	Known          []bool  // per tech
+	// LearnedAt is the tick each known tech was learned (0: always known, or
+	// granted outright: fully adopted); see Adoption.
+	LearnedAt []int
+	now       int // today's tick, for Adoption
 	// TradeWith is, per nation, a moving average of the value of goods
 	// shipped between the two; ideas travel with trade.
 	TradeWith []float64
@@ -158,7 +162,7 @@ var (
 	ErrTreasury    = errors.New("treasury cannot afford it")
 	ErrBadTech     = errors.New("tech unknown, already known, or missing prerequisites")
 	ErrBadPension  = errors.New("the pension level must be between 0 and 4")
-	ErrBadDrill    = errors.New("peacetime drill must be between 20% and 80% of wartime needs")
+	ErrBadStanding = errors.New("the standing army must be between 10% and 100% of wartime strength")
 	ErrFirmMax     = errors.New("firm cannot grow further here")
 	ErrExpanding   = errors.New("firm is already expanding")
 	ErrSelf        = errors.New("a nation cannot embargo itself")
@@ -172,7 +176,7 @@ func newNation(id int, name, color string, nNations int, taxRate float64) *Natio
 	return &Nation{ID: id, Name: name, Color: color, TaxRate: taxRate,
 		MaxBuildRate: 5,
 		Tariff:       make([]float64, NumGoods), Embargo: make([]bool, nNations),
-		Drill: DefaultDrill, payScale: 1, Researching: -1, Known: make([]bool, len(Techs)),
+		Standing: DefaultStanding, payScale: 1, Researching: -1, Known: make([]bool, len(Techs)), LearnedAt: make([]int, len(Techs)),
 		TradeWith: make([]float64, nNations), AtWar: make([]bool, nNations), WarSince: make([]int, nNations),
 		PeaceOffer: make([]bool, nNations)}
 }
@@ -201,13 +205,15 @@ func (n *Nation) SetTariff(good GoodID, rate float64) error {
 	return nil
 }
 
-// Peacetime drill: in peace, armies use this share of their wartime
-// supplies (the nation chooses between minimal drills and realistic ones,
-// which keep the arms industries busy). In war they use all of them.
+// The standing army: in peace each army keeps this share of its wartime
+// size under arms; the rest are reservists, living and working at home as
+// ordinary people (in the nation's tiles, by their population), and are
+// called up when war comes. A big standing army is ready but costly; a
+// small one is cheap but takes weeks to mobilize.
 const (
-	MinDrill     = 0.2
-	MaxDrill     = 0.8
-	DefaultDrill = 0.5
+	MinStanding     = 0.1
+	MaxStanding     = 1.0
+	DefaultStanding = 0.5
 )
 
 // Pensions: the state pays the elderly (pensionerShare of the people) a
@@ -250,12 +256,13 @@ func (n *Nation) payPensions() {
 	}
 }
 
-// SetDrill sets the share of wartime supplies armies use in peace.
-func (n *Nation) SetDrill(x float64) error {
-	if !(x >= MinDrill-1e-9 && x <= MaxDrill+1e-9) {
-		return ErrBadDrill
+// SetStanding sets the share of each army's wartime size kept under arms in
+// peace.
+func (n *Nation) SetStanding(x float64) error {
+	if !(x >= MinStanding-1e-9 && x <= MaxStanding+1e-9) {
+		return ErrBadStanding
 	}
-	n.Drill = x
+	n.Standing = x
 	return nil
 }
 
@@ -372,6 +379,7 @@ type claim struct {
 // staff. Only when the treasury can't cover it all does everything shrink
 // alike.
 func (n *Nation) plan(w *World) {
+	n.now = w.Tick
 	n.Revenue, n.TariffRevenue, n.Spending = 0, 0, 0
 	n.SpentOn = [NumSpending]float64{}
 	n.pickResearch()
@@ -559,6 +567,7 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 	if i := n.Researching; i >= 0 && n.ResearchPoints >= n.TechCost(i, w.Nations) {
 		n.ResearchPoints -= n.TechCost(i, w.Nations)
 		n.Known[i] = true
+		n.LearnedAt[i] = max(1, w.Tick)
 		n.Researching = -1
 		queued := false
 		for _, q := range n.Queue {
@@ -569,6 +578,8 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 		n.applyTech()
 		hopsChanged = true
 		w.emit(n.ID, "tech", -1, "%s discovers %s", n.Name, Techs[i].Name)
+	} else if n.adopting() { // bonuses still coming in
+		n.applyTech()
 	}
 	return hopsChanged
 }

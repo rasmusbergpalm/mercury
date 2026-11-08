@@ -183,6 +183,7 @@ type NationState struct {
 	Researching    int       `json:"researching"`
 	Points         float64   `json:"research_points"`
 	Known          []bool    `json:"known"`
+	Adoption       []float64 `json:"adoption"` // per tech: how far its productivity and growth bonuses have come in
 	Queue          []int     `json:"queue"`
 	ChooseResearch bool      `json:"choose_research"` // a tech finished: ask the player for the next
 	TechCosts      []float64 `json:"tech_costs"`      // after the discount from trade partners
@@ -191,7 +192,7 @@ type NationState struct {
 	Soldiers       float64   `json:"soldiers"`
 	MobilizeCap    float64   `json:"mobilize_cap"`
 	MaxArmySize    float64   `json:"max_army_size"` // men one army can field
-	Drill          float64   `json:"drill"`         // share of wartime supplies armies use in peace
+	Standing       float64   `json:"standing"`      // share of each army's wartime size kept under arms in peace
 	Temperament    string    `json:"temperament"`   // how the computer plays it
 	Mobilization   float64   `json:"mobilization"`  // share of people who may serve
 	BestDoctrine   int       `json:"best_doctrine"`
@@ -208,7 +209,8 @@ type ArmyState struct {
 	Nation        int                `json:"nation"`
 	Region        int                `json:"region"`
 	Men           float64            `json:"men"`
-	Target        float64            `json:"target"`
+	Target        float64            `json:"target"`     // at full strength (war)
+	UnderArms     float64            `json:"under_arms"` // kept now: the target at war, its standing share in peace
 	Doctrine      int                `json:"doctrine"`
 	Effectiveness float64            `json:"effectiveness"`
 	Strength      float64            `json:"strength"`
@@ -446,7 +448,7 @@ func worldState(w *engine.World) State {
 		}
 		att, def, attr := w.Breakdown(a)
 		depot, transport := a.SupplyLine()
-		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, a.Doctrine,
+		st.Armies = append(st.Armies, ArmyState{a.ID, a.Nation.ID, a.Region, a.Men, a.Target, w.UnderArms(a), a.Doctrine,
 			a.Effectiveness(), a.Strength(), sup, days, src, off, coming, cost, pay, comingDays, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...), a.Retreating,
 			att, def, attr, depot, transport})
 	}
@@ -467,7 +469,7 @@ func worldState(w *engine.World) State {
 			Researching: n.Researching, Points: n.ResearchPoints, Known: n.Known,
 			Queue: append([]int{}, n.Queue...), AtWar: n.AtWar, PeaceOffer: n.PeaceOffer,
 			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch,
-			MaxArmySize: n.MaxArmySize(), Drill: n.Drill, Temperament: n.Temper.Describe()}
+			MaxArmySize: n.MaxArmySize(), Standing: n.Standing, Temperament: n.Temper.Describe()}
 		ns.Soldiers, _ = w.Mobilized(n)
 		ns.PayOwed, ns.Paid = n.PayBill()
 		for _, r := range n.Regions {
@@ -476,6 +478,10 @@ func worldState(w *engine.World) State {
 			}
 		}
 		ns.BestDoctrine = bestDoctrine(n)
+		ns.Adoption = make([]float64, len(engine.Techs))
+		for i := range engine.Techs {
+			ns.Adoption[i] = n.Adoption(i)
+		}
 		ns.GDP = n.RealGDP
 		ns.Exports, ns.Imports = trade.NationOut[n.ID], trade.NationIn[n.ID]
 		pop := 0.0

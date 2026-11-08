@@ -93,12 +93,13 @@ type NationSnap struct {
 	RealGDP                                float64
 	Researching                            int
 	Known                                  []bool
+	LearnedAt                              []int `json:",omitempty"` // absent before version 14: fully adopted
 	Queue                                  []int
 	TradeWith                              []float64
 	AtWar, PeaceOffer                      []bool
 	WarSince                               []int
 	AI, ChooseResearch                     bool
-	Drill                                  float64
+	Drill                                  float64 // the standing army share (was peacetime drill, same range within)
 	Revenue, TariffRevenue, Spending       float64
 }
 
@@ -149,8 +150,8 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	for _, n := range w.Nations {
 		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, SpendEMA: n.SpendEMA, BuildRate: n.MaxBuildRate,
 			Tariff: append([]float64(nil), n.Tariff...), Embargo: append([]bool(nil), n.Embargo...),
-			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Drill: n.Drill, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints, RealGDP: n.RealGDP,
-			Researching: n.Researching, Known: append([]bool(nil), n.Known...), AI: n.AI, ChooseResearch: n.ChooseResearch,
+			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Drill: n.Standing, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints, RealGDP: n.RealGDP,
+			Researching: n.Researching, Known: append([]bool(nil), n.Known...), LearnedAt: append([]int(nil), n.LearnedAt...), AI: n.AI, ChooseResearch: n.ChooseResearch,
 			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
 			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
 			PeaceOffer: append([]bool(nil), n.PeaceOffer...),
@@ -258,6 +259,10 @@ func Restore(s *Snapshot) (*World, error) {
 		n.Treasury, n.TaxRate, n.SpendEMA, n.MaxBuildRate = ns.Treasury, ns.TaxRate, ns.SpendEMA, ns.BuildRate
 		n.Tariff, n.Embargo, n.AutoBuild, n.IncomeEMA, n.ResearchPoints = ns.Tariff, ns.Embargo, ns.AutoBuild, ns.IncomeEMA, ns.ResearchPoints
 		n.RealGDP = math.Max(0, ns.RealGDP)
+		n.now = s.Tick
+		if len(ns.LearnedAt) == len(Techs) {
+			copy(n.LearnedAt, ns.LearnedAt)
+		}
 		if len(ns.TradeWith) != len(w.Nations) || len(ns.AtWar) != len(w.Nations) || len(ns.WarSince) != len(w.Nations) ||
 			len(ns.PeaceOffer) != len(w.Nations) {
 			return bad("nation " + n.Name)
@@ -275,7 +280,7 @@ func Restore(s *Snapshot) (*World, error) {
 		if err := n.SetPension(ns.Pension); err != nil {
 			return bad("nation " + n.Name)
 		}
-		if err := n.SetDrill(ns.Drill); err != nil {
+		if err := n.SetStanding(ns.Drill); err != nil {
 			return bad("nation " + n.Name)
 		}
 		n.TradeWith, n.AtWar, n.WarSince, n.PeaceOffer = ns.TradeWith, ns.AtWar, ns.WarSince, ns.PeaceOffer

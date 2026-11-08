@@ -207,9 +207,17 @@ func TestSaveLoadMidWar(t *testing.T) {
 		w.Step()
 	}
 	w.DeclareWar(0, 1)
-	a, err := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
-	if err != nil {
-		t.Fatal(err)
+	var a *Army
+	for _, x := range w.ArmiesOf(w.Nations[0]) { // the computer may have one there already
+		if x.Region == regionByName(w, "00").ID {
+			a = x
+		}
+	}
+	if a == nil {
+		var err error
+		if a, err = w.RaiseArmy(0, regionByName(w, "00").ID, 0); err != nil {
+			t.Fatal(err)
+		}
 	}
 	a.Men = 30
 	w.MoveArmy(a.ID, regionByName(w, "01").ID)

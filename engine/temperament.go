@@ -10,7 +10,7 @@ import (
 // all pursue the same strategy. Each nation draws one from the game's seed
 // when the game is built; every trait is a multiplier around 1.
 type Temperament struct {
-	Militarism float64 // men kept under arms and peacetime drill
+	Militarism float64 // men kept under arms, and how many of them in peace
 	Learning   float64 // how much it invests in universities
 	Aggression float64 // how readily it starts wars and seeks battle
 	Expansion  float64 // how many men it fields to take free land
