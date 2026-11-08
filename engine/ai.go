@@ -185,8 +185,8 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 			continue
 		}
 		atHome := w.Regions[a.Region].Nation == n
-		if atHome && a.Men < aiRefill*a.Target && !w.underAttack(n) {
-			continue // let a new army fill up before it marches (field armies are reinforced where they stand)
+		if atHome && a.Men < aiRefill*w.UnderArms(a) && !w.underAttack(n) {
+			continue // let a new army fill up (to what it keeps under arms now) before it marches; field armies are reinforced where they stand
 		}
 		here := w.Regions[a.Region]
 		if here.Nation != n && here.Siege != nil && here.Siege.Nation == n {
@@ -201,8 +201,8 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 // The computer only seeks battle when its side is this many times as strong.
 const aiFightOdds = 1.2
 
-// An army at home waits until it has this share of its target before it
-// marches (unless the nation is being invaded).
+// An army at home waits until it has this share of the men it keeps under
+// arms before it marches (unless the nation is being invaded).
 const aiRefill = 0.6
 
 // underAttack reports whether an enemy army stands on the nation's soil.
@@ -254,39 +254,58 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 		}
 		return
 	}
-	// defend: an enemy army on our soil, if together with our armies there
-	// we can beat it; if we can't, hold and recruit
 	odds := aiFightOdds / math.Sqrt(n.Temper.Aggression) * (1 + 0.1*w.noise(n, 100+a.ID))
-	invaded := false
-	for _, e := range w.Armies {
-		if e.Nation != n && n.AtWar[e.Nation.ID] && w.Regions[e.Region].Nation == n {
-			invaded = true
-			if w.tileTaken(n, e.Region, a) {
-				continue // another of our armies is on it
-			}
-			enemy, own := forces(e.Region)
-			if (own+a.Strength())*defenderHome*n.defenseMult() >= odds*enemy {
-				return e.Region
-			}
-		}
-	}
-	if invaded {
-		return -1
-	}
-	// attack: the enemy border tile with the least enemy strength, then most
-	// people, among those the army can win
-	best, bestScore := -1, math.Inf(-1)
-	for _, r := range w.Regions {
-		if r.Nation == nil || r.Nation == n || !n.AtWar[r.Nation.ID] || !w.borders(n, r) || w.tileTaken(n, r.ID, a) {
-			continue
-		}
+	dist, _ := w.shortestPaths(a.Region, func(*Region) bool { return true })
+	// its advantage in tile r, with our armies already there: our strength
+	// over theirs, the defender's bonus to whoever owns the tile (none on
+	// free land); it seeks battle from odds up
+	advantage := func(r *Region) float64 {
 		enemy, own := forces(r.ID)
-		if own+a.Strength() < odds*enemy*defenderHome*r.Nation.defenseMult() {
-			continue
+		mine, theirs := own+a.Strength(), enemy
+		switch {
+		case r.Nation == n:
+			mine *= defenderHome * n.defenseMult()
+		case r.Nation != nil:
+			theirs *= defenderHome * r.Nation.defenseMult()
 		}
-		if score := -enemy*1000 + r.Population(); score > bestScore {
+		if theirs <= 0 {
+			return math.Inf(1)
+		}
+		return mine / theirs
+	}
+	best, bestScore := -1, math.Inf(-1)
+	pick := func(r *Region, score float64) {
+		if score -= 0.01 * dist[r.ID]; score > bestScore {
 			best, bestScore = r.ID, score
 		}
+	}
+	// first defend: enemy armies on our soil that it can beat (with our home
+	// bonus); then engage: enemy armies anywhere it can reach and beat (on
+	// their soil they have the defender's bonus); in each, the one it beats
+	// by the widest margin
+	for _, home := range []bool{true, false} {
+		for _, e := range w.Armies {
+			r := w.Regions[e.Region]
+			if e.Nation == n || !n.AtWar[e.Nation.ID] || e.Retreating || (r.Nation == n) != home ||
+				w.tileTaken(n, r.ID, a) || !w.reachable(n, r) {
+				continue
+			}
+			if adv := advantage(r); adv >= odds {
+				pick(r, adv)
+			}
+		}
+		if best >= 0 {
+			return best
+		}
+	}
+	// then take land: enemy border tiles it can win, the weakest held and
+	// then the most populous first
+	for _, r := range w.Regions {
+		if r.Nation == nil || r.Nation == n || !n.AtWar[r.Nation.ID] || !w.borders(n, r) || w.tileTaken(n, r.ID, a) || advantage(r) < odds {
+			continue
+		}
+		enemy, _ := forces(r.ID)
+		pick(r, -enemy*1000+r.Population())
 	}
 	if best >= 0 {
 		return best
@@ -310,10 +329,25 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 	return -1
 }
 
+// aiBuildMaxTax is the tax rate above which the computer (and automated
+// construction) starts no new roads, ports or state firm expansions: a poor
+// nation that builds anyway taxes its people away to its neighbours.
+const aiBuildMaxTax = 0.15
+
+// canAffordBuilding reports whether the nation can take on new building:
+// light taxes and at least half its treasury target in hand. Projects
+// under way carry on regardless.
+func (n *Nation) canAffordBuilding() bool {
+	return n.TaxRate <= aiBuildMaxTax && n.Treasury >= 0.5*aiTreasuryDays*n.SpendEMA
+}
+
 // aiBuild keeps one infrastructure project going: a couple of ports once it
 // can sail, else roads on the tile where better movement matters most (many
 // people and much trade passing through).
 func (w *World) aiBuild(n *Nation) {
+	if !n.canAffordBuilding() {
+		return
+	}
 	ports := 0
 	for _, r := range n.Regions {
 		if r.Project != nil {
@@ -384,8 +418,8 @@ func (w *World) aiServices(n *Nation, war, funding, universities bool) {
 			}
 		}
 	}
-	if short || n.Treasury < 0.5*aiTreasuryDays*n.SpendEMA {
-		return
+	if short || !n.canAffordBuilding() {
+		return // new levels only when it can afford them
 	}
 	for k := Public(0); k < NumServices; k++ {
 		if k == University && (!universities || war || n.serviceBillOf(University) > aiScience*n.Temper.Learning*n.IncomeEMA) {
@@ -469,6 +503,9 @@ func (w *World) aiTax(n *Nation) {
 // aiExpandFirm keeps one state-funded firm expansion going, on the firm with
 // the best profit per building level.
 func (w *World) aiExpandFirm(n *Nation) {
+	if !n.canAffordBuilding() {
+		return
+	}
 	for _, r := range n.Regions {
 		for _, f := range r.Firms {
 			if f.Expansion != nil && f.Expansion.Public && !f.State {
