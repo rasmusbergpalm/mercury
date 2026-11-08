@@ -683,44 +683,88 @@ func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 				continue
 			}
 			q := use + math.Min(wartime, math.Max(0, stockDays*wartime-a.Stock[g])/refillDays)
-			src := w.supplySource(n, g, q, dist, perHop)
-			a.source[g], a.order[g] = src, q
-			a.tau[g] = perHop * dist[src.ID] * Goods[g].Bulk
-			add(src, claim{kind: armyClaim, good: g, army: a, qty: q})
-			if t := a.tau[g] * q; t > 0 {
-				a.transit += t
-				add(src, claim{kind: armyClaim, good: Transport, army: a, qty: t})
+			a.order[g] = q
+			biggest := 0.0
+			for _, s := range w.supplySources(n, g, dist, perHop) {
+				if s.share > biggest {
+					a.source[g], biggest = s.region, s.share
+				}
+				tau := perHop * dist[s.region.ID] * Goods[g].Bulk
+				a.tau[g] += tau * s.share
+				add(s.region, claim{kind: armyClaim, good: g, army: a, qty: q * s.share})
+				if t := tau * q * s.share; t > 0 {
+					a.transit += t
+					add(s.region, claim{kind: armyClaim, good: Transport, army: a, qty: t})
+				}
 			}
 		}
 	}
 }
 
-// supplySource is the nation's tile where q of good g lands cheapest at an
-// army dist away: price plus transport, among the tiles whose markets offered
-// at least q yesterday; if none did, the tile that offered the most.
-func (w *World) supplySource(n *Nation, g GoodID, q float64, dist []float64, perHop float64) *Region {
-	var best, most *Region
-	bestCost := math.Inf(1)
-	for _, r := range n.Regions {
-		if math.IsInf(dist[r.ID], 1) {
-			continue
-		}
-		m := r.Markets[g]
-		if most == nil || m.Supply > most.Markets[g].Supply {
-			most = r
-		}
-		if m.Supply < q {
-			continue
-		}
-		if c := m.Price + perHop*dist[r.ID]*Goods[g].Bulk*r.Markets[Transport].Price; c < bestCost {
-			best, bestCost = r, c
-		}
-	}
-	if best == nil {
-		return most
-	}
-	return best
+// supplyShare is one tile's part in an army's order for a good.
+type supplyShare struct {
+	region *Region
+	share  float64
 }
+
+// supplySources spreads an army's order for good g over the nation's tiles
+// that sell it, in proportion to what each offered yesterday, among those
+// where it lands (price plus transport) within sourceSpread of the cheapest.
+// Every producer then sees a steady share of the demand, and of any
+// shortage, so prices rise and works expand everywhere (an order put all
+// on one tile would hop between tiles from day to day, and no works would
+// ever see steady demand). If no tile sells it, the order is spread evenly
+// over the tiles that could make it (or, failing those, all it can reach),
+// so would-be producers see it too.
+func (w *World) supplySources(n *Nation, g GoodID, dist []float64, perHop float64) []supplyShare {
+	cheapest := math.Inf(1)
+	landed := func(r *Region) float64 {
+		return r.Markets[g].Price + perHop*dist[r.ID]*Goods[g].Bulk*r.Markets[Transport].Price
+	}
+	for _, r := range n.Regions {
+		if !math.IsInf(dist[r.ID], 1) && r.Markets[g].Supply > 0 {
+			cheapest = math.Min(cheapest, landed(r))
+		}
+	}
+	var out []supplyShare
+	total := 0.0
+	if !math.IsInf(cheapest, 1) {
+		for _, r := range n.Regions {
+			if s := r.Markets[g].Supply; !math.IsInf(dist[r.ID], 1) && s > 0 && landed(r) <= sourceSpread*cheapest {
+				out = append(out, supplyShare{r, s})
+				total += s
+			}
+		}
+	} else {
+		makes := func(r *Region) bool {
+			for _, f := range r.Firms {
+				if f.Output == g && f.Enabled {
+					return true
+				}
+			}
+			return false
+		}
+		for _, any := range []bool{false, true} {
+			for _, r := range n.Regions {
+				if !math.IsInf(dist[r.ID], 1) && (any || makes(r)) {
+					out = append(out, supplyShare{r, 1})
+					total++
+				}
+			}
+			if total > 0 {
+				break
+			}
+		}
+	}
+	for i := range out {
+		out[i].share /= total
+	}
+	return out
+}
+
+// sourceSpread is how much dearer (landed) than the cheapest a tile may be
+// and still get a share of an army's order.
+const sourceSpread = 1.5
 
 // settleSupply adds what the depot delivered to the army's stock (goods only
 // arrive in proportion to the transport bought for them), then the army uses

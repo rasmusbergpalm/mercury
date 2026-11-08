@@ -398,13 +398,14 @@ func (n *Nation) plan(w *World) {
 	// limit, building goes at the pace the economy can supply, and what the
 	// orders can cost is known, so the treasury is never overdrawn
 	needs := 0.0
-	// the nation's average price of each good where it is actually sold
-	// (weighted by what was offered; markets with nothing for sale don't count)
+	// the nation's average price of each good where it actually traded
+	// (weighted by what changed hands: a price nobody pays doesn't count)
 	avgPrice, offered := make([]float64, NumGoods), make([]float64, NumGoods)
 	for _, r := range n.Regions {
 		for g, m := range r.Markets {
-			avgPrice[g] += m.Price * m.Supply
-			offered[g] += m.Supply
+			v := math.Min(m.Supply, m.Demand)
+			avgPrice[g] += m.Price * v
+			offered[g] += v
 		}
 	}
 	for g := range avgPrice {

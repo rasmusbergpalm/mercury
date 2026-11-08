@@ -23,7 +23,8 @@ type Market struct {
 	MinVolume float64
 	Supply    float64 // last clearing
 	Demand    float64
-	// Trend is the price's long-run level: an average over about trendDays.
+	// Trend is the price's long-run level: an average over about trendDays
+	// of the days it traded (0: never traded).
 	Trend float64
 }
 
@@ -67,10 +68,15 @@ func (m *Market) Clear(bids, asks []Order) (bidFills, askFills []float64) {
 	excess := (demand - supply) / math.Max(math.Max(supply, demand), m.MinVolume)
 	// a good nobody wants for decades mustn't fall (or rise) out of range
 	m.Price = math.Min(maxPrice, math.Max(minPrice, m.Price*math.Exp(m.Speed*excess)))
-	if m.Trend <= 0 {
-		m.Trend = m.Price
+	// the trend follows the price on days the good trades (a price nobody
+	// pays, at the floor or the ceiling, says nothing about its level); a
+	// market that never traded has none
+	if math.Min(supply, demand) > 0 {
+		if m.Trend <= 0 {
+			m.Trend = price
+		}
+		m.Trend += (price - m.Trend) / trendDays
 	}
-	m.Trend += (m.Price - m.Trend) / trendDays
 	m.Supply, m.Demand = supply, demand
 	return bidFills, askFills
 }
