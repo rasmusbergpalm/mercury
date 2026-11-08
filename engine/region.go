@@ -302,14 +302,7 @@ func (r *Region) GoodsMarkets() {
 		}
 
 		price := market.Price // what trade happens at; Clear then moves the price
-		local := 0.0          // what the tile itself wants: everyone but merchants shipping out
-		for i, ref := range bidRefs {
-			if ref.kind != traderAgent {
-				local += bids[i].Qty
-			}
-		}
 		bidFills, askFills := market.Clear(bids, asks)
-		market.Local = local
 
 		for i, ref := range bidRefs {
 			got := bidFills[i]

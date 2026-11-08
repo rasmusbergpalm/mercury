@@ -23,7 +23,6 @@ type Market struct {
 	MinVolume float64
 	Supply    float64 // last clearing
 	Demand    float64
-	Local     float64 // of Demand, what the tile's own buyers wanted (not merchants shipping out)
 	// Trend is the price's long-run level: an average over about trendDays.
 	Trend float64
 }

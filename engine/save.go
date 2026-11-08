@@ -48,7 +48,6 @@ const oldestSnapshot = 12
 type MarketSnap struct {
 	Price, Supply, Demand float64
 	Trend                 float64 // absent before version 14: starts at the price
-	Local                 float64
 }
 
 type PopSnap struct {
@@ -127,7 +126,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 			rs.Project = &cp
 		}
 		for _, m := range r.Markets {
-			rs.Markets = append(rs.Markets, MarketSnap{m.Price, m.Supply, m.Demand, m.Trend, m.Local})
+			rs.Markets = append(rs.Markets, MarketSnap{m.Price, m.Supply, m.Demand, m.Trend})
 		}
 		for _, p := range r.Pops {
 			rs.Pops = append(rs.Pops, PopSnap{p.Class, p.Size, p.Cash, append([]Job(nil), p.Jobs...),
@@ -227,7 +226,7 @@ func Restore(s *Snapshot) (*World, error) {
 			r.Project.Materials = map[GoodID]float64{}
 		}
 		for g, m := range rs.Markets {
-			r.Markets[g].Price, r.Markets[g].Supply, r.Markets[g].Demand, r.Markets[g].Trend, r.Markets[g].Local = m.Price, m.Supply, m.Demand, m.Trend, m.Local
+			r.Markets[g].Price, r.Markets[g].Supply, r.Markets[g].Demand, r.Markets[g].Trend = m.Price, m.Supply, m.Demand, m.Trend
 		}
 		for j, ps := range rs.Pops {
 			p := r.Pops[j]
