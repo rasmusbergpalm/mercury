@@ -3,6 +3,9 @@
 // ---- basics --------------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// a little "i" that opens a note on how something works (see the info
+// popover below); html is the note
+const info = (html) => `<button type="button" class="info-btn" aria-label="How this works" title="How this works" data-tip="${esc(html)}">i</button>`;
 const fmt = (x, d = 2) => (Math.abs(x) >= 1000 ? Math.round(x).toLocaleString("en") : x.toFixed(d));
 const pct = (x) => `${Math.round(100 * x)}%`;
 // compact numbers for axes and plaques: 950, 9.5k, 1.2M
@@ -1164,14 +1167,15 @@ function tilePanel() {
   if (s.nation >= 0 && s.allegiance < 0.995) {
     const split = (s.loyalties || []).map((v, i) => [i, v]).filter(([, v]) => v > 0.005).sort((a, b) => b[1] - a[1])
       .map(([i, v]) => `${i < world.nations.length ? esc(world.nations[i].name) : "nobody"} ${pct(v)}`).join(", ");
-    html += `<p class="sub" style="margin-top:8px"><b>Allegiance ${pct(s.allegiance)}</b>: its people stand by ${split}. Until they stand by ${esc(nationName(s.nation))} it produces and pays taxes at ×${(0.5 + 0.5 * s.allegiance).toFixed(2)} and gives ${pct(s.allegiance)} of the recruits. Loyalty drifts to the owner over the years (about 70% after ten), and people who answer to nobody count 40%; a tile lost and soon retaken still mostly stands by you.</p>`;
+    html += `<p class="sub" style="margin-top:8px"><b>Allegiance ${pct(s.allegiance)}</b>: its people stand by ${split} · production and taxes ×${(0.5 + 0.5 * s.allegiance).toFixed(2)}, recruits ${pct(s.allegiance)}
+      ${info(`A tile's people hold a share of loyalty for each nation, and for nobody. Day by day it drifts to whoever owns the tile (about 70% after ten years). The owner's share, plus 40% of nobody's, is its allegiance: until it is whole the tile produces and pays taxes at half to all of the usual, and gives only that share of recruits (disloyal people don't count towards your mobilisation cap either). A conquered tile starts loyal to its old owner; free land answers to nobody; a tile lost and soon retaken still mostly stands by you.`)}</p>`;
   }
   if (s.services) html += `<p class="sub" style="margin-top:8px">Public services: ${s.nation >= 0 ? `taxes collected ${pct(s.collect)} · ` : ""}educated ${pct(s.educated)} ·
     health covers ${pct(s.healthy)}${s.crowding > 0 ? ` · <span class="${s.healthy < 0.999 ? "bad" : ""}">crowded ${pct(s.crowding)}</span>` : ""}</p>`;
   html += `<h3>Over time</h3>` + tileChart(h);
   html += classesBlock(d);
   html += armiesHere(s, mine);
-  html += `<h3>Roads and harbour</h3>${infraBlock(s, mine)}`;
+  html += `<h3>Roads and harbour ${info(`Roads, paved roads and railways make it cheaper to move goods and armies through a tile, and cost construction to build and some upkeep each day (neglected, they decay). Tiles by the sea can be crossed by ship cheaply and have fishing; a port sails straight to every other port.`)}</h3>${infraBlock(s, mine)}`;
   const total = s.tier_spend.reduce((a, b) => a + b, 0) || 1, tc = TIER_COLORS();
   html += `<h3>What people buy</h3><div class="bar-stack">${world.tiers.map((t, i) => `<span style="width:${(100 * s.tier_spend[i] / total).toFixed(1)}%;background:${tc[i]}"></span>`).join("")}</div>
     <div class="legend-inline">${world.tiers.map((t, i) => `<span><span class="swatch" style="background:${tc[i]}"></span>${t} ${pct(s.tier_spend[i] / total)}</span>`).join("")}</div>`;
@@ -1196,10 +1200,9 @@ function tilePanel() {
         <td class="nowrap">${fmt(f.labor, 1)} / ${fmt(f.wanted, 1)}</td><td class="nowrap">${fmt(m.supply, 1)} / ${fmt(m.demand, 1)}</td><td>${per}</td><td>${f.levels}/${f.max_levels}${grow ? `<br>${grow}` : ""}${f.level_gain > 0.005 && !f.expansion ? `<br><span class="sub" title="Extra output a day one more level would bring, from the same workers and inputs: a level (£${fmt(levelPrice, 0)}) pays for itself in about ${Math.round(levelPrice / f.level_gain)} days">+£${fmt(f.level_gain, 1)}</span>` : ""}</td></tr>`;
     }).join("");
   const employed = d.firms.reduce((t, f) => t + f.labor, 0), workers = (d.classes.find((c) => c.class === "workers") || { size: 0 }).size;
-  html += `<h3>Production</h3>
+  html += `<h3>Production ${info(`Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay.<br><br><b>Profit / worker</b> is what each worker earns the owners a day: the value they add (output less the goods used up) less their wage. Red means the firm is losing money on its workers.<br><br><b>Supply / demand</b> are the tile's market for what the firm makes.<br><br>Under each firm, what multiplies its productivity: its site, technology, the tile's size and schooling, allegiance, and crowding (how much more productive it would be with one more building level). Hover a firm for the details and its profit.<br><br>Under the levels, the £ a day one more level would add from the same workers and inputs (hover for how soon it pays for itself). ★ an expansion paid by the state; the rest are paid by owners.`)}</h3>
     <div class="stats">${stat(fmt(s.wage), "the tile's daily wage")}${stat(`${short(employed)} / ${short(workers)}`, "workers employed")}${stat(pct(workers > 0 ? employed / workers : 0), "employment")}</div>
-    <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th class="nowrap">workers<br>/ wanted</th><th class="nowrap">supply<br>/ demand</th><th class="nowrap">profit /<br>worker</th><th>levels</th></tr>${firms}</table></div>
-    <p class="sub">Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay. <b>Profit / worker</b> is what each worker earns the owners a day: the value they add (output less the goods used up) less their wage. Red means the firm is losing money on its workers. Supply and demand are the tile's market for what the firm makes. Under each firm, what multiplies its productivity: its site, technology, the tile's size and schooling, and crowding: how much more productive it would be with one more building level (hover for the details and profit). Under the levels, the £ a day one more level would add from the same workers and inputs (hover for how soon it pays for itself). ★ expansion paid by the state; the rest by owners.</p>`;
+    <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th class="nowrap">workers<br>/ wanted</th><th class="nowrap">supply<br>/ demand</th><th class="nowrap">profit /<br>worker</th><th>levels</th></tr>${firms}</table></div>`;
   // the market: local supply and demand, and what ships in and out
   const ex = {}, im = {};
   for (const f of d.exports) ex[f.good] = (ex[f.good] || 0) + f.qty;
@@ -1207,13 +1210,11 @@ function tilePanel() {
   const row = (m) => `<tr><td>${G[m.good].name}</td><td>${fmt(m.price)}</td><td>${fmt(m.supply)}</td><td>${fmt(m.demand)}</td><td>${im[m.good] ? fmt(im[m.good]) : "–"}</td><td>${ex[m.good] ? fmt(ex[m.good]) : "–"}</td></tr>`;
   const live = d.markets.filter((m) => m.supply > 1e-3 || m.demand > 1e-3 || ex[m.good] || im[m.good]);
   const head = (label) => `<tr class="branch"><th colspan="6">${label}</th></tr><tr><th>good</th><th>price</th><th>supply</th><th>demand</th><th>imports</th><th>exports</th></tr>`;
-  html += `<h3>Market</h3><div class="table-scroll"><table>${head("What people buy")}${live.filter((m) => G[m.good].tier).map(row).join("")}
-    ${head("Materials and services")}${live.filter((m) => !G[m.good].tier).map(row).join("")}</table></div>
-    <p class="sub">Supply is what was offered for sale today (local output and imports arriving), demand what buyers wanted (people, firms, the state and merchants shipping out). Imports and exports are today's shipments.</p>`;
+  html += `<h3>Market ${info(`Each good trades once a day at that morning's price. <b>Supply</b> is what was offered for sale today (local output and imports arriving), <b>demand</b> what buyers wanted (people, firms, the state and merchants shipping out). The short side is rationed in proportion, and the price moves by up to about 10% a day towards balance. Imports and exports are today's shipments.`)}</h3><div class="table-scroll"><table>${head("What people buy")}${live.filter((m) => G[m.good].tier).map(row).join("")}
+    ${head("Materials and services")}${live.filter((m) => !G[m.good].tier).map(row).join("")}</table></div>`;
   const trade = (list, out) => list.sort((a, b) => flowValue(b) - flowValue(a)).slice(0, 8).map((f) =>
     `<tr><td>${G[f.good].name}</td><td>${out ? "→" : "←"} ${world.regions[out ? f.to : f.from].name}${f.sea ? " ⚓" : ""}</td><td>${fmt(f.qty)}</td><td>${fmt(flowValue(f))}</td></tr>`).join("") || `<tr class="dim"><td colspan="4">none</td></tr>`;
-  html += `<h3>The trading house</h3><p class="sub">The tile's merchants share one purse across ${d.house.routes} routes (one per good and destination, by land and sea); ${d.house.active} shipped today.
-    When money is short it goes to the best margins first. Profits go to the owners.</p>
+  html += `<h3>The trading house ${info(`The tile's merchants share one purse across its routes (one per good and destination, by land and sea). They buy where a good is cheap and ship it where it sells for more than the price plus transport; when money is short it goes to the best margins first. Profits go to the tile's owners.`)}</h3>
     <div class="stats">${stat(short(d.house.cash), "purse")}${stat(short(d.house.spent), "spent today")}${stat(`${d.house.active}/${d.house.routes}`, "routes in use")}</div>`;
   html += `<h3>Shipments today</h3><table><tr><th>exports</th><th>to</th><th>qty</th><th>value</th></tr>${trade(d.exports, true)}
     <tr><th>imports</th><th>from</th><th>qty</th><th>value</th></tr>${trade(d.imports, false)}</table>`;
@@ -1241,19 +1242,18 @@ function classesBlock(d) {
   const total = d.classes.reduce((t, c) => t + c.size, 0) || 1;
   const rows = d.classes.map((c, i) => `<tr><td><span class="swatch" style="background:${series(i)}"></span>${cap(c.class)}</td>
     <td>${short(c.size)}</td><td>${pct(c.size / total)}</td><td>${fmt(c.income)}</td><td>${fmt(c.utility)}</td><td>${short(c.cash)}</td></tr>`).join("");
-  return `<h3>Society</h3><div class="table-scroll"><table><tr><th>class</th><th>people</th><th>share</th><th>income/head</th><th>living</th><th>savings</th></tr>${rows}</table></div>
-    <p class="sub">Workers earn wages; owners hold the land and the means of production (farms, mines, works and trading houses) and live off their profits.</p>`;
+  return `<h3>Society ${info(`Workers earn wages; owners hold the land and the means of production (farms, mines, works and trading houses) and live off their profits.`)}</h3><div class="table-scroll"><table><tr><th>class</th><th>people</th><th>share</th><th>income/head</th><th>living</th><th>savings</th></tr>${rows}</table></div>`;
 }
 
 function armiesHere(s, mine) {
   const here = state.armies.filter((a) => a.region === selected);
   let html = "";
   if (s.occupation) {
-    html += `<h3>Occupation</h3><div class="progress"><span style="width:${pct(s.occupation.progress)};background:${nationColor(s.occupation.nation)}"></span></div>
-      <p class="sub">${esc(nationName(s.occupation.nation))} holds ${pct(s.occupation.progress)}: it grows each day their army stands here unopposed, and falls back otherwise. At 100% the tile changes hands.</p>`;
+    html += `<h3>Occupation ${info(`Occupation grows each day an army with a strength of at least ${world.occupy_strength} stands here unopposed (no army of the owner on the tile, no battle), and falls back otherwise. At 100% the tile changes hands. Free land takes about half a year; a nation's tile twice as long, and its fortifications slow it further. Occupying costs the army men: about 15% over a full occupation of free land, 40% of a nation's tile.`)}</h3><div class="progress"><span style="width:${pct(s.occupation.progress)};background:${nationColor(s.occupation.nation)}"></span></div>
+      <p class="sub">${esc(nationName(s.occupation.nation))} holds ${pct(s.occupation.progress)}.</p>`;
   }
   if (s.battle > 0) {
-    html += `<h3>Battle</h3><p class="bad">Battle raging, day ${s.battle}. Occupation stands still while it lasts; each day the margin that breaks an army narrows.</p>`;
+    html += `<h3>Battle ${info(`Each day of battle each side loses men in proportion to the other's strength. A side much weaker than its enemy breaks and falls back to its nearest own tile (or, surrounded, fights on to the end); each day the margin that breaks an army narrows, so battles end. Occupation stands still while it lasts.`)}</h3><p class="bad">Battle raging, day ${s.battle}.</p>`;
   }
   if (here.length) {
     html += `<h3>Armies here</h3>` + here.map((a) =>
@@ -1262,14 +1262,13 @@ function armiesHere(s, mine) {
   }
   const n = me();
   if (mine && n && here.some((a) => a.nation === n.id)) {
-    html += `<p class="sub">One of your armies holds this tile; a nation keeps one army per tile.</p>`;
+    html += `<p class="sub">One of your armies holds this tile ${info(`A nation keeps at most one army per tile.`)}</p>`;
   } else if (mine && n) {
     const room = Math.max(0, n.mobilize_cap - state.armies.filter((a) => a.nation === n.id).reduce((t, a) => t + a.target, 0));
-    html += `<h3>Raise an army here</h3>
+    html += `<h3>Raise an army here ${info(`Recruits are drafted from all your tiles, in proportion to their people and allegiance (each gives up to 0.2% of its people a day). An army fills by at most a ninetieth of its full strength a day, so a full mobilisation takes about 90 days; recruits join at once at home, and an army in the field gets them after the march. One army can field up to ${short(n.max_army_size)} men (military techs raise this); your mobilisation cap is ${pct(n.mobilization)} of your people, so field several armies if you need more.`)}</h3>
       <div class="row"><label>Soldiers <input id="raise-men" type="number" min="0" max="${Math.floor(n.max_army_size)}" step="1" value="${Math.floor(Math.min(room, n.max_army_size))}" class="num"></label>
       <button class="primary" id="raise">Raise</button></div>
-      <p class="sub">Recruits are drafted from all your tiles (each gives up to 0.2% of its people a day) and join at once at home; armies in the field get them after the march. One army can field up to ${short(n.max_army_size)} men (military techs raise this);
-      room for ${short(room)} more within your mobilisation cap (${pct(n.mobilization)} of your people), so field several armies if you need more.</p>`;
+      <p class="sub">Up to ${short(n.max_army_size)} men per army · room for ${short(room)} more within your mobilisation cap.</p>`;
   }
   return html;
 }
@@ -1282,7 +1281,7 @@ function infraBlock(s, mine) {
   const lvl = world.infra_levels[s.infra], next = world.infra_levels[s.infra + 1];
   const coast = world.regions[selected].coastal;
   let html = `<p class="sub">${cap(lvl.name)} · moving through costs ×${s.move_cost.toFixed(2)}${lvl.upkeep ? ` · upkeep ${lvl.upkeep}/day` : ""}</p>`;
-  if (coast) html += `<p class="sub">Coastal: fishing, and ships carry goods past it cheaply. ${s.port ? "⚓ Its port sails straight to every other port." : "No port yet."}</p>`;
+  if (coast) html += `<p class="sub">Coastal · ${s.port ? "⚓ it has a port" : "no port yet"}</p>`;
   if (s.project) {
     const what = s.project.port ? "port" : world.infra_levels[s.project.target].name;
     html += `<div class="progress"><span style="width:${pct(s.project.delivered / s.project.required)}"></span></div>
@@ -1347,7 +1346,7 @@ function nationChart(h, n) {
     soldiers: "soldiers", strength: "military strength", techs: "techs known", tiles: "tiles" };
   if (k === "classes") return row + lineChart(T, world.classes.map((cl, i) => ({ name: cl, color: series(i), values: d.class_income[i] })), { f: (v) => fmt(v) }) + `<p class="sub">Income per head per day.</p>`;
   if (k === "labor") return row + lineChart(T, world.sectors.map((s, i) => ({ name: s, color: series(i), values: d.labor[i] })), { share: true }) + `<p class="sub">Share of workers by sector: the march from the fields into the mills.</p>`;
-  if (k === "gdp") return row + lineChart(T, [{ name: names[k], color: c, values: d[k] }], { f: money }) + `<p class="sub">${GDP_NOTE}</p>`;
+  if (k === "gdp") return row + lineChart(T, [{ name: names[k], color: c, values: d[k] }], { f: money }) + `<p class="sub">Real GDP, in pounds of January 1820 ${info(GDP_NOTE)}</p>`;
   return row + lineChart(T, [{ name: names[k], color: c, values: d[k] }], { f: k === "utility" ? (v) => fmt(v) : ["gdp", "income", "treasury"].includes(k) ? money : short });
 }
 
@@ -1368,21 +1367,19 @@ function accountsBlock(n, mine) {
   const row = (label, v, note = "") => `<tr><td>${label}${note ? `<br><span class="sub">${note}</span>` : ""}</td><td>${v < 0 ? "−" : ""}£${fmt(Math.abs(v), 1)}</td></tr>`;
   const names = { economy: "Roads, upkeep and construction", science: "Universities' staff", military: "Armies: supplies and soldiers' pay",
     administration: "Officials", education: "Teachers", health: "Public health", pensions: "Pensions" };
-  let html = `<h3>The state's accounts, today</h3>
+  let html = `<h3>The state's accounts, today ${info(`The state pays for everything it needs: roads, armies, officials, teachers, doctors, scholars and pensions. When the treasury can't cover a day's bills, everything is cut alike, and unpaid soldiers desert.`)}</h3>
     <table>${row("Income tax", n.revenue)}${row("Tariffs", n.tariff_revenue)}
     ${world.spending.map((k, i) => row(names[k] || cap(k), -n.spent_on[i], k === "military" && n.pay_owed > 0 ? `of which pay £${fmt(n.pay_owed * n.paid, 1)}` : "")).join("")}
     <tr class="total"><td>Treasury</td><td>£${fmt(n.treasury, 0)}</td></tr></table>
-    <p class="sub" style="margin-top:6px">The state pays for everything it needs; when the treasury can't cover a day's bills, everything is cut alike${n.paid < 0.999 ? ` — <span class="bad">today only ${pct(n.paid)} could be paid</span>` : ""}.</p>`;
+    ${n.paid < 0.999 ? `<p class="sub bad" style="margin-top:6px">Today only ${pct(n.paid)} of the bills could be paid: everything was cut alike.</p>` : ""}`;
   if (mine) {
     const steps = ["none", "¼ of the wage", "½ of the wage", "¾ of the wage", "the full wage"];
     html += `<div class="row"><label>Tax <input id="tax" type="number" min="0" max="90" step="1" value="${Math.round(100 * n.tax_rate)}" class="num" ${n.auto_tax ? "disabled" : ""}>%</label><button data-input="tax" ${n.auto_tax ? "disabled" : ""}>Set</button>
-        <label class="check"><input type="checkbox" id="auto-tax" ${n.auto_tax ? "checked" : ""}> Automate</label></div>
-      <p class="sub">Automated, the tax rate moves (up to three points a month) to keep about 30 days of spending in the treasury.</p>
-      <div class="budget"><label>Pensions<input type="range" min="0" max="${world.max_pension}" step="1" value="${n.pension}" id="pension" aria-label="Pensions"><span class="pct" id="pension-label">${n.pension}/${world.max_pension}</span></label></div>
-      <p class="sub">The elderly (8% of your people) get ${steps[n.pension]} a day, paid straight to them: no buildings, no staff. It's money back in your people's pockets.</p>
-      <h3>Construction</h3>
-      <label class="check"><input type="checkbox" id="auto-build" ${n.auto_build ? "checked" : ""}> Automate construction</label>
-      <p class="sub">Each month the state builds roads, railways and ports where traffic is heaviest, expands the most profitable firms, and builds public service levels where they fall short. Funding them, and universities, stay yours (State and Research tabs).</p>`;
+        <label class="check"><input type="checkbox" id="auto-tax" ${n.auto_tax ? "checked" : ""}> Automate</label>
+        ${info(`Tax is taken from people's wages and dividends (where officials collect it). Automated, the rate moves (up to three points a month) to keep about 30 days of spending in the treasury.`)}</div>
+      <div class="budget"><label>Pensions ${info(`The elderly (8% of your people) get ${steps[n.pension]} a day, paid straight to them: no buildings, no staff. It's money back in your people's pockets.`)}<input type="range" min="0" max="${world.max_pension}" step="1" value="${n.pension}" id="pension" aria-label="Pensions"><span class="pct" id="pension-label">${n.pension}/${world.max_pension}</span></label></div>
+      <h3>Construction ${info(`Automated, each month the state builds roads, railways and ports where traffic is heaviest, expands the most profitable firms, and builds public service levels where they fall short, as long as taxes are at most 15% and the treasury holds at least half its target. Funding them, and universities, stays yours (State and Research tabs).`)}</h3>
+      <label class="check"><input type="checkbox" id="auto-build" ${n.auto_build ? "checked" : ""}> Automate construction</label>`;
   }
   return html;
 }
@@ -1418,11 +1415,9 @@ function statePanel() {
   const spent = n.spent_on.reduce((a, b) => a + b, 0);
   return nationPicker() + `<h2>The state</h2>
     <div class="stats">${stat("£" + fmt(n.income, 0), "income / day")}${stat("£" + fmt(spent, 0), "spent today")}${stat(`${Math.round(n.treasury / Math.max(n.spend_avg, 1e-9))} days`, "in the treasury")}</div>
-    <h3>Public services</h3>${row}
-    <p class="sub">${about}</p>
+    <h3>Public services ${info(`${about}<br><br>Each funded level employs ${world.staff} people at the tile's wage, paid from the treasury. Building a level costs ${world.level_cost} construction; unfunded levels stand idle and cost nothing.${mine && n.auto_build ? " Automated construction builds levels where they fall short; funding stays yours." : ""}`)}</h3>${row}
     <div class="table-scroll"><table class="unis"><tr><th>tile</th><th>levels</th><th>funded</th><th>staff / needed</th><th>covered</th><th>${effectName}</th><th>cost</th></tr>${rows}
     <tr class="total"><td>Total</td><td>${lv}</td><td>${fu}</td><td>${fmt(staff, 1)} / ${fmt(need, 1)}</td><td>${need > 0 ? pct(Math.min(1, staff / need)) : "–"}</td><td></td><td>£${fmt(cost, 1)}</td></tr></table></div>
-    <p class="sub">Each funded level employs ${world.staff} people at the tile's wage, paid from the treasury. Building a level costs ${world.level_cost} construction; unfunded levels stand idle and cost nothing.${mine && n.auto_build ? " Automated construction builds levels where they fall short; funding stays yours." : ""}</p>
     ${accountsBlock(n, mine)}`;
 }
 
@@ -1440,11 +1435,9 @@ function researchPanel() {
   const days = n.researching >= 0 && made > 0 ? Math.max(0, (n.tech_costs[n.researching] - n.research_points) / made) : null;
   let html = nationPicker() + `<h2>Research</h2>
     <div class="stats">${stat(fmt(made, 1), "research / day")}${stat("£" + fmt(cost, 0), "staff wages / day")}${stat(days === null ? "–" : `${short(days / 365 * 12)} mo`, "to the next tech")}</div>
-    <h3>Universities</h3>
+    <h3>Universities ${info(`Universities are the state's. Each funded level employs ${world.staff} scholars at the tile's wage, paid from the treasury; what they find is the nation's research. A level yields more in a big city (its size bonus), with schooling, and with better science. Building a level costs ${world.level_cost} construction; unfunded levels stand idle and cost nothing.`)}</h3>
     <div class="table-scroll"><table class="unis"><tr><th>tile</th><th>levels</th><th>funded</th><th>per level</th><th>wages per level</th><th>research</th><th>cost</th></tr>${rows}
-    <tr class="total"><td>Total</td><td>${lv}</td><td>${fu}</td><td></td><td></td><td>${fmt(made, 1)}</td><td>£${fmt(cost, 1)}</td></tr></table></div>
-    <p class="sub">Universities are the state's. Each funded level employs ${world.staff} scholars at the tile's wage, paid from the treasury; what they find is the nation's research.
-    A level yields more in a big city (its size bonus) and with better science. Building a level costs ${world.level_cost} construction; unfunded levels stand idle and cost nothing.</p>`;
+    <tr class="total"><td>Total</td><td>${lv}</td><td>${fu}</td><td></td><td></td><td>${fmt(made, 1)}</td><td>£${fmt(cost, 1)}</td></tr></table></div>`;
   if (mine) html += researchBlock(n);
   else html += `<h3>Researching</h3><p class="sub">${n.researching >= 0 ? `${world.techs[n.researching].name} (${pct(Math.min(1, n.research_points / n.tech_costs[n.researching]))})` : "nothing"}.</p>`;
   return html;
@@ -1475,8 +1468,8 @@ function researchBlock(n) {
     return `<tr class="branch"><th colspan="4">${b} · ${known}/${all}</th></tr>${rows(b)}`;
   }).join("");
   const prog = n.researching >= 0 ? Math.min(1, n.research_points / n.tech_costs[n.researching]) : 0;
-  return `<h3>Research</h3>
-    <p class="sub">Researching ${current}. Techs your trade partners know are cheaper: ideas travel with trade. A new tech's productivity and growth bonuses come in over five years as it spreads through the works; unlocks and military effects are immediate.</p>
+  return `<h3>Research ${info(`Your universities' research goes to one tech at a time; points carry over. Techs your trade partners know are cheaper: ideas travel with trade. A new tech's productivity and growth bonuses come in over five years as it spreads through the works; army size and mobilisation techs over two; unlocks and other military effects are immediate.`)}</h3>
+    <p class="sub">Researching ${current}.</p>
     <div class="progress"><span style="width:${pct(prog)}"></span></div>
     <div class="row">${queue}</div>
     <div class="table-scroll"><table>${branches}</table></div>`;
@@ -1487,8 +1480,7 @@ function tradePanel() {
   const n = state.nations[viewNation], mine = n.id === state.you;
   const h = getHist(`nations/${n.id}`);
   const exp = n.exports.reduce((a, b) => a + b, 0), imp = n.imports.reduce((a, b) => a + b, 0);
-  let html = nationPicker() + `<h2>Trade of ${esc(world.nations[n.id].name)}</h2>
-    <p class="sub">Goods crossing its frontiers, valued at the prices where they were loaded.</p>
+  let html = nationPicker() + `<h2>Trade of ${esc(world.nations[n.id].name)} ${info(`Goods crossing its frontiers, valued at the prices where they were loaded. Nations at war, or allied against each other, don't trade; an embargo stops it too.`)}</h2>
     <div class="stats">
       ${stat("£" + short(exp), "exports / day", trend(h, "exports"))}
       ${stat("£" + short(imp), "imports / day", trend(h, "imports"))}
@@ -1526,10 +1518,10 @@ function tradePanel() {
     const tariff = Math.max(...tradable.map((i) => n.tariff[i]));
     const others = world.nations.filter((o) => o.id !== n.id).map((o) =>
       `<label class="check"><input type="checkbox" data-embargo="${o.id}" ${n.embargo[o.id] ? "checked" : ""}> ${esc(o.name)}</label>`).join("");
-    html += `<h3>Customs</h3>
+    html += `<h3>Customs ${info(`An import tariff is paid on goods entering your nation, at the price they sell for, into the treasury. An embargo stops all trade with that nation, both ways. Trade also spreads knowledge: techs your partners know cost you less.`)}</h3>
       <div class="row"><label>Import tariff <input id="tariff" type="number" min="0" max="500" step="5" value="${Math.round(100 * tariff)}" class="num">%</label><button data-input="tariff">Set</button></div>
       <div class="row"><span class="sub">Embargo:</span> ${others}</div>
-      <p class="sub">Tariffs earned £${fmt(n.tariff_revenue, 1)} today. Trade also spreads knowledge: techs your partners know cost less.</p>`;
+      <p class="sub">Tariffs earned £${fmt(n.tariff_revenue, 1)} today.</p>`;
   }
   return html;
 }
@@ -1550,8 +1542,8 @@ function armiesPanel() {
       <p class="sub">${short(n.soldiers)} soldiers of ${short(n.mobilize_cap)} allowed (${pct(n.mobilization)} of your people), up to ${short(n.max_army_size)} per army.
       Armies cost £${fmt(n.spent_on[world.spending.indexOf("military")], 0)} today of £${fmt(n.income, 0)} income.
       Best doctrine: ${world.doctrines[n.best_doctrine].name}. Raise armies from a tile of yours.</p>
-      <div class="budget"><label>Mobilization<input type="range" min="10" max="100" step="5" value="${Math.round(100 * n.standing)}" id="standing" aria-label="Mobilization in peace"><span class="pct" id="standing-pct">${pct(n.standing)}</span></label></div>
-      <p class="sub">In peace each army keeps this share of its full strength under arms; the rest are reservists, at home working as ordinary people. At war they are called up from across your tiles: an army fills by a ninetieth of its full strength a day, so mobilizing from 10% takes about 80 days, plus the march to the army. High mobilization is ready but costs pay and supplies; low is cheap but leaves you weak for months. ${n.at_war.some(Boolean) ? "<b>You are at war now: every reservist is called up.</b>" : ""}</p>`;
+      <div class="budget"><label>Mobilization ${info(`In peace each army keeps this share of its full strength under arms; the rest are reservists, at home working as ordinary people. At war they are called up from across your tiles: an army fills by a ninetieth of its full strength a day, so mobilising from 10% takes about 80 days, plus the march to the army. High mobilisation is ready but costs pay and supplies; low is cheap but leaves you weak for months.`)}<input type="range" min="10" max="100" step="5" value="${Math.round(100 * n.standing)}" id="standing" aria-label="Mobilization in peace"><span class="pct" id="standing-pct">${pct(n.standing)}</span></label></div>
+      ${n.at_war.some(Boolean) ? `<p class="sub"><b>You are at war now: every reservist is called up.</b></p>` : ""}`;
     html += mine.length ? mine.map((a) => armyCard(a, true)).join("") : `<p class="hint">You have no armies.</p>`;
   }
   html += `<h3>Other armies</h3>` + (others.length ? others.map((a) => armyCard(a, false)).join("") : `<p class="hint">None.</p>`);
@@ -1591,22 +1583,20 @@ function armyCard(a, mine) {
   const def = (a.defense || []).map((m) => { home *= m.value; return `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td><td>${mult(m.value)}</td></tr>`; }).join("");
   const attr = (a.attrition || []).map((m) => `<tr><td>${esc(m.name)}<br><span class="sub">${esc(m.note)}</span></td>
     <td>${m.add ? `${(100 * m.value).toFixed(2)}%` : mult(m.value)}</td></tr>`).join("");
-  const depot = a.depot >= 0 ? `Each good is ordered from every tile of yours that sells it, in proportion to what each offers (among those where it lands no more than half again dearer than the cheapest), so all your works see the demand; it is shipped here (${fmt(a.transport, 1)} transport today)` : `<span class="bad">Cut off: no tile of yours can reach it</span>`;
+  const depot = a.depot >= 0 ? `${fmt(a.transport, 1)} transport today` : `<span class="bad">Cut off: no tile of yours can reach it</span>`;
   // what the army costs a day: each good, the transport to bring it, and pay
   const goods = Object.entries(a.cost || {}).filter(([g]) => g !== "transport");
   const goodsTotal = goods.reduce((t, [, v]) => t + v, 0), transport = (a.cost || {}).transport || 0;
-  html += `<h3>Cost a day</h3><table class="mods">
+  html += `<h3>Cost a day ${info(`Goods (with the transport to bring them) and soldiers' pay, at the nation's average wage. Goods include restocking towards 30 days of needs, so a depleted army costs more while it refills. Unpaid soldiers desert.`)}</h3><table class="mods">
     ${goods.map(([g, v]) => `<tr><td>${esc(g)}</td><td>£${fmt(v, 2)}</td></tr>`).join("")}
     <tr><td>Transport<br><span class="sub">carrying the goods to the army</span></td><td>£${fmt(transport, 2)}</td></tr>
     <tr><td>Soldiers' pay<br><span class="sub">${short(a.men)} men at the nation's average wage</span></td><td>£${fmt(a.pay, 2)}</td></tr>
-    <tr class="total"><td>Total</td><td>£${fmt(goodsTotal + transport + a.pay, 2)}</td></tr></table>
-    <p class="sub" style="margin-top:4px">Goods include restocking towards 30 days of needs, so a depleted army costs more while it refills.</p>`;
-  html += `<h3>Supplies</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">${depot}. The army keeps up to 30 days of needs in stock and fights from its stock. Only the men under arms eat and use kit; reservists live at home.</p>
-    <h3>Strength in battle</h3>
+    <tr class="total"><td>Total</td><td>£${fmt(goodsTotal + transport + a.pay, 2)}</td></tr></table>`;
+  html += `<h3>Supplies ${info(`Each good is ordered from every tile of yours that sells it, in proportion to what each offers (among those where it lands no more than half again dearer than the cheapest), so all your works see the demand; it is shipped here, needing transport. The army keeps up to 30 days of needs in stock and fights from its stock: it is short only once the stock runs out. Only the men under arms eat and use kit; reservists live at home.`)}</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">${depot}</p>
+    <h3>Strength in battle ${info(`Doctrines form a ladder. The levies' power, cut by short food, clothing and arms, is the first rung; each doctrine above multiplies it by its power over the one below, as far as the kit it adds is supplied, and never further than the rung beneath it (tanks are worth nothing without rifles). An army that loses its newest kit falls back down the ladder.<br><br>In battle each side loses men in proportion to the other's strength, and three times that share of its stock (ammunition spent, guns abandoned), so long fights drain supplies fast. A side far weaker than its enemy breaks and falls back to its nearest own tile; surrounded, it fights on to the end. Defenders on their own soil fight harder.`)}</h3>
     <table class="mods"><tr><th>factor</th><th>effect</th></tr>${att}
       <tr class="total"><td>Per soldier</td><td>${per.toFixed(2)}</td></tr>
       <tr><td>× ${short(a.men)} men</td><td>${short(a.strength)}</td></tr></table>
-    <p class="sub" style="margin-top:4px">In battle each side loses men in proportion to the other's strength, and three times that share of its stock (ammunition spent, guns abandoned), so long fights drain supplies fast; an army that falls below 30% of its enemy's strength is destroyed.</p>
     <p class="sub" style="margin-top:8px">When defending its own nation's soil:</p>
     <table class="mods">${def}<tr class="total"><td>Defending</td><td>×${home.toFixed(2)}</td></tr></table>
     <p class="sub" style="margin-top:8px">Daily losses outside battle:</p>
@@ -1653,13 +1643,11 @@ function worldPanel() {
   const [k, row] = seg("world", [["population", "People"], ["gdp", "GDP"], ["utility", "Living"], ["soldiers", "Soldiers"], ["strength", "Might"], ["techs", "Techs"], ["tiles", "Tiles"]], "gdp");
   const ready = hs.every((h) => h && h.data);
   const chart = ready ? lineChart(hs[0].ticks, world.nations.map((o, i) => ({ name: o.name, color: nationColor(o.id), values: hs[i].data[k] })), { f: k === "utility" ? (v) => fmt(v) : k === "gdp" ? money : short }) : lineChart(null, []);
-  return `<h2>The powers</h2><div class="table-scroll"><table>
+  return `<h2>The powers ${info(`<b>War</b>: you can only declare war on a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless; after peace a truce holds for some years.<br><br><b>Balance of power</b>: when one nation's might (over a year) is half again every other's, the rest ally against it, for at least three years and until it falls below 1.2 times the next. Allies embargo it, can't fight each other, and join each other's wars against it.`)}</h2><div class="table-scroll"><table>
     <tr><th>nation</th><th>tiles</th><th>people</th><th>real GDP<br>/ day</th><th>trade / day</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
     <h3>The race</h3>${row}${chart}
-    ${k === "gdp" ? `<p class="sub">${GDP_NOTE}</p>` : ""}
-    <p class="sub" style="margin-top:8px">Balance of power: when one nation's might is half again every other's, the rest ally against it (until it falls below 1.2 times the next): they embargo it, can't fight each other, and join each other's wars against it.</p>
-    <p class="sub">You can only go to war with a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless.</p>
-    <p class="sub">Money in the world: ${short(state.money)} (conserved).</p>`;
+    ${k === "gdp" ? `<p class="sub">Real GDP, in pounds of January 1820 ${info(GDP_NOTE)}</p>` : ""}
+    <p class="sub" style="margin-top:8px">Money in the world: ${short(state.money)} ${info(`The world's money is fixed: none is made or destroyed, it only changes hands. As the economy grows, prices fall instead.`)}</p>`;
 }
 
 // ---- news panel ----------------------------------------------------------------
@@ -1766,3 +1754,33 @@ side.addEventListener("change", (ev) => {
 applyTheme();
 if (document.fonts) document.fonts.ready.then(() => { terrainCache = null; if (state) draw(); });
 route();
+
+// ---- info popovers: one note at a time, opened by an "i" button ---------------
+const infoPop = document.createElement("div");
+infoPop.className = "info-pop";
+infoPop.setAttribute("role", "note");
+infoPop.hidden = true;
+document.body.appendChild(infoPop);
+let infoFor = null; // the tip shown (its text: buttons are re-rendered under it)
+function closeInfo() { infoPop.hidden = true; infoFor = null; }
+document.addEventListener("click", (ev) => {
+  const b = ev.target.closest && ev.target.closest(".info-btn");
+  if (!b) {
+    if (!infoPop.hidden && !infoPop.contains(ev.target)) closeInfo();
+    return;
+  }
+  ev.preventDefault();
+  ev.stopPropagation(); // not a click on the card or row it sits in
+  if (infoFor === b.dataset.tip && !infoPop.hidden) { closeInfo(); return; }
+  infoFor = b.dataset.tip;
+  infoPop.innerHTML = b.dataset.tip;
+  infoPop.hidden = false;
+  const r = b.getBoundingClientRect(), w = infoPop.offsetWidth, h = infoPop.offsetHeight;
+  const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+  const below = r.bottom + 6 + h <= window.innerHeight - 8;
+  infoPop.style.left = `${left}px`;
+  infoPop.style.top = `${below ? r.bottom + 6 : Math.max(8, r.top - h - 6)}px`;
+}, true);
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeInfo(); });
+window.addEventListener("scroll", closeInfo, true);
+window.addEventListener("resize", closeInfo);

@@ -225,3 +225,14 @@ tr.branch th { text-align: left; text-transform: capitalize; color: var(--text);
 .unis td:first-child { white-space: normal; }
 .unis button { min-height: 26px; padding: 0 7px; }
 .nowrap { white-space: nowrap; }
+
+/* "i" buttons and the note they open */
+.info-btn { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  width: 20px; height: 20px; min-height: 0; padding: 0; margin: 0 2px; border-radius: 50%;
+  border: 1px solid var(--muted); background: transparent; color: var(--muted);
+  font: italic 600 13px/1 var(--serif); cursor: pointer; vertical-align: middle; box-shadow: none; }
+.info-btn:hover, .info-btn:focus-visible { color: var(--text); border-color: var(--text); }
+.info-pop { position: fixed; z-index: 60; width: max-content; max-width: min(340px, calc(100vw - 16px));
+  background: var(--surface); color: var(--text); border: 1px solid var(--rule); border-radius: 6px;
+  box-shadow: var(--shadow), 0 6px 18px rgba(0,0,0,.25); padding: 10px 12px; font-size: 14px; line-height: 1.4; }
+.info-pop[hidden] { display: none; }
