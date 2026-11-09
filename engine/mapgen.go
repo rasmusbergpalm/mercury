@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-// Map generation: a seeded world of continents and islands in an ocean,
+// Map generation: a seeded world of one continent in an ocean (inland seas
+// and all, but no islands: there are no navies to reach them),
 // with terrain from elevation, moisture and latitude, named tiles, and
 // nations spread across the land, each starting from a few tiles round its
 // capital. The same options and seed always give the same map.
@@ -24,7 +25,6 @@ type MapOptions struct {
 // Map generation rules.
 const (
 	defaultLand    = 0.55
-	minIsland      = 3   // smaller islands sink back into the sea
 	startTiles     = 4   // each nation starts with about this many tiles
 	mountainShare  = 0.1 // the highest land is mountains...
 	hillShare      = 0.18
@@ -178,9 +178,11 @@ func (n noise) at(x, y float64) float64 {
 
 func smooth(t float64) float64 { return t * t * (3 - 2*t) }
 
-// shape raises land from the sea: noise falling off towards the map's
-// edges, cut at the level that leaves the asked share of land; tiny islands
-// sink.
+// shape raises one continent from the sea (there are no navies, so every
+// nation must be able to march to every other): elevation is noise falling
+// off towards the map's edges; land rises from the highest ground down,
+// cell by cell, until one connected body of it holds the asked share of the
+// map. That body is the land; every other island stays under water.
 func (g *genGrid) shape(rng *rand.Rand, land float64) {
 	w, h := g.xy(g.rows*g.cols - 1)
 	w, h = w+1, h+1
@@ -196,16 +198,46 @@ func (g *genGrid) shape(rng *rand.Rand, land float64) {
 		g.elev[i] = elev.at(x, y) * (0.35 + 0.65*edge)
 		g.moist[i] = moist.at(x, y)
 	}
-	level := quantile(g.elev, 1-land)
-	for i, e := range g.elev {
-		g.land[i] = e > level
+	target := int(math.Round(land * float64(len(g.elev))))
+	order := make([]int, len(g.elev))
+	for i := range order {
+		order[i] = i
 	}
-	for _, island := range g.islands() {
-		if len(island) < minIsland {
-			for _, i := range island {
-				g.land[i] = false
+	sort.SliceStable(order, func(a, b int) bool { return g.elev[order[a]] > g.elev[order[b]] })
+	// union-find over the risen cells: the first body to reach the target wins
+	parent, size := make([]int, len(g.elev)), make([]int, len(g.elev))
+	risen := make([]bool, len(g.elev))
+	var find func(i int) int
+	find = func(i int) int {
+		for parent[i] != i {
+			parent[i] = parent[parent[i]]
+			i = parent[i]
+		}
+		return i
+	}
+	continent := -1
+	for _, c := range order {
+		risen[c], parent[c], size[c] = true, c, 1
+		for _, nb := range g.neighbours(c) {
+			if !risen[nb] {
+				continue
+			}
+			a, b := find(c), find(nb)
+			if a != b {
+				if size[a] < size[b] {
+					a, b = b, a
+				}
+				parent[b] = a
+				size[a] += size[b]
 			}
 		}
+		if r := find(c); size[r] >= target {
+			continent = r
+			break
+		}
+	}
+	for i := range g.land {
+		g.land[i] = risen[i] && find(i) == continent
 	}
 }
 

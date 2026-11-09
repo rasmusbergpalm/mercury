@@ -19,7 +19,7 @@ func generated(t *testing.T, size, seed int) GameSpec {
 }
 
 // Generated maps: the same seed gives the same map, every size makes a
-// playable world (land in the asked share, nations of startTiles tiles
+// playable world (one continent, land in the asked share, nations of startTiles tiles
 // apart from each other, a name for every tile, all different), and the
 // world builds from it.
 func TestGeneratedMaps(t *testing.T) {
@@ -56,6 +56,9 @@ func TestGeneratedMaps(t *testing.T) {
 			w, err := buildGame(spec, false, nil)
 			if err != nil {
 				t.Fatalf("%s/%d: %v", m.Name, seed, err)
+			}
+			if p := pieces(w, w.Regions); p != 1 {
+				t.Errorf("%s/%d: the land is in %d pieces, want one continent", m.Name, seed, p)
 			}
 			for _, n := range w.Nations {
 				if len(n.Regions) != startTiles {
