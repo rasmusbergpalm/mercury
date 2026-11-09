@@ -52,77 +52,6 @@ func (t *Trader) idle() bool {
 // doesn't miss the days it pays.
 const idleMargin = 0.05
 
-// fundByMargin fits the routes' orders to a budget that can't pay for them
-// all. Each buying route keeps a share of its order (at most what its
-// market offered): lambda times its weight, exp(relative margin /
-// fundTemper), and at most all of it; lambda is set so the house spends the
-// budget exactly. Money goes where it earns most, nearly as a strict
-// ranking would put it when margins are far apart, but routes whose margins
-// are close share it, so a small change in margins makes a small change in
-// funding: a strict ranking sends a port's goods to a different place each
-// day as margins wobble past each other. And no buying route is cut to
-// nothing: one whose margin dips below zero for a day keeps some of its
-// trade, rather than losing all of it and taking weeks to grow back.
-func fundByMargin(routes []*Trader, budget float64) {
-	type order struct {
-		t          *Trader
-		cost, gain float64 // the full order's cost, and cost times weight
-	}
-	var orders []order
-	total, top := 0.0, math.Inf(-1)
-	for _, t := range routes {
-		if !t.Active || t.unit <= 0 {
-			continue
-		}
-		t.Q = math.Min(t.Q, t.Origin.Markets[t.Good].Supply)
-		cost := t.Q * t.unit
-		orders = append(orders, order{t: t, cost: cost})
-		total += cost
-		top = math.Max(top, t.RelMargin)
-	}
-	if total <= budget {
-		return
-	}
-	// weights relative to the best route's, so they stay in range
-	weight := func(t *Trader) float64 { return math.Exp((t.RelMargin - top) / fundTemper) }
-	for i := range orders {
-		orders[i].gain = orders[i].cost * weight(orders[i].t)
-	}
-	// water-filling: the best routes are funded in full (lambda times their
-	// margin reaches 1), the rest in proportion to their margins
-	sort.SliceStable(orders, func(a, b int) bool { return orders[a].t.RelMargin > orders[b].t.RelMargin })
-	// what the routes from i on weigh, summed from the end (subtracting
-	// from the total would lose the light ones to rounding)
-	tail := make([]float64, len(orders)+1)
-	for i := len(orders) - 1; i >= 0; i-- {
-		tail[i] = tail[i+1] + orders[i].gain
-	}
-	rest := budget
-	full := 0 // routes funded in full
-	lambda := 0.0
-	for ; full < len(orders) && tail[full] > 0; full++ {
-		lambda = rest / tail[full]
-		if lambda*weight(orders[full].t) <= 1 {
-			break
-		}
-		rest -= orders[full].cost
-	}
-	if full == len(orders) || tail[full] <= 0 {
-		lambda = 0
-	}
-	for i, o := range orders {
-		share := 1.0
-		if i >= full {
-			share = math.Min(1, lambda*weight(o.t))
-		}
-		o.t.Q *= share
-	}
-}
-
-// fundTemper is how far apart (in relative margin) two routes' margins are
-// for the better one to be funded e times as fully, when money is short.
-const fundTemper = 0.05
-
 // planToday lists the routes to plan today, in route order: those that
 // aren't idle, and the idle ones whose turn it is.
 func (h *TradingHouse) planToday(tick int) {
@@ -185,7 +114,23 @@ func (h *TradingHouse) plan(tick int) {
 	} else {
 		budget -= carry
 	}
-	fundByMargin(h.today, budget)
+	order := make([]int, len(h.today))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(a, b int) bool { return h.today[order[a]].RelMargin > h.today[order[b]].RelMargin })
+	for _, i := range order {
+		t := h.today[i]
+		if !t.Active || t.unit <= 0 {
+			continue
+		}
+		t.Q = math.Min(t.Q, t.Origin.Markets[t.Good].Supply)
+		if cost := t.Q * t.unit; cost <= budget {
+			budget -= cost
+		} else {
+			t.Q, budget = budget/t.unit, 0
+		}
+	}
 }
 
 // Trader is one route of a trading house (origin -> dest) for one good.
