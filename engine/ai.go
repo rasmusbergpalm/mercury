@@ -20,7 +20,9 @@ func (w *World) runAI() {
 	if w.Tick%aiInterval != 0 {
 		return
 	}
-	w.updateAlliances()
+	if !w.burning { // (no alliances in the burn-in)
+		w.updateAlliances()
+	}
 	for _, n := range w.Nations {
 		switch {
 		case n.Eliminated():
@@ -76,7 +78,10 @@ func (w *World) think(n *Nation) {
 			invaded = true
 		}
 	}
-	targets := w.expansionTargets(n)
+	var targets []expansionTarget
+	if !w.burning { // in the burn-in armies stay home
+		targets = w.expansionTargets(n)
+	}
 	war := w.atWar(n)
 	t := n.Temper
 	standing := math.Max(MinStanding, DefaultStanding*t.Militarism)
@@ -89,9 +94,11 @@ func (w *World) think(n *Nation) {
 		standing = MaxStanding // call up the reserves
 	}
 	n.SetStanding(math.Min(MaxStanding, standing))
-	w.aiDiplomacy(n, own)
-	w.aiBuild(n)
-	w.aiExpandFirm(n)
+	if !w.burning { // the burn-in runs the peacetime economy only
+		w.aiDiplomacy(n, own)
+		w.aiBuild(n)
+		w.aiExpandFirm(n)
+	}
 	w.aiServices(n, war || invaded, true, true)
 	w.aiTax(n)
 	w.aiArmies(n, targets)
@@ -506,8 +513,8 @@ func (w *World) aiServices(n *Nation, war, funding, universities bool) {
 			}
 		}
 	}
-	if short || !n.canAffordBuilding() {
-		return // new levels only when it can afford them
+	if short || !n.canAffordBuilding() || w.burning {
+		return // new levels only when it can afford them (and not in the burn-in)
 	}
 	for k := Public(0); k < NumServices; k++ {
 		if k == University && (!universities || war || n.serviceBillOf(University) > aiScience*n.Temper.Learning*n.IncomeEMA) {

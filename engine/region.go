@@ -430,7 +430,8 @@ const unsuppliedPriceCap = 10.0
 
 // capUnsuppliedPrices holds the price of goods with no supply here to at most
 // unsuppliedPriceCap times the tile's typical price, and of goods with no
-// demand to at least that fraction of it.
+// demand to speak of (below the market's MinVolume: merchants keep a
+// trickle of bids open on every route) to at least that fraction of it.
 func (r *Region) capUnsuppliedPrices() {
 	var sold []float64
 	for _, m := range r.Markets {
@@ -450,7 +451,7 @@ func (r *Region) capUnsuppliedPrices() {
 		if m.Supply <= 0 && m.Price > high {
 			m.Price = high
 		}
-		if m.Demand <= 0 && m.Price < low {
+		if m.Demand < m.MinVolume && m.Price < low { // (merchants' standing bids are a trickle)
 			m.Price = low
 		}
 	}

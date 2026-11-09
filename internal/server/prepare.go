@@ -83,7 +83,7 @@ func (s *Server) PrepareGame(name string, transportCost float64, turnDays int, m
 		tiles += len(row) - strings.Count(row, string(rune(engine.Sea)))
 	}
 	p := &preparing{id: randomHex(4), name: name, created: time.Now(), mapName: size.Name, tiles: tiles,
-		nations: spec.Nations, turnDays: turnDays, total: engine.SettleDays(tiles)}
+		nations: spec.Nations, turnDays: turnDays, total: engine.PrepareDays(tiles)}
 	s.mu.Lock()
 	busy := 0
 	for _, q := range s.preparing {

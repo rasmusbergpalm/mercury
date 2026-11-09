@@ -25,6 +25,28 @@ const (
 	minSettleYears  = 4
 )
 
+// After settling, each game runs a short burn-in with its starting nations
+// in place (burnIn): taxes, public services and standing armies come in,
+// and prices (war materiel's above all) find their level with them, rather
+// than lurching in the first months of play. Big maps burn in for a year.
+const (
+	burnInYears    = 2
+	burnInBigYears = 1
+)
+
+// BurnInDays is how many days a game on a map of the given number of tiles
+// burns in with its nations.
+func BurnInDays(tiles int) int {
+	if tiles > settleFullTiles {
+		return burnInBigYears * TicksPerYear
+	}
+	return burnInYears * TicksPerYear
+}
+
+// PrepareDays is how many days a new game runs before it opens: settling
+// (unless the map's settled world is cached) and the burn-in.
+func PrepareDays(tiles int) int { return SettleDays(tiles) + BurnInDays(tiles) }
+
 // SettleDays is how many days a map of the given number of tiles settles.
 func SettleDays(tiles int) int {
 	years := float64(SettleYears)
@@ -124,4 +146,49 @@ func (w *World) settleFrom(b *World) {
 		t := w.Traders[i]
 		t.Q, t.StockOrigin, t.StockDest, t.RelMargin, t.Shipped, t.Margin = bt.Q, bt.StockOrigin, bt.StockDest, bt.RelMargin, bt.Shipped, bt.Margin
 	}
+}
+
+// burnIn runs a new game for some days with its nations in place, the
+// computer running each computer nation's peacetime economy (in a server
+// game every nation is the computer's until a player joins): taxes, public
+// services and standing armies. Nothing that is the game's
+// to play happens: no wars or alliances, no research, no building, no
+// taking of free land, no births and deaths and no private investment. Then
+// the clock is set back to the start, with no history or events.
+func (w *World) burnIn(days int, progress func(done int)) {
+	// a nation the computer doesn't run spends nothing in the burn-in, so
+	// it levies nothing either (its taxes would only pile up unspent)
+	tax := make([]float64, len(w.Nations))
+	for i, n := range w.Nations {
+		tax[i] = n.TaxRate
+		if !n.AI {
+			n.TaxRate = 0
+		}
+	}
+	inv, demo := w.Investment, w.Demography
+	w.Investment, w.Demography, w.burning = false, false, true
+	real := make([]GDPChain, len(w.Regions))
+	for i, r := range w.Regions {
+		real[i] = r.Real.clone()
+	}
+	for d := 0; d < days; d++ {
+		w.Step()
+		for _, n := range w.Nations {
+			n.ResearchPoints = 0 // no research yet
+		}
+		if progress != nil && d%30 == 0 {
+			progress(d)
+		}
+	}
+	for i, n := range w.Nations {
+		if !n.AI {
+			n.TaxRate = tax[i]
+		}
+		n.Researching, n.ResearchPoints, n.RealGDP = -1, 0, 0
+	}
+	for i, r := range w.Regions {
+		r.Real = real[i]
+	}
+	w.Investment, w.Demography, w.burning = inv, demo, false
+	w.Tick, w.Events, w.History = 0, nil, History{}
 }

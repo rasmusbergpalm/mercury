@@ -106,12 +106,12 @@ func TestAIArmsWhenThreatened(t *testing.T) {
 func TestPlayersNationsAreLeftAlone(t *testing.T) {
 	w := newAIGame(t)
 	human := w.Nations[1]
-	human.AI = false
-	standing := human.Standing
+	human.AI = false // a player takes over (with the army the burn-in left)
+	standing, armies := human.Standing, len(w.ArmiesOf(human))
 	for i := 0; i < 400; i++ {
 		w.Step()
 	}
-	if human.Standing != standing || len(w.ArmiesOf(human)) != 0 {
+	if human.Standing != standing || len(w.ArmiesOf(human)) != armies {
 		t.Error("the AI acted for a player's nation")
 	}
 	for _, r := range human.Regions {

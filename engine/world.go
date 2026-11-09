@@ -11,6 +11,7 @@ type World struct {
 	Links      []Link
 	Nations    []*Nation
 	Tick       int
+	burning    bool // in the burn-in before a game starts (settle.go)
 	// made is, per good, whether anyone in the world can make it or still
 	// has some to sell; merchants leave the rest alone (refreshMade)
 	made []bool

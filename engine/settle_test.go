@@ -50,3 +50,57 @@ func TestGamesStartSettled(t *testing.T) {
 		}
 	}
 }
+
+// Bug: the world settled without nations, so a game opened with no state
+// demand at all. When the nations' armies, taxes and services came in, the
+// prices of what they buy (arms above all, which nobody had bought before)
+// lurched for months. A burn-in with the nations in place lets them settle,
+// and the game still opens on 1 January 1820 with nothing played.
+func TestGameOpensBurntIn(t *testing.T) {
+	if testing.Short() {
+		t.Skip("settles a map")
+	}
+	spec := DefaultGame
+	spec.AI = true // as in a server game, until players join
+	w, err := BuildGame(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.Tick != 0 || len(w.Events) > 0 || len(w.History.Ticks) > 0 {
+		t.Fatalf("the game opens at tick %d with %d events and %d history samples", w.Tick, len(w.Events), len(w.History.Ticks))
+	}
+	for _, n := range w.Nations {
+		known := 0
+		for _, k := range n.Known {
+			if k {
+				known++
+			}
+		}
+		if known > 0 || n.ResearchPoints > 0 || n.Coalition != 0 || w.atWar(n) {
+			t.Errorf("%s opens with %d techs, %v research points, coalition %d, at war %v", n.Name, known, n.ResearchPoints, n.Coalition, w.atWar(n))
+		}
+		if len(w.ArmiesOf(n)) == 0 {
+			t.Errorf("%s opens with no standing army", n.Name)
+		}
+	}
+	arms := G("arms")
+	start := make([]float64, len(w.Nations))
+	for i, n := range w.Nations {
+		p, v := w.NationPrices(n)
+		if v[arms] <= 0 {
+			t.Fatalf("%s: no arms change hands at the start", n.Name)
+		}
+		start[i] = p[arms]
+	}
+	for d := 0; d < 120; d++ {
+		w.Step()
+		if d%30 != 29 {
+			continue
+		}
+		for i, n := range w.Nations {
+			if p, v := w.NationPrices(n); v[arms] > 0 && (p[arms] > 2*start[i] || p[arms] < start[i]/2) {
+				t.Errorf("day %d: %s's arms price moved from %.2f to %.2f", d+1, n.Name, start[i], p[arms])
+			}
+		}
+	}
+}

@@ -19,8 +19,11 @@ func TestWarGoodsKeepAPriceInPeacetime(t *testing.T) {
 				sold = append(sold, m.Price)
 			}
 		}
-		if p, low := r.Markets[art].Price, median(sold)/unsuppliedPriceCap; p < 0.999*low {
-			t.Fatalf("tile %s: artillery price %v sank below a tenth of the typical price (%v)", r.Name, p, low)
+		low := median(sold) / unsuppliedPriceCap
+		for _, g := range []GoodID{art, G("arms")} { // (arms: merchants' bids are a trickle)
+			if p := r.Markets[g].Price; p < 0.999*low {
+				t.Fatalf("tile %s: %s price %v sank below a tenth of the typical price (%v)", r.Name, Goods[g].Name, p, low)
+			}
 		}
 	}
 	m := nationByName(w, "Montara")

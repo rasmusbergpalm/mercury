@@ -179,7 +179,7 @@ func TestGeneratedGamesStartSettled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if days != SettleDays(len(w.Regions)) || days >= SettleYears*TicksPerYear {
+	if n := len(w.Regions); days != PrepareDays(n) || SettleDays(n) >= SettleYears*TicksPerYear {
 		t.Errorf("settled %d days for %d tiles", days, len(w.Regions))
 	}
 	bread := G("bread")

@@ -399,8 +399,14 @@ func buildGame(spec GameSpec, settle bool, progress func(done, total int)) (*Wor
 	if len(spec.NationMap) != w.Rows {
 		return nil, fmt.Errorf("nation map has %d rows, want %d", len(spec.NationMap), w.Rows)
 	}
+	tiles := len(w.Regions)
+	report := func(done int) {
+		if progress != nil {
+			progress(done, PrepareDays(tiles))
+		}
+	}
 	if settle {
-		b, err := settledBase(spec, progress)
+		b, err := settledBase(spec, func(done, _ int) { report(done) })
 		if err != nil {
 			return nil, err
 		}
@@ -440,6 +446,9 @@ func buildGame(spec GameSpec, settle bool, progress func(done, total int)) (*Wor
 	}
 	w.initLoyalties()
 	w.refreshAllHops()
+	if settle {
+		w.burnIn(BurnInDays(tiles), func(done int) { report(SettleDays(tiles) + done) })
+	}
 	return w, nil
 }
 
