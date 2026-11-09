@@ -188,3 +188,53 @@ func TestAlliesEmbargoTheirFoe(t *testing.T) {
 		t.Error("trade still blocked after the alliance broke up")
 	}
 }
+
+// Allies make peace together: peace between one ally and the nation they
+// are allied against is peace for every ally at war with it.
+func TestAlliesMakePeaceTogether(t *testing.T) {
+	w := newQuietGame(t)
+	m, v, th := nationByName(w, "Montara"), nationByName(w, "Verdania"), nationByName(w, "Thalassa")
+	m.Coalition, v.Coalition = th.ID+1, th.ID+1
+	for _, n := range []*Nation{m, v} {
+		n.AtWar[th.ID], th.AtWar[n.ID] = true, true
+	}
+	if err := w.makePeace(m.ID, th.ID); err != nil {
+		t.Fatal(err)
+	}
+	if v.AtWar[th.ID] || th.AtWar[v.ID] {
+		t.Error("Montara made a separate peace: Verdania is still at war with Thalassa")
+	}
+	// and the other way round: Thalassa offering to Verdania ends both wars
+	for _, n := range []*Nation{m, v} {
+		n.AtWar[th.ID], th.AtWar[n.ID] = true, true
+	}
+	if err := w.makePeace(th.ID, v.ID); err != nil {
+		t.Fatal(err)
+	}
+	if m.AtWar[th.ID] {
+		t.Error("Thalassa made a separate peace with Verdania: Montara is still at war")
+	}
+}
+
+// Regression: when the nation an alliance stands against declares war on one
+// ally, the others join at once - even if they all made peace with it
+// recently (allies make peace together, so no truce holds them back).
+func TestAlliesJoinAWarOnTheirPartner(t *testing.T) {
+	w := newQuietGame(t)
+	m, v, th := nationByName(w, "Montara"), nationByName(w, "Verdania"), nationByName(w, "Thalassa")
+	m.Coalition, v.Coalition = th.ID+1, th.ID+1
+	w.Annex(regionByName(w, "12").ID, th.ID) // Thalassa borders Montara
+	// a war and a peace a year ago
+	for _, n := range []*Nation{m, v} {
+		n.AtWar[th.ID], th.AtWar[n.ID] = true, true
+	}
+	w.Tick = 400
+	w.makePeace(m.ID, th.ID)
+	w.Tick += 365
+	if err := w.DeclareWar(th.ID, m.ID); err != nil {
+		t.Fatal(err)
+	}
+	if !v.AtWar[th.ID] || !th.AtWar[v.ID] {
+		t.Error("Verdania didn't join the war Thalassa declared on its ally")
+	}
+}

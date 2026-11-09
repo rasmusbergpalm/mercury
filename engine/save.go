@@ -31,6 +31,7 @@ type ArmySnap struct {
 	Path                         []int
 	Coming                       []Draft
 	Retreating                   bool
+	BattleStart                  float64 `json:",omitempty"`
 }
 
 type SiegeSnap struct {
@@ -171,7 +172,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	for _, a := range w.Armies {
 		s.Armies = append(s.Armies, ArmySnap{a.ID, a.Nation.ID, a.Region, a.Doctrine, a.Men, a.Target, a.March,
 			append([]float64(nil), a.Supply...), append([]float64(nil), a.Stock...), append([]int(nil), a.Path...),
-			append([]Draft(nil), a.Coming...), a.Retreating})
+			append([]Draft(nil), a.Coming...), a.Retreating, a.BattleStart})
 	}
 	s.NextArmyID = w.NextArmyID
 	s.Events = append([]Event(nil), w.Events...)
@@ -327,7 +328,7 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 		w.Armies = append(w.Armies, &Army{ID: as.ID, Nation: w.Nations[as.Nation], Region: as.Region,
 			Doctrine: as.Doctrine, Men: as.Men, Target: as.Target, March: as.March, Supply: as.Supply,
-			Stock: as.Stock, Path: as.Path, Coming: as.Coming, Retreating: as.Retreating})
+			Stock: as.Stock, Path: as.Path, Coming: as.Coming, Retreating: as.Retreating, BattleStart: as.BattleStart})
 	}
 	w.NextArmyID = s.NextArmyID
 	w.Events = append([]Event(nil), s.Events...)

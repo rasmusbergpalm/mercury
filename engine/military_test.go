@@ -891,3 +891,47 @@ func TestPeaceSeparatesArmiesOnOneTile(t *testing.T) {
 		}
 	}
 }
+
+// An army fights on until its strength is down to a third of what it began
+// the battle with, then falls back, losing half its men and half its stock
+// on the way.
+func TestArmiesFightToAThirdThenFallBackAtHalf(t *testing.T) {
+	w := newNeighbourGame(t)
+	w.Migration, w.Demography = false, false
+	w.DeclareWar(0, 1)
+	field := regionByName(w, "01")
+	w.Annex(regionByName(w, "02").ID, 1) // somewhere for Beta to fall back to
+	x, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
+	y, _ := w.RaiseArmy(1, field.ID, 0)
+	for _, a := range []*Army{x, y} {
+		a.Men = 30
+		for g := range a.Supply {
+			a.Supply[g] = 1
+		}
+		for g, per := range Doctrines[a.Doctrine].Needs {
+			a.Stock[g] = 30 * a.Men * per
+		}
+	}
+	x.Men, x.Region = 80, field.ID // far stronger than Beta's
+	began := y.Strength()
+	for day := 1; day <= 60 && !y.Retreating; day++ {
+		men, stock, str := y.Men, y.Stock[G("bread")], y.Strength()
+		w.battles()
+		if y.Retreating {
+			if str < breakShare*began-1e-9 {
+				t.Errorf("Beta fought on below a third of its strength (%v of %v)", str, began)
+			}
+			if y.Men > (1-retreatLoss)*men+1e-9 {
+				t.Errorf("falling back cost %v -> %v men, want at least half", men, y.Men)
+			}
+			if y.Stock[G("bread")] > (1-retreatLoss)*stock+1e-9 {
+				t.Errorf("falling back cost %v -> %v bread, want at least half", stock, y.Stock[G("bread")])
+			}
+			if y.BattleStart != 0 {
+				t.Error("a beaten army still counts as in the battle")
+			}
+			return
+		}
+	}
+	t.Fatal("the beaten army never fell back")
+}

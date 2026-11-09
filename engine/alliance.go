@@ -3,12 +3,13 @@ package engine
 import "errors"
 
 // Balance of power: when one nation grows far stronger than all the others,
-// they ally against it, and embargo it while the alliance lasts. An alliance forms when the strongest nation's might
-// is at least allianceForm times every other's, and breaks up when it falls
-// below allianceBreak times the next strongest (or the leader or a member
-// falls). Allies can't make war on each other, and when one of them is at war
-// with the nation they're allied against, the others join that war (without
-// needing a border), unless they made peace with it within the truce.
+// they ally against it, and embargo it while the alliance lasts. An alliance
+// forms when the strongest nation's might is at least allianceForm times
+// every other's, and breaks up when it falls below allianceBreak times the
+// next strongest (or the leader or a member falls). Allies can't make war
+// on each other; when one of them is at war with the nation they're allied
+// against, the others join that war the same day (without needing a
+// border); and they make peace with it together.
 //
 // Might is judged over a year (a moving average, updated monthly), and an
 // alliance holds for at least allianceYears unless its foe or a member falls:
@@ -89,30 +90,31 @@ func (w *World) updateAlliances() {
 	}
 	// allies join each other's wars against it
 	for _, h := range w.Nations {
-		if w.members(h) == 0 {
+		w.callAllies(h)
+	}
+}
+
+// callAllies brings every nation allied against h into the war, as soon as
+// one of them is at war with it (whoever declared it). Allies make peace
+// together, so no truce stands in the way.
+func (w *World) callAllies(h *Nation) {
+	fighting := false
+	for _, n := range w.Nations {
+		if w.AlliedAgainst(n) == h && n.AtWar[h.ID] {
+			fighting = true
+		}
+	}
+	if !fighting {
+		return
+	}
+	for _, n := range w.Nations {
+		if w.AlliedAgainst(n) != h || n.AtWar[h.ID] || n.Eliminated() {
 			continue
 		}
-		fighting := false
-		for _, n := range w.Nations {
-			if w.AlliedAgainst(n) == h && n.AtWar[h.ID] {
-				fighting = true
-			}
-		}
-		if !fighting {
-			continue
-		}
-		for _, n := range w.Nations {
-			if w.AlliedAgainst(n) != h || n.AtWar[h.ID] || n.Eliminated() {
-				continue
-			}
-			if since := w.Tick - n.WarSince[h.ID]; n.WarSince[h.ID] > 0 && float64(since) < aiTruceYears*TicksPerYear {
-				continue // a separate peace holds for the truce
-			}
-			n.AtWar[h.ID], h.AtWar[n.ID] = true, true
-			n.WarSince[h.ID], h.WarSince[n.ID] = w.Tick, w.Tick
-			n.PeaceOffer[h.ID], h.PeaceOffer[n.ID] = false, false
-			w.emit(-1, "war", -1, "%s joins its allies' war on %s", n.Name, h.Name)
-		}
+		n.AtWar[h.ID], h.AtWar[n.ID] = true, true
+		n.WarSince[h.ID], h.WarSince[n.ID] = w.Tick, w.Tick
+		n.PeaceOffer[h.ID], h.PeaceOffer[n.ID] = false, false
+		w.emit(-1, "war", -1, "%s joins its allies' war on %s", n.Name, h.Name)
 	}
 }
 

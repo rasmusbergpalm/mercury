@@ -88,6 +88,9 @@ type Army struct {
 	// Retreating armies fall back to a home tile after a lost battle: they
 	// march at double speed through anything and don't fight or occupy.
 	Retreating bool
+	// BattleStart is its strength when its current battle began (0: not in
+	// battle): it falls back once down to a third of it.
+	BattleStart float64
 
 	// this tick's supply order
 	depot    *Region         // its nearest home tile, where recruits set out from
@@ -105,19 +108,20 @@ type Army struct {
 
 // Army and war rules.
 const (
-	recruitRate     = 0.002  // share of each tile's people that can be drafted per day, nation-wide
-	demobilizeRate  = 0.01   // share of an army sent home per day when over its target
-	baseAttrition   = 0.0002 // share of men lost per day even when well supplied
-	hungerAttrition = 0.004  // extra share lost per day when food is entirely missing
-	marchDaysPerHop = 8.0    // days to march one hop of cost 1 (roads and rails shorten it)
-	battleRate      = 0.04   // men lost per day per unit of enemy strength
-	defenderHome    = 1.2    // defending one's own tile
-	retreatRatio    = 0.3    // on a battle's first day, a side weaker than this fraction of its enemy breaks and falls back
-	occupationDays  = 180.0  // days an unopposed army needs to take unowned land (techs change the pace)
-	ownedTileFactor = 2.0    // taking another nation's tile takes this many times longer
-	minOccupiers    = 0.5    // an army needs at least this many men to occupy or fight
-	stockDays       = 30.0   // days of supplies an army keeps in stock
-	refillDays      = 10.0   // an empty stock is refilled over this many days (at most doubling the order)
+	recruitRate     = 0.002   // share of each tile's people that can be drafted per day, nation-wide
+	demobilizeRate  = 0.01    // share of an army sent home per day when over its target
+	baseAttrition   = 0.0002  // share of men lost per day even when well supplied
+	hungerAttrition = 0.004   // extra share lost per day when food is entirely missing
+	marchDaysPerHop = 8.0     // days to march one hop of cost 1 (roads and rails shorten it)
+	battleRate      = 0.06    // men lost per day per unit of enemy strength
+	defenderHome    = 1.2     // defending one's own tile
+	breakShare      = 1.0 / 3 // an army falls back once its strength is down to this share of what it had when the battle began
+	retreatLoss     = 0.5     // a beaten army loses this share of its men and its stock as it falls back
+	occupationDays  = 180.0   // days an unopposed army needs to take unowned land (techs change the pace)
+	ownedTileFactor = 2.0     // taking another nation's tile takes this many times longer
+	minOccupiers    = 0.5     // an army needs at least this many men to occupy or fight
+	stockDays       = 30.0    // days of supplies an army keeps in stock
+	refillDays      = 10.0    // an empty stock is refilled over this many days (at most doubling the order)
 	// Occupying is costly: over a full occupation an army loses about 40% of
 	// its men taking another nation's tile and about 15% taking free land,
 	// however fast it goes. siegeLoss is -ln(share kept).
@@ -606,6 +610,9 @@ func (w *World) DeclareWar(a, b int) error {
 	na.WarSince[b], nb.WarSince[a] = w.Tick, w.Tick
 	na.PeaceOffer[b], nb.PeaceOffer[a] = false, false
 	w.emit(-1, "war", -1, "%s declares war on %s", na.Name, nb.Name)
+	for _, h := range []*Nation{na, nb} { // allies answer at once
+		w.callAllies(h)
+	}
 	return nil
 }
 
@@ -643,6 +650,27 @@ func (w *World) makePeace(a, b int) error {
 	if a == b || !na.AtWar[b] {
 		return ErrAtPeace
 	}
+	// allies make peace together: peace with the nation they're allied
+	// against is peace for every ally at war with it
+	foe, side := na, nb
+	if w.AlliedAgainst(na) == nb {
+		foe, side = nb, na
+	}
+	if w.AlliedAgainst(side) == foe {
+		for _, m := range w.Nations {
+			if m != side && w.Allied(m, side) && m.AtWar[foe.ID] {
+				w.peacePair(m, foe)
+			}
+		}
+	}
+	w.peacePair(na, nb)
+	return nil
+}
+
+// peacePair ends the war between two nations; borders stay where they are
+// and armies go home.
+func (w *World) peacePair(na, nb *Nation) {
+	a, b := na.ID, nb.ID
 	na.AtWar[b], nb.AtWar[a] = false, false
 	na.WarSince[b], nb.WarSince[a] = w.Tick, w.Tick // now: when peace was made
 	na.PeaceOffer[b], nb.PeaceOffer[a] = false, false
@@ -675,7 +703,6 @@ func (w *World) makePeace(a, b int) error {
 		}
 	}
 	w.emit(-1, "peace", -1, "%s and %s make peace", na.Name, nb.Name)
-	return nil
 }
 
 // Siege is an occupation: a nation's army working to take a tile.
@@ -1179,16 +1206,11 @@ func (w *World) battles() {
 			r.Battle++
 		} else {
 			r.Battle = 0
+			for _, a := range here {
+				a.BattleStart = 0 // the battle is over
+			}
 		}
 	}
-}
-
-// breakRatio is how far behind its enemy a side may fall before it breaks
-// and is destroyed, on the day-th day of a battle: at first only a side
-// badly outmatched breaks, but the longer the fight, the smaller the margin
-// that decides it, so battles don't drag on.
-func breakRatio(day int) float64 {
-	return math.Min(0.95, retreatRatio+0.06*float64(day-1))
 }
 
 // fight is a day of battle between two nations' armies on a tile; it
@@ -1214,6 +1236,11 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 	if len(ax) == 0 || len(ay) == 0 {
 		return false
 	}
+	for _, a := range append(append([]*Army{}, ax...), ay...) {
+		if a.BattleStart <= 0 { // its first day in this battle
+			a.BattleStart = a.Strength()
+		}
+	}
 	lose := func(armies []*Army, men, losses float64) {
 		if men <= 0 {
 			return
@@ -1224,11 +1251,20 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 	}
 	lose(ax, mx, math.Min(mx, battleRate*py))
 	lose(ay, my, math.Min(my, battleRate*px))
+	// an army fights until it is down to breakShare of the strength it
+	// began the battle with, then falls back, losing half its men and kit
+	// on the way (stragglers, the wounded, guns left behind); surrounded, it
+	// fights on to the end
 	defeat := func(armies []*Army, n, enemy *Nation) {
 		fled, lost := 0, 0
 		for _, a := range armies {
+			if a.Strength() >= breakShare*a.BattleStart {
+				continue
+			}
 			switch {
 			case w.fallBack(a):
+				a.lose(retreatLoss, 1)
+				a.BattleStart = 0
 				fled++
 			case a.Men < 2*minOccupiers: // surrounded, and all but gone
 				w.destroyArmy(a)
@@ -1240,16 +1276,11 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 		case lost > 0:
 			w.emit(-1, "battle", r.ID, "%s destroys %s's surrounded army at tile %s", enemy.Name, n.Name, r.Name)
 		case fled > 0:
-			w.emit(-1, "battle", r.ID, "%s defeats %s at tile %s; the beaten army falls back", enemy.Name, n.Name, r.Name)
+			w.emit(-1, "battle", r.ID, "%s defeats %s at tile %s; the beaten army falls back, losing half its men and kit", enemy.Name, n.Name, r.Name)
 		}
 	}
-	br := breakRatio(day)
-	switch {
-	case px < br*py:
-		defeat(ax, x, y)
-	case py < br*px:
-		defeat(ay, y, x)
-	}
+	defeat(ax, x, y)
+	defeat(ay, y, x)
 	return true
 }
 
