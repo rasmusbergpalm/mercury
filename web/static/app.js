@@ -500,6 +500,11 @@ function seg(key, options, fallback) {
   const cur = options.some(([k]) => k === chartPick[key]) ? chartPick[key] : fallback;
   return [cur, `<div class="seg">${options.map(([k, label]) => `<button data-pick="${key}" data-val="${esc(k)}" class="${k === cur ? "on" : ""}">${label}</button>`).join("")}</div>`];
 }
+// like seg, as a drop-down: for long lists (goods)
+function pickSelect(key, options, fallback, label) {
+  const cur = options.some(([k]) => k === chartPick[key]) ? chartPick[key] : fallback;
+  return [cur, `<div class="row" style="margin:0 0 6px"><select data-pick-select="${key}" aria-label="${esc(label)}">${options.map(([k, l]) => `<option value="${esc(k)}"${k === cur ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></div>`];
+}
 const stat = (v, k, d = "") => `<div class="stat"><div class="v">${v}</div><div class="k">${k}</div>${d ? `<div class="d">${d}</div>` : ""}</div>`;
 // change over the last year of history, as a small coloured note
 function trend(h, key, sub) {
@@ -1406,7 +1411,7 @@ function tileChart(h) {
   if (k === "trade") chart = lineChart(T, [{ name: "exports", color: series(1), values: d.exports }, { name: "imports", color: series(2), values: d.imports }], { f: money });
   else if (k === "classes") chart = lineChart(T, world.classes.map((c, i) => ({ name: c, color: series(i), values: d.class_income[i] })), { f: (v) => fmt(v) }) + `<p class="sub">Income per head per day.</p>`;
   else if (k === "prices") {
-    const [g, prow] = seg("tile-price", world.consumer_goods.map((g) => [String(g), world.goods[g].name]), String(world.consumer_goods[0]));
+    const [g, prow] = pickSelect("tile-price", world.consumer_goods.map((g) => [String(g), world.goods[g].name]), String(world.consumer_goods[0]), "Good to chart");
     const idx = world.consumer_goods.indexOf(+g);
     chart = prow + lineChart(T, [{ name: `${world.goods[+g].name} price`, color: series(0), values: d.prices[idx] }], { f: (v) => fmt(v) });
   } else chart = one({ population: "people", wage: "wage", utility: "living standard", gdp: "real GDP per day (1820 £)" }[k], d[k], k === "population" ? short : k === "gdp" ? money : (v) => fmt(v));
@@ -1526,7 +1531,7 @@ function pricesBlock(h, n) {
   if (!goods.length) return html + `<p class="hint">Nothing traded today.</p>`;
   const series_ = h && h.data && h.data.prices;
   if (series_) {
-    const [g, prow] = seg("nation-price", opts, opts.find(([k]) => world.goods[+k].name === "bread") ? String(world.goods.findIndex((x) => x.name === "bread")) : opts[0][0]);
+    const [g, prow] = pickSelect("nation-price", opts, opts.find(([k]) => world.goods[+k].name === "bread") ? String(world.goods.findIndex((x) => x.name === "bread")) : opts[0][0], "Good to chart");
     html += prow + lineChart(h.ticks, [{ name: `${world.goods[+g].name} price`, color: nationColor(n.id), values: series_[+g].map((v) => (v > 0 ? v : null)) }], { f: (v) => fmt(v) });
   }
   const change = (g) => {
@@ -1950,6 +1955,7 @@ side.addEventListener("input", (ev) => {
   if (ev.target.id === "pension") $("pension-label").textContent = `${ev.target.value}/${world.max_pension}`;
 });
 side.addEventListener("change", (ev) => {
+  if (ev.target.dataset.pickSelect) { chartPick[ev.target.dataset.pickSelect] = ev.target.value; ev.target.blur(); renderPanel(true); return; }
   if (ev.target.id === "standing") command(`/nations/${state.you}/standing?share=${+ev.target.value / 100}`);
   if (ev.target.id === "auto-build") command(`/nations/${state.you}/auto?on=${ev.target.checked}`);
   if (ev.target.id === "auto-tax") command(`/nations/${state.you}/auto-tax?on=${ev.target.checked}`);
