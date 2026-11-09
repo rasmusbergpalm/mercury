@@ -176,6 +176,7 @@ $("new-game").addEventListener("submit", async (ev) => {
   try {
     const q = new URLSearchParams({ name: $("new-name").value.trim(), cost: $("new-cost").value, turn: $("new-turn").value, map: $("new-map").value });
     if ($("new-nations").value) q.set("nations", $("new-nations").value);
+    if ($("new-divided").checked) q.set("divided", "1");
     const g = await api("POST", `/api/games?${q}`);
     if (g.preparing === undefined) { location.hash = `#/game/${g.id}`; return; }
     awaiting = g.id; // a generated map settles first: open it when it's ready

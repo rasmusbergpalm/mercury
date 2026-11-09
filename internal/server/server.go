@@ -97,7 +97,19 @@ const Warmup = 30
 // CreateGame adds a game on the default map, run in by Warmup days.
 // turnDays > 0 makes it turn-based.
 func (s *Server) CreateGame(name string, transportCost float64, turnDays int) (*Game, error) {
+	return s.createClassic(name, transportCost, turnDays, false)
+}
+
+// createClassic adds a game on the classic map; divided shares out all its
+// land among the nations from the start (engine.DivideLand).
+func (s *Server) createClassic(name string, transportCost float64, turnDays int, divided bool) (*Game, error) {
 	spec := engine.DefaultGame
+	if divided {
+		var err error
+		if spec, err = engine.DivideLand(spec); err != nil {
+			return nil, err
+		}
+	}
 	spec.TransportCost = transportCost
 	spec.AI = true
 	spec.Seed = time.Now().UnixNano() // each game's rivals have their own temperaments
@@ -385,7 +397,7 @@ func (s *Server) handleCreateGame(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	q := r.URL.Query()
-	m := MapChoice{Size: q.Get("map")}
+	m := MapChoice{Size: q.Get("map"), Divided: q.Get("divided") == "1"}
 	if q.Has("nations") {
 		n, err := strconv.Atoi(q.Get("nations"))
 		if err != nil || n < 1 || n > engine.MaxNations {

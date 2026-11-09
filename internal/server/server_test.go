@@ -570,3 +570,17 @@ func TestGeneratedGameIsPrepared(t *testing.T) {
 		t.Errorf("world of %d tiles, first named %q", len(w.Regions), w.Regions[0].Name)
 	}
 }
+
+// A game with no free land starts with every tile owned.
+func TestDividedClassicGame(t *testing.T) {
+	e := newEnv(t)
+	var g GameSummary
+	e.do("POST", "/api/games?name=Shared&divided=1", "", nil, http.StatusCreated, &g)
+	total := 0
+	for _, n := range g.Nations {
+		total += n.Tiles
+	}
+	if total != g.Tiles {
+		t.Errorf("nations hold %d of %d tiles", total, g.Tiles)
+	}
+}

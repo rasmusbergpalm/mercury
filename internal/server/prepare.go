@@ -38,13 +38,16 @@ type MapChoice struct {
 	Size    string // "classic" (the hand-made map) or one of engine.MapSizes
 	Nations int    // 0: the size's default
 	Seed    int64  // 0: a fresh one
+	// Divided shares out all the land among the nations from the start, so
+	// that there is no free land to take (engine.DivideLand).
+	Divided bool
 }
 
 // PrepareGame starts a game on a generated map and returns its ID; it
 // opens once its world has settled. The classic map opens at once.
 func (s *Server) PrepareGame(name string, transportCost float64, turnDays int, m MapChoice) (string, error) {
 	if m.Size == "" || m.Size == "classic" {
-		g, err := s.CreateGame(name, transportCost, turnDays)
+		g, err := s.createClassic(name, transportCost, turnDays, m.Divided)
 		if err != nil {
 			return "", err
 		}
@@ -68,6 +71,11 @@ func (s *Server) PrepareGame(name string, transportCost float64, turnDays int, m
 	spec, err := engine.GenerateGame(engine.MapOptions{Rows: size.Rows, Cols: size.Cols, Nations: m.Nations, Seed: m.Seed})
 	if err != nil {
 		return "", err
+	}
+	if m.Divided {
+		if spec, err = engine.DivideLand(spec); err != nil {
+			return "", err
+		}
 	}
 	spec.TransportCost, spec.AI = transportCost, true
 	tiles := 0
