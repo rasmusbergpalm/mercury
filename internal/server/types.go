@@ -271,6 +271,7 @@ type State struct {
 	Flows   []Flow         `json:"flows"`
 	Nations []NationState  `json:"nations"`
 	Hops    []float64      `json:"hops"` // aligned with WorldInfo.Links
+	Made    []bool         `json:"made"` // per good: can anyone make it yet (or still sell some)
 }
 
 type PopState struct {
@@ -463,7 +464,10 @@ const FlowsAlways = 100
 
 func worldState(w *engine.World, flows bool) State {
 	st := State{Tick: w.Tick, Date: w.Date().Format("2 January 2006"), Money: w.Money(), You: -1,
-		Flows: []Flow{}, Armies: []ArmyState{}}
+		Flows: []Flow{}, Armies: []ArmyState{}, Made: make([]bool, engine.NumGoods)}
+	for g := range st.Made {
+		st.Made[g] = w.Made(engine.GoodID(g))
+	}
 	for _, a := range w.Armies {
 		sup, days, src, off := map[string]float64{}, map[string]float64{}, map[string]int{}, map[string]float64{}
 		shares := map[string][]SourceShare{}

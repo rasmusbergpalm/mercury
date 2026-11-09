@@ -144,6 +144,7 @@ th, td { padding: 3px 4px; text-align: right; border-bottom: 1px dotted var(--bo
 th:first-child, td:first-child { text-align: left; }
 th { color: var(--muted); font-weight: 400; font-style: italic; border-bottom: 1px solid var(--rule); }
 tr.dim td { color: var(--muted); }
+tr.idle td { color: var(--muted); }
 tr.total td { border-top: 1px solid var(--rule); border-bottom: 3px double var(--rule); font-weight: 600; }
 td button { min-height: 28px; padding: 0 8px; font-size: 14px; }
 .table-scroll { overflow-x: auto; }

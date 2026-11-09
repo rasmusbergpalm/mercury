@@ -10,6 +10,7 @@ type Region struct {
 	Terrain   string
 	Coastal   bool // on the map's edge, by the ocean
 	Firms     []*Firm
+	made      []bool // shared with the world (World.refreshMade)
 	Pops      []*Pop
 	Markets   []*Market // indexed by good
 	Wage      float64
@@ -324,6 +325,10 @@ func (r *Region) GoodsMarkets() {
 	defer func() { sc.bids, sc.asks, sc.bidRefs, sc.askRefs = bids, asks, bidRefs, askRefs }()
 	for g, market := range r.Markets {
 		gid := GoodID(g)
+		if r.made != nil && !r.made[g] { // not in play yet (World.refreshMade)
+			market.Supply, market.Demand = 0, 0
+			continue
+		}
 		bids, asks, bidRefs, askRefs = bids[:0], asks[:0], bidRefs[:0], askRefs[:0]
 		for i, p := range r.Pops {
 			if q := r.popDemand[i][g]; q > 0 {
@@ -414,14 +419,18 @@ func (r *Region) GoodsMarkets() {
 }
 
 // unsuppliedPriceCap is how far above the tile's typical price (the median
-// price of the goods it has sellers for) a good nobody sells there may climb.
-// A shortage still pulls in imports and producers, but a good no one can
-// make yet doesn't build up a price that means nothing, which the first
-// producer and merchants would then take at face value.
+// price of the goods it has sellers for) a good nobody sells there may climb,
+// and how far below it a good nobody buys there may fall. A shortage still
+// pulls in imports and producers, but a good no one can make yet doesn't
+// build up a price that means nothing, which the first producer and
+// merchants would then take at face value. Likewise a good no one wants for
+// now (war materiel in peacetime) doesn't sink to nothing, and needn't take
+// months to climb back once buyers return.
 const unsuppliedPriceCap = 10.0
 
-// capUnsuppliedPrices holds the price of goods with no supply here to
-// unsuppliedPriceCap times the tile's typical price.
+// capUnsuppliedPrices holds the price of goods with no supply here to at most
+// unsuppliedPriceCap times the tile's typical price, and of goods with no
+// demand to at least that fraction of it.
 func (r *Region) capUnsuppliedPrices() {
 	var sold []float64
 	for _, m := range r.Markets {
@@ -432,10 +441,17 @@ func (r *Region) capUnsuppliedPrices() {
 	if len(sold) == 0 {
 		return
 	}
-	limit := unsuppliedPriceCap * median(sold)
-	for _, m := range r.Markets {
-		if m.Supply <= 0 && m.Price > limit {
-			m.Price = limit
+	typical := median(sold)
+	high, low := unsuppliedPriceCap*typical, typical/unsuppliedPriceCap
+	for g, m := range r.Markets {
+		if r.made != nil && !r.made[g] {
+			continue // not in play: no price to speak of
+		}
+		if m.Supply <= 0 && m.Price > high {
+			m.Price = high
+		}
+		if m.Demand <= 0 && m.Price < low {
+			m.Price = low
 		}
 	}
 }

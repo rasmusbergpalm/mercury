@@ -11,6 +11,9 @@ type World struct {
 	Links      []Link
 	Nations    []*Nation
 	Tick       int
+	// made is, per good, whether anyone in the world can make it or still
+	// has some to sell; merchants leave the rest alone (refreshMade)
+	made []bool
 	// Game rules, off in the classic world: firms invest in building levels,
 	// people migrate between neighbouring tiles, and populations grow.
 	Investment, Migration, Demography bool
@@ -120,6 +123,7 @@ func (w *World) Soldiers() float64 {
 // (see eachRegion); what they owe each other is settled in order after.
 func (w *World) Step() {
 	w.runAI()
+	w.refreshMade()
 	w.eachRegion(func(r *Region) {
 		copy(w.TradePrices[r.ID], r.refreshPrices())
 		r.Plan()
@@ -189,6 +193,45 @@ func (w *World) Step() {
 			w.record()
 		}
 	}
+}
+
+// refreshMade notes which goods are in play: those some firm on the map
+// makes without any technology, or with one that at least one nation knows.
+// The rest (oil before anyone has Petroleum) are left out of the economy
+// entirely: no market clears for them, no merchant or state buys them, and
+// they have no price.
+func (w *World) refreshMade() {
+	if w.made == nil {
+		w.made = make([]bool, NumGoods)
+	}
+	for g := range w.made {
+		w.made[g] = false
+	}
+	for _, r := range w.Regions {
+		for _, f := range r.Firms {
+			if w.made[f.Output] {
+				continue
+			}
+			if f.Requires == "" {
+				w.made[f.Output] = true
+				continue
+			}
+			for _, n := range w.Nations {
+				if n.Has(f.Requires) {
+					w.made[f.Output] = true
+					break
+				}
+			}
+		}
+	}
+	for _, r := range w.Regions {
+		r.made = w.made
+	}
+}
+
+// Made reports whether good g is in play: some nation can make it.
+func (w *World) Made(g GoodID) bool {
+	return w.made == nil || w.made[g]
 }
 
 // trackTrade updates each nation's moving average of trade with every other.

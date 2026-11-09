@@ -420,6 +420,9 @@ func (n *Nation) plan(w *World) {
 		}
 	}
 	addTo := func(r *Region, c claim) {
+		if !w.Made(c.good) {
+			return // nobody can make it yet: there is nothing to buy
+		}
 		m := r.Markets[c.good]
 		margin, floor := stateBuyMargin, stateBuyFloor
 		if c.kind == armyClaim { // the armies press harder: a shortage must drive the price up

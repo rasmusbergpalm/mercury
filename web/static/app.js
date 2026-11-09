@@ -757,8 +757,18 @@ function overlayValue(id) {
 const overlayLabel = () => ($("overlay").value === "price" ? `${world.goods[+$("good").value].name} price ÷ wage` : $("overlay").selectedOptions[0].textContent);
 const fmtOverlay = (v) => ($("overlay").value === "growth" ? `${(100 * v).toFixed(1)}%` : isShare() ? pct(v) : short(v));
 
+// goods nobody can make yet (oil before anyone drills) have no market: leave
+// them out of the goods pickers
+function hideUnmadeGoods() {
+  if (!state.made) return;
+  for (const id of ["good", "flow-good"]) {
+    for (const o of $(id).options) if (o.value !== "all") o.hidden = o.disabled = !state.made[+o.value];
+  }
+}
+
 function draw() {
   if (!world || !state) return;
+  hideUnmadeGoods();
   const dpr = window.devicePixelRatio || 1;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(terrainLayer(), 0, 0);
@@ -1344,8 +1354,11 @@ function tilePanel() {
     <div class="legend-inline">${world.tiers.map((t, i) => `<span><span class="swatch" style="background:${tc[i]}"></span>${t} ${pct(s.tier_spend[i] / total)}</span>`).join("")}</div>`;
   const cons = world.goods.findIndex((g) => g.name === "construction");
   const levelPrice = world.level_cost * ((d.markets.find((x) => x.good === cons) || { price: 0 }).price);
-  const firms = d.firms.map((f, i) => ({ ...f, i })).filter((f) => !f.enabled || f.labor > 0.05 || f.produced > 0.05 || f.levels > 1)
-    .sort((a, b) => (b.enabled - a.enabled) || (b.state - a.state) || (b.labor - a.labor)).map((f) => {
+  // idle firms (nobody wants what they make here yet, or it doesn't pay)
+  // are listed last, so they can still be expanded
+  const busy = (f) => f.labor > 0.05 || f.produced > 0.05 || f.levels > 1 || f.expansion;
+  const firms = d.firms.map((f, i) => ({ ...f, i }))
+    .sort((a, b) => (b.enabled - a.enabled) || (b.state - a.state) || (!!busy(b) - !!busy(a)) || (b.labor - a.labor)).map((f) => {
       if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="4">locked: needs ${esc(f.requires)}</td></tr>`;
       let grow = "";
       if (f.expansion) grow = `${pct(f.expansion.delivered / world.level_cost)}${f.expansion.public ? " ★" : ""}`;
@@ -1358,12 +1371,12 @@ function tilePanel() {
       const m = d.markets.find((x) => x.good === f.output) || { supply: 0, demand: 0 };
       // profit per worker: the value each worker adds a day (output less the goods used up) less the wage
       const per = f.labor > 0.01 ? `<span class="${f.per_worker >= 0 ? "good" : "bad"}">${f.per_worker < 0 ? "−" : ""}£${fmt(Math.abs(f.per_worker))}</span>` : "–";
-      return `<tr title="${esc(tip)}\nproductivity ×${total.toFixed(2)}\nprofit £${fmt(f.profit, 2)} a day"><td>${esc(f.name)}<br><span class="sub">${f.sector}${bon ? ` · ${bon}` : ""}</span></td>
+      return `<tr${busy(f) ? "" : ` class="idle"`} title="${esc(tip)}${busy(f) ? "" : "\nidle: it doesn't pay to make this here at today's prices"}\nproductivity ×${total.toFixed(2)}\nprofit £${fmt(f.profit, 2)} a day"><td>${esc(f.name)}<br><span class="sub">${f.sector}${bon ? ` · ${bon}` : ""}</span></td>
         <td>${G[f.output].name}<br><span class="sub">${fmt(f.produced, 1)} a day</span></td>
         <td class="nowrap">${fmt(f.labor, 1)} / ${fmt(f.wanted, 1)}</td><td class="nowrap">${fmt(m.supply, 1)} / ${fmt(m.demand, 1)}</td><td>${per}</td><td>${f.levels}/${f.max_levels}${grow ? `<br>${grow}` : ""}${f.level_gain > 0.005 && !f.expansion ? `<br><span class="sub" title="Extra output a day one more level would bring, from the same workers and inputs: a level (£${fmt(levelPrice, 0)}) pays for itself in about ${Math.round(levelPrice / f.level_gain)} days">+£${fmt(f.level_gain, 1)}</span>` : ""}</td></tr>`;
     }).join("");
   const employed = d.firms.reduce((t, f) => t + f.labor, 0), workers = (d.classes.find((c) => c.class === "workers") || { size: 0 }).size;
-  html += `<h3>Production ${info(`Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay.<br><br><b>Profit / worker</b> is what each worker earns the owners a day: the value they add (output less the goods used up) less their wage. Red means the firm is losing money on its workers.<br><br><b>Supply / demand</b> are the tile's market for what the firm makes.<br><br>Under each firm, what multiplies its productivity: its site, technology, the tile's size and schooling, allegiance, and crowding (how much more productive it would be with one more building level). Hover a firm for the details and its profit.<br><br>Under the levels, the £ a day one more level would add from the same workers and inputs (hover for how soon it pays for itself). ★ an expansion paid by the state; the rest are paid by owners.`)}</h3>
+  html += `<h3>Production ${info(`Every firm on a tile pays the same wage, set by the tile's labour market; a firm only hires the workers it can pay.<br><br><b>Profit / worker</b> is what each worker earns the owners a day: the value they add (output less the goods used up) less their wage. Red means the firm is losing money on its workers.<br><br><b>Supply / demand</b> are the tile's market for what the firm makes.<br><br>Under each firm, what multiplies its productivity: its site, technology, the tile's size and schooling, allegiance, and crowding (how much more productive it would be with one more building level). Hover a firm for the details and its profit.<br><br>Under the levels, the £ a day one more level would add from the same workers and inputs (hover for how soon it pays for itself). ★ an expansion paid by the state; the rest are paid by owners.<br><br>Greyed-out firms stand idle: at today's prices it doesn't pay to make their goods here (war materiel in peacetime, say). You can still expand them; they start up once buyers come.`)}</h3>
     <div class="stats">${stat(fmt(s.wage), "the tile's daily wage")}${stat(`${short(employed)} / ${short(workers)}`, "workers employed")}${stat(pct(workers > 0 ? employed / workers : 0), "employment")}</div>
     <div class="table-scroll" style="margin-top:8px"><table><tr><th>firm</th><th>makes</th><th class="nowrap">workers<br>/ wanted</th><th class="nowrap">supply<br>/ demand</th><th class="nowrap">profit /<br>worker</th><th>levels</th></tr>${firms}</table></div>`;
   // the market: local supply and demand, and what ships in and out

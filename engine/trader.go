@@ -226,6 +226,9 @@ func (t *Trader) Plan() {
 	po, pd := t.Origin.Markets, t.Dest.Markets
 	pOrig, pDest, pT := po[t.Good].Price, pd[t.Good].Price, po[Transport].Price
 	tariff, blocked := t.border()
+	if m := t.Origin.made; m != nil && !m[t.Good] {
+		blocked = true // nobody can make it yet: there's nothing to deal in
+	}
 	if blocked {
 		t.carry, t.unit = t.StockOrigin*t.Tau*pT, 0
 		t.Q, t.Active, t.RelMargin, t.Margin, t.DesiredSpend = t.QMin, false, 0, 0, t.carry
