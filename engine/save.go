@@ -39,18 +39,13 @@ type SiegeSnap struct {
 	Progress float64
 }
 
-// SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 15
-
-// oldestSnapshot is the oldest format this build still reads: 12 lacks
-// retreats (none were under way), 13 lacks real GDP (it starts afresh) and
-// 14 has no generated maps (sea, tile names, limited sea routes), which it
-// reads as it always did.
-const oldestSnapshot = 12
+// SnapshotVersion is bumped whenever the snapshot format changes; a build
+// reads only its own (saves of older builds are not kept up).
+const SnapshotVersion = 16
 
 type MarketSnap struct {
 	Price, Supply, Demand float64
-	Trend                 float64 // absent before version 14: starts at the price
+	Trend                 float64
 }
 
 type PopSnap struct {
@@ -70,7 +65,7 @@ type RegionSnap struct {
 	Wage, Neglect, UtilityEMA  float64
 	HouseCash                  float64
 	Collect, Educated, Healthy float64
-	Loyalties                  []float64 `json:",omitempty"` // absent in older saves: each tile wholly loyal to its owner
+	Loyalties                  []float64
 	Infra, Battle              int
 	Port                       bool
 	Project                    *Project
@@ -78,7 +73,7 @@ type RegionSnap struct {
 	Markets                    []MarketSnap
 	Pops                       []PopSnap
 	Firms                      []FirmSnap
-	Real                       GDPChain // real GDP's chain (absent before version 14)
+	Real                       GDPChain // real GDP's chain
 }
 
 type TraderSnap struct {
@@ -102,13 +97,13 @@ type NationSnap struct {
 	Coalition                              int     `json:",omitempty"`
 	AllianceSince                          int     `json:",omitempty"`
 	MightEMA                               float64 `json:",omitempty"`
-	LearnedAt                              []int   `json:",omitempty"` // absent before version 14: fully adopted
+	LearnedAt                              []int
 	Queue                                  []int
 	TradeWith                              []float64
 	AtWar, PeaceOffer                      []bool
 	WarSince                               []int
 	AI, ChooseResearch                     bool
-	Drill                                  float64 // the standing army share (was peacetime drill, same range within)
+	Standing                               float64
 	Revenue, TariffRevenue, Spending       float64
 }
 
@@ -159,7 +154,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	for _, n := range w.Nations {
 		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, SpendEMA: n.SpendEMA, BuildRate: n.MaxBuildRate,
 			Tariff: append([]float64(nil), n.Tariff...), Embargo: append([]bool(nil), n.Embargo...),
-			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Drill: n.Standing, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints, RealGDP: n.RealGDP,
+			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Standing: n.Standing, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints, RealGDP: n.RealGDP,
 			Researching: n.Researching, Known: append([]bool(nil), n.Known...), Coalition: n.Coalition, AllianceSince: n.AllianceSince, MightEMA: n.MightEMA, LearnedAt: append([]int(nil), n.LearnedAt...), AI: n.AI, ChooseResearch: n.ChooseResearch,
 			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
 			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
@@ -186,8 +181,8 @@ func (w *World) Snapshot() (*Snapshot, error) {
 
 // Restore rebuilds a world from a snapshot.
 func Restore(s *Snapshot) (*World, error) {
-	if s.Version < oldestSnapshot || s.Version > SnapshotVersion {
-		return nil, fmt.Errorf("snapshot version %d, this build reads %d to %d", s.Version, oldestSnapshot, SnapshotVersion)
+	if s.Version != SnapshotVersion {
+		return nil, fmt.Errorf("snapshot version %d, this build reads %d", s.Version, SnapshotVersion)
 	}
 	w, err := buildGame(s.Spec, false, nil) // the snapshot holds the settled state
 	if err != nil {
@@ -224,21 +219,16 @@ func Restore(s *Snapshot) (*World, error) {
 		r.Wage, r.Neglect, r.UtilityEMA, r.Infra, r.Project, r.Nation = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Infra, rs.Project, nil
 		r.House.Cash, r.Battle = rs.HouseCash, rs.Battle
 		r.Collect, r.Educated, r.Healthy = rs.Collect, rs.Educated, rs.Healthy
-		if rs.Loyalties != nil {
-			if len(rs.Loyalties) != len(r.Loyalties) {
-				return bad("allegiance in " + r.Name)
-			}
-			copy(r.Loyalties, rs.Loyalties)
+		if len(rs.Loyalties) != len(r.Loyalties) {
+			return bad("allegiance in " + r.Name)
 		}
+		copy(r.Loyalties, rs.Loyalties)
 		r.Real = rs.Real.clone()
 		if !r.Real.valid() {
 			return bad("real GDP in " + r.Name)
 		}
 		if r.Infra < 0 || r.Infra >= len(InfraLevels) || (r.Project != nil && !r.Project.Port && (r.Project.Target <= 0 || r.Project.Target >= len(InfraLevels))) {
 			return bad("infrastructure in " + r.Name)
-		}
-		if r.Project != nil && r.Project.Materials == nil {
-			r.Project.Materials = map[GoodID]float64{}
 		}
 		for g, m := range rs.Markets {
 			r.Markets[g].Price, r.Markets[g].Supply, r.Markets[g].Demand, r.Markets[g].Trend = m.Price, m.Supply, m.Demand, m.Trend
@@ -279,9 +269,10 @@ func Restore(s *Snapshot) (*World, error) {
 			return bad("alliance of " + n.Name)
 		}
 		n.Coalition, n.AllianceSince, n.MightEMA = ns.Coalition, ns.AllianceSince, ns.MightEMA
-		if len(ns.LearnedAt) == len(Techs) {
-			copy(n.LearnedAt, ns.LearnedAt)
+		if len(ns.LearnedAt) != len(Techs) {
+			return bad("nation " + n.Name)
 		}
+		copy(n.LearnedAt, ns.LearnedAt)
 		if len(ns.TradeWith) != len(w.Nations) || len(ns.AtWar) != len(w.Nations) || len(ns.WarSince) != len(w.Nations) ||
 			len(ns.PeaceOffer) != len(w.Nations) {
 			return bad("nation " + n.Name)
@@ -299,7 +290,7 @@ func Restore(s *Snapshot) (*World, error) {
 		if err := n.SetPension(ns.Pension); err != nil {
 			return bad("nation " + n.Name)
 		}
-		if err := n.SetStanding(ns.Drill); err != nil {
+		if err := n.SetStanding(ns.Standing); err != nil {
 			return bad("nation " + n.Name)
 		}
 		n.TradeWith, n.AtWar, n.WarSince, n.PeaceOffer = ns.TradeWith, ns.AtWar, ns.WarSince, ns.PeaceOffer
@@ -342,19 +333,7 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 	}
 	w.History = s.History
-	// allegiance: older saves have none, so each tile stands wholly by the
-	// owner it was saved with
-	for i, r := range w.Regions {
-		if s.Regions[i].Loyalties == nil {
-			for k := range r.Loyalties {
-				r.Loyalties[k] = 0
-			}
-			if r.Nation != nil {
-				r.Loyalties[r.Nation.ID] = 1
-			} else {
-				r.Loyalties[len(r.Loyalties)-1] = 1
-			}
-		}
+	for _, r := range w.Regions {
 		r.applyAllegiance()
 	}
 	// firm gating follows the (restored) owners' technology

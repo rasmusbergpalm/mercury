@@ -1,9 +1,6 @@
 package engine
 
-import (
-	"math"
-	"sort"
-)
+import "math"
 
 // World is a set of regions linked by traders that pay transport costs, and
 // optionally nations that own the regions.
@@ -315,9 +312,7 @@ func (n *Nation) Ports() int {
 }
 
 // RemovePort pulls down a tile's port: its sea routes close, and what
-// they had bought or had at sea is lost. (Not in games whose ports trade
-// only with their nearest few, see GameSpec.SeaRoutes: their routes depend
-// on which ports were open when each was built.)
+// they had bought or had at sea is lost.
 func (w *World) RemovePort(region int) error {
 	r := w.Regions[region]
 	switch {
@@ -325,8 +320,6 @@ func (w *World) RemovePort(region int) error {
 		return ErrNoNation
 	case !r.Port:
 		return ErrNoPort
-	case w.Spec != nil && w.Spec.SeaRoutes > 0:
-		return ErrOldPorts
 	}
 	r.Port = false
 	gone := func(t *Trader) bool { return t.Sea && (t.Origin == r || t.Dest == r) }
@@ -423,7 +416,7 @@ func (w *World) hasPortRoutes(id int) bool {
 func (w *World) openPort(r *Region) {
 	if !math.IsInf(w.Spec.TransportCost, 1) {
 		var added []*Trader
-		for _, id := range w.seaPartners(r) {
+		for _, id := range w.Ports {
 			p := w.Regions[id]
 			hop := w.seaHop(r, p)
 			for _, g := range GameTradable {
@@ -437,19 +430,6 @@ func (w *World) openPort(r *Region) {
 		w.Traders = append(w.Traders, added...)
 	}
 	w.Ports = append(w.Ports, r.ID)
-}
-
-// seaPartners are the open ports a new port at r trades with: every one, or
-// the Spec's SeaRoutes nearest (the earlier opened first among equals).
-func (w *World) seaPartners(r *Region) []int {
-	k := w.Spec.SeaRoutes
-	if k <= 0 || len(w.Ports) <= k {
-		return w.Ports
-	}
-	ids := append([]int(nil), w.Ports...)
-	d := func(id int) int { p := w.Regions[id]; return HexDistance(r.Row, r.Col, p.Row, p.Col) }
-	sort.SliceStable(ids, func(a, b int) bool { return d(ids[a]) < d(ids[b]) })
-	return ids[:k]
 }
 
 // borders reports whether a tile neighbours one of the nation's tiles.

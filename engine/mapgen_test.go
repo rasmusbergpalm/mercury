@@ -111,37 +111,23 @@ func TestSeaTiles(t *testing.T) {
 	}
 }
 
-// Ports trade with every other port; in games that limited them to their
-// nearest few (GameSpec.SeaRoutes, kept for their saves), with those.
+// Every port trades with every other.
 func TestSeaRoutes(t *testing.T) {
-	for _, limit := range []int{0, 8} {
-		spec := generated(t, 2, 3)
-		spec.SeaRoutes = limit
-		w, err := buildGame(spec, false, nil)
-		if err != nil {
-			t.Fatal(err)
+	w, err := buildGame(generated(t, 2, 3), false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened := 0
+	for _, r := range w.Regions {
+		if r.Coastal && opened < 12 {
+			r.Port = true
+			opened++
 		}
-		opened := 0
-		for _, r := range w.Regions {
-			if r.Coastal && opened < 12 {
-				r.Port = true
-				opened++
-			}
-		}
-		before := len(w.Traders)
-		w.openNewPorts()
-		sea := len(w.Traders) - before
-		partners := 0
-		for k := 0; k < opened; k++ {
-			if limit > 0 {
-				partners += min(k, limit)
-			} else {
-				partners += k
-			}
-		}
-		if want := 2 * partners * len(GameTradable); sea != want {
-			t.Errorf("limit %d: %d sea routes, want %d", limit, sea, want)
-		}
+	}
+	before := len(w.Traders)
+	w.openNewPorts()
+	if sea, want := len(w.Traders)-before, opened*(opened-1)*len(GameTradable); sea != want {
+		t.Errorf("%d sea routes, want %d", sea, want)
 	}
 }
 

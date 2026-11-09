@@ -330,11 +330,6 @@ type GameSpec struct {
 	// Names names the tiles, row by row (skipping the sea); empty: by
 	// their row and column.
 	Names []string `json:",omitempty"`
-	// SeaRoutes is how many of the nearest open ports a new port trades
-	// with (0: every one). Only games generated before ports were limited
-	// per nation (see PortAllowance) have it; it stays so that their saves
-	// rebuild the sea routes they had.
-	SeaRoutes int `json:",omitempty"`
 }
 
 // DefaultGame is the default game scenario on DefaultMap: three nations of
