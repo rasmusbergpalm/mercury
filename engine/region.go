@@ -78,6 +78,7 @@ func connect(traders []*Trader) {
 	for _, t := range traders {
 		r := t.Origin
 		t.House = r.House
+		t.slot = len(r.House.Routes)
 		r.House.Routes = append(r.House.Routes, t)
 		r.outbound[t.Good] = append(r.outbound[t.Good], t)
 		r.outbound[Transport] = append(r.outbound[Transport], t)
@@ -255,18 +256,19 @@ type agentRef struct {
 // listBidders lists, per good, the routes leaving the tile that may place
 // an order today: those buying (Active) or with stock waiting for transport.
 // The rest (most routes, on a big map) bid nothing, so the markets skip them.
-func (r *Region) listBidders() {
+func (r *Region) listBidders(planned []*Trader) {
 	if r.bidders == nil {
 		r.bidders = make([][]*Trader, NumGoods)
 	}
-	for g, routes := range r.outbound {
-		list := r.bidders[g][:0]
-		for _, t := range routes {
-			if t.Active || t.StockOrigin > 0 {
-				list = append(list, t)
-			}
+	for g := range r.bidders {
+		r.bidders[g] = r.bidders[g][:0]
+	}
+	// routes are in the house's order, as each good's outbound list is
+	for _, t := range planned {
+		if t.Active || t.StockOrigin > 0 {
+			r.bidders[t.Good] = append(r.bidders[t.Good], t)
+			r.bidders[Transport] = append(r.bidders[Transport], t)
 		}
-		r.bidders[g] = list
 	}
 }
 

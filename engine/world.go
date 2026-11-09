@@ -130,7 +130,7 @@ func (w *World) Step() {
 			r.planInvestment()
 		}
 	})
-	w.eachRegion(func(r *Region) { r.House.Plan() })
+	w.eachRegion(func(r *Region) { r.House.Plan(w.Tick) })
 	for _, n := range w.Nations {
 		n.plan(w)
 	}
@@ -227,7 +227,7 @@ func (r *Region) shipAll(nations int) {
 		r.exportsTo[j] = 0
 	}
 	on := r.Nation
-	for _, t := range r.House.Routes {
+	for _, t := range r.House.today { // the rest are idle: they ship nothing
 		t.Ship()
 		if dn := t.Dest.Nation; on != nil && dn != nil && on != dn && t.Shipped > 0 {
 			r.exportsTo[dn.ID] += t.Shipped * r.Markets[t.Good].Price
@@ -344,12 +344,17 @@ func (w *World) RemovePort(region int) error {
 		if !x.Port && x != r {
 			continue
 		}
-		x.House.Routes = keep(x.House.Routes)
+		h := x.House
+		h.Routes = keep(h.Routes)
+		for i, t := range h.Routes {
+			t.slot = i
+		}
+		h.busyKnown, h.today = false, h.today[:0]
 		for g := range x.outbound {
 			x.outbound[g] = keep(x.outbound[g])
 			x.inbound[g] = keep(x.inbound[g])
+			x.bidders[g] = x.bidders[g][:0]
 		}
-		x.listBidders()
 	}
 	for i, id := range w.Ports {
 		if id == r.ID {
