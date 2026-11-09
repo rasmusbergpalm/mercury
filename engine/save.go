@@ -40,10 +40,12 @@ type SiegeSnap struct {
 }
 
 // SnapshotVersion is bumped whenever the snapshot format changes.
-const SnapshotVersion = 14
+const SnapshotVersion = 15
 
 // oldestSnapshot is the oldest format this build still reads: 12 lacks
-// retreats (none were under way) and 13 lacks real GDP (it starts afresh).
+// retreats (none were under way), 13 lacks real GDP (it starts afresh) and
+// 14 has no generated maps (sea, tile names, limited sea routes), which it
+// reads as it always did.
 const oldestSnapshot = 12
 
 type MarketSnap struct {
@@ -80,7 +82,9 @@ type RegionSnap struct {
 }
 
 type TraderSnap struct {
-	Q, StockOrigin, StockDest, RelMargin, Shipped, Margin float64
+	Q, RelMargin, Margin float64
+	// zero on idle routes, most of them on a big map: left out
+	StockOrigin, StockDest, Shipped float64 `json:",omitempty"`
 }
 
 type NationSnap struct {
@@ -150,7 +154,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 		s.Regions = append(s.Regions, rs)
 	}
 	for _, t := range w.Traders {
-		s.Traders = append(s.Traders, TraderSnap{t.Q, t.StockOrigin, t.StockDest, t.RelMargin, t.Shipped, t.Margin})
+		s.Traders = append(s.Traders, TraderSnap{Q: t.Q, RelMargin: t.RelMargin, Margin: t.Margin, StockOrigin: t.StockOrigin, StockDest: t.StockDest, Shipped: t.Shipped})
 	}
 	for _, n := range w.Nations {
 		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, SpendEMA: n.SpendEMA, BuildRate: n.MaxBuildRate,
@@ -185,7 +189,7 @@ func Restore(s *Snapshot) (*World, error) {
 	if s.Version < oldestSnapshot || s.Version > SnapshotVersion {
 		return nil, fmt.Errorf("snapshot version %d, this build reads %d to %d", s.Version, oldestSnapshot, SnapshotVersion)
 	}
-	w, err := buildGame(s.Spec, false) // the snapshot holds the settled state
+	w, err := buildGame(s.Spec, false, nil) // the snapshot holds the settled state
 	if err != nil {
 		return nil, err
 	}

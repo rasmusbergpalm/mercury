@@ -29,6 +29,7 @@ type Game struct {
 	ready    map[int]bool // nations whose players have ended the turn
 
 	nextAutosave int        // the tick at which it is next saved
+	lastAutosave time.Time  // when it was last saved
 	fileMu       sync.Mutex // guards the autosave file and the two below
 	savedTick    int        // tick of the autosave on disk
 	deleted      bool
@@ -153,6 +154,14 @@ type GameSummary struct {
 	Date    string          `json:"date"`
 	Turn    int             `json:"turn_days"` // 0: real time
 	Nations []NationSummary `json:"nations"`
+	Map     string          `json:"map"`   // "classic", or the generated map's size
+	Tiles   int             `json:"tiles"` // land tiles on the map
+	// Preparing is how far a game on a generated map has got settling
+	// (0..1); absent once it is open. Error says why it failed.
+	Preparing *float64 `json:"preparing,omitempty"`
+	Error     string   `json:"error,omitempty"`
+
+	created time.Time
 }
 
 type NationSummary struct {
@@ -166,7 +175,10 @@ type NationSummary struct {
 
 func (g *Game) summary() GameSummary {
 	s := GameSummary{ID: g.ID, Name: g.Name, Tick: g.w.Tick, Running: g.running, Speed: g.speed,
-		Date: g.w.Date().Format("2 January 2006"), Turn: g.turnDays}
+		Date: g.w.Date().Format("2 January 2006"), Turn: g.turnDays, Map: "classic", Tiles: len(g.w.Regions), created: g.Created}
+	if sp := g.w.Spec; sp != nil && sp.SeaRoutes > 0 { // a generated map
+		s.Map = mapName(len(sp.Map), len(sp.Map[0]))
+	}
 	for _, n := range g.w.Nations {
 		c := "human"
 		if n.AI {
@@ -175,4 +187,14 @@ func (g *Game) summary() GameSummary {
 		s.Nations = append(s.Nations, NationSummary{n.ID, n.Name, n.Color, c, len(n.Regions), n.Eliminated()})
 	}
 	return s
+}
+
+// mapName is the size of a generated map with these dimensions.
+func mapName(rows, cols int) string {
+	for _, m := range engine.MapSizes {
+		if m.Rows == rows && m.Cols == cols {
+			return m.Name
+		}
+	}
+	return "generated"
 }

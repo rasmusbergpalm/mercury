@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"testing"
 )
@@ -10,7 +11,7 @@ import (
 // the unit tests are written around; TestGamesStartSettled covers settling.
 func newTestGame(t *testing.T) *World {
 	t.Helper()
-	w, err := buildGame(DefaultGame, false)
+	w, err := buildGame(DefaultGame, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,9 +21,11 @@ func newTestGame(t *testing.T) *World {
 	return w
 }
 
+// regionByName finds a tile by its name, or by its row and column written
+// as two digits ("11"), as the tests' maps name them.
 func regionByName(w *World, name string) *Region {
 	for _, r := range w.Regions {
-		if r.Name == name {
+		if r.Name == name || fmt.Sprintf("%d%d", r.Row, r.Col) == name {
 			return r
 		}
 	}
@@ -95,6 +98,7 @@ func TestIncomeIsTaxed(t *testing.T) {
 	p := r.Pops[0]
 	cash, treasury := p.Cash, r.Nation.Treasury
 	r.payIncome(p, 100)
+	w.settleLedgers() // taxes reach the treasury when the day's ledgers are settled
 	if math.Abs(p.Cash-cash-80) > 1e-9 || math.Abs(r.Nation.Treasury-treasury-20) > 1e-9 {
 		t.Errorf("pop got %v, treasury got %v; want 80 and 20", p.Cash-cash, r.Nation.Treasury-treasury)
 	}
@@ -296,7 +300,8 @@ func TestInfrastructurePaysOff(t *testing.T) {
 	if testing.Short() {
 		t.Skip("long")
 	}
-	inland := map[string]bool{"22": true, "23": true, "32": true, "33": true}
+	inlandCells := map[[2]int]bool{{2, 2}: true, {2, 3}: true, {3, 2}: true, {3, 3}: true}
+	inland := func(r *Region) bool { return inlandCells[[2]int{r.Row, r.Col}] }
 	type result struct{ utility, volume, inlandPop, people float64 }
 	run := func(paved func(r *Region) bool) (res result) {
 		w := newTestGame(t)
@@ -314,7 +319,7 @@ func TestInfrastructurePaysOff(t *testing.T) {
 			res.people += w.Population() / window
 			for _, r := range w.Regions { // population-weighted utility
 				res.utility += r.Utility() * r.Population() / w.Population() / window
-				if inland[r.Name] {
+				if inland(r) {
 					res.inlandPop += r.Population() / window
 				}
 			}
@@ -326,7 +331,7 @@ func TestInfrastructurePaysOff(t *testing.T) {
 	}
 	none := run(func(*Region) bool { return false })
 	all := run(func(*Region) bool { return true })
-	mid := run(func(r *Region) bool { return inland[r.Name] })
+	mid := run(func(r *Region) bool { return inland(r) })
 	t.Logf("none %+v\nall paved %+v\ninland paved %+v", none, all, mid)
 	if all.volume <= none.volume {
 		t.Errorf("paving everything should raise trade: %v -> %v", none.volume, all.volume)

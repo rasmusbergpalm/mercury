@@ -15,6 +15,14 @@ import (
 // that a restart (a redeploy, a crash) loses at most that much play.
 const AutosaveEvery = 30
 
+// A world of more than bigWorld tiles is saved at most every
+// bigAutosaveGap: its save is tens of megabytes, and taking it holds the
+// game up, which at 30 days a second would be every second.
+const (
+	bigWorld       = 100
+	bigAutosaveGap = 30 * time.Second
+)
+
 // autosaveFile is a game as the server keeps it: a save plus what a restart
 // needs to carry on where it was, players' seats included. It never leaves
 // the server (exports are plain SaveFiles, without tokens).
@@ -35,6 +43,10 @@ func (s *Server) autosave(g *Game) {
 	if s.dataDir == "" || g.w.Tick < g.nextAutosave {
 		return
 	}
+	if len(g.w.Regions) > bigWorld && time.Since(g.lastAutosave) < bigAutosaveGap {
+		return // a big world saves at most every so often: it takes a while
+	}
+	g.lastAutosave = time.Now()
 	g.nextAutosave = (g.w.Tick/AutosaveEvery + 1) * AutosaveEvery
 	f, err := g.saveFile()
 	if err != nil {
@@ -67,8 +79,12 @@ func (s *Server) autosave(g *Game) {
 	}()
 }
 
-// Wait blocks until every autosave in progress is on disk.
-func (s *Server) Wait() { s.writes.Wait() }
+// Wait blocks until every game being prepared has opened (or failed) and
+// every autosave in progress is on disk.
+func (s *Server) Wait() {
+	s.preps.Wait()
+	s.writes.Wait()
+}
 
 // dropAutosave removes a deleted game's autosave.
 func (s *Server) dropAutosave(g *Game) {

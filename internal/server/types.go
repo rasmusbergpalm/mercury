@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/rasmusbergpalm/mercury/engine"
+	"slices"
 )
 
 // JSON views of a world.
@@ -401,7 +402,17 @@ func worldInfo(w *engine.World) WorldInfo {
 	return info
 }
 
-func regionState(w *engine.World, i int) RegionState {
+// cityLine is how many people a tile needs to count as a city (see
+// engine.World.IsCity), worked out once for every tile.
+func cityLine(w *engine.World) float64 {
+	pop := 0.0
+	for _, r := range w.Regions {
+		pop += r.Population()
+	}
+	return engine.CityMult * pop / float64(len(w.Regions))
+}
+
+func regionState(w *engine.World, i int, cities float64) RegionState {
 	r := w.Regions[i]
 	ts := r.TierSpend(w.TradePrices[i])
 	employed := 0.0
@@ -410,7 +421,7 @@ func regionState(w *engine.World, i int) RegionState {
 	}
 	st := RegionState{ID: r.ID, Wage: r.Wage, Utility: r.Utility(), Population: r.Population(),
 		Employed: employed, TierSpend: ts[:], Prices: r.Prices(), Nation: -1, Infra: r.Infra,
-		MoveCost: r.MoveCost(), Port: r.Port, City: w.IsCity(r), CityBonus: r.SizeBonus(), Growth: r.GrowthRate(),
+		MoveCost: r.MoveCost(), Port: r.Port, City: r.Population() >= cities, CityBonus: r.SizeBonus(), Growth: r.GrowthRate(),
 		Battle: r.Battle}
 	if r.Nation != nil {
 		st.Nation = r.Nation.ID
@@ -442,7 +453,12 @@ func regionState(w *engine.World, i int) RegionState {
 
 const minFlow = 1e-3
 
-func worldState(w *engine.World) State {
+// FlowsAlways is the most tiles a world can have for its state to carry
+// every shipment unasked; a bigger one sends them on request (?flows=1),
+// as there are tens of thousands of them.
+const FlowsAlways = 100
+
+func worldState(w *engine.World, flows bool) State {
 	st := State{Tick: w.Tick, Date: w.Date().Format("2 January 2006"), Money: w.Money(), You: -1,
 		Flows: []Flow{}, Armies: []ArmyState{}}
 	for _, a := range w.Armies {
@@ -468,11 +484,12 @@ func worldState(w *engine.World) State {
 			a.Effectiveness(), a.Strength(), sup, days, src, off, shares, coming, cost, pay, comingDays, a.FullStrength(), w.DailyLoss(a), append([]int{}, a.Path...), a.Retreating,
 			att, def, attr, depot, transport})
 	}
+	cities := cityLine(w)
 	for i := range w.Regions {
-		st.Regions = append(st.Regions, regionState(w, i))
+		st.Regions = append(st.Regions, regionState(w, i, cities))
 	}
 	for _, t := range w.Traders {
-		if t.Shipped > minFlow {
+		if (flows || len(w.Regions) <= FlowsAlways) && t.Shipped > minFlow {
 			st.Flows = append(st.Flows, Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped, t.Sea})
 		}
 	}
@@ -481,9 +498,9 @@ func worldState(w *engine.World) State {
 		ns := NationState{ID: n.ID, Controller: "human", Eliminated: n.Eliminated(), Tiles: len(n.Regions),
 			Treasury: n.Treasury, TaxRate: n.TaxRate, Income: n.IncomeEMA, Revenue: n.Revenue,
 			TariffRevenue: n.TariffRevenue, Spending: n.Spending, SpendEMA: n.SpendEMA, AutoTax: n.AutoTax, Pension: n.Pension,
-			SpentOn: append([]float64(nil), n.SpentOn[:]...), AutoBuild: n.AutoBuild, Tariff: n.Tariff, Embargo: n.Embargo,
-			Researching: n.Researching, Points: n.ResearchPoints, Known: n.Known,
-			Queue: append([]int{}, n.Queue...), AtWar: n.AtWar, PeaceOffer: n.PeaceOffer,
+			SpentOn: append([]float64(nil), n.SpentOn[:]...), AutoBuild: n.AutoBuild, Tariff: slices.Clone(n.Tariff), Embargo: slices.Clone(n.Embargo),
+			Researching: n.Researching, Points: n.ResearchPoints, Known: slices.Clone(n.Known),
+			Queue: append([]int{}, n.Queue...), AtWar: slices.Clone(n.AtWar), PeaceOffer: slices.Clone(n.PeaceOffer),
 			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch,
 			MaxArmySize: n.MaxArmySize(), Standing: n.Standing, Temperament: n.Temper.Describe()}
 		ns.Soldiers, _ = w.Mobilized(n)
@@ -535,7 +552,7 @@ func worldState(w *engine.World) State {
 
 func regionDetail(w *engine.World, i int) RegionDetail {
 	r := w.Regions[i]
-	d := RegionDetail{Info: RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain, r.Coastal}, State: regionState(w, i), GDP: r.GDP(),
+	d := RegionDetail{Info: RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain, r.Coastal}, State: regionState(w, i, cityLine(w)), GDP: r.GDP(),
 		Exports: []Flow{}, Imports: []Flow{}}
 	h := r.House
 	d.House = HouseState{Cash: h.Cash, Spent: h.Spent, Routes: len(h.Routes)}

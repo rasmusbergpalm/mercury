@@ -536,3 +536,37 @@ func TestAutosaveSurvivesRestart(t *testing.T) {
 		t.Errorf("autosave of a deleted game still there: %v", err)
 	}
 }
+
+// A game on a generated map is listed while it is being prepared, with its
+// progress, then opens under the same ID; a bad choice is refused at once.
+func TestGeneratedGameIsPrepared(t *testing.T) {
+	if testing.Short() {
+		t.Skip("settles a map")
+	}
+	e := newEnv(t)
+	e.do("POST", "/api/games?name=Islands&map=nowhere", "", nil, http.StatusConflict, nil)
+	e.do("POST", "/api/games?name=Islands&map=small&nations=13", "", nil, http.StatusBadRequest, nil)
+	e.do("POST", "/api/games?name=Islands&map=small&nations=9", "", nil, http.StatusConflict, nil) // too little land
+	var g GameSummary
+	e.do("POST", "/api/games?name=Islands&map=small&nations=2&seed=4", "", nil, http.StatusAccepted, &g)
+	if g.Preparing == nil || g.Map != "small" || len(g.Nations) != 2 {
+		t.Fatalf("created %+v", g)
+	}
+	e.srv.Wait()
+	var games []GameSummary
+	e.do("GET", "/api/games", "", nil, http.StatusOK, &games)
+	var got *GameSummary
+	for i := range games {
+		if games[i].ID == g.ID {
+			got = &games[i]
+		}
+	}
+	if got == nil || got.Preparing != nil || got.Map != "small" || got.Tiles != g.Tiles || got.Tick != Warmup {
+		t.Fatalf("after preparing: %+v", got)
+	}
+	var w WorldInfo
+	e.do("GET", "/api/games/"+g.ID+"/world", "", nil, http.StatusOK, &w)
+	if len(w.Regions) != g.Tiles || w.Regions[0].Name == "00" {
+		t.Errorf("world of %d tiles, first named %q", len(w.Regions), w.Regions[0].Name)
+	}
+}

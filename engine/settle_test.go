@@ -10,7 +10,7 @@ import (
 // died, and no money was made or lost. Its markets are calm: the first day
 // moves prices little.
 func TestGamesStartSettled(t *testing.T) {
-	raw, err := buildGame(DefaultGame, false)
+	raw, err := buildGame(DefaultGame, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

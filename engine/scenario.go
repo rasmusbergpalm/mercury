@@ -216,18 +216,29 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 // Python reference specifies). transportCost scales every hop; +Inf means
 // autarky (no trade).
 func BuildWorld(transportCost float64, gameMap []string) (*World, error) {
-	return buildWorld(transportCost, gameMap, false)
+	return buildWorld(transportCost, gameMap, nil, false)
 }
+
+// Sea marks a map cell with no tile: open water. Tiles next to it (or to
+// the map's edge) are coast.
+const Sea = '~'
 
 // The cost of a hop between neighbouring tiles is the average of the two
 // tiles' movement costs (land 1, coastal 1/4, less with infrastructure). Traders
 // only run between neighbours; longer trade happens by re-export along a chain
 // of tiles.
-func buildWorld(transportCost float64, gameMap []string, game bool) (*World, error) {
+// names, if given, names the tiles in order (row by row, skipping the sea);
+// otherwise a tile is named by its row and column.
+func buildWorld(transportCost float64, gameMap []string, names []string, game bool) (*World, error) {
 	if len(gameMap) == 0 {
 		return nil, fmt.Errorf("empty map")
 	}
 	rows, cols := len(gameMap), len(gameMap[0])
+	for r, row := range gameMap {
+		if len(row) != cols {
+			return nil, fmt.Errorf("map row %d has %d columns, want %d", r, len(row), cols)
+		}
+	}
 	grid := make([][]*Region, rows)
 	var regions []*Region
 	for r := 0; r < rows; r++ {
@@ -236,12 +247,28 @@ func buildWorld(transportCost float64, gameMap []string, game bool) (*World, err
 		}
 		grid[r] = make([]*Region, cols)
 		for c := 0; c < cols; c++ {
+			if gameMap[r][c] == Sea {
+				continue
+			}
 			t, err := TerrainBySymbol(gameMap[r][c])
 			if err != nil {
 				return nil, err
 			}
-			coastal := len(HexNeighbors(r, c, rows, cols)) < 6
-			reg := NewRegion(len(regions), fmt.Sprintf("%d%d", r, c), makeFirms(t, coastal, game), 2, 50, 500)
+			land := 0
+			for _, nb := range HexNeighbors(r, c, rows, cols) {
+				if gameMap[nb[0]][nb[1]] != Sea {
+					land++
+				}
+			}
+			coastal := land < 6
+			name := fmt.Sprintf("%d%d", r, c)
+			if names != nil {
+				if len(regions) >= len(names) {
+					return nil, fmt.Errorf("the map has more tiles than names")
+				}
+				name = names[len(regions)]
+			}
+			reg := NewRegion(len(regions), name, makeFirms(t, coastal, game), 2, 50, 500)
 			if game {
 				addOwnerClasses(reg)
 				reg.Educated = startEducated
@@ -252,11 +279,20 @@ func buildWorld(transportCost float64, gameMap []string, game bool) (*World, err
 		}
 	}
 
+	if len(regions) == 0 {
+		return nil, fmt.Errorf("the map has no land")
+	}
+	if names != nil && len(names) != len(regions) {
+		return nil, fmt.Errorf("the map has %d tiles but %d names", len(regions), len(names))
+	}
 	var traders []*Trader
 	var links []Link
 	for _, a := range regions {
 		for _, nb := range HexNeighbors(a.Row, a.Col, rows, cols) {
 			b := grid[nb[0]][nb[1]]
+			if b == nil {
+				continue // sea
+			}
 			hop := (a.MoveCost() + b.MoveCost()) / 2
 			if a.ID < b.ID {
 				links = append(links, Link{a.ID, b.ID, hop})
@@ -291,6 +327,12 @@ type GameSpec struct {
 	TaxRate       float64
 	AI            bool  // nations are run by the computer until a player takes one
 	Seed          int64 // draws the computer nations' temperaments and their whims
+	// Names names the tiles, row by row (skipping the sea); empty: by
+	// their row and column.
+	Names []string `json:",omitempty"`
+	// SeaRoutes is how many of the nearest open ports a new port trades
+	// with (0: every one, as on the small default map).
+	SeaRoutes int `json:",omitempty"`
 }
 
 // DefaultGame is the default game scenario on DefaultMap: three nations of
@@ -314,6 +356,7 @@ var DefaultGame = GameSpec{
 	},
 	TransportCost: 1,
 	TaxRate:       0.1,
+	Names:         NameTiles(DefaultMap, 1820),
 }
 
 // BuildGame builds a game world: regions owned by nations that tax their pops,
@@ -323,7 +366,13 @@ var DefaultGame = GameSpec{
 //
 // The game opens on a settled world: see SettleYears.
 func BuildGame(spec GameSpec) (*World, error) {
-	return buildGame(spec, true)
+	return buildGame(spec, true, nil)
+}
+
+// BuildGameProgress is BuildGame reporting how far the settling has got
+// (days done of the total), which takes a while on a big map.
+func BuildGameProgress(spec GameSpec, progress func(done, total int)) (*World, error) {
+	return buildGame(spec, true, progress)
 }
 
 // baseGameWorld builds a game's map with every tile urban, before any
@@ -332,7 +381,7 @@ func baseGameWorld(spec GameSpec) (*World, error) {
 	if math.IsInf(spec.TransportCost, 0) || math.IsNaN(spec.TransportCost) || spec.TransportCost < 0 {
 		return nil, fmt.Errorf("transport cost must be a non-negative number")
 	}
-	w, err := buildWorld(spec.TransportCost, spec.Map, true)
+	w, err := buildWorld(spec.TransportCost, spec.Map, spec.Names, true)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +394,7 @@ func baseGameWorld(spec GameSpec) (*World, error) {
 
 // buildGame builds a game, settled first or not (a save restores its own
 // state over it).
-func buildGame(spec GameSpec, settle bool) (*World, error) {
+func buildGame(spec GameSpec, settle bool, progress func(done, total int)) (*World, error) {
 	w, err := baseGameWorld(spec)
 	if err != nil {
 		return nil, err
@@ -354,7 +403,7 @@ func buildGame(spec GameSpec, settle bool) (*World, error) {
 		return nil, fmt.Errorf("nation map has %d rows, want %d", len(spec.NationMap), w.Rows)
 	}
 	if settle {
-		b, err := settledBase(spec)
+		b, err := settledBase(spec, progress)
 		if err != nil {
 			return nil, err
 		}

@@ -1,4 +1,6 @@
-// Command probe runs an AI game and prints yearly statistics (for calibration).
+// Command probe runs an AI game and prints yearly statistics (for
+// calibration), and how long a day takes to simulate. -map picks a
+// generated map (small, medium, large or huge) instead of the classic one.
 package main
 
 import (
@@ -13,13 +15,24 @@ import (
 func main() {
 	years := flag.Int("years", 20, "years to simulate")
 	every := flag.Int("every", 2, "print every n years")
+	mapSize := flag.String("map", "classic", "classic, or a generated map's size: small, medium, large or huge")
+	nations := flag.Int("nations", 0, "nations on a generated map (0: the size's default)")
+	seed := flag.Int64("seed", 1, "seed of a generated map and of the computer's choices")
 	flag.Parse()
 	spec := engine.DefaultGame
-	spec.AI = true
+	if *mapSize != "classic" {
+		var err error
+		if spec, err = generate(*mapSize, *nations, *seed); err != nil {
+			panic(err)
+		}
+	}
+	spec.AI, spec.Seed = true, *seed
+	settling := time.Now()
 	w, err := engine.BuildGame(spec)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("%d tiles, settled %d days in %v\n", len(w.Regions), engine.SettleDays(len(w.Regions)), time.Since(settling).Round(time.Millisecond))
 	start := time.Now()
 	for y := 1; y <= *years; y++ {
 		for d := 0; d < 365; d++ {
@@ -28,6 +41,7 @@ func main() {
 		if y%*every != 0 {
 			continue
 		}
+		fmt.Printf("%v a day so far\n", (time.Since(start) / time.Duration(365*y)).Round(time.Microsecond))
 		pop := w.Population()
 		var labor [3]float64
 		for _, r := range w.Regions {
@@ -85,4 +99,16 @@ func main() {
 			fmt.Println("  ", engine.Date(e.Tick).Format("2006-01-02"), e.Text)
 		}
 	}
+}
+
+func generate(size string, nations int, seed int64) (engine.GameSpec, error) {
+	for _, m := range engine.MapSizes {
+		if m.Name == size {
+			if nations == 0 {
+				nations = m.Nations
+			}
+			return engine.GenerateGame(engine.MapOptions{Rows: m.Rows, Cols: m.Cols, Nations: nations, Seed: seed})
+		}
+	}
+	return engine.GameSpec{}, fmt.Errorf("no map size %q", size)
 }

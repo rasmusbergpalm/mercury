@@ -110,8 +110,18 @@ async function openLobby() {
   try { await refreshLobby(); } catch (e) { showError("lobby-err", e); }
 }
 
+// the game this browser created that is still being prepared: the lobby
+// polls until it opens, then goes to it
+let awaiting = null, lobbyTimer = null;
 async function refreshLobby() {
+  clearTimeout(lobbyTimer);
   const [games, saves] = await Promise.all([api("GET", "/api/games"), api("GET", "/api/saves")]);
+  if (awaiting) {
+    const g = games.find((x) => x.id === awaiting);
+    if (g && g.preparing === undefined) { const id = awaiting; awaiting = null; location.hash = `#/game/${id}`; return; }
+    if (!g || g.error) awaiting = null;
+  }
+  if (!$("lobby").hidden && games.some((g) => g.preparing !== undefined && !g.error)) lobbyTimer = setTimeout(() => refreshLobby().catch((e) => showError("lobby-err", e)), 1000);
   $("games").innerHTML = games.length ? games.map(gameCard).join("") : `<p class="hint">No games yet. Found one below.</p>`;
   $("saves").innerHTML = saves.length
     ? `<div class="table-scroll"><table><tr><th>slot</th><th>game</th><th>day</th><th>saved</th><th></th></tr>${saves.map((s) =>
@@ -122,7 +132,13 @@ async function refreshLobby() {
 
 const paceName = (d) => ({ 0: "real time", 7: "weekly turns", 30: "monthly turns", 90: "seasonal turns", 365: "yearly turns" }[d] || `${d}-day turns`);
 
+const mapLabel = (g) => (g.map === "classic" ? "classic map" : `${g.map} map, ${g.tiles} tiles`);
 function gameCard(g) {
+  if (g.preparing !== undefined) {
+    const status = g.error ? `<span class="bad">Couldn't be prepared: ${esc(g.error)}</span>`
+      : `<span class="sub">Preparing the world: markets finding their prices, people moving to the work… ${Math.round(100 * g.preparing)}%</span><div class="progress"><span style="width:${(100 * g.preparing).toFixed(1)}%"></span></div>`;
+    return `<div class="game-card"><div class="title"><b>${esc(g.name)}</b><span class="sub">${mapLabel(g)} · ${g.nations.length} nations</span></div>${status}</div>`;
+  }
   const seat = getSeat(g.id);
   const pills = g.nations.map((n) => {
     let action;
@@ -133,7 +149,7 @@ function gameCard(g) {
     return `<span class="nation-pill"><span class="chip" style="background:${n.color}"></span>${esc(n.name)} · ${n.tiles} tiles ${action}</span>`;
   }).join("");
   return `<div class="game-card">
-    <div class="title"><b>${esc(g.name)}</b><span class="sub">${esc(g.date)} · ${paceName(g.turn_days)}${g.running ? " · running" : ""}</span></div>
+    <div class="title"><b>${esc(g.name)}</b><span class="sub">${esc(g.date)} · ${mapLabel(g)} · ${paceName(g.turn_days)}${g.running ? " · running" : ""}</span></div>
     <div class="nations-row">${pills}<button data-open="${g.id}">Watch</button></div></div>`;
 }
 
@@ -158,11 +174,16 @@ $("lobby").addEventListener("click", async (ev) => {
 $("new-game").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   try {
-    const q = new URLSearchParams({ name: $("new-name").value.trim(), cost: $("new-cost").value, turn: $("new-turn").value });
+    const q = new URLSearchParams({ name: $("new-name").value.trim(), cost: $("new-cost").value, turn: $("new-turn").value, map: $("new-map").value });
+    if ($("new-nations").value) q.set("nations", $("new-nations").value);
     const g = await api("POST", `/api/games?${q}`);
-    location.hash = `#/game/${g.id}`;
+    if (g.preparing === undefined) { location.hash = `#/game/${g.id}`; return; }
+    awaiting = g.id; // a generated map settles first: open it when it's ready
+    await refreshLobby();
   } catch (e) { showError("lobby-err", e); }
 });
+$("new-map").addEventListener("change", () => { $("new-nations").disabled = $("new-map").value === "classic"; });
+$("new-nations").disabled = $("new-map").value === "classic";
 
 $("import").addEventListener("change", async (ev) => {
   const file = ev.target.files[0];
@@ -177,6 +198,7 @@ $("import").addEventListener("change", async (ev) => {
 // ---- game ----------------------------------------------------------------------
 async function openGame(id) {
   stopPolling();
+  clearTimeout(lobbyTimer);
   gid = id;
   selected = null; detail = null; selectedArmy = null; moving = false; hist = {}; seaRoutes.clear();
   world = await api("GET", `/api/games/${id}/world`);
@@ -197,16 +219,20 @@ async function openGame(id) {
   lastEventTick = state.events.length ? state.events[state.events.length - 1].tick : -1;
   setTab(state.you >= 0 ? "nation" : "world");
   terrainCache = null;
-  resize();
+  initialView();
   render(true);
   startPolling();
 }
 
+// a big world's shipments come only when something shows them: the map's
+// trade overlay or the Trade tab
+const wantFlows = () => $("show-flows").checked || tab === "trade";
+const fetchState = () => api("GET", `/api/games/${gid}/state${wantFlows() ? "?flows=1" : ""}`);
 function startPolling() {
   stopPolling();
   const tickOnce = async () => {
     try {
-      state = await api("GET", `/api/games/${gid}/state`);
+      state = await fetchState();
       if (selected !== null && tab === "tile") detail = await api("GET", `/api/games/${gid}/regions/${selected}`);
       autoPause();
       render();
@@ -328,6 +354,9 @@ document.querySelector(".tabs").addEventListener("click", async (ev) => {
   setTab(b.dataset.tab);
   if (tab === "tile" && selected !== null) {
     try { detail = await api("GET", `/api/games/${gid}/regions/${selected}`); } catch (e) { showError("game-err", e); }
+  }
+  if (tab === "trade" && !state.flows.length) { // a big world's shipments: fetch them now
+    try { state = await fetchState(); } catch (e) { showError("game-err", e); }
   }
   render(true);
 });
@@ -509,9 +538,46 @@ function rampColor(t) {
 let size = 40;
 const margin = 16;
 const RING = 0.7; // how much of the surrounding ring of ocean tiles shows, in tiles
+// The view: the map fits the pane at zoom 1 (fitSize); zoomed in, it pans.
+// view.x and view.y are how far the map is scrolled, in CSS pixels.
+let fitSize = 40;
+const view = { zoom: 1, x: 0, y: 0 };
+const MAX_SIZE = 64; // the largest hex, zoomed in
 function center(r) {
   const w = Math.sqrt(3) * size;
-  return [margin + RING * w + w / 2 + w * (r.col + 0.5 * (r.row & 1)), margin + size + RING * 1.5 * size + 1.5 * size * r.row];
+  return [margin + RING * w + w / 2 + w * (r.col + 0.5 * (r.row & 1)) - view.x, margin + size + RING * 1.5 * size + 1.5 * size * r.row - view.y];
+}
+// the canvas's size in CSS pixels, and the whole map's at the current zoom
+const canvasW = () => canvas.width / (window.devicePixelRatio || 1);
+const canvasH = () => canvas.height / (window.devicePixelRatio || 1);
+const mapW = () => 2 * margin + Math.sqrt(3) * size * (world.cols + 0.5 + 2 * RING);
+const mapH = () => 2 * margin + size * (2 + 1.5 * (world.rows - 1) + 3 * RING);
+// whether a point (a tile's centre) is near enough the canvas to draw
+const onScreen = (x, y, pad = size * 1.2) => x > -pad && y > -pad && x < canvasW() + pad && y < canvasH() + pad;
+function clampView() {
+  view.x = Math.max(0, Math.min(view.x, mapW() - canvasW()));
+  view.y = Math.max(0, Math.min(view.y, mapH() - canvasH()));
+}
+// zoom to z, keeping the map point under (sx, sy) where it is
+function zoomTo(z, sx = canvasW() / 2, sy = canvasH() / 2) {
+  z = Math.max(1, Math.min(z, MAX_SIZE / fitSize));
+  const ux = (sx + view.x - margin) / size, uy = (sy + view.y - margin) / size;
+  view.zoom = z; size = fitSize * z;
+  view.x = margin + ux * size - sx; view.y = margin + uy * size - sy;
+  clampView();
+  requestDraw();
+}
+// centre the view on a tile
+function lookAt(r) {
+  const [x, y] = center(r);
+  view.x += x - canvasW() / 2; view.y += y - canvasH() / 2;
+  clampView();
+}
+let drawQueued = false;
+function requestDraw() {
+  if (drawQueued) return;
+  drawQueued = true;
+  requestAnimationFrame(() => { drawQueued = false; draw(); });
 }
 const corner = (x, y, s, i) => { const a = Math.PI / 180 * (60 * i - 30); return [x + s * Math.cos(a), y + s * Math.sin(a)]; };
 function hexPath(x, y, s, c = ctx) {
@@ -533,16 +599,34 @@ function resize() {
   const wrap = canvas.parentElement;
   const narrow = window.innerWidth <= 860;
   const availH = narrow ? Infinity : Math.max(320, window.innerHeight - wrap.getBoundingClientRect().top - 60);
-  size = Math.min((wrap.clientWidth - 2 * margin) / (Math.sqrt(3) * (world.cols + 0.5 + 2 * RING)), (availH - 2 * margin) / (2 + 1.5 * (world.rows - 1) + 3 * RING));
-  const w = 2 * margin + Math.sqrt(3) * size * (world.cols + 0.5 + 2 * RING), h = 2 * margin + size * (2 + 1.5 * (world.rows - 1) + 3 * RING);
+  fitSize = Math.min((wrap.clientWidth - 2 * margin) / (Math.sqrt(3) * (world.cols + 0.5 + 2 * RING)), (availH - 2 * margin) / (2 + 1.5 * (world.rows - 1) + 3 * RING));
+  size = fitSize;
+  const w = mapW(), h = mapH();
+  size = fitSize * view.zoom;
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
   canvas.style.width = w + "px"; canvas.style.height = h + "px";
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas.style.touchAction = zoomable() ? "none" : ""; // fingers pan and pinch a big map
+  canvas.classList.toggle("pan", zoomable());
+  $("zoom").hidden = !zoomable();
+  clampView();
   terrainCache = null;
   draw();
 }
 window.addEventListener("resize", resize);
+// a map too big to read whole can be zoomed (wheel, pinch, buttons) and panned (drag)
+const zoomable = () => world && world.regions.length > 60;
+// a new game's view: big maps open zoomed in on the player's capital (or the middle)
+function initialView() {
+  view.zoom = 1; view.x = 0; view.y = 0;
+  resize();
+  if (!zoomable()) return;
+  zoomTo(Math.max(1, 36 / fitSize));
+  const mine = state.you >= 0 && world.regions.find((r) => state.regions[r.id].nation === state.you);
+  lookAt(mine || world.regions[Math.floor(world.regions.length / 2)]);
+  terrainCache = null;
+}
 
 // deterministic scatter for terrain glyphs
 function rng(seed) { let s = seed * 2654435761 % 4294967296 || 1; return () => ((s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296); }
@@ -551,7 +635,7 @@ function rng(seed) { let s = seed * 2654435761 % 4294967296 || 1; return () => (
 // and theme, so it's drawn once onto an offscreen canvas.
 let terrainCache = null;
 function terrainLayer() {
-  const key = `${size}|${dark}|${canvas.width}`;
+  const key = `${size}|${dark}|${canvas.width}|${canvas.height}|${view.x}|${view.y}`;
   if (terrainCache && terrainCache.key === key) return terrainCache.canvas;
   const dpr = window.devicePixelRatio || 1, c = document.createElement("canvas");
   c.width = canvas.width; c.height = canvas.height;
@@ -567,23 +651,30 @@ function terrainLayer() {
   // the open sea inside the frame, with a ring of ocean tiles around the map
   g.save(); g.beginPath(); g.rect(8, 8, W - 16, H - 16); g.clip();
   g.fillStyle = OCEAN[dark ? "dark" : "light"]; g.fillRect(8, 8, W - 16, H - 16);
+  const glyphs = size >= 12; // too small to read: plain colours
   for (let row = -2; row <= world.rows + 1; row++) {
     for (let col = -2; col <= world.cols + 1; col++) {
       if (grid[`${row},${col}`]) continue;
       const [x, y] = center({ row, col });
-      g.save(); hexPath(x, y, size * 0.96, g); g.clip();
-      terrainGlyphs(g, { id: 1000 + (row + 2) * 100 + col, terrain: "ocean" }, x, y, ink);
-      g.restore();
+      if (!onScreen(x, y)) continue;
+      if (glyphs) {
+        g.save(); hexPath(x, y, size * 0.96, g); g.clip();
+        terrainGlyphs(g, { id: 1000 + (row + 2) * 1000 + col, terrain: "ocean" }, x, y, ink);
+        g.restore();
+      }
       hexPath(x, y, size, g); g.lineWidth = 0.5; g.strokeStyle = cssVar("--hex-stroke"); g.stroke();
     }
   }
   for (const r of world.regions) {
     const [x, y] = center(r);
+    if (!onScreen(x, y)) continue;
     hexPath(x, y, size, g);
     g.fillStyle = pal[r.terrain]; g.fill();
-    g.save(); hexPath(x, y, size * 0.96, g); g.clip();
-    terrainGlyphs(g, r, x, y, ink);
-    g.restore();
+    if (glyphs) {
+      g.save(); hexPath(x, y, size * 0.96, g); g.clip();
+      terrainGlyphs(g, r, x, y, ink);
+      g.restore();
+    }
     hexPath(x, y, size, g); g.lineWidth = 0.75; g.strokeStyle = cssVar("--hex-stroke"); g.stroke();
   }
   g.restore();
@@ -682,6 +773,7 @@ function draw() {
   }
   for (const r of world.regions) {
     const rs = state.regions[r.id], [x, y] = center(r);
+    if (!onScreen(x, y)) continue;
     if (sc) {
       hexPath(x, y, size * 0.99); ctx.fillStyle = rampColor(sc.t(overlayValue(r.id))); ctx.globalAlpha = 0.88; ctx.fill(); ctx.globalAlpha = 1;
     } else if (kind === "infra") {
@@ -694,13 +786,15 @@ function draw() {
   const avg = state.regions.reduce((t, rs) => t + rs.population, 0) / state.regions.length;
   for (const r of world.regions) {
     const rs = state.regions[r.id], [x, y] = center(r);
-    drawSettlement(r, x, y - size * 0.12, rs.population, avg);
+    if (!onScreen(x, y)) continue;
+    if (size >= 14) drawSettlement(r, x, y - size * 0.12, rs.population, avg);
     if (rs.port) drawAnchor(x - size * 0.55, y - size * 0.28);
     if (rs.project) progressRing(x + size * 0.52, y - size * 0.34, rs.project.delivered / rs.project.required);
   }
+  if (size >= 30) drawNames();
   if (moving && selectedArmy !== null && armyById(selectedArmy)) shadeUnreachable(armyById(selectedArmy).nation);
   if ($("show-flows").checked) drawFlows();
-  for (const r of world.regions) if (state.regions[r.id].battle > 0) drawBattle(...center(r));
+  for (const r of world.regions) if (state.regions[r.id].battle > 0 && onScreen(...center(r))) drawBattle(...center(r));
   drawPaths();
   drawArmies();
   drawBoots();
@@ -710,6 +804,22 @@ function draw() {
     hexPath(x, y, size * 0.84); ctx.lineWidth = 1; ctx.stroke();
   }
   drawLegend(sc);
+}
+
+// tile names, small, along the bottom of each hex
+function drawNames() {
+  const px = Math.min(13, size * 0.24);
+  ctx.font = `italic ${px}px ${cssVar("--serif") || "Georgia, serif"}`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.lineWidth = 3; ctx.lineJoin = "round";
+  ctx.strokeStyle = dark ? "rgba(33,27,21,0.75)" : "rgba(251,245,228,0.8)";
+  ctx.fillStyle = cssVar("--text");
+  for (const r of world.regions) {
+    const [x, y] = center(r);
+    if (!onScreen(x, y)) continue;
+    ctx.strokeText(r.name, x, y + size * 0.62);
+    ctx.fillText(r.name, x, y + size * 0.62);
+  }
 }
 
 // a label on a small paper plate, legible over any terrain
@@ -754,6 +864,7 @@ function progressRing(x, y, f) {
 function drawBorders(bands) {
   for (const r of world.regions) {
     const o = owner(r.id), [x, y] = center(r);
+    if (!onScreen(x, y)) continue;
     for (let i = 0; i < 6; i++) {
       const nb = across(r, i), other = nb ? owner(nb.id) : -2;
       if (other === o) continue;
@@ -779,6 +890,7 @@ function drawRoads(strong) {
     const lvl = Math.min(state.regions[l.a].infra, state.regions[l.b].infra);
     if (!lvl) continue;
     const [x1, y1] = center(world.regions[l.a]), [x2, y2] = center(world.regions[l.b]);
+    if (!onScreen(x1, y1) && !onScreen(x2, y2)) continue;
     road(x1, y1, x2, y2, lvl, strong);
   }
   for (const r of world.regions) {
@@ -1102,7 +1214,54 @@ function armyAt(ev, region) {
   }
   return null;
 }
+// panning and zooming a big map: drag (a mouse or a finger), pinch, the
+// wheel, and the + / − buttons. A drag isn't a click.
+const pointers = new Map(); // pointer id -> [x, y]
+let dragged = false, pinch = null;
+canvas.addEventListener("pointerdown", (ev) => {
+  if (!zoomable()) return;
+  pointers.set(ev.pointerId, canvasXY(ev));
+  dragged = false;
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), zoom: view.zoom };
+  }
+});
+canvas.addEventListener("pointermove", (ev) => {
+  const last = pointers.get(ev.pointerId);
+  if (!last) return;
+  const p = canvasXY(ev);
+  pointers.set(ev.pointerId, p);
+  if (pointers.size === 2 && pinch) {
+    const [a, b] = [...pointers.values()];
+    dragged = true;
+    zoomTo(pinch.zoom * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    return;
+  }
+  const dx = p[0] - last[0], dy = p[1] - last[1];
+  if (!dragged && Math.hypot(dx, dy) < 4) { pointers.set(ev.pointerId, last); return; } // a click's jitter
+  if (!dragged) canvas.setPointerCapture(ev.pointerId);
+  dragged = true;
+  view.x -= dx; view.y -= dy;
+  clampView();
+  $("tooltip").hidden = true;
+  requestDraw();
+});
+const lift = (ev) => { pointers.delete(ev.pointerId); if (pointers.size < 2) pinch = null; };
+canvas.addEventListener("pointerup", lift);
+canvas.addEventListener("pointercancel", lift);
+canvas.addEventListener("wheel", (ev) => {
+  if (!zoomable()) return;
+  ev.preventDefault();
+  zoomTo(view.zoom * Math.exp(-ev.deltaY * (ev.deltaMode ? 0.05 : 0.0015)), ...canvasXY(ev));
+}, { passive: false });
+$("zoom").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button");
+  if (b) zoomTo(view.zoom * (b.dataset.zoom === "in" ? 1.5 : 1 / 1.5));
+});
+
 canvas.addEventListener("click", async (ev) => {
+  if (dragged) { dragged = false; return; } // the end of a drag
   if (boots && Math.hypot(...canvasXY(ev).map((v, i) => v - [boots.x, boots.y][i])) < boots.r * 1.4) {
     selectedArmy = boots.army; moving = true; // march: now pick the destination
     render(true);
@@ -1139,9 +1298,12 @@ canvas.addEventListener("mousemove", (ev) => {
 });
 canvas.addEventListener("mouseleave", () => { $("tooltip").hidden = true; });
 for (const id of ["overlay", "good", "show-flows", "flow-good"]) {
-  $(id).addEventListener("change", () => {
+  $(id).addEventListener("change", async () => {
     $("good").hidden = $("overlay").value !== "price";
     $("flow-good").hidden = !$("show-flows").checked;
+    if (id === "show-flows" && $("show-flows").checked && !state.flows.length) {
+      try { state = await fetchState(); } catch (e) { showError("game-err", e); }
+    }
     draw();
   });
 }

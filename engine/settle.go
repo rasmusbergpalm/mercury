@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 )
@@ -13,11 +14,39 @@ import (
 // every price at £1.
 const SettleYears = 20
 
+// Big maps settle for fewer years, so that a new game doesn't take minutes
+// to prepare: prices find their level within a couple of years; it is the
+// slow drift of people to where the work is that the long run is for, and
+// on a big map that goes on in play. A map of settleFullTiles tiles or
+// fewer settles for SettleYears; above it, the years shrink with the
+// tiles, down to minSettleYears.
+const (
+	settleFullTiles = 100
+	minSettleYears  = 4
+)
+
+// SettleDays is how many days a map of the given number of tiles settles.
+func SettleDays(tiles int) int {
+	years := float64(SettleYears)
+	if tiles > settleFullTiles {
+		years = math.Max(minSettleYears, years*settleFullTiles/float64(tiles))
+	}
+	return int(years * TicksPerYear)
+}
+
+// maxSettled is how many settled worlds are kept: the classic map's, and a
+// few small generated ones (each new big map is settled afresh).
+const (
+	maxSettled      = 8
+	maxSettledTiles = 100
+)
+
 // settled caches the settled world per map and transport cost: the run is
 // deterministic, so it is done once per process and copied into each game.
 var settled = struct {
 	sync.Mutex
 	worlds map[string]*settledWorld
+	order  []string // keys, oldest first
 }{worlds: map[string]*settledWorld{}}
 
 type settledWorld struct {
@@ -26,29 +55,48 @@ type settledWorld struct {
 	err  error
 }
 
-// settledBase runs (or recalls) the settling of a game's map.
-func settledBase(spec GameSpec) (*World, error) {
+// settledBase runs (or recalls) the settling of a game's map, reporting
+// progress (days done of the total) if asked.
+func settledBase(spec GameSpec, progress func(done, total int)) (*World, error) {
 	key := fmt.Sprintf("%g|%s", spec.TransportCost, strings.Join(spec.Map, "/"))
+	tiles := 0
+	for _, row := range spec.Map {
+		tiles += len(row) - strings.Count(row, string(rune(Sea)))
+	}
+	if tiles > maxSettledTiles { // too big to keep: settle it for this game alone
+		return settle(spec, progress)
+	}
 	settled.Lock()
 	s, ok := settled.worlds[key]
 	if !ok {
 		s = &settledWorld{}
 		settled.worlds[key] = s
+		settled.order = append(settled.order, key)
+		if len(settled.order) > maxSettled {
+			delete(settled.worlds, settled.order[0])
+			settled.order = settled.order[1:]
+		}
 	}
 	settled.Unlock()
-	s.once.Do(func() {
-		w, err := baseGameWorld(spec)
-		if err != nil {
-			s.err = err
-			return
-		}
-		w.Migration = true
-		for d := 0; d < SettleYears*365; d++ {
-			w.Step()
-		}
-		s.w = w
-	})
+	s.once.Do(func() { s.w, s.err = settle(spec, progress) })
 	return s.w, s.err
+}
+
+// settle builds a game's map and runs it without nations until it settles.
+func settle(spec GameSpec, progress func(done, total int)) (*World, error) {
+	w, err := baseGameWorld(spec)
+	if err != nil {
+		return nil, err
+	}
+	w.Migration = true
+	days := SettleDays(len(w.Regions))
+	for d := 0; d < days; d++ {
+		w.Step()
+		if progress != nil && d%30 == 0 {
+			progress(d, days)
+		}
+	}
+	return w, nil
 }
 
 // settleFrom copies a settled world's markets, people, firms and traders

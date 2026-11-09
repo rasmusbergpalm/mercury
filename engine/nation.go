@@ -354,8 +354,7 @@ func (r *Region) payIncome(p *Pop, amount float64) {
 	tax := amount * r.Nation.TaxRate * r.Collect * r.AllegianceMult() // what its administration collects, from people who pay
 	p.Cash += amount - tax
 	p.Income += amount - tax
-	r.Nation.Treasury += tax
-	r.Nation.Revenue += tax
+	r.ledger.tax += tax // the nation gets it at settleLedgers
 }
 
 // claim is something a nation buys in a tile this tick.

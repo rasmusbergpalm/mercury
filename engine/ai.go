@@ -115,10 +115,8 @@ func (w *World) ArmyPotential(n *Nation) float64 {
 // nationsBorder reports whether any tiles of a and b are neighbours.
 func (w *World) nationsBorder(a, b *Nation) bool {
 	for _, r := range a.Regions {
-		for _, nb := range HexNeighbors(r.Row, r.Col, w.Rows, w.Cols) {
-			if w.Regions[nb[0]*w.Cols+nb[1]].Nation == b {
-				return true
-			}
+		if w.borders(b, r) {
+			return true
 		}
 	}
 	return false
@@ -294,7 +292,7 @@ type aiScope struct {
 }
 
 func (w *World) newAIScope(n *Nation, a *Army) *aiScope {
-	dist, _ := w.shortestPaths(a.Region, func(*Region) bool { return true })
+	dist, _ := w.allPaths(a.Region)
 	return &aiScope{w: w, n: n, a: a, dist: dist, best: -1, top: math.Inf(-1),
 		odds: aiFightOdds / math.Sqrt(n.Temper.Aggression) * (1 + 0.1*w.noise(n, 100+a.ID))}
 }
@@ -631,14 +629,13 @@ func (w *World) expansionTargets(n *Nation) []expansionTarget {
 	var out []expansionTarget
 	seen := make([]bool, len(w.Regions))
 	for _, own := range n.Regions {
-		for _, nb := range HexNeighbors(own.Row, own.Col, w.Rows, w.Cols) {
-			r := w.Regions[nb[0]*w.Cols+nb[1]]
-			if seen[r.ID] || r.Nation != nil {
-				continue
+		w.landNeighbours(own, func(r *Region) bool {
+			if !seen[r.ID] && r.Nation == nil {
+				seen[r.ID] = true
+				out = append(out, expansionTarget{r, r.Population() * math.Max(r.UtilityEMA, 1)})
 			}
-			seen[r.ID] = true
-			out = append(out, expansionTarget{r, r.Population() * math.Max(r.UtilityEMA, 1)})
-		}
+			return true
+		})
 	}
 	return out
 }

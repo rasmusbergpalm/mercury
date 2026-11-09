@@ -35,6 +35,14 @@
             <option value="90">Turns of a season</option>
             <option value="365">Turns of a year</option>
           </select></label>
+          <label>Map <select id="new-map">
+            <option value="classic">Classic (36 tiles, 3 nations)</option>
+            <option value="small">Small, generated (about 40 tiles)</option>
+            <option value="medium">Medium (about 140 tiles)</option>
+            <option value="large">Large (about 380 tiles)</option>
+            <option value="huge">Huge (about 1,000 tiles)</option>
+          </select></label>
+          <label>Nations <input id="new-nations" type="number" min="1" max="12" step="1" placeholder="auto" class="num"></label>
           <button class="primary" type="submit">Create</button>
         </form>
       </section>
@@ -91,6 +99,7 @@
           <select id="good" aria-label="Good" hidden></select>
           <label class="check"><input id="show-flows" type="checkbox"> Trade</label>
           <select id="flow-good" aria-label="Trade of" hidden></select>
+          <span id="zoom" class="zoom" hidden><button data-zoom="out" title="Zoom out" aria-label="Zoom out">−</button><button data-zoom="in" title="Zoom in" aria-label="Zoom in">+</button></span>
         </div>
         <div class="canvas-wrap"><canvas id="map"></canvas><div id="tooltip" hidden></div><div id="mode" class="mode" hidden></div></div>
         <div id="legend"></div>

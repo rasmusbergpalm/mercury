@@ -52,7 +52,14 @@ func (p *Pop) Employed() float64 {
 // Demand writes the pop's purchases into out: every member spends an equal
 // share of the pop's cash (see Demand).
 func (p *Pop) Demand(prices []float64, out []float64) {
-	Demand(prices, p.Cash/p.Size, out)
+	var d demandPlan
+	d.prepare(prices)
+	p.demand(&d, out)
+}
+
+// demand is Demand at prices already prepared.
+func (p *Pop) demand(d *demandPlan, out []float64) {
+	d.demand(p.Cash/p.Size, out)
 	for i := range out {
 		out[i] *= p.Size
 	}

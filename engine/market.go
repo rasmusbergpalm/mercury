@@ -36,6 +36,12 @@ const trendDays = 200.0
 // fill quantities (aligned with bids and asks). Then the price moves by
 // exp(speed * relative excess demand).
 func (m *Market) Clear(bids, asks []Order) (bidFills, askFills []float64) {
+	return m.clearInto(bids, asks, nil, nil)
+}
+
+// clearInto is Clear writing the fills into the given buffers (grown as
+// needed), to spare the allocations.
+func (m *Market) clearInto(bids, asks []Order, bidFills, askFills []float64) ([]float64, []float64) {
 	price := m.Price
 	supply, demand := 0.0, 0.0
 	for _, a := range asks {
@@ -51,13 +57,13 @@ func (m *Market) Clear(bids, asks []Order) (bidFills, askFills []float64) {
 	if supply > 0 {
 		sellFrac = math.Min(1, demand/supply)
 	}
-	bidFills = make([]float64, len(bids))
+	bidFills = grow(bidFills, len(bids))
 	for i, b := range bids {
 		got := b.Qty * buyFrac
 		*b.Cash -= got * price
 		bidFills[i] = got
 	}
-	askFills = make([]float64, len(asks))
+	askFills = grow(askFills, len(asks))
 	for i, a := range asks {
 		sold := a.Qty * sellFrac
 		*a.Cash += sold * price
@@ -67,7 +73,9 @@ func (m *Market) Clear(bids, asks []Order) (bidFills, askFills []float64) {
 	// for a good nobody sells from pushing its price up at full speed forever
 	excess := (demand - supply) / math.Max(math.Max(supply, demand), m.MinVolume)
 	// a good nobody wants for decades mustn't fall (or rise) out of range
-	m.Price = math.Min(maxPrice, math.Max(minPrice, m.Price*math.Exp(m.Speed*excess)))
+	if excess != 0 { // (balanced or idle markets keep their price: spare the exp)
+		m.Price = math.Min(maxPrice, math.Max(minPrice, m.Price*math.Exp(m.Speed*excess)))
+	}
 	// the trend follows the price on days the good trades (a price nobody
 	// pays, at the floor or the ceiling, says nothing about its level); a
 	// market that never traded has none
@@ -79,4 +87,12 @@ func (m *Market) Clear(bids, asks []Order) (bidFills, askFills []float64) {
 	}
 	m.Supply, m.Demand = supply, demand
 	return bidFills, askFills
+}
+
+// grow returns buf resized to n (its contents are overwritten by the caller).
+func grow(buf []float64, n int) []float64 {
+	if cap(buf) < n {
+		return make([]float64, n)
+	}
+	return buf[:n]
 }

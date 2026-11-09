@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"container/heap"
 	"errors"
 	"fmt"
 	"math"
@@ -452,33 +453,13 @@ func (w *World) reachable(n *Nation, r *Region) bool {
 	if r.Nation == n {
 		return true
 	}
-	for _, nb := range HexNeighbors(r.Row, r.Col, w.Rows, w.Cols) {
-		if w.Regions[nb[0]*w.Cols+nb[1]].Nation == n {
-			return true
-		}
-	}
-	return false
-}
-
-// neighbours lists (region, hop cost) for each link of a tile.
-func (w *World) neighbours(id int) [][2]float64 {
-	if w.adj == nil {
-		w.adj = make([][][2]int, len(w.Regions))
-		for i, l := range w.Links {
-			w.adj[l.A] = append(w.adj[l.A], [2]int{l.B, i})
-			w.adj[l.B] = append(w.adj[l.B], [2]int{l.A, i})
-		}
-	}
-	var out [][2]float64
-	for _, x := range w.adj[id] {
-		out = append(out, [2]float64{float64(x[0]), w.Links[x[1]].Hop})
-	}
-	return out
+	return w.borders(n, r)
 }
 
 // shortestPaths runs Dijkstra over land links from a tile, through tiles
 // that ok allows (the start is always allowed). It returns the cost to reach
-// each tile (+Inf if unreachable) and each tile's predecessor.
+// each tile (+Inf if unreachable) and each tile's predecessor. Tiles are
+// settled in order of cost, the lower ID first among equals.
 func (w *World) shortestPaths(from int, ok func(r *Region) bool) ([]float64, []int) {
 	n := len(w.Regions)
 	dist, prev, done := make([]float64, n), make([]int, n), make([]bool, n)
@@ -486,24 +467,63 @@ func (w *World) shortestPaths(from int, ok func(r *Region) bool) ([]float64, []i
 		dist[i], prev[i] = math.Inf(1), -1
 	}
 	dist[from] = 0
-	for {
-		u := -1
-		for i := range dist { // tiny graphs: a linear scan is fine and deterministic
-			if !done[i] && !math.IsInf(dist[i], 1) && (u < 0 || dist[i] < dist[u]) {
-				u = i
-			}
-		}
-		if u < 0 {
-			return dist, prev
+	q := &pathQueue{{0, from}}
+	for q.Len() > 0 {
+		it := heap.Pop(q).(pathItem)
+		u := it.id
+		if done[u] || it.d != dist[u] {
+			continue // a stale entry
 		}
 		done[u] = true
-		for _, nb := range w.neighbours(u) {
-			v := int(nb[0])
-			if !done[v] && ok(w.Regions[v]) && dist[u]+nb[1] < dist[v] {
-				dist[v], prev[v] = dist[u]+nb[1], u
+		for _, x := range w.adj[u] {
+			v, hop := x[0], w.Links[x[1]].Hop
+			if !done[v] && ok(w.Regions[v]) && dist[u]+hop < dist[v] {
+				dist[v], prev[v] = dist[u]+hop, u
+				heap.Push(q, pathItem{dist[v], v})
 			}
 		}
 	}
+	return dist, prev
+}
+
+// allPaths is shortestPaths through any land, which depends only on the
+// start and the hops: it is kept until a hop changes (callers only read it).
+func (w *World) allPaths(from int) ([]float64, []int) {
+	if p, ok := w.paths[from]; ok {
+		return p.dist, p.prev
+	}
+	if w.paths == nil {
+		w.paths = map[int]cachedPaths{}
+	}
+	dist, prev := w.shortestPaths(from, func(*Region) bool { return true })
+	w.paths[from] = cachedPaths{dist, prev}
+	return dist, prev
+}
+
+type cachedPaths struct {
+	dist []float64
+	prev []int
+}
+
+type pathItem struct {
+	d  float64
+	id int
+}
+
+// pathQueue is a min-heap of tiles by cost, then ID.
+type pathQueue []pathItem
+
+func (q pathQueue) Len() int { return len(q) }
+func (q pathQueue) Less(i, j int) bool {
+	return q[i].d < q[j].d || (q[i].d == q[j].d && q[i].id < q[j].id)
+}
+func (q pathQueue) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
+func (q *pathQueue) Push(x any)   { *q = append(*q, x.(pathItem)) }
+func (q *pathQueue) Pop() any {
+	old := *q
+	it := old[len(old)-1]
+	*q = old[:len(old)-1]
+	return it
 }
 
 func pathTo(prev []int, from, to int) []int {
@@ -574,7 +594,7 @@ func (w *World) sendHome(a *Army) bool {
 		a.Path = nil
 		return true
 	}
-	dist, prev := w.shortestPaths(a.Region, func(*Region) bool { return true })
+	dist, prev := w.allPaths(a.Region)
 	best := -1
 	for _, r := range a.Nation.Regions {
 		if w.tileTaken(a.Nation, r.ID, a) {
@@ -737,7 +757,7 @@ func (w *World) planSupply(n *Nation, add func(r *Region, c claim)) {
 		if len(n.Regions) == 0 {
 			continue
 		}
-		dist, _ := w.shortestPaths(a.Region, func(*Region) bool { return true })
+		dist, _ := w.allPaths(a.Region)
 		for _, r := range n.Regions { // the nearest home tile, its base
 			if a.depot == nil || dist[r.ID] < dist[a.depot.ID] {
 				a.depot = r
@@ -914,6 +934,7 @@ func (w *World) paySoldiers(n *Nation) {
 			r.payIncome(p, pay*p.Size/people)
 		}
 	}
+	n.settleTaxes()
 }
 
 // Costs is what the army cost its nation today: each supply good (transport
@@ -1047,7 +1068,7 @@ func (w *World) fallBack(a *Army) bool {
 // destroyArmy takes a defeated army off the map: some of its men find their
 // way home to the nation's nearest tile, the rest are lost.
 func (w *World) destroyArmy(a *Army) {
-	dist, _ := w.shortestPaths(a.Region, func(*Region) bool { return true })
+	dist, _ := w.allPaths(a.Region)
 	var home *Region
 	for _, r := range a.Nation.Regions {
 		if home == nil || dist[r.ID] < dist[home.ID] {
@@ -1204,9 +1225,9 @@ func (w *World) march(a *Army) {
 }
 
 func (w *World) hopBetween(a, b int) float64 {
-	for _, nb := range w.neighbours(a) {
-		if int(nb[0]) == b {
-			return nb[1]
+	for _, x := range w.adj[a] {
+		if x[0] == b {
+			return w.Links[x[1]].Hop
 		}
 	}
 	return 1

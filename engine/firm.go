@@ -96,6 +96,8 @@ type Firm struct {
 	tickInputs            float64   // what the goods it used up cost this tick
 	used                  []float64 // goods it used up producing this tick, by good
 	investWant            float64   // construction to buy this tick for a private expansion
+	powLevels             int       // the Levels levelsPow was worked out for
+	levelsPow             float64   // Levels^(1-s), cached
 }
 
 // Expansion is a building level under construction for a firm.
@@ -117,7 +119,10 @@ func (f *Firm) exponentSum() float64 {
 
 // effectiveTFP is TFP * Levels^(1-s): productivity of the firm's variable factors.
 func (f *Firm) effectiveTFP() float64 {
-	return f.TFP * math.Pow(float64(f.Levels), 1-f.exponentSum()) * f.Agglom * f.EduMult * f.Loyal
+	if f.powLevels != f.Levels || f.levelsPow == 0 {
+		f.powLevels, f.levelsPow = f.Levels, math.Pow(float64(f.Levels), 1-f.exponentSum())
+	}
+	return f.TFP * f.levelsPow * f.Agglom * f.EduMult * f.Loyal
 }
 
 // NewFirm makes a firm.

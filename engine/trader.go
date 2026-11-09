@@ -23,6 +23,11 @@ type TradingHouse struct {
 // their margin, each up to what its market offered last tick: every order
 // the house places is paid for.
 func (h *TradingHouse) Plan() {
+	h.plan()
+	h.Region.listBidders()
+}
+
+func (h *TradingHouse) plan() {
 	desired, full, carry := 0.0, 0.0, 0.0
 	h.Spent = 0
 	for _, t := range h.Routes {
@@ -74,29 +79,34 @@ func (h *TradingHouse) Plan() {
 //
 //	p_dest * arriving - p_origin - tau * p_transport_origin
 type Trader struct {
-	Good          GoodID
+	// the fields the markets read every day come first, to share a cache line
+	Good        GoodID
+	Active      bool    // false: at the floor with no margin, so don't buy at all
+	Q           float64 // target purchase per tick
+	Tau         float64
+	ship        float64       // share of that stock the house can afford to ship today
+	StockOrigin float64       // bought earlier, still waiting for transport
+	StockDest   float64       // arrived, for sale in dest
+	House       *TradingHouse // the origin's, which funds the route
+	// sold in the destination today, and import duties paid there: owed to
+	// the house, which belongs to another tile (see settleLedgers)
+	proceeds, duty float64
+
 	Origin, Dest  *Region
 	TransportCost float64 // multiplier on every hop
 	Sea           bool    // a sea route between two ports
 	Distance      float64
-	Tau           float64
 	Arriving      float64
-	House         *TradingHouse // the origin's, which funds the route
 	Speed         float64
 	Damping       float64
 	QMin          float64
-	Q             float64 // target purchase per tick
-	Active        bool    // false: at the floor with no margin, so don't buy at all
-	StockOrigin   float64 // bought earlier, still waiting for transport
 	Bought        float64 // bought this tick
-	StockDest     float64 // arrived, for sale in dest
 	TransportQty  float64 // transport units bought this tick
 	Shipped       float64 // last tick's shipment (as loaded)
 	Margin        float64
 	RelMargin     float64
 	DesiredSpend  float64
 	carry         float64 // transport for stock already bought, part of DesiredSpend
-	ship          float64 // share of that stock the house can afford to ship today
 	unit          float64 // cost of buying and shipping one more unit today
 	spoilage      float64
 }
@@ -161,7 +171,11 @@ func (t *Trader) Plan() {
 	// grow with the margin, but brake when the margin is shrinking (damps cycles)
 	signal := rel + t.Damping*(rel-t.RelMargin)
 	t.RelMargin = rel
-	t.Q = math.Max(t.QMin, t.Q*math.Exp(t.Speed*clip(signal)))
+	if t.Q <= t.QMin && signal <= 0 {
+		t.Q = t.QMin // at the floor and not growing (most idle routes): spare the exp
+	} else {
+		t.Q = math.Max(t.QMin, t.Q*math.Exp(t.Speed*clip(signal)))
+	}
 	t.Active = t.Margin > 0 || t.Q > t.QMin
 	q := 0.0
 	if t.Active {
@@ -211,6 +225,10 @@ func (t *Trader) Receive(good GoodID, qty float64) {
 // (unsold at dest, or stuck at origin) spoils; fresh purchases don't, except
 // for what is lost in transit.
 func (t *Trader) Ship() {
+	if t.StockDest == 0 && t.StockOrigin == 0 && t.Bought == 0 && t.TransportQty == 0 {
+		t.Shipped = 0 // an idle route (most of them): nothing moves
+		return
+	}
 	t.StockDest *= 1 - t.spoilage
 	t.StockOrigin = t.StockOrigin*(1-t.spoilage) + t.Bought
 	t.Bought = 0

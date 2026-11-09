@@ -3,6 +3,7 @@
 package server
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,6 +30,9 @@ type Server struct {
 	dataDir string // where save slots live; "" disables them
 	mux     *http.ServeMux
 	writes  sync.WaitGroup // autosaves being written
+	// games on generated maps being prepared, by the ID they will have
+	preparing map[string]*preparing
+	preps     sync.WaitGroup // their preparations
 }
 
 // Limits.
@@ -37,11 +41,12 @@ const (
 	MaxGames   = 50
 	maxImport  = 64 << 20
 	clockEvery = 100 * time.Millisecond
+	maxCatchUp = 500 * time.Millisecond // the most a clock beat makes up for
 )
 
 // New makes a server. static, if non-nil, is served at /; dataDir holds saves.
 func New(static fs.FS, dataDir string) *Server {
-	s := &Server{games: map[string]*Game{}, dataDir: dataDir, mux: http.NewServeMux()}
+	s := &Server{games: map[string]*Game{}, dataDir: dataDir, mux: http.NewServeMux(), preparing: map[string]*preparing{}}
 	m := s.mux
 	m.HandleFunc("GET /api/games", s.handleListGames)
 	m.HandleFunc("POST /api/games", s.handleCreateGame)
@@ -107,12 +112,20 @@ func (s *Server) CreateGame(name string, transportCost float64, turnDays int) (*
 }
 
 func (s *Server) add(name string, w *engine.World, turnDays int) (*Game, error) {
+	return s.addAs("", name, w, turnDays)
+}
+
+// addAs adds a game under the given ID (a fresh one if empty).
+func (s *Server) addAs(id, name string, w *engine.World, turnDays int) (*Game, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.games) >= MaxGames {
 		return nil, fmt.Errorf("the server already hosts %d games", MaxGames)
 	}
 	g := newGame(name, w, turnDays)
+	if id != "" {
+		g.ID = id
+	}
 	s.games[g.ID] = g
 	g.mu.Lock()
 	s.autosave(g) // a new game is on disk from the start
@@ -124,14 +137,21 @@ func (s *Server) add(name string, w *engine.World, turnDays int) (*Game, error) 
 func (s *Server) Run(stop <-chan struct{}) {
 	t := time.NewTicker(clockEvery)
 	defer t.Stop()
+	last := time.Now()
 	for {
 		select {
 		case <-stop:
 			return
-		case <-t.C:
+		case now := <-t.C:
+			// the time that really passed: a ticker skips beats while the
+			// games take longer than one (a big world at full speed), and
+			// they would fall behind their speed; but after a long stall
+			// they don't race to catch up
+			elapsed := min(now.Sub(last), maxCatchUp)
+			last = now
 			for _, g := range s.list() {
 				g.mu.Lock()
-				g.advance(clockEvery.Seconds())
+				g.advance(elapsed.Seconds())
 				s.autosave(g)
 				g.mu.Unlock()
 			}
@@ -180,12 +200,33 @@ func statusOf(err error) int {
 	return http.StatusConflict
 }
 
+// writeJSON sends v as JSON, gzipped for clients that take it when it is
+// big (a thousand-tile world's state is megabytes).
 func writeJSON(w http.ResponseWriter, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	writeJSONFor(w, nil, v)
 }
+
+func writeJSONFor(w http.ResponseWriter, r *http.Request, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	raw, err := json.Marshal(v)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	raw = append(raw, '\n')
+	if r == nil || len(raw) < gzipOver || !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w.Write(raw)
+		return
+	}
+	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Add("Vary", "Accept-Encoding")
+	z, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
+	z.Write(raw)
+	z.Close()
+}
+
+// gzipOver is the size above which responses are gzipped.
+const gzipOver = 32 << 10
 
 func token(r *http.Request) string {
 	if t := r.Header.Get("X-Player-Token"); t != "" {
@@ -231,20 +272,50 @@ func (s *Server) game(h gameHandler) http.HandlerFunc {
 			http.Error(w, "no such game", http.StatusNotFound)
 			return
 		}
+		d := &deferredReply{ResponseWriter: w, r: r}
 		g.mu.Lock()
-		defer g.mu.Unlock()
-		if err := h(g, w, r); err != nil {
-			http.Error(w, err.Error(), statusOf(err))
-		}
+		err := h(g, d, r)
 		s.autosave(g) // the handler may have advanced the game
+		g.mu.Unlock()
+		if err != nil {
+			http.Error(w, err.Error(), statusOf(err))
+			return
+		}
+		d.send()
 	}
+}
+
+// A big reply (a world's state, a tile's detail) is built under the game's
+// lock but encoded and sent after it is released (replyLater), so a slow
+// client doesn't hold up the game's clock. The values it carries must be
+// copies, not the engine's own.
+type deferredReply struct {
+	http.ResponseWriter
+	r *http.Request
+	v any
+}
+
+func (d *deferredReply) send() {
+	if d.v != nil {
+		writeJSONFor(d.ResponseWriter, d.r, d.v)
+	}
+}
+
+// replyLater sends v once the game's lock is released (at once if w can't
+// wait).
+func replyLater(w http.ResponseWriter, r *http.Request, v any) {
+	if d, ok := w.(*deferredReply); ok {
+		d.v = v
+		return
+	}
+	writeJSONFor(w, r, v)
 }
 
 // recentEvents is how many recent events the state carries.
 const recentEvents = 40
 
 func (g *Game) state(r *http.Request) State {
-	st := worldState(g.w)
+	st := worldState(g.w, r.URL.Query().Get("flows") == "1")
 	st.Game, st.Running, st.Speed, st.You = g.ID, g.running, g.speed, g.nationOf(token(r))
 	if g.turnDays > 0 {
 		st.Turn = &TurnState{Days: g.turnDays, Ready: []int{}}
@@ -271,7 +342,11 @@ func (s *Server) handleListGames(w http.ResponseWriter, _ *http.Request) {
 		out = append(out, g.summary())
 		g.mu.Unlock()
 	}
-	writeJSON(w, out)
+	s.mu.Lock()
+	prep := s.preparingSummaries()
+	s.mu.Unlock()
+	sort.Slice(prep, func(i, j int) bool { return prep[i].created.Before(prep[j].created) })
+	writeJSON(w, append(out, prep...))
 }
 
 var nameRe = regexp.MustCompile(`^[\pL\pN _.,'!-]{1,40}$`)
@@ -309,15 +384,52 @@ func (s *Server) handleCreateGame(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	g, err := s.CreateGame(name, cost, turn)
+	q := r.URL.Query()
+	m := MapChoice{Size: q.Get("map")}
+	if q.Has("nations") {
+		n, err := strconv.Atoi(q.Get("nations"))
+		if err != nil || n < 1 || n > engine.MaxNations {
+			http.Error(w, fmt.Sprintf("nations must be 1 to %d", engine.MaxNations), http.StatusBadRequest)
+			return
+		}
+		m.Nations = n
+	}
+	if q.Has("seed") {
+		seed, err := strconv.ParseInt(q.Get("seed"), 10, 64)
+		if err != nil {
+			http.Error(w, "seed must be a whole number", http.StatusBadRequest)
+			return
+		}
+		m.Seed = seed
+	}
+	id, err := s.PrepareGame(name, cost, turn, m)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, g.summary())
+	s.mu.Lock()
+	g := s.games[id]
+	var prep []GameSummary
+	if g == nil {
+		prep = s.preparingSummaries()
+	}
+	s.mu.Unlock()
+	if g != nil {
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		w.WriteHeader(http.StatusCreated)
+		writeJSON(w, g.summary())
+		return
+	}
+	for _, p := range prep {
+		if p.ID == id {
+			w.WriteHeader(http.StatusAccepted) // it opens once prepared
+			writeJSON(w, p)
+			return
+		}
+	}
+	w.WriteHeader(http.StatusAccepted)
+	writeJSON(w, GameSummary{ID: id, Name: name})
 }
 
 func (s *Server) handleDeleteGame(g *Game, w http.ResponseWriter, r *http.Request) error {
@@ -340,7 +452,7 @@ func (s *Server) handleWorld(g *Game, w http.ResponseWriter, _ *http.Request) er
 }
 
 func (s *Server) handleState(g *Game, w http.ResponseWriter, r *http.Request) error {
-	writeJSON(w, g.state(r))
+	replyLater(w, r, g.state(r))
 	return nil
 }
 
@@ -349,7 +461,7 @@ func (s *Server) handleRegion(g *Game, w http.ResponseWriter, r *http.Request) e
 	if err != nil {
 		return err
 	}
-	writeJSON(w, regionDetail(g.w, id))
+	replyLater(w, r, regionDetail(g.w, id))
 	return nil
 }
 
@@ -372,7 +484,7 @@ func (s *Server) handleStep(g *Game, w http.ResponseWriter, r *http.Request) err
 	for i := 0; i < n; i++ {
 		g.w.Step()
 	}
-	writeJSON(w, g.state(r))
+	replyLater(w, r, g.state(r))
 	return nil
 }
 
@@ -402,7 +514,7 @@ func (s *Server) handleClock(g *Game, w http.ResponseWriter, r *http.Request) er
 		g.running = q.Get("running") == "true"
 		g.carry = 0
 	}
-	writeJSON(w, g.state(r))
+	replyLater(w, r, g.state(r))
 	return nil
 }
 
@@ -423,7 +535,7 @@ func (s *Server) handleLeave(g *Game, w http.ResponseWriter, r *http.Request) er
 	if err := g.leave(token(r)); err != nil {
 		return err
 	}
-	writeJSON(w, g.state(r))
+	replyLater(w, r, g.state(r))
 	return nil
 }
 
@@ -593,7 +705,7 @@ func (s *Server) handleEndTurn(g *Game, w http.ResponseWriter, r *http.Request) 
 	if _, err := g.endTurn(token(r)); err != nil {
 		return err
 	}
-	writeJSON(w, g.state(r))
+	replyLater(w, r, g.state(r))
 	return nil
 }
 

@@ -41,16 +41,24 @@ type Region struct {
 
 	House    *TradingHouse // the tile's merchants
 	outbound [][]*Trader   // routes buying here, by good (transport: all of them)
+	bidders  [][]*Trader   // those of them that may bid today (see listBidders)
 	inbound  [][]*Trader   // traders selling here, by good
 
+	ledger    ledger    // what it owes its nation from today's parallel work
+	exportsTo []float64 // value shipped to each other nation today (see trackTrade)
+	soldHere  []*Trader // routes that sold here today: their houses are owed (see settleLedgers)
+
 	prices, demandBuf []float64 // scratch
-	popDemand         [][]float64
+	// firms by the goods they may buy and the good they make (built once)
+	firmsBuying, firmsMaking [][]int
+	mkt                      marketScratch
+	popDemand                [][]float64
 }
 
 // NewRegion makes a region with n identical pops.
 func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash float64) *Region {
 	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1, BaseMove: 1,
-		outbound: make([][]*Trader, NumGoods), inbound: make([][]*Trader, NumGoods),
+		outbound: make([][]*Trader, NumGoods), inbound: make([][]*Trader, NumGoods), bidders: make([][]*Trader, NumGoods),
 		prices: make([]float64, NumGoods), publicBid: make([]float64, NumGoods),
 		publicGot: make([]float64, NumGoods), Collect: 1, Healthy: 1}
 	for i := 0; i < nPops; i++ {
@@ -60,23 +68,20 @@ func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash f
 	for g := range Goods {
 		r.Markets = append(r.Markets, &Market{Good: GoodID(g), Price: 1, Speed: 0.1, MinVolume: 0.1})
 	}
+	r.House = &TradingHouse{Region: r}
 	return r
 }
 
-func (r *Region) connect(traders []*Trader) {
-	if r.House == nil {
-		r.House = &TradingHouse{Region: r}
-	}
+// connect hands each route to the trading house of the tile it leaves from
+// and lists it with the markets it buys and sells in.
+func connect(traders []*Trader) {
 	for _, t := range traders {
-		if t.Origin == r {
-			t.House = r.House
-			r.House.Routes = append(r.House.Routes, t)
-			r.outbound[t.Good] = append(r.outbound[t.Good], t)
-			r.outbound[Transport] = append(r.outbound[Transport], t)
-		}
-		if t.Dest == r {
-			r.inbound[t.Good] = append(r.inbound[t.Good], t)
-		}
+		r := t.Origin
+		t.House = r.House
+		r.House.Routes = append(r.House.Routes, t)
+		r.outbound[t.Good] = append(r.outbound[t.Good], t)
+		r.outbound[Transport] = append(r.outbound[Transport], t)
+		t.Dest.inbound[t.Good] = append(t.Dest.inbound[t.Good], t)
 	}
 }
 
@@ -247,18 +252,74 @@ type agentRef struct {
 	idx  int
 }
 
+// listBidders lists, per good, the routes leaving the tile that may place
+// an order today: those buying (Active) or with stock waiting for transport.
+// The rest (most routes, on a big map) bid nothing, so the markets skip them.
+func (r *Region) listBidders() {
+	if r.bidders == nil {
+		r.bidders = make([][]*Trader, NumGoods)
+	}
+	for g, routes := range r.outbound {
+		list := r.bidders[g][:0]
+		for _, t := range routes {
+			if t.Active || t.StockOrigin > 0 {
+				list = append(list, t)
+			}
+		}
+		r.bidders[g] = list
+	}
+}
+
+// marketScratch are a tile's reusable buffers for clearing its markets.
+type marketScratch struct {
+	bids, asks         []Order
+	bidRefs, askRefs   []agentRef
+	bidFills, askFills []float64
+}
+
+// indexFirms lists, per good, the firms that may buy it (it is one of their
+// inputs) and those that make it, in firm order.
+func (r *Region) indexFirms() {
+	r.firmsBuying, r.firmsMaking = make([][]int, NumGoods), make([][]int, NumGoods)
+	for i, f := range r.Firms {
+		r.firmsMaking[f.Output] = append(r.firmsMaking[f.Output], i)
+		for _, fc := range f.Factors {
+			switch fc.Kind {
+			case GoodFactor:
+				r.addBuyer(fc.Good, i)
+			case CompositeFactor:
+				for _, g := range Composites[fc.Composite].Goods {
+					r.addBuyer(g, i)
+				}
+			}
+		}
+	}
+}
+
+func (r *Region) addBuyer(g GoodID, firm int) {
+	if l := r.firmsBuying[g]; len(l) == 0 || l[len(l)-1] != firm {
+		r.firmsBuying[g] = append(l, firm)
+	}
+}
+
 // GoodsMarkets clears every goods market. Buyers: pops, firms (inputs),
 // traders leaving from here. Sellers: local firms, traders arriving here.
 func (r *Region) GoodsMarkets() {
 	prices := r.refreshPrices()
+	var plan demandPlan // the same prices for every pop here
+	plan.prepare(prices)
 	for i, p := range r.Pops {
-		p.Demand(prices, r.popDemand[i])
+		p.demand(&plan, r.popDemand[i])
 		for g := range p.Consumed {
 			p.Consumed[g] = 0
 		}
 	}
-	var bids, asks []Order
-	var bidRefs, askRefs []agentRef
+	if r.firmsBuying == nil {
+		r.indexFirms()
+	}
+	sc := &r.mkt
+	bids, asks, bidRefs, askRefs := sc.bids, sc.asks, sc.bidRefs, sc.askRefs
+	defer func() { sc.bids, sc.asks, sc.bidRefs, sc.askRefs = bids, asks, bidRefs, askRefs }()
 	for g, market := range r.Markets {
 		gid := GoodID(g)
 		bids, asks, bidRefs, askRefs = bids[:0], asks[:0], bidRefs[:0], askRefs[:0]
@@ -268,13 +329,13 @@ func (r *Region) GoodsMarkets() {
 				bidRefs = append(bidRefs, agentRef{popAgent, i})
 			}
 		}
-		for i, f := range r.Firms {
-			if f.PlanHas[g] {
+		for _, i := range r.firmsBuying[g] {
+			if f := r.Firms[i]; f.PlanHas[g] {
 				bids = append(bids, Order{&f.Cash, f.PlanQty[g]})
 				bidRefs = append(bidRefs, agentRef{firmAgent, i})
 			}
 		}
-		for i, t := range r.outbound[g] {
+		for i, t := range r.bidders[g] {
 			if q := t.Bid(gid); q > 0 {
 				bids = append(bids, Order{&t.House.Cash, q})
 				bidRefs = append(bidRefs, agentRef{traderAgent, i})
@@ -288,25 +349,27 @@ func (r *Region) GoodsMarkets() {
 				}
 			}
 		}
-		if r.Nation != nil && r.publicBid[g] > 0 {
-			bids = append(bids, Order{&r.Nation.Treasury, r.publicBid[g]})
+		if r.Nation != nil && r.publicBid[g] > 0 { // paid from the ledger, settled with the nation later
+			bids = append(bids, Order{&r.ledger.paid, r.publicBid[g]})
 			bidRefs = append(bidRefs, agentRef{nationAgent, 0})
 		}
-		for i, f := range r.Firms {
-			if f.Output == gid && f.Inventory > 0 {
+		for _, i := range r.firmsMaking[g] {
+			if f := r.Firms[i]; f.Inventory > 0 {
 				asks = append(asks, Order{&f.Cash, f.Inventory})
 				askRefs = append(askRefs, agentRef{firmAgent, i})
 			}
 		}
 		for i, t := range r.inbound[g] {
-			if t.StockDest > 0 {
-				asks = append(asks, Order{&t.House.Cash, t.StockDest})
+			if t.StockDest > 0 { // the house is another tile's: it is paid later
+				asks = append(asks, Order{&t.proceeds, t.StockDest})
 				askRefs = append(askRefs, agentRef{traderAgent, i})
 			}
 		}
 
 		price := market.Price // what trade happens at; Clear then moves the price
-		bidFills, askFills := market.Clear(bids, asks)
+		var bidFills, askFills []float64
+		bidFills, askFills = market.clearInto(bids, asks, sc.bidFills, sc.askFills)
+		sc.bidFills, sc.askFills = bidFills, askFills
 
 		for i, ref := range bidRefs {
 			got := bidFills[i]
@@ -318,12 +381,11 @@ func (r *Region) GoodsMarkets() {
 				r.Firms[ref.idx].tickCost += got * price
 				r.Firms[ref.idx].tickInputs += got * price
 			case traderAgent:
-				t := r.outbound[g][ref.idx]
+				t := r.bidders[g][ref.idx]
 				t.Receive(gid, got)
 				t.House.Spent += got * price
 			case nationAgent:
 				r.publicGot[g] = got
-				r.Nation.Spending += got * price
 			case investAgent:
 				r.Firms[ref.idx].Expansion.Delivered += got
 			}
@@ -336,12 +398,12 @@ func (r *Region) GoodsMarkets() {
 			} else {
 				t := r.inbound[g][ref.idx]
 				t.StockDest -= sold
+				r.soldHere = append(r.soldHere, t)
 				if rate, _ := t.border(); rate > 0 { // import tariff, paid on sale
 					duty := sold * price * rate
-					t.House.Cash -= duty
-					t.House.Spent += duty
-					r.Nation.Treasury += duty
-					r.Nation.TariffRevenue += duty
+					t.proceeds -= duty
+					t.duty += duty
+					r.ledger.tariffs += duty
 				}
 			}
 		}
@@ -441,7 +503,7 @@ const (
 	sizeBonusPop = 100.0 // a starting tile's people: bonus 1
 	sizeBonusExp = 0.45
 	// a tile is a city when it has this many times the average tile's people
-	cityMult = 2.0
+	CityMult = 2.0
 )
 
 // SizeBonus is the productivity multiplier the tile's size gives its

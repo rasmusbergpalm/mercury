@@ -1,9 +1,6 @@
 package engine
 
-import (
-	"math"
-	"sort"
-)
+import "math"
 
 // Pop needs: tiers of need groups; goods within a group substitute.
 //
@@ -87,6 +84,9 @@ var TierOf = func() []Tier {
 	return out
 }()
 
+// maxNeeds bounds len(Needs), so Demand can keep its scratch on the stack.
+const maxNeeds = 16
+
 // Demand writes into out (indexed by good; other entries zeroed) the
 // utility-maximising purchases of one person with the given budget.
 //
@@ -97,24 +97,58 @@ var TierOf = func() []Tier {
 // gives E_k = max(0, w_k/lambda - r_k P_k): water-filling. Groups enter in
 // order of w_k / (r_k P_k); solve for lambda over the active set.
 func Demand(prices []float64, budget float64, out []float64) {
+	var d demandPlan
+	d.prepare(prices)
+	d.demand(budget, out)
+}
+
+// demandPlan is the part of Demand that depends only on prices, worked out
+// once for every pop facing them: each group's unit price and floor, the
+// order the groups enter in, and how a group's quantity splits into goods.
+type demandPlan struct {
+	unit, floor [maxNeeds]float64
+	order       [maxNeeds]int
+	split       [maxNeeds][maxNeedGoods]float64 // goods per unit of the group
+}
+
+// maxNeedGoods bounds the goods in one need group.
+const maxNeedGoods = 4
+
+func (d *demandPlan) prepare(prices []float64) {
+	n := len(Needs)
+	unit, floor, order := d.unit[:n], d.floor[:n], d.order[:n]
+	for k, nd := range Needs {
+		unit[k] = PriceIndex(prices, nd.Goods, nd.Sigma)
+		floor[k] = nd.Requirement * unit[k]
+		order[k] = k
+		for i, g := range nd.Goods { // as Split does it
+			if len(nd.Goods) == 1 {
+				d.split[k][i] = 1
+			} else {
+				d.split[k][i] = math.Pow(prices[g]/unit[k], -nd.Sigma)
+			}
+		}
+	}
+	// a stable insertion sort (a handful of groups): by value at zero, best first
+	for i := 1; i < n; i++ {
+		for j := i; j > 0; j-- {
+			a, b := order[j], order[j-1]
+			if !(Needs[a].Weight/floor[a] > Needs[b].Weight/floor[b]) {
+				break
+			}
+			order[j], order[j-1] = b, a
+		}
+	}
+}
+
+// demand writes one person's purchases with the given budget into out.
+func (d *demandPlan) demand(budget float64, out []float64) {
 	for i := range out {
 		out[i] = 0
 	}
 	budget = math.Max(budget, 0)
 	n := len(Needs)
-	unit := make([]float64, n)
-	floor := make([]float64, n)
-	order := make([]int, n)
-	for k, nd := range Needs {
-		unit[k] = PriceIndex(prices, nd.Goods, nd.Sigma)
-		floor[k] = nd.Requirement * unit[k]
-		order[k] = k
-	}
-	sort.SliceStable(order, func(i, j int) bool {
-		a, b := order[i], order[j]
-		return Needs[a].Weight/floor[a] > Needs[b].Weight/floor[b]
-	})
-
+	unit, floor, order := d.unit[:n], d.floor[:n], d.order[:n]
 	var m int
 	var invLambda float64
 	for m = 1; m <= n; m++ {
@@ -131,9 +165,9 @@ func Demand(prices []float64, budget float64, out []float64) {
 	for _, k := range order[:m] {
 		nd := Needs[k]
 		spend := math.Max(0, nd.Weight*invLambda-floor[k])
-		q := Split(spend/unit[k], prices, nd.Goods, nd.Sigma)
+		q := spend / unit[k]
 		for i, g := range nd.Goods {
-			out[g] = q[i]
+			out[g] = q * d.split[k][i]
 		}
 	}
 }

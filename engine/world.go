@@ -1,6 +1,9 @@
 package engine
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
 // World is a set of regions linked by traders that pay transport costs, and
 // optionally nations that own the regions.
@@ -27,7 +30,11 @@ type World struct {
 	Events     []Event
 	History    History // game worlds only
 
-	adj [][][2]int // per tile: (neighbour, link index)
+	adj  [][][2]int // per tile: (neighbour, link index)
+	grid []int      // per cell of the map (row*Cols+col): its region, or -1 for sea
+	// shortest paths through any land, by start (see allPaths); cleared
+	// when a hop changes
+	paths map[int]cachedPaths
 }
 
 // Link is a pair of neighbouring regions and the cost of one hop between them:
@@ -43,8 +50,8 @@ const houseCashPerRoute = 1.0
 // NewWorld wires regions and traders together: every route belongs to the
 // trading house of the tile it leaves from.
 func NewWorld(rows, cols int, regions []*Region, traders []*Trader, links []Link) *World {
+	connect(traders)
 	for _, r := range regions {
-		r.connect(traders)
 		h := r.House
 		h.Cash = houseCashPerRoute * float64(len(h.Routes))
 		h.CashBuffer = h.Cash
@@ -53,7 +60,39 @@ func NewWorld(rows, cols int, regions []*Region, traders []*Trader, links []Link
 	for _, r := range regions {
 		w.TradePrices = append(w.TradePrices, r.Prices())
 	}
+	w.grid = make([]int, rows*cols)
+	for i := range w.grid {
+		w.grid[i] = -1
+	}
+	for _, r := range regions {
+		w.grid[r.Row*cols+r.Col] = r.ID
+	}
+	w.adj = make([][][2]int, len(regions))
+	for i, l := range links {
+		w.adj[l.A] = append(w.adj[l.A], [2]int{l.B, i})
+		w.adj[l.B] = append(w.adj[l.B], [2]int{l.A, i})
+	}
 	return w
+}
+
+// RegionAt is the tile at a map cell, or nil for sea (or off the map).
+func (w *World) RegionAt(row, col int) *Region {
+	if row < 0 || row >= w.Rows || col < 0 || col >= w.Cols {
+		return nil
+	}
+	if id := w.grid[row*w.Cols+col]; id >= 0 {
+		return w.Regions[id]
+	}
+	return nil
+}
+
+// landNeighbours calls f for each land tile next to r.
+func (w *World) landNeighbours(r *Region, f func(nb *Region) bool) {
+	for _, x := range w.adj[r.ID] {
+		if !f(w.Regions[x[0]]) {
+			return
+		}
+	}
 }
 
 // Money is all cash in the world; it is conserved.
@@ -80,51 +119,45 @@ func (w *World) Soldiers() float64 {
 	return s
 }
 
-// Step advances the world one tick.
+// Step advances the world one tick. The tiles' own work runs in parallel
+// (see eachRegion); what they owe each other is settled in order after.
 func (w *World) Step() {
 	w.runAI()
-	for i, r := range w.Regions {
-		copy(w.TradePrices[i], r.refreshPrices())
-	}
-	for _, r := range w.Regions {
+	w.eachRegion(func(r *Region) {
+		copy(w.TradePrices[r.ID], r.refreshPrices())
 		r.Plan()
 		if w.Investment {
 			r.planInvestment()
 		}
-	}
-	for _, r := range w.Regions {
-		r.House.Plan()
-	}
+	})
+	w.eachRegion(func(r *Region) { r.House.Plan() })
 	for _, n := range w.Nations {
 		n.plan(w)
 	}
-	for _, r := range w.Regions {
+	w.eachRegion(func(r *Region) {
 		r.LaborMarket()
-	}
-	for _, r := range w.Regions {
 		r.GoodsMarkets()
-	}
-	for _, t := range w.Traders {
-		t.Ship()
-	}
+	})
+	w.settleLedgers()
+	w.eachRegion(func(r *Region) { r.shipAll(len(w.Nations)) })
 	w.trackTrade()
-	for _, r := range w.Regions {
+	w.eachRegion(func(r *Region) {
 		r.Produce()
+		owners := r.owners()
 		for _, f := range r.Firms {
 			if f.State {
 				continue
 			}
 			// keep cash for what the firm wants to spend, but no more than it
 			// can grow into: twice what it actually spent today
-			r.PayDividends(&f.Cash, f.CashBuffer, math.Min(f.DesiredSpend, 2*f.tickCost+f.CashBuffer), r.owners())
+			r.PayDividends(&f.Cash, f.CashBuffer, math.Min(f.DesiredSpend, 2*f.tickCost+f.CashBuffer), owners)
 		}
-	}
-	for _, r := range w.Regions {
 		// like firms: hold what today's plans need, but no more than the
 		// house can grow into (twice what it actually spent today)
 		h := r.House
-		r.PayDividends(&h.Cash, h.CashBuffer, math.Min(h.DesiredSpend, 2*h.Spent+h.CashBuffer), r.owners())
-	}
+		r.PayDividends(&h.Cash, h.CashBuffer, math.Min(h.DesiredSpend, 2*h.Spent+h.CashBuffer), owners)
+	})
+	w.settleLedgers()
 	changed := false
 	for _, n := range w.Nations {
 		changed = n.settle(w) || changed
@@ -140,23 +173,21 @@ func (w *World) Step() {
 		w.armies()
 	}
 	if w.Investment {
-		for _, r := range w.Regions {
-			r.settleFirms()
-		}
+		w.eachRegion((*Region).settleFirms)
 	}
 	if w.Migration {
 		w.migrate()
 	}
-	if w.Demography {
-		for _, r := range w.Regions {
+	w.Tick++
+	w.eachRegion(func(r *Region) {
+		if w.Demography {
 			r.grow()
 		}
-	}
-	w.Tick++
-	if w.Spec != nil {
-		for _, r := range w.Regions {
+		if w.Spec != nil {
 			r.accumulateGDP()
 		}
+	})
+	if w.Spec != nil {
 		if w.Tick%HistoryEvery == 0 {
 			w.record()
 		}
@@ -170,17 +201,36 @@ func (w *World) trackTrade() {
 	}
 	k := len(w.Nations)
 	flow := make([]float64, k*k)
-	for _, t := range w.Traders {
-		on, dn := t.Origin.Nation, t.Dest.Nation
-		if on != nil && dn != nil && on != dn && t.Shipped > 0 {
-			v := t.Shipped * t.Origin.Markets[t.Good].Price
-			flow[on.ID*k+dn.ID] += v
-			flow[dn.ID*k+on.ID] += v
+	for _, r := range w.Regions { // each tile's exports, summed as it shipped them
+		on := r.Nation
+		for j, v := range r.exportsTo {
+			if on != nil && v > 0 {
+				flow[on.ID*k+j] += v
+				flow[j*k+on.ID] += v
+			}
 		}
 	}
 	for _, n := range w.Nations {
 		for j := range n.TradeWith {
 			n.TradeWith[j] = 0.98*n.TradeWith[j] + 0.02*flow[n.ID*k+j]
+		}
+	}
+}
+
+// shipAll sends what each of the tile's routes can ship today and sums
+// what it shipped to every other nation (for trackTrade).
+func (r *Region) shipAll(nations int) {
+	if len(r.exportsTo) != nations {
+		r.exportsTo = make([]float64, nations)
+	}
+	for j := range r.exportsTo {
+		r.exportsTo[j] = 0
+	}
+	on := r.Nation
+	for _, t := range r.House.Routes {
+		t.Ship()
+		if dn := t.Dest.Nation; on != nil && dn != nil && on != dn && t.Shipped > 0 {
+			r.exportsTo[dn.ID] += t.Shipped * r.Markets[t.Good].Price
 		}
 	}
 }
@@ -298,7 +348,7 @@ func (w *World) hasPortRoutes(id int) bool {
 func (w *World) openPort(r *Region) {
 	if !math.IsInf(w.Spec.TransportCost, 1) {
 		var added []*Trader
-		for _, id := range w.Ports {
+		for _, id := range w.seaPartners(r) {
 			p := w.Regions[id]
 			hop := w.seaHop(r, p)
 			for _, g := range GameTradable {
@@ -308,23 +358,33 @@ func (w *World) openPort(r *Region) {
 				added = append(added, a, b)
 			}
 		}
-		r.connect(added)
-		for _, id := range w.Ports {
-			w.Regions[id].connect(added)
-		}
+		connect(added)
 		w.Traders = append(w.Traders, added...)
 	}
 	w.Ports = append(w.Ports, r.ID)
 }
 
+// seaPartners are the open ports a new port at r trades with: every one, or
+// the Spec's SeaRoutes nearest (the earlier opened first among equals).
+func (w *World) seaPartners(r *Region) []int {
+	k := w.Spec.SeaRoutes
+	if k <= 0 || len(w.Ports) <= k {
+		return w.Ports
+	}
+	ids := append([]int(nil), w.Ports...)
+	d := func(id int) int { p := w.Regions[id]; return HexDistance(r.Row, r.Col, p.Row, p.Col) }
+	sort.SliceStable(ids, func(a, b int) bool { return d(ids[a]) < d(ids[b]) })
+	return ids[:k]
+}
+
 // borders reports whether a tile neighbours one of the nation's tiles.
 func (w *World) borders(n *Nation, r *Region) bool {
-	for _, nb := range HexNeighbors(r.Row, r.Col, w.Rows, w.Cols) {
-		if w.Regions[nb[0]*w.Cols+nb[1]].Nation == n {
-			return true
-		}
-	}
-	return false
+	found := false
+	w.landNeighbours(r, func(nb *Region) bool {
+		found = nb.Nation == n
+		return !found
+	})
+	return found
 }
 
 // transfer hands a tile to a nation. Its infrastructure stays; projects and
@@ -394,13 +454,13 @@ func migrationShare(from, to *Region, gap, hop float64) float64 {
 }
 
 func (w *World) migrate() {
-	for _, r := range w.Regions {
+	w.eachRegion(func(r *Region) {
 		u := r.Utility()
 		if w.Tick == 0 {
 			r.UtilityEMA = u
 		}
 		r.UtilityEMA = 0.9*r.UtilityEMA + 0.1*u
-	}
+	})
 	if w.Tick < migrationStart {
 		return
 	}
@@ -486,6 +546,7 @@ func (w *World) SetInfra(region, level int) {
 
 func (w *World) refreshAllHops() {
 	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
+	w.paths = nil
 	for i, l := range w.Links {
 		w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
 	}
@@ -501,6 +562,7 @@ func (w *World) refreshAllHops() {
 // refreshHops recomputes the hop cost of every link and route touching r.
 func (w *World) refreshHops(r *Region) {
 	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
+	w.paths = nil
 	for i, l := range w.Links {
 		if l.A == r.ID || l.B == r.ID {
 			w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
@@ -522,11 +584,11 @@ func (w *World) GrantTech(nation int, tech string) {
 }
 
 // IsCity reports whether a tile has grown into a city: it holds at least
-// cityMult times the people of the average tile.
+// CityMult times the people of the average tile.
 func (w *World) IsCity(r *Region) bool {
 	pop := 0.0
 	for _, x := range w.Regions {
 		pop += x.Population()
 	}
-	return r.Population() >= cityMult*pop/float64(len(w.Regions))
+	return r.Population() >= CityMult*pop/float64(len(w.Regions))
 }

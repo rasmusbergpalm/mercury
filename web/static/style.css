@@ -107,6 +107,11 @@ label { display: inline-flex; align-items: center; gap: 6px; }
 .overlay-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; overflow-x: auto; scrollbar-width: none; }
 .overlay-bar > * { flex: none; }
 .check { padding: 0 4px; }
+.zoom { display: inline-flex; gap: 2px; margin-left: auto; }
+.zoom[hidden] { display: none; }
+.zoom button { min-width: 34px; font-size: 18px; line-height: 1; padding: 4px 8px; }
+canvas.pan { cursor: grab; }
+canvas.pan:active { cursor: grabbing; }
 .canvas-wrap { position: relative; }
 canvas { display: block; max-width: 100%; border-radius: 4px; cursor: pointer; touch-action: manipulation;
   box-shadow: 0 3px 14px rgba(50, 30, 10, 0.3); }
