@@ -1349,7 +1349,7 @@ function tilePanel() {
       ${info(`A tile's people hold a share of loyalty for each nation, and for nobody. Day by day it drifts to whoever owns the tile (about 70% after ten years). The owner's share, plus 40% of nobody's, is its allegiance: until it is whole the tile produces and pays taxes at half to all of the usual, and gives only that share of recruits (disloyal people don't count towards your mobilisation cap either). A conquered tile starts loyal to its old owner; free land answers to nobody; a tile lost and soon retaken still mostly stands by you.`)}</p>`;
   }
   if (s.services) html += `<p class="sub" style="margin-top:8px">Public services: ${s.nation >= 0 ? `taxes collected ${pct(s.collect)} · ` : ""}educated ${pct(s.educated)} ·
-    health covers ${pct(s.healthy)}${s.crowding > 0 ? ` · <span class="${s.healthy < 0.999 ? "bad" : ""}">crowded ${pct(s.crowding)}</span>` : ""}</p>`;
+    public health ${healthGrowth(s)} a year</p>`;
   html += `<h3>Over time</h3>` + tileChart(h);
   html += classesBlock(d);
   html += armiesHere(s, mine);
@@ -1608,8 +1608,14 @@ function levelCells(tile, svc, u, mine) {
 // ---- state panel: administration, schools and public health ---------------------
 const SERVICE_TEXT = {
   administration: ["Officials collect the taxes. Without them only 30% of a tile's taxes come in (tax farmers and the gentry); with every official it needs, all of it. A tile needs more of them the more people it has and the further it is from the capital (your most populous tile).", "taxes collected", (rs) => pct(rs.collect)],
-  schools: ["Teachers school the young. A tile's educated share follows the share of its children in school over about fifteen years, and makes its industry, services and universities up to 30% more productive.", "educated", (rs) => pct(rs.educated)],
-  "public health": ["Doctors, clean water and sewers. Covered tiles grow up to 0.6% a year faster; crowded tiles (from 150 people) need many more of them, and uncovered crowding slows growth and brings cholera.", "growth from health", (rs) => `${rs.crowding > 0 ? `crowded ${pct(rs.crowding)} · ` : ""}+${(0.6 * rs.healthy).toFixed(2)}%`],
+  schools: ["Teachers school the young. A tile's educated share follows the share of its children in school as they grow up and replace the unschooled, over about forty years: schooling every child from 1820 makes a tile over half educated by 1850. Educated people make its industry and services up to 15% more productive, and its universities up to two and a half times as productive.", "educated", (rs) => pct(rs.educated)],
+  "public health": ["Doctors, clean water and sewers. A covered tile grows up to 0.6% a year faster. Crowded tiles (from 150 people) need many more of them, and crowding they don't cover slows growth by up to 2% a year and brings cholera. The growth column adds both up: when it is negative, the tile needs more public health.", "growth a year", (rs) => healthGrowth(rs)],
+};
+// what public health does to a tile's growth, less uncovered crowding: red
+// when the tile needs more of it
+const healthGrowth = (rs) => {
+  const g = 100 * (rs.health_growth || 0);
+  return `<span class="${g < -0.005 ? "bad" : g > 0.005 ? "good" : ""}">${g < -0.005 ? "−" : "+"}${Math.abs(g).toFixed(2)}%</span>`;
 };
 function statePanel() {
   const n = state.nations[viewNation], mine = n.id === state.you;

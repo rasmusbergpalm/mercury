@@ -540,6 +540,9 @@ func (r *Region) updateAgglomeration() {
 		if f.Sector != Primary {
 			f.Agglom, f.EduMult = b, e
 		}
+		if f.State && f.Public == University {
+			f.EduMult = scienceUnschooled + scienceEducation*r.Educated
+		}
 	}
 }
 
@@ -575,10 +578,7 @@ func (r *Region) BasicNeedsMet() float64 {
 
 // GrowthRate is the tile's population growth per year at current consumption.
 func (r *Region) GrowthRate() float64 {
-	g := popGrowthSlope*(r.BasicNeedsMet()-popGrowthNeutral) - r.crowdingPenalty()
-	if r.Urban { // game worlds: public health
-		g += r.healthBonus()
-	}
+	g := popGrowthSlope*(r.BasicNeedsMet()-popGrowthNeutral) + r.HealthGrowth()
 	if r.Nation != nil {
 		g += r.Nation.popGrowthBonus()
 	}

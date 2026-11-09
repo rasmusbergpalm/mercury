@@ -128,3 +128,74 @@ func TestPensions(t *testing.T) {
 		t.Errorf("pensions cost %v, want about %v", got, want)
 	}
 }
+
+// Schooling spreads as schooled children replace unschooled adults: a tile
+// that schools every child from 1820 is over half educated by 1850 (not
+// nine in ten, as it was), and nine in ten only by about 1900.
+func TestEducationSpreadsOverAGeneration(t *testing.T) {
+	e := startEducated
+	at := map[int]float64{}
+	for d := 1; d <= 80*TicksPerYear; d++ {
+		e = educate(e, 1)
+		if d%TicksPerYear == 0 {
+			at[1820+d/TicksPerYear] = e
+		}
+	}
+	if at[1850] < 0.45 || at[1850] > 0.65 {
+		t.Errorf("educated in 1850: %.0f%%, want about half", 100*at[1850])
+	}
+	if at[1900] < 0.85 || at[1900] > 0.95 {
+		t.Errorf("educated in 1900: %.0f%%, want about nine in ten", 100*at[1900])
+	}
+}
+
+// Schooling matters far more to the universities than to the mills.
+func TestEducationMattersMostToScience(t *testing.T) {
+	w := newTestGame(t)
+	r := w.Regions[0]
+	mults := func(educated float64) (uni, mill float64) {
+		r.Educated = educated
+		r.updateAgglomeration()
+		for _, f := range r.Firms {
+			switch {
+			case f.State && f.Public == University:
+				uni = f.EduMult
+			case f.Sector == Industry:
+				mill = f.EduMult
+			}
+		}
+		return
+	}
+	u0, m0 := mults(0)
+	u1, m1 := mults(1)
+	if u1/u0 < 2.5 {
+		t.Errorf("a fully schooled tile's university does %.2f× an unschooled one's", u1/u0)
+	}
+	if m1/m0 > 1.2 || m1/m0 <= 1 {
+		t.Errorf("a fully schooled tile's industry does %.2f× an unschooled one's", m1/m0)
+	}
+}
+
+// Bug: the tile and State views showed a tile as crowded even when public
+// health covered it. One figure now says what health does to growth: the
+// bonus of coverage less uncovered crowding, negative when more is needed.
+func TestHealthIsOneGrowthFigure(t *testing.T) {
+	w := newTestGame(t)
+	r := w.Regions[0]
+	for i := 0; i < 20 && r.Crowding() < 1; i++ { // fully crowded
+		for _, p := range r.Pops {
+			p.Size *= 1.5
+		}
+	}
+	if r.Crowding() < 0.999 {
+		t.Fatalf("crowding %v", r.Crowding())
+	}
+	r.Healthy = 1
+	if g := r.HealthGrowth(); math.Abs(g-healthGrowth) > 1e-12 {
+		t.Errorf("a crowded tile fully covered grows %v a year from health, want %v", g, healthGrowth)
+	}
+	r.Healthy = 0
+	if g := r.HealthGrowth(); g >= 0 {
+		t.Errorf("a crowded tile with no public health grows %v a year from it, want less than nothing", g)
+	}
+}

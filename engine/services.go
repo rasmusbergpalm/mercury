@@ -17,7 +17,8 @@ import (
 //     taxFarmed of them come in, the rest as officials meet the need, which
 //     is more for a big tile and for one far from the capital;
 //   - schools raise the tile's educated share over a generation, which makes
-//     its industry, services and universities more productive;
+//     its industry and services somewhat more productive, and its
+//     universities much more;
 //   - public health (clean water, doctors, vaccination) raises population
 //     growth everywhere, and keeps crowded tiles from killing their people:
 //     crowding slows growth and brings cholera unless it is covered.
@@ -53,25 +54,34 @@ func (s Public) String() string { return services[s].Name }
 
 // Service needs and effects.
 const (
-	adminPerHead     = 1.0 / 60  // officials needed per person in the capital
-	adminPerHop      = 0.2       // ...and 20% more per hex from it
-	pupilsPerTeacher = 40.0      // a teacher's class
-	childShare       = 0.3       // share of people of school age
-	schoolYears      = 15.0      // how fast the educated share follows enrolment
-	startEducated    = 0.1       // the educated share in 1820
-	educationBonus   = 0.3       // industry and services of a fully educated tile: +30%
-	crowdingFrom     = 150.0     // people from which a tile is crowded
-	crowdingSpan     = 300.0     // ...and fully crowded this many more
-	doctorPerHead    = 1.0 / 400 // health staff a tile needs per person...
-	crowdedDoctors   = 1.0 / 150 // ...and this many more per person when fully crowded
-	healthGrowth     = 0.006     // population growth a year a fully covered tile gains
-	crowdingDeaths   = 0.02      // growth lost a year by a fully crowded, uncovered tile
-	choleraPerYear   = 0.08      // chance of cholera a year in such a tile
-	choleraDeaths    = 0.06      // share of its workers cholera kills
-	serviceMaxLevels = 12
-	maxPublicShare   = 0.3 // most of a tile's workers its public services may employ
-	publicWageCap    = 1.5 // above this times the nation's average wage, they hire fewer
-	taxFarmed        = 0.3 // share of taxes collected without any officials (tax farmers, the gentry)
+	adminPerHead     = 1.0 / 60 // officials needed per person in the capital
+	adminPerHop      = 0.2      // ...and 20% more per hex from it
+	pupilsPerTeacher = 40.0     // a teacher's class
+	childShare       = 0.3      // share of people of school age
+	// The educated share follows enrolment as schooled children grow up and
+	// replace the unschooled: over a working life, so a nation that schools
+	// every child from 1820 is over half educated by 1850 and nine in ten
+	// by 1900, as the most literate nations of the century were.
+	schoolYears    = 40.0
+	startEducated  = 0.1  // the educated share in 1820
+	educationBonus = 0.15 // industry and services of a fully educated tile: +15%
+	// Scholars come from the schooled: a university in an unschooled tile
+	// finds half as much as the tech costs reckon on, in a fully educated
+	// one one and a half times as much (three times the unschooled).
+	scienceUnschooled = 0.5
+	scienceEducation  = 1.0
+	crowdingFrom      = 150.0     // people from which a tile is crowded
+	crowdingSpan      = 300.0     // ...and fully crowded this many more
+	doctorPerHead     = 1.0 / 400 // health staff a tile needs per person...
+	crowdedDoctors    = 1.0 / 150 // ...and this many more per person when fully crowded
+	healthGrowth      = 0.006     // population growth a year a fully covered tile gains
+	crowdingDeaths    = 0.02      // growth lost a year by a fully crowded, uncovered tile
+	choleraPerYear    = 0.08      // chance of cholera a year in such a tile
+	choleraDeaths     = 0.06      // share of its workers cholera kills
+	serviceMaxLevels  = 12
+	maxPublicShare    = 0.3 // most of a tile's workers its public services may employ
+	publicWageCap     = 1.5 // above this times the nation's average wage, they hire fewer
+	taxFarmed         = 0.3 // share of taxes collected without any officials (tax farmers, the gentry)
 )
 
 // Service errors.
@@ -270,6 +280,11 @@ func (n *Nation) settleServices() {
 	}
 }
 
+// educate moves a tile's educated share a day towards its enrolment.
+func educate(educated, enrolled float64) float64 {
+	return educated + (enrolled-educated)/(schoolYears*TicksPerYear)
+}
+
 // serviceEffects applies a day of the services' work in every tile:
 // administration sets the share of taxes collected, schools move the
 // educated share towards enrolment, and crowding without public health
@@ -280,8 +295,7 @@ func (w *World) serviceEffects() {
 			r.Collect = taxFarmed + (1-taxFarmed)*w.Coverage(r, Administration)
 			r.driftLoyalties()
 		}
-		enrolled := w.Coverage(r, Schools)
-		r.Educated += (enrolled - r.Educated) / (schoolYears * TicksPerYear)
+		r.Educated = educate(r.Educated, w.Coverage(r, Schools))
 		r.Healthy = w.Coverage(r, Health)
 		if c := r.Crowding(); w.Demography && c > 0 && r.Healthy < 1 {
 			chance := choleraPerYear * c * (1 - r.Healthy) / TicksPerYear
@@ -323,6 +337,17 @@ func (r *Region) crowdingPenalty() float64 {
 // healthBonus is the population growth public health adds a year.
 func (r *Region) healthBonus() float64 {
 	return healthGrowth * r.Healthy
+}
+
+// HealthGrowth is what public health, or the lack of it, does to the tile's
+// population growth a year: the bonus of its coverage less what uncovered
+// crowding costs. Negative means the tile needs more public health.
+func (r *Region) HealthGrowth() float64 {
+	g := -r.crowdingPenalty()
+	if r.Urban { // game worlds: public health
+		g += r.healthBonus()
+	}
+	return g
 }
 
 // ServiceStats are a tile's service figures for the day.

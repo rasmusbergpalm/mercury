@@ -110,30 +110,31 @@ type Project struct {
 }
 
 type RegionState struct {
-	ID         int             `json:"id"`
-	Wage       float64         `json:"wage"`
-	Utility    float64         `json:"utility"`
-	Population float64         `json:"population"`
-	Employed   float64         `json:"employed"`
-	TierSpend  []float64       `json:"tier_spend"`
-	Prices     []float64       `json:"prices"`
-	Nation     int             `json:"nation"` // -1 if unowned
-	Infra      int             `json:"infra"`
-	MoveCost   float64         `json:"move_cost"`
-	Port       bool            `json:"port"`
-	City       bool            `json:"city"`
-	CityBonus  float64         `json:"city_bonus"`
-	Growth     float64         `json:"growth"` // population growth per year
-	Occupation *Occupation     `json:"occupation"`
-	Battle     int             `json:"battle"`     // days the battle on the tile has lasted (0: none)
-	Services   []*ServiceState `json:"services"`   // indexed like WorldInfo.Services
-	Collect    float64         `json:"collect"`    // share of its taxes collected
-	Allegiance float64         `json:"allegiance"` // how far its people stand by their owner, 0..1
-	Loyalties  []float64       `json:"loyalties"`  // its people's loyalty to each nation, and last to nobody
-	Educated   float64         `json:"educated"`   // share of its people schooled
-	Healthy    float64         `json:"healthy"`    // share of its crowding covered
-	Crowding   float64         `json:"crowding"`   // 0..1
-	Project    *Project        `json:"project"`
+	ID           int             `json:"id"`
+	Wage         float64         `json:"wage"`
+	Utility      float64         `json:"utility"`
+	Population   float64         `json:"population"`
+	Employed     float64         `json:"employed"`
+	TierSpend    []float64       `json:"tier_spend"`
+	Prices       []float64       `json:"prices"`
+	Nation       int             `json:"nation"` // -1 if unowned
+	Infra        int             `json:"infra"`
+	MoveCost     float64         `json:"move_cost"`
+	Port         bool            `json:"port"`
+	City         bool            `json:"city"`
+	CityBonus    float64         `json:"city_bonus"`
+	Growth       float64         `json:"growth"` // population growth per year
+	Occupation   *Occupation     `json:"occupation"`
+	Battle       int             `json:"battle"`        // days the battle on the tile has lasted (0: none)
+	Services     []*ServiceState `json:"services"`      // indexed like WorldInfo.Services
+	Collect      float64         `json:"collect"`       // share of its taxes collected
+	Allegiance   float64         `json:"allegiance"`    // how far its people stand by their owner, 0..1
+	Loyalties    []float64       `json:"loyalties"`     // its people's loyalty to each nation, and last to nobody
+	Educated     float64         `json:"educated"`      // share of its people schooled
+	Healthy      float64         `json:"healthy"`       // share of its crowding covered
+	Crowding     float64         `json:"crowding"`      // 0..1
+	HealthGrowth float64         `json:"health_growth"` // growth a year from public health, less uncovered crowding
+	Project      *Project        `json:"project"`
 }
 
 // University is a tile's state university.
@@ -433,6 +434,7 @@ func regionState(w *engine.World, i int, cities float64) RegionState {
 		st.Nation = r.Nation.ID
 	}
 	st.Collect, st.Educated, st.Healthy, st.Crowding = r.Collect, r.Educated, r.Healthy, r.Crowding()
+	st.HealthGrowth = r.HealthGrowth()
 	st.Allegiance, st.Loyalties = r.Allegiance(), append([]float64{}, r.Loyalties...)
 	for k := engine.Public(0); k < engine.NumServices; k++ {
 		f := r.Service(k)
