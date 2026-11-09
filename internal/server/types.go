@@ -211,6 +211,8 @@ type NationState struct {
 	Labor          []float64 `json:"labor"`        // share of workers by sector (industry, primary, service)
 	Exports        []float64 `json:"exports"`      // value per good, today
 	Imports        []float64 `json:"imports"`
+	Prices         []float64 `json:"prices"` // price index per good (weighted by what traded), 0 if none traded
+	Traded         []float64 `json:"traded"` // amount of each good that changed hands today
 }
 
 // SourceShare is one tile's part in an army's order for a good.
@@ -528,6 +530,7 @@ func worldState(w *engine.World, flows bool) State {
 		}
 		ns.GDP = n.RealGDP
 		ns.Exports, ns.Imports = trade.NationOut[n.ID], trade.NationIn[n.ID]
+		ns.Prices, ns.Traded = w.NationPrices(n)
 		pop := 0.0
 		for _, r := range n.Regions {
 			pop += r.Population()

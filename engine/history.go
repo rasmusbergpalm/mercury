@@ -30,6 +30,9 @@ type NationHistory struct {
 	Labor       [3][]float64          `json:"labor"`        // share of workers by Sector
 	ExportsGood [][]float64           `json:"exports_by_good"`
 	ImportsGood [][]float64           `json:"imports_by_good"`
+	// Prices is the nation's price index per good (NationPrices); a sample
+	// where the good didn't trade repeats the last one
+	Prices [][]float64 `json:"prices"`
 }
 
 // RegionHistory: per-sample series for one tile.
@@ -146,7 +149,8 @@ func (w *World) record() {
 	h := &w.History
 	if h.Nations == nil {
 		for range w.Nations {
-			nh := &NationHistory{ExportsGood: make([][]float64, NumGoods), ImportsGood: make([][]float64, NumGoods)}
+			nh := &NationHistory{ExportsGood: make([][]float64, NumGoods), ImportsGood: make([][]float64, NumGoods),
+				Prices: make([][]float64, NumGoods)}
 			h.Nations = append(h.Nations, nh)
 		}
 		for range w.Regions {
@@ -179,6 +183,20 @@ func (w *World) record() {
 			in += trade.NationIn[i][g]
 			push(&nh.ExportsGood[g], trade.NationOut[i][g])
 			push(&nh.ImportsGood[g], trade.NationIn[i][g])
+		}
+		if len(nh.Prices) != NumGoods { // a game saved before prices were kept
+			nh.Prices = make([][]float64, NumGoods)
+			for g := range nh.Prices {
+				nh.Prices[g] = make([]float64, idx)
+			}
+		}
+		prices, traded := w.NationPrices(n)
+		for g := range Goods {
+			p := prices[g]
+			if s := nh.Prices[g]; traded[g] <= 0 && len(s) > 0 {
+				p = s[len(s)-1]
+			}
+			push(&nh.Prices[g], p)
 		}
 		push(&nh.Population, pop+men)
 		push(&nh.Tiles, float64(len(n.Regions)))

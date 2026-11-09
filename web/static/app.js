@@ -1512,6 +1512,33 @@ function nationPanel() {
   </div>`;
   html += `<h3>The national ledger</h3>` + nationChart(h, n);
   html += societyBlock(n);
+  html += pricesBlock(h, n);
+  return html;
+}
+
+// the nation's price index: each good's price across its tiles, weighted by
+// what changed hands, with today's volume and the change over a year
+function pricesBlock(h, n) {
+  if (!n.prices) return "";
+  const goods = world.goods.map((g, i) => i).filter((g) => (!state.made || state.made[g]) && n.traded[g] > 1e-3);
+  const opts = goods.map((g) => [String(g), world.goods[g].name]);
+  let html = `<h3>Prices ${info(`The nation's price for each good: the average across its tiles, weighted by how much changed hands at each, so a price nobody pays doesn't count. Traded is the amount bought and sold a day across the nation; the change is over the last year.`)}</h3>`;
+  if (!goods.length) return html + `<p class="hint">Nothing traded today.</p>`;
+  const series_ = h && h.data && h.data.prices;
+  if (series_) {
+    const [g, prow] = seg("nation-price", opts, opts.find(([k]) => world.goods[+k].name === "bread") ? String(world.goods.findIndex((x) => x.name === "bread")) : opts[0][0]);
+    html += prow + lineChart(h.ticks, [{ name: `${world.goods[+g].name} price`, color: nationColor(n.id), values: series_[+g].map((v) => (v > 0 ? v : null)) }], { f: (v) => fmt(v) });
+  }
+  const change = (g) => {
+    const s = series_ && series_[g];
+    if (!s || s.length < 13 || !(s[s.length - 13] > 0)) return "–";
+    const r = n.prices[g] / s[s.length - 13] - 1;
+    return `<span class="${r > 0.005 ? "bad" : r < -0.005 ? "good" : ""}">${r > 0 ? "+" : r < 0 ? "−" : ""}${pct(Math.abs(r))}</span>`;
+  };
+  const row = (g) => `<tr><td>${world.goods[g].name}</td><td>${fmt(n.prices[g])}</td><td>${fmt(n.traded[g], 1)}</td><td>${change(g)}</td></tr>`;
+  const head = (label) => `<tr class="branch"><th colspan="4">${label}</th></tr><tr><th>good</th><th>price</th><th>traded / day</th><th>a year</th></tr>`;
+  html += `<div class="table-scroll"><table>${head("What people buy")}${goods.filter((g) => world.goods[g].tier).map(row).join("")}
+    ${head("Materials and services")}${goods.filter((g) => !world.goods[g].tier).map(row).join("")}</table></div>`;
   return html;
 }
 
@@ -1773,7 +1800,7 @@ function armyCard(a, mine) {
     <tr><td>Transport<br><span class="sub">carrying the goods to the army</span></td><td>£${fmt(transport, 2)}</td></tr>
     <tr><td>Soldiers' pay<br><span class="sub">${short(a.men)} men at the nation's average wage</span></td><td>£${fmt(a.pay, 2)}</td></tr>
     <tr class="total"><td>Total</td><td>£${fmt(goodsTotal + transport + a.pay, 2)}</td></tr></table>`;
-  html += `<h3>Supplies ${info(`Each good is ordered from every tile of yours that sells it, in proportion to what each offers (among those where it lands no more than half again dearer than the cheapest), so all your works see the demand; it is shipped here, needing transport. The army keeps up to 30 days of needs in stock and fights from its stock: it is short only once the stock runs out. Only the men under arms eat and use kit; reservists live at home.`)}</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">${depot}</p>
+  html += `<h3>Supplies ${info(`Each good is ordered from every tile of yours that sells it, in proportion to what each offers (among those where it lands no more than half again dearer than the cheapest), so all your works see the demand; it is shipped here, needing transport. The army keeps up to 30 days of needs in stock and fights from its stock: it is short only once the stock runs out. Only the men under arms eat and use kit; reservists live at home.<br><br>The state pays whatever a good costs, so a shortage drives its price up and calls up supply, until it costs ten times its usual price; beyond that the state spends no more on it.`)}</h3><div class="supply">${supply}</div><p class="sub" style="margin-top:4px">${depot}</p>
     <h3>Strength in battle ${info(`Doctrines form a ladder. The levies' power, cut by short food, clothing and arms, is the first rung; each doctrine above multiplies it by its power over the one below, as far as the kit it adds is supplied, and never further than the rung beneath it (tanks are worth nothing without rifles). An army that loses its newest kit falls back down the ladder.<br><br>In battle each side loses men in proportion to the other's strength, and three times that share of its stock (ammunition spent, guns abandoned), so long fights drain supplies fast. An army fights on until its strength is down to a third of what it began the battle with, then falls back to its nearest own tile, losing half its men and half its stock on the way; surrounded, it fights on to the end. Defenders on their own soil fight harder, and each day fortune adds or takes up to 10% from each side.`)}</h3>
     <table class="mods"><tr><th>factor</th><th>effect</th></tr>${att}
       <tr class="total"><td>Per soldier</td><td>${per.toFixed(2)}</td></tr>

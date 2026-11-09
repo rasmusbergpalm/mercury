@@ -405,28 +405,15 @@ func (n *Nation) plan(w *World) {
 	// orders can cost is known, so the treasury is never overdrawn
 	needs := 0.0
 	// the nation's average price of each good where it actually traded
-	// (weighted by what changed hands: a price nobody pays doesn't count)
-	avgPrice, offered := make([]float64, NumGoods), make([]float64, NumGoods)
-	for _, r := range n.Regions {
-		for g, m := range r.Markets {
-			v := math.Min(m.Supply, m.Demand)
-			avgPrice[g] += m.Price * v
-			offered[g] += v
-		}
-	}
-	for g := range avgPrice {
-		if offered[g] > 0 {
-			avgPrice[g] /= offered[g]
-		}
-	}
+	avgPrice, _ := w.NationPrices(n)
 	addTo := func(r *Region, c claim) {
 		if !w.Made(c.good) {
 			return // nobody can make it yet: there is nothing to buy
 		}
 		m := r.Markets[c.good]
-		margin, floor := stateBuyMargin, stateBuyFloor
+		margin, floor, trendCap := stateBuyMargin, stateBuyFloor, stateTrendPrice
 		if c.kind == armyClaim { // the armies press harder: a shortage must drive the price up
-			margin, floor = armyBuyMargin, armyBuyFloor
+			margin, floor, trendCap = armyBuyMargin, armyBuyFloor, armyTrendPrice
 		}
 		c.qty = math.Min(c.qty, margin*m.Supply+floor)
 		// where a good costs far more than elsewhere in the nation, buy less
@@ -436,7 +423,7 @@ func (n *Nation) plan(w *World) {
 		// and where it costs far more than it usually does, spend no more on
 		// it: the price still rises and calls up supply, but a shortage
 		// can't run the state's spending away (and drain the treasury)
-		if ref := stateTrendPrice * m.Trend; m.Price > ref && ref > 0 {
+		if ref := trendCap * m.Trend; m.Price > ref && ref > 0 {
 			c.qty *= ref / m.Price
 		}
 		if c.qty > 0 {
@@ -483,6 +470,31 @@ func (n *Nation) plan(w *World) {
 	}
 }
 
+// NationPrices is the nation's price index for each good: the average price
+// across its tiles, weighted by what changed hands at each (a price nobody
+// pays doesn't count), with the amount traded a day. A good that didn't
+// trade anywhere in the nation has price 0.
+func (w *World) NationPrices(n *Nation) (price, traded []float64) {
+	price, traded = make([]float64, NumGoods), make([]float64, NumGoods)
+	for _, r := range n.Regions {
+		for g, m := range r.Markets {
+			v := math.Min(m.Supply, m.Demand)
+			p := m.Price
+			if w.TradePrices != nil {
+				p = w.TradePrices[r.ID][g] // what it traded at today
+			}
+			price[g] += p * v
+			traded[g] += v
+		}
+	}
+	for g := range price {
+		if traded[g] > 0 {
+			price[g] /= traded[g]
+		}
+	}
+	return price, traded
+}
+
 // The state buys up to stateBuyMargin times what a market offered yesterday,
 // plus stateBuyFloor.
 const (
@@ -497,6 +509,11 @@ const (
 	// demand, which drives the price up until supply answers.
 	armyBuyMargin = 3.0
 	armyBuyFloor  = 1.0
+	// The armies keep buying in full until a good costs armyTrendPrice times
+	// its long-run price: the state pays what it takes, so the price climbs
+	// at full speed and calls up supply, but a runaway shortage still can't
+	// drain the treasury.
+	armyTrendPrice = 10.0
 )
 
 // sortedGoods lists a map's goods in GoodID order, for determinism.

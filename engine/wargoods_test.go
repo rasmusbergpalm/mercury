@@ -84,3 +84,78 @@ func TestNoMarketForGoodsNobodyCanMake(t *testing.T) {
 		t.Error("oil still counts as unmade once a nation can drill for it")
 	}
 }
+
+// The nation's price index weighs each tile's price by what changed hands
+// there, and is kept in the nation's history.
+func TestNationPriceIndex(t *testing.T) {
+	w := newQuietGame(t)
+	for i := 0; i < 2*HistoryEvery; i++ {
+		w.Step()
+	}
+	n := nationByName(w, "Montara")
+	prices, traded := w.NationPrices(n)
+	bread := G("bread")
+	sum, vol := 0.0, 0.0
+	for _, r := range n.Regions {
+		m := r.Markets[bread]
+		v := min(m.Supply, m.Demand)
+		sum += w.TradePrices[r.ID][bread] * v
+		vol += v
+	}
+	if vol <= 0 || relDiff(prices[bread], sum/vol) > 1e-9 || relDiff(traded[bread], vol) > 1e-9 {
+		t.Errorf("bread: index %v on %v traded, want %v on %v", prices[bread], traded[bread], sum/vol, vol)
+	}
+	if oil := G("oil"); prices[oil] != 0 || traded[oil] != 0 {
+		t.Errorf("oil, which nobody trades, has price %v and volume %v", prices[oil], traded[oil])
+	}
+	h := w.History.Nations[n.ID]
+	if len(h.Prices) != NumGoods || len(h.Prices[bread]) != len(w.History.Ticks) || h.Prices[bread][len(w.History.Ticks)-1] <= 0 {
+		t.Errorf("bread's price isn't in the nation's history: %v samples for %v ticks", len(h.Prices[bread]), len(w.History.Ticks))
+	}
+}
+
+// The armies keep ordering in full while a good's price climbs (up to ten
+// times its usual level): before, they cut their orders once it doubled,
+// which slowed the very rise that calls up supply.
+func TestArmiesKeepOrderingAsPricesRise(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	w.GrantTech(m.ID, "Drill")
+	if _, err := w.RaiseArmy(m.ID, m.Regions[0].ID, 0.5*w.MobilizationCap(m)); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 60; i++ {
+		w.Step()
+	}
+	art := G("artillery")
+	ordered := func(mult float64) float64 {
+		for _, r := range w.Regions { // every tile alike, so none looks dear next to the rest
+			mk := r.Markets[art]
+			if mk.Trend <= 0 {
+				mk.Trend = mk.Price
+			}
+			mk.Price = mult * mk.Trend
+			w.TradePrices[r.ID][art] = mk.Price
+		}
+		m.plan(w)
+		q := 0.0
+		for _, r := range m.Regions {
+			for _, c := range r.claims {
+				if c.kind == armyClaim && c.good == art {
+					q += c.qty
+				}
+			}
+		}
+		return q
+	}
+	usual := ordered(1)
+	if usual <= 0 {
+		t.Fatal("the army orders no artillery")
+	}
+	if dear := ordered(5); dear < 0.99*usual {
+		t.Errorf("at 5× its usual price the army orders %v artillery a day, at the usual price %v", dear, usual)
+	}
+	if dearer := ordered(20); dearer > 0.6*usual {
+		t.Errorf("at 20× its usual price the army still orders %v artillery a day (usual %v)", dearer, usual)
+	}
+}
