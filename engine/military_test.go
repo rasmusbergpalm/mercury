@@ -954,3 +954,29 @@ func TestBattleLuck(t *testing.T) {
 		t.Errorf("luck barely varies: %v..%v", lo, hi)
 	}
 }
+
+// Regression: most of an army's casualties live. Of men lost in battle, a
+// retreat or an occupation only killedShare die; the rest go home and
+// count among the nation's people again (wars used to bleed nations of 12%
+// of their people a year).
+func TestMostCasualtiesComeHome(t *testing.T) {
+	w := newQuietGame(t)
+	m := nationByName(w, "Montara")
+	a, _ := w.RaiseArmy(m.ID, m.Regions[0].ID, 0)
+	a.Men = 10
+	people := func() float64 {
+		s := 0.0
+		for _, r := range m.Regions {
+			s += r.Population()
+		}
+		return s
+	}
+	before := people()
+	w.casualties(a, 0.5, 1)
+	if math.Abs(a.Men-5) > 1e-9 {
+		t.Errorf("army has %v men after losing half of 10", a.Men)
+	}
+	if got, want := people()-before, 5*(1-killedShare); math.Abs(got-want) > 1e-9 {
+		t.Errorf("%v of the 5 lost men came home, want %v", got, want)
+	}
+}

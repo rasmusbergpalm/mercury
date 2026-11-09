@@ -931,6 +931,37 @@ func (a *Army) Costs() (goods map[GoodID]float64, pay float64) {
 // PayBill is what the nation's soldiers were owed today, and the share paid.
 func (n *Nation) PayBill() (owed, paid float64) { return n.payBill, n.payScale }
 
+// casualties takes a share of the army's men (and kit times that share of
+// its stock) in battle, a retreat or an occupation. Only killedShare of
+// them die: the rest (wounded, stragglers, deserters, prisoners) go home,
+// across the nation's tiles by population, and live and work again.
+func (w *World) casualties(a *Army, share, kit float64) {
+	share = math.Max(0, math.Min(1, share))
+	back := a.Men * share * (1 - killedShare)
+	a.lose(share, kit)
+	w.sendPeopleHome(a.Nation, back)
+}
+
+// killedShare is the share of an army's casualties that die.
+const killedShare = 0.3
+
+// sendPeopleHome adds people to a nation's tiles, by their population.
+func (w *World) sendPeopleHome(n *Nation, people float64) {
+	if people <= 0 {
+		return
+	}
+	pop := 0.0
+	for _, r := range n.Regions {
+		pop += r.Population()
+	}
+	if pop <= 0 {
+		return
+	}
+	for _, r := range n.Regions {
+		addPeople(r, people*r.Population()/pop)
+	}
+}
+
 // lose takes a share of the army's men, and kit times that share of its
 // stock (at most all of it).
 func (a *Army) lose(share, kit float64) {
@@ -1246,7 +1277,7 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 			return
 		}
 		for _, a := range armies {
-			a.lose(losses/men, battleKitLoss)
+			w.casualties(a, losses/men, battleKitLoss)
 		}
 	}
 	lose(ax, mx, math.Min(mx, battleRate*py))
@@ -1263,7 +1294,7 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 			}
 			switch {
 			case w.fallBack(a):
-				a.lose(retreatLoss, 1)
+				w.casualties(a, retreatLoss, 1)
 				a.BattleStart = 0
 				fled++
 			case a.Men < 2*minOccupiers: // surrounded, and all but gone
@@ -1339,7 +1370,7 @@ func (w *World) sieges() {
 		loss := math.Exp(-siegeLoss(r) * rate)
 		for _, a := range w.Armies {
 			if a.Region == r.ID && a.Nation == occupier && len(a.Path) == 0 {
-				a.lose(1-loss, 1)
+				w.casualties(a, 1-loss, 1)
 			}
 		}
 		r.Siege.Progress = math.Min(1, r.Siege.Progress+rate)

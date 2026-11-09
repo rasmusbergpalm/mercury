@@ -377,8 +377,21 @@ const (
 // take their cash with them.
 // foreignMigration is how much slower people move between tiles under
 // different flags (or between a nation and free land) than within one
-// nation: language, law and distance from home hold them back.
-const foreignMigration = 0.25
+// nation: language, law and distance from home hold them back. A 10% gap in
+// living standards draws about 2% of a border tile's people a year: as
+// emigration ran in the period (faster, it emptied poorer nations into
+// richer ones within decades).
+const foreignMigration = 0.03
+
+// migrationShare is the share of from's people who move to to in a day,
+// for a relative gap in living standards and the hop between them.
+func migrationShare(from, to *Region, gap, hop float64) float64 {
+	rate := migrationRate
+	if from.Nation != to.Nation {
+		rate *= foreignMigration // leaving one's country is a bigger step
+	}
+	return rate * gap / (1 + hop)
+}
 
 func (w *World) migrate() {
 	for _, r := range w.Regions {
@@ -401,11 +414,7 @@ func (w *World) migrate() {
 		}
 		gap := math.Min((to.UtilityEMA-from.UtilityEMA)/from.UtilityEMA, 0.3)
 		pop := from.Population()
-		rate := migrationRate
-		if from.Nation != to.Nation {
-			rate *= foreignMigration // leaving one's country is a bigger step
-		}
-		n := math.Min(rate*gap*pop/(1+l.Hop), sizeOf(movable(from))-minPopulation) // never below minPopulation workers
+		n := math.Min(migrationShare(from, to, gap, l.Hop)*pop, sizeOf(movable(from))-minPopulation) // never below minPopulation workers
 		if n > 1e-9 {
 			movePeople(from, to, n)
 		}
