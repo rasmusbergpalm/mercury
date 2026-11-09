@@ -935,3 +935,22 @@ func TestArmiesFightToAThirdThenFallBackAtHalf(t *testing.T) {
 	}
 	t.Fatal("the beaten army never fell back")
 }
+
+// The fortune of war: each side's daily battle strength varies within 10%,
+// and not the same way every day.
+func TestBattleLuck(t *testing.T) {
+	w := newNeighbourGame(t)
+	n, r := w.Nations[0], w.Regions[1]
+	lo, hi := 2.0, 0.0
+	for d := 0; d < 200; d++ {
+		w.Tick = d
+		l := w.battleLuck(n, r)
+		lo, hi = math.Min(lo, l), math.Max(hi, l)
+	}
+	if lo < 1-battleLuckSpread || hi > 1+battleLuckSpread {
+		t.Errorf("luck %v..%v, outside 1±%v", lo, hi, battleLuckSpread)
+	}
+	if hi-lo < battleLuckSpread {
+		t.Errorf("luck barely varies: %v..%v", lo, hi)
+	}
+}

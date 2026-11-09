@@ -1229,7 +1229,7 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 		if r.Nation == n {
 			power *= defenderHome * n.defenseMult()
 		}
-		return armies, power, men
+		return armies, power * w.battleLuck(n, r), men
 	}
 	ax, px, mx := side(x)
 	ay, py, my := side(y)
@@ -1283,6 +1283,16 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 	defeat(ay, y, x)
 	return true
 }
+
+// battleLuck is the fortune of war: each side's strength in a battle is
+// multiplied by a factor within battleLuckSpread of 1, drawn afresh each
+// day (deterministically: game seed, day, tile and nation), so even fights
+// have a winner and no two go alike.
+func (w *World) battleLuck(n *Nation, r *Region) float64 {
+	return 1 + battleLuckSpread*w.noise(n, 1000+r.ID)
+}
+
+const battleLuckSpread = 0.1
 
 // sieges advances occupations. While a nation's army stands on a tile it may
 // occupy (unowned land, or an enemy's) and no army of the owner is there,
