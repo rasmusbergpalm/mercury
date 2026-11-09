@@ -111,29 +111,37 @@ func TestSeaTiles(t *testing.T) {
 	}
 }
 
-// A port on a generated map trades with its nearest few ports, not every one.
-func TestSeaRoutesAreLimited(t *testing.T) {
-	spec := generated(t, 2, 3)
-	w, err := buildGame(spec, false, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	opened := 0
-	for _, r := range w.Regions {
-		if r.Coastal && opened < genSeaRoutes+4 {
-			r.Port = true
-			opened++
+// Ports trade with every other port; in games that limited them to their
+// nearest few (GameSpec.SeaRoutes, kept for their saves), with those.
+func TestSeaRoutes(t *testing.T) {
+	for _, limit := range []int{0, 8} {
+		spec := generated(t, 2, 3)
+		spec.SeaRoutes = limit
+		w, err := buildGame(spec, false, nil)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
-	before := len(w.Traders)
-	w.openNewPorts()
-	sea := len(w.Traders) - before
-	partners := 0
-	for k := 0; k < opened; k++ {
-		partners += min(k, genSeaRoutes)
-	}
-	if want := 2 * partners * len(GameTradable); sea != want {
-		t.Errorf("%d sea routes, want %d", sea, want)
+		opened := 0
+		for _, r := range w.Regions {
+			if r.Coastal && opened < 12 {
+				r.Port = true
+				opened++
+			}
+		}
+		before := len(w.Traders)
+		w.openNewPorts()
+		sea := len(w.Traders) - before
+		partners := 0
+		for k := 0; k < opened; k++ {
+			if limit > 0 {
+				partners += min(k, limit)
+			} else {
+				partners += k
+			}
+		}
+		if want := 2 * partners * len(GameTradable); sea != want {
+			t.Errorf("limit %d: %d sea routes, want %d", limit, sea, want)
+		}
 	}
 }
 

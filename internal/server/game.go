@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"slices"
 	"sync"
 	"time"
 
@@ -176,7 +177,7 @@ type NationSummary struct {
 func (g *Game) summary() GameSummary {
 	s := GameSummary{ID: g.ID, Name: g.Name, Tick: g.w.Tick, Running: g.running, Speed: g.speed,
 		Date: g.w.Date().Format("2 January 2006"), Turn: g.turnDays, Map: "classic", Tiles: len(g.w.Regions), created: g.Created}
-	if sp := g.w.Spec; sp != nil && sp.SeaRoutes > 0 { // a generated map
+	if sp := g.w.Spec; sp != nil && !slices.Equal(sp.Map, engine.DefaultMap) { // a generated map
 		s.Map = mapName(len(sp.Map), len(sp.Map[0]))
 	}
 	for _, n := range g.w.Nations {

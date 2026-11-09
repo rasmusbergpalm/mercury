@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	"math"
 )
 
@@ -172,6 +173,9 @@ var (
 	ErrSelf        = errors.New("a nation cannot embargo itself")
 	ErrNotCoast    = errors.New("only coastal tiles can have ports")
 	ErrHasPort     = errors.New("tile already has a port")
+	ErrNoPort      = errors.New("tile has no port")
+	ErrPortLimit   = fmt.Errorf("a nation may have one port for every %d tiles it holds (at least one)", TilesPerPort)
+	ErrOldPorts    = errors.New("this game's ports were laid out before ports could be pulled down")
 	ErrFirmLocked  = errors.New("that firm needs a technology the nation lacks")
 	ErrEliminated  = errors.New("the nation has no tiles left")
 )

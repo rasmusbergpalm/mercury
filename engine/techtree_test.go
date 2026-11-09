@@ -284,10 +284,14 @@ func TestPortRules(t *testing.T) {
 // Ports link distant coast tiles directly by sea.
 func TestPortsOpenSeaRoutes(t *testing.T) {
 	w := newTestGame(t)
-	th := nationByName(w, "Thalassa")
-	w.GrantTech(th.ID, "Navigation")
-	w.GrantTech(th.ID, "Ocean sailing")
-	w.Annex(regionByName(w, "50").ID, th.ID) // a coast tile at the far end of the south coast
+	th, mo := nationByName(w, "Thalassa"), nationByName(w, "Montara")
+	for _, n := range []*Nation{th, mo} {
+		w.GrantTech(n.ID, "Navigation")
+		w.GrantTech(n.ID, "Ocean sailing")
+	}
+	// a coast tile at the far end of the south coast, for a second nation
+	// (each of these small ones may have one port)
+	w.Annex(regionByName(w, "50").ID, mo.ID)
 	for i := 0; i < 100; i++ {
 		w.Step()
 	}
@@ -347,10 +351,14 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 func TestSaveLoadWithPorts(t *testing.T) {
 	w := newTestGame(t)
 	th := nationByName(w, "Thalassa")
-	w.GrantTech(th.ID, "Navigation")
-	w.GrantTech(th.ID, "Ocean sailing")
-	w.GrantTech(th.ID, "Ceramics")
-	w.Annex(regionByName(w, "50").ID, th.ID)
+	mo, ve := nationByName(w, "Montara"), nationByName(w, "Verdania")
+	for _, n := range []*Nation{th, mo, ve} { // one port each: the most these small nations may have
+		w.GrantTech(n.ID, "Navigation")
+		w.GrantTech(n.ID, "Ocean sailing")
+	}
+	w.GrantTech(ve.ID, "Ceramics") // its kilns work on 44, which it gets
+	w.Annex(regionByName(w, "50").ID, mo.ID)
+	w.Annex(regionByName(w, "44").ID, ve.ID)
 	buildPortNow(t, w, "54")
 	buildPortNow(t, w, "50")
 	w.BuildPort(regionByName(w, "44").ID) // under way when saved

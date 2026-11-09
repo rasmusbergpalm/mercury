@@ -78,6 +78,7 @@ type WorldInfo struct {
 	MaxPension     int            `json:"max_pension"` // pension levels
 	Branches       []string       `json:"branches"`
 	LevelCost      float64        `json:"level_cost"`      // construction per firm building level
+	TilesPerPort   int            `json:"tiles_per_port"`  // a nation may have a port for every so many tiles
 	MinOccupiers   float64        `json:"min_occupiers"`   // men an army needs to occupy a tile or fight
 	OccupyStrength float64        `json:"occupy_strength"` // strength an army needs to take ground
 	Port           PortInfo       `json:"port"`
@@ -197,10 +198,12 @@ type NationState struct {
 	PeaceOffer     []bool    `json:"peace_offer"` // this nation has offered peace to
 	Soldiers       float64   `json:"soldiers"`
 	MobilizeCap    float64   `json:"mobilize_cap"`
-	MaxArmySize    float64   `json:"max_army_size"` // men one army can field
-	Standing       float64   `json:"standing"`      // share of each army's wartime size kept under arms in peace
-	Temperament    string    `json:"temperament"`   // how the computer plays it
-	Mobilization   float64   `json:"mobilization"`  // share of people who may serve
+	MaxArmySize    float64   `json:"max_army_size"`  // men one army can field
+	Ports          int       `json:"ports"`          // ports it has, counting those being built
+	PortAllowance  int       `json:"port_allowance"` // ports it may have
+	Standing       float64   `json:"standing"`       // share of each army's wartime size kept under arms in peace
+	Temperament    string    `json:"temperament"`    // how the computer plays it
+	Mobilization   float64   `json:"mobilization"`   // share of people who may serve
 	BestDoctrine   int       `json:"best_doctrine"`
 	GDP            float64   `json:"gdp"`
 	Utility        float64   `json:"utility"`
@@ -343,7 +346,7 @@ type RegionDetail struct {
 func worldInfo(w *engine.World) WorldInfo {
 	info := WorldInfo{Rows: w.Rows, Cols: w.Cols, Spending: engine.SpendingNames[:], Services: engine.ServiceNames(), Staff: engine.ServiceStaff, MaxPension: engine.MaxPension, Branches: engine.Branches,
 		Eras: engine.Eras, StartYear: engine.StartYear,
-		LevelCost: engine.LevelCost, MinOccupiers: engine.MinOccupiers, OccupyStrength: engine.OccupyMinStrength, Port: PortInfo{engine.PortCost, map[string]float64{}}}
+		LevelCost: engine.LevelCost, TilesPerPort: engine.TilesPerPort, MinOccupiers: engine.MinOccupiers, OccupyStrength: engine.OccupyMinStrength, Port: PortInfo{engine.PortCost, map[string]float64{}}}
 	for g, q := range engine.PortMaterials {
 		info.Port.Materials[engine.Goods[g].Name] = q
 	}
@@ -502,7 +505,7 @@ func worldState(w *engine.World, flows bool) State {
 			Researching: n.Researching, Points: n.ResearchPoints, Known: slices.Clone(n.Known),
 			Queue: append([]int{}, n.Queue...), AtWar: slices.Clone(n.AtWar), PeaceOffer: slices.Clone(n.PeaceOffer),
 			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch,
-			MaxArmySize: n.MaxArmySize(), Standing: n.Standing, Temperament: n.Temper.Describe()}
+			MaxArmySize: n.MaxArmySize(), Ports: n.Ports(), PortAllowance: n.PortAllowance(), Standing: n.Standing, Temperament: n.Temper.Describe()}
 		ns.Soldiers, _ = w.Mobilized(n)
 		ns.PayOwed, ns.Paid = n.PayBill()
 		for _, r := range n.Regions {

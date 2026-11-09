@@ -1444,7 +1444,12 @@ function infraBlock(s, mine) {
   const lvl = world.infra_levels[s.infra], next = world.infra_levels[s.infra + 1];
   const coast = world.regions[selected].coastal;
   let html = `<p class="sub">${cap(lvl.name)} · moving through costs ×${s.move_cost.toFixed(2)}${lvl.upkeep ? ` · upkeep ${lvl.upkeep}/day` : ""}</p>`;
-  if (coast) html += `<p class="sub">Coastal · ${s.port ? "⚓ it has a port" : "no port yet"}</p>`;
+  const nat = s.nation >= 0 ? state.nations[s.nation] : null;
+  const allowance = nat ? ` · ${esc(nationName(s.nation))} has ${nat.ports} of the ${nat.port_allowance} port${nat.port_allowance === 1 ? "" : "s"} it may have ${info(`A nation may have one port for every ${world.tiles_per_port} tiles it holds, and at least one. Ports being built count. Every port trades with every other. A nation that conquers ports keeps them, but builds no more until it is back under its allowance.`)}` : "";
+  if (coast) html += `<p class="sub">Coastal · ${s.port ? "⚓ it has a port" : "no port yet"}${allowance}</p>`;
+  if (mine && s.port && !s.project) {
+    html += `<div class="row"><button data-cmd="/regions/${selected}/unport" data-confirm="Pull down this port? Its sea routes close, and the goods they have bought or have at sea are lost.">Pull down port</button><span class="sub">frees it for a port elsewhere</span></div>`;
+  }
   if (s.project) {
     const what = s.project.port ? "port" : world.infra_levels[s.project.target].name;
     html += `<div class="progress"><span style="width:${pct(s.project.delivered / s.project.required)}"></span></div>
@@ -1454,9 +1459,9 @@ function infraBlock(s, mine) {
   }
   if (mine && coast && !s.port) {
     const mats = Object.entries(world.port.materials).map(([g, q]) => ` + ${q} ${g}`).join("");
-    html += canPort(state.you)
-      ? `<div class="row"><button class="primary" data-cmd="/regions/${selected}/port">Build port</button><span class="sub">${world.port.cost} construction${mats}</span></div>`
-      : `<p class="sub">A port needs ${portTech()}.</p>`;
+    html += !canPort(state.you) ? `<p class="sub">A port needs ${portTech()}.</p>`
+      : nat && nat.ports >= nat.port_allowance ? `<p class="sub">No more ports: pull one down to build here, or hold more land.</p>`
+      : `<div class="row"><button class="primary" data-cmd="/regions/${selected}/port">Build port</button><span class="sub">${world.port.cost} construction${mats}</span></div>`;
   }
   if (next && mine) {
     const mats = Object.entries(next.materials || {}).map(([g, q]) => ` + ${q} ${g}`).join("");

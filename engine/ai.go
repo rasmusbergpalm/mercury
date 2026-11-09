@@ -445,7 +445,7 @@ func (w *World) aiBuild(n *Nation) {
 			ports++
 		}
 	}
-	if n.CanBuildPorts() && ports < 2 {
+	if n.CanBuildPorts() && ports < min(2, n.PortAllowance()) {
 		var best *Region
 		for _, r := range n.Regions {
 			if r.Coastal && !r.Port && (best == nil || r.Population() > best.Population()) {

@@ -331,7 +331,9 @@ type GameSpec struct {
 	// their row and column.
 	Names []string `json:",omitempty"`
 	// SeaRoutes is how many of the nearest open ports a new port trades
-	// with (0: every one, as on the small default map).
+	// with (0: every one). Only games generated before ports were limited
+	// per nation (see PortAllowance) have it; it stays so that their saves
+	// rebuild the sea routes they had.
 	SeaRoutes int `json:",omitempty"`
 }
 

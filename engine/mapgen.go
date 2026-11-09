@@ -30,7 +30,6 @@ const (
 	hillShare      = 0.18
 	MaxNations     = 12
 	MaxMapCells    = 2500
-	genSeaRoutes   = 8  // a port trades with this many nearest ports
 	minNationTiles = 12 // land tiles per nation the map needs at least
 	minCapitalDist = 4  // hexes between capitals: their starting lands don't touch
 )
@@ -81,7 +80,7 @@ func GenerateGame(o MapOptions) (GameSpec, error) {
 	if err != nil {
 		return GameSpec{}, err
 	}
-	spec := GameSpec{TransportCost: 1, TaxRate: 0.1, Seed: o.Seed, SeaRoutes: genSeaRoutes}
+	spec := GameSpec{TransportCost: 1, TaxRate: 0.1, Seed: o.Seed}
 	for r := 0; r < o.Rows; r++ {
 		var row, nrow strings.Builder
 		for c := 0; c < o.Cols; c++ {

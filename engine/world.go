@@ -285,8 +285,78 @@ func (w *World) BuildPort(region int) error {
 		return ErrBuilding
 	case !r.Nation.CanBuildPorts():
 		return ErrNeedTech
+	case r.Nation.Ports() >= r.Nation.PortAllowance():
+		return ErrPortLimit
 	}
 	r.Project = &Project{Port: true, Materials: map[GoodID]float64{}}
+	return nil
+}
+
+// TilesPerPort: a nation may have one port for every TilesPerPort tiles it
+// holds, and at least one. Every port trades with every other, so the
+// routes grow with the square of the ports: the allowance keeps them to
+// about the number of land routes on the biggest map. A nation that
+// conquers ports keeps them, but builds no more until it is back under
+// its allowance.
+const TilesPerPort = 16
+
+// PortAllowance is how many ports the nation may have.
+func (n *Nation) PortAllowance() int { return max(1, len(n.Regions)/TilesPerPort) }
+
+// Ports is how many ports the nation has, counting those being built.
+func (n *Nation) Ports() int {
+	k := 0
+	for _, r := range n.Regions {
+		if r.Port || (r.Project != nil && r.Project.Port) {
+			k++
+		}
+	}
+	return k
+}
+
+// RemovePort pulls down a tile's port: its sea routes close, and what
+// they had bought or had at sea is lost. (Not in games whose ports trade
+// only with their nearest few, see GameSpec.SeaRoutes: their routes depend
+// on which ports were open when each was built.)
+func (w *World) RemovePort(region int) error {
+	r := w.Regions[region]
+	switch {
+	case r.Nation == nil:
+		return ErrNoNation
+	case !r.Port:
+		return ErrNoPort
+	case w.Spec != nil && w.Spec.SeaRoutes > 0:
+		return ErrOldPorts
+	}
+	r.Port = false
+	gone := func(t *Trader) bool { return t.Sea && (t.Origin == r || t.Dest == r) }
+	keep := func(ts []*Trader) []*Trader {
+		out := ts[:0]
+		for _, t := range ts {
+			if !gone(t) {
+				out = append(out, t)
+			}
+		}
+		return out
+	}
+	w.Traders = keep(w.Traders)
+	for _, x := range w.Regions { // every port had routes to and from this one
+		if !x.Port && x != r {
+			continue
+		}
+		x.House.Routes = keep(x.House.Routes)
+		for g := range x.outbound {
+			x.outbound[g] = keep(x.outbound[g])
+			x.inbound[g] = keep(x.inbound[g])
+		}
+		x.listBidders()
+	}
+	for i, id := range w.Ports {
+		if id == r.ID {
+			w.Ports = append(w.Ports[:i:i], w.Ports[i+1:]...)
+			break
+		}
+	}
 	return nil
 }
 
