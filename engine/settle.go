@@ -166,7 +166,7 @@ func (w *World) burnIn(days int, progress func(done int)) {
 		}
 	}
 	inv, demo := w.Investment, w.Demography
-	w.Investment, w.Demography, w.burning = false, false, true
+	w.Demography, w.burning = false, true
 	real := make([]GDPChain, len(w.Regions))
 	for i, r := range w.Regions {
 		real[i] = r.Real.clone()
