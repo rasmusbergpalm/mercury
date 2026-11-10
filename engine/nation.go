@@ -481,6 +481,32 @@ func (n *Nation) plan(w *World) {
 			}
 		}
 	}
+	// a tile takes on only so much building at once, the state's and the
+	// owners' together (Region.BuildLimit)
+	for _, r := range n.Regions {
+		state, private := 0.0, 0.0
+		for _, c := range r.claims {
+			if c.good == Construction && isBuilding(c.kind) {
+				state += c.qty
+			}
+		}
+		for _, f := range r.Firms {
+			private += f.investWant
+		}
+		if limit := r.BuildLimit(); state > 0 && state+private > limit {
+			k := limit / (state + private)
+			price := r.Markets[Construction].Price
+			for i := range r.claims {
+				if c := &r.claims[i]; c.good == Construction && isBuilding(c.kind) {
+					needs -= c.qty * (1 - k) * price
+					c.qty *= k
+				}
+			}
+			for _, f := range r.Firms {
+				f.investWant *= k
+			}
+		}
+	}
 	// building is paid from its budget
 	building := 0.0
 	for _, r := range n.Regions {

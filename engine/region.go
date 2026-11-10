@@ -151,6 +151,36 @@ func (r *Region) planInvestment() {
 			f.investWant = math.Max(0, math.Min(want, (0.9*f.Cash-planned)/price))
 		}
 	}
+	want := 0.0
+	for _, f := range r.Firms {
+		want += f.investWant
+	}
+	if limit := r.BuildLimit(); want > limit {
+		for _, f := range r.Firms {
+			f.investWant *= limit / want
+		}
+	}
+}
+
+// A tile takes on only so much building at once: construction is done
+// where it is ordered, so a tile with roads, ports and new building levels
+// all under way at once hired half its workers to build, drew people in,
+// and when the work ended threw them out of work, and they left. The
+// construction ordered on a tile a day (by the state and by firms' owners
+// together) is held to what buildWageShare of its workers' wages would
+// buy; past it, every order there is scaled down alike and the work takes
+// longer. With the state expanding many of a small tile's firms at once,
+// building then employs at most about a fifth of its workers (it was nearly
+// three quarters).
+const buildWageShare = 0.1
+
+// BuildLimit is the most construction the tile takes on today.
+func (r *Region) BuildLimit() float64 {
+	workers := 0.0
+	for _, p := range r.ClassPops(Workers) {
+		workers += p.Size
+	}
+	return buildWageShare * workers * r.Wage / math.Max(r.Markets[Construction].Price, minPrice)
 }
 
 // settleFirms updates profit records, finishes expansions and closes levels
