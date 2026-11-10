@@ -82,3 +82,27 @@ func TestProduceNeedsEveryFactor(t *testing.T) {
 		t.Errorf("bakery with coal as fuel produced %v (inventory %v)", q, f.Inventory)
 	}
 }
+
+// A firm counts the stock it failed to sell: stock beyond a day's output
+// cuts what it makes by that much, and enough stops it.
+func TestUnsoldStockCutsOutput(t *testing.T) {
+	prices := testPrices()
+	plan := func(stock float64) (labor, q float64) {
+		f := NewFirm("Bakery", G("bread"), 2, []Factor{Labor(0.3), Input("grain", 0.4), Comp("fuel", 0.1)}, 1e9)
+		f.Inventory = stock
+		f.Plan(prices, 1)
+		g := *f
+		g.Labor, g.Inputs, g.Inventory = f.PlanLabor, append([]float64(nil), f.PlanQty...), 0
+		return f.PlanLabor, g.Produce()
+	}
+	_, full := plan(0)
+	if l, q := plan(full); math.Abs(q-full) > 1e-9*full || l <= 0 {
+		t.Errorf("a day's output in stock (yesterday's, not yet offered) changed the plan: %v -> %v", full, q)
+	}
+	if _, q := plan(1.25 * full); math.Abs(q-0.75*full) > 1e-6*full {
+		t.Errorf("a quarter of a day's output unsold: makes %v, want %v", q, 0.75*full)
+	}
+	if l, q := plan(2 * full); q > 1e-9*full || l > 1e-9 {
+		t.Errorf("a whole day's output unsold: still makes %v with %v workers", q, l)
+	}
+}

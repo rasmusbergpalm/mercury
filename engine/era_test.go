@@ -109,7 +109,10 @@ func TestIndustrializationMovesLabor(t *testing.T) {
 	}
 	pre, ind := run(false), run(true)
 	t.Logf("labor shares (industry, primary, service): pre-industrial %.2f, industrial %.2f", pre, ind)
-	if !(ind[Primary] < pre[Primary]-0.05 && ind[Industry]+ind[Service] > pre[Industry]+pre[Service]) {
+	// (by 2 points or more: it was 5 when the pre-industrial world kept
+	// workers making clay nobody bought, before firms counted their unsold
+	// stock; with every tech, kilns buy it, and those workers stay)
+	if !(ind[Primary] < pre[Primary]-0.02 && ind[Industry]+ind[Service] > pre[Industry]+pre[Service]) {
 		t.Errorf("industrial techs should move labor off the land")
 	}
 }

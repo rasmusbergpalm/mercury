@@ -179,6 +179,17 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 	for i, fc := range f.Factors {
 		want[i] = fc.Exp * p * q / cost[i]
 	}
+	// Stock beyond a day's output is stock it failed to sell (when it
+	// plans, its stock still holds yesterday's output, not yet offered): it
+	// makes what it wants to sell less that excess, so goods nobody buys
+	// stop being made instead of piling up. Scaling every factor by
+	// x^(1/s) scales output by x.
+	if over := f.Inventory - q; over > 0 && q > 0 {
+		scale := math.Pow(math.Max(0, q-over)/q, 1/s)
+		for i := range want {
+			want[i] *= scale
+		}
+	}
 	for i := range f.Factors {
 		spend += want[i] * cost[i]
 	}
