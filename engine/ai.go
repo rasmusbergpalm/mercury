@@ -17,6 +17,13 @@ const (
 )
 
 func (w *World) runAI() {
+	if w.Tick%aiTaxEvery == 0 { // the tax, weekly, for the computer's nations and automated players'
+		for _, n := range w.Nations {
+			if !n.Eliminated() && (n.AI || n.AutoTax) {
+				w.aiTax(n)
+			}
+		}
+	}
 	if w.Tick%aiInterval != 0 {
 		return
 	}
@@ -33,9 +40,6 @@ func (w *World) runAI() {
 				w.aiBuild(n)
 				w.aiExpandFirm(n)
 				w.aiServices(n, w.atWar(n), false, false) // builds services; funding stays the player's
-			}
-			if n.AutoTax {
-				w.aiTax(n)
 			}
 		}
 	}
@@ -100,7 +104,6 @@ func (w *World) think(n *Nation) {
 		w.aiExpandFirm(n)
 	}
 	w.aiServices(n, war || invaded, true, true)
-	w.aiTax(n)
 	w.aiArmies(n, targets)
 }
 
@@ -430,10 +433,13 @@ func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int
 const aiBuildMaxTax = 0.15
 
 // canAffordBuilding reports whether the nation can take on new building:
-// light taxes and at least half its treasury target in hand. Projects
-// under way carry on regardless.
+// light taxes. What it can spend on building each day is its building
+// budget (Nation.BuildingBudget), which tapers as the treasury runs down,
+// so there is no gate on the treasury here: a gate that opened and shut
+// with the treasury made the state's spending, and the economy with it,
+// cycle.
 func (n *Nation) canAffordBuilding() bool {
-	return n.TaxRate <= aiBuildMaxTax && n.Treasury >= 0.5*aiTreasuryDays*n.SpendEMA
+	return n.TaxRate <= aiBuildMaxTax
 }
 
 // aiBuild keeps one infrastructure project going: a couple of ports once it
@@ -571,17 +577,19 @@ func (n *Nation) serviceBillOf(k Public) float64 {
 	return s
 }
 
-// aiTax is a predictive controller: once a month it sets the tax rate whose
-// predicted income covers the average day's spending and closes the gap to
-// aiTreasuryDays of spending within aiTaxHorizon days. Income is predicted
-// as proportional to the rate (today's income per point of tax). The rate
-// moves at most aiTaxStep a month: a sudden steep tax shrinks the economy it
-// is predicted from, and the controller would chase its own tail. Computer
+// aiTax is a predictive controller: every aiTaxEvery days it sets the tax
+// rate whose predicted income covers the average day's spending and closes
+// the gap to the reserve (aiTreasuryDays of spending) over aiTaxHorizon
+// days. Income is predicted as proportional to the rate (today's income per
+// point of tax). The rate moves at most aiTaxStep at a time: a steep tax
+// shrinks the economy it is predicted from, and in big monthly steps, read
+// off averages weeks old, the rule overshot both ways and cycled. Computer
 // nations do it always, players who ask for it (AutoTax) too.
 const (
-	aiTreasuryDays = 30.0
-	aiTaxHorizon   = 30.0
-	aiTaxStep      = 0.03
+	aiTreasuryDays = 15.0
+	aiTaxHorizon   = 90.0
+	aiTaxStep      = 0.005
+	aiTaxEvery     = 7
 )
 
 func (w *World) aiTax(n *Nation) {
@@ -590,7 +598,7 @@ func (w *World) aiTax(n *Nation) {
 		return
 	}
 	perPoint := n.IncomeEMA / n.TaxRate
-	want := n.SpendEMA + (aiTreasuryDays*n.SpendEMA-n.Treasury)/aiTaxHorizon
+	want := n.SpendEMA + (n.reserve()-n.Treasury)/aiTaxHorizon
 	rate := math.Max(n.TaxRate-aiTaxStep, math.Min(n.TaxRate+aiTaxStep, want/perPoint))
 	n.SetTaxRate(math.Max(0.005, math.Min(0.6, rate)))
 }

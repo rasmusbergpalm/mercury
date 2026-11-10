@@ -573,3 +573,18 @@ func (h *healthWatch) report(t *testing.T, l healthLimits) {
 		t.Errorf("out of bounds: %s", strings.Join(failed, "; "))
 	}
 }
+
+// checkFinite fails the test if any price, wage, cash balance or population
+// in the world is not a finite number, or is below its floor.
+func checkFinite(t *testing.T, w *World) {
+	t.Helper()
+	h := newHealthWatch(w)
+	prev := make([][]float64, len(w.Regions))
+	for i, r := range w.Regions {
+		prev[i] = r.Prices()
+	}
+	h.record(0, prev, false)
+	if len(h.notFinite) > 0 {
+		t.Errorf("numbers out of bounds: %v", h.notFinite)
+	}
+}

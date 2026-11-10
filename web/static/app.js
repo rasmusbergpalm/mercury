@@ -1583,15 +1583,16 @@ function accountsBlock(n, mine) {
   let html = `<h3>The state's accounts, today ${info(`The state pays for everything it needs: roads, armies, officials, teachers, doctors, scholars and pensions. When the treasury can't cover a day's bills, everything is cut alike, and unpaid soldiers desert.`)}</h3>
     <table>${row("Income tax", n.revenue)}${row("Tariffs", n.tariff_revenue)}
     ${world.spending.map((k, i) => row(names[k] || cap(k), -n.spent_on[i], k === "military" && n.pay_owed > 0 ? `of which pay £${fmt(n.pay_owed * n.paid, 1)}` : "")).join("")}
-    <tr class="total"><td>Treasury</td><td>£${fmt(n.treasury, 0)}</td></tr></table>
+    <tr class="total"><td>Treasury</td><td>£${fmt(n.treasury, 0)}</td></tr>
+    <tr><td>Building budget today ${info(`What the state may spend on roads, ports and new building levels today: up to 60% of its income while the treasury holds 15 days of spending, less as it falls below that and nothing at half of it, plus a thirtieth of anything beyond it.`)}</td><td>£${fmt(n.build_budget, 1)}</td></tr></table>
     ${n.paid < 0.999 ? `<p class="sub bad" style="margin-top:6px">Today only ${pct(n.paid)} of the bills could be paid: everything was cut alike.</p>` : ""}`;
   if (mine) {
     const steps = ["none", "¼ of the wage", "½ of the wage", "¾ of the wage", "the full wage"];
     html += `<div class="row"><label>Tax <input id="tax" type="number" min="0" max="90" step="1" value="${Math.round(100 * n.tax_rate)}" class="num" ${n.auto_tax ? "disabled" : ""}>%</label><button data-input="tax" ${n.auto_tax ? "disabled" : ""}>Set</button>
         <label class="check"><input type="checkbox" id="auto-tax" ${n.auto_tax ? "checked" : ""}> Automate</label>
-        ${info(`Tax is taken from people's wages and dividends (where officials collect it). Automated, the rate moves (up to three points a month) to keep about 30 days of spending in the treasury.`)}</div>
+        ${info(`Tax is taken from people's wages and dividends (where officials collect it). Automated, the rate moves a little each week (at most half a point) to keep about 15 days of spending in the treasury.`)}</div>
       <div class="budget"><label>Pensions ${info(`The elderly (8% of your people) get ${steps[n.pension]} a day, paid straight to them: no buildings, no staff. It's money back in your people's pockets.`)}<input type="range" min="0" max="${world.max_pension}" step="1" value="${n.pension}" id="pension" aria-label="Pensions"><span class="pct" id="pension-label">${n.pension}/${world.max_pension}</span></label></div>
-      <h3>Construction ${info(`Automated, each month the state builds roads, railways and ports where traffic is heaviest, expands the most profitable firms, and builds public service levels where they fall short, as long as taxes are at most 15% and the treasury holds at least half its target. Funding them, and universities, stays yours (State and Research tabs).`)}</h3>
+      <h3>Construction ${info(`Automated, each month the state builds roads, railways and ports where traffic is heaviest, expands the most profitable firms, and builds public service levels where they fall short, as long as taxes are at most 15%. Funding them, and universities, stays yours (State and Research tabs).<br><br>All building, automated or not, is paid from a budget: up to 60% of the state's income a day, less as the treasury falls below its 15-day reserve and nothing at half of it, plus anything held beyond the reserve, spread over a month. Projects go slower when it is short.`)}</h3>
       <label class="check"><input type="checkbox" id="auto-build" ${n.auto_build ? "checked" : ""}> Automate construction</label>`;
   }
   return html;

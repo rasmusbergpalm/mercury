@@ -360,6 +360,35 @@ func (r *Region) payIncome(p *Pop, amount float64) {
 	r.ledger.tax += tax // the nation gets it at settleLedgers
 }
 
+// Building (projects, their materials and state-funded expansions, public
+// service levels among them) is paid from a budget: up to buildShare of the
+// state's income a day while the treasury holds its reserve, less as it
+// falls below it and nothing at half of it, plus whatever it holds beyond
+// the reserve, spread over buildDrawdown days. So a burst of projects
+// can't multiply the day's bill and empty the treasury, and the tax has
+// time to follow.
+const (
+	buildShare    = 0.6
+	buildDrawdown = 30.0
+)
+
+func isBuilding(k claimKind) bool {
+	return k == infraClaim || k == materialClaim || k == expansionClaim
+}
+
+// reserve is the treasury the nation aims to hold: aiTreasuryDays of its
+// spending.
+func (n *Nation) reserve() float64 { return aiTreasuryDays * n.SpendEMA }
+
+// BuildingBudget is what the nation may spend on building today.
+func (n *Nation) BuildingBudget() float64 {
+	reserve, k := n.reserve(), 1.0
+	if reserve > 0 {
+		k = math.Max(0, math.Min(1, (n.Treasury-0.5*reserve)/(0.5*reserve)))
+	}
+	return k*buildShare*n.IncomeEMA + math.Max(0, n.Treasury-reserve)/buildDrawdown
+}
+
 // claim is something a nation buys in a tile this tick.
 type claimKind int
 
@@ -451,6 +480,26 @@ func (n *Nation) plan(w *World) {
 				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(rate, LevelCost-e.Delivered)})
 			}
 		}
+	}
+	// building is paid from its budget
+	building := 0.0
+	for _, r := range n.Regions {
+		for _, c := range r.claims {
+			if isBuilding(c.kind) {
+				building += c.qty * r.Markets[c.good].Price
+			}
+		}
+	}
+	if budget := n.BuildingBudget(); building > budget {
+		k := budget / building
+		for _, r := range n.Regions {
+			for i := range r.claims {
+				if isBuilding(r.claims[i].kind) {
+					r.claims[i].qty *= k
+				}
+			}
+		}
+		needs -= building * (1 - k)
 	}
 	// the treasury caps the total
 	n.payScale = 1.0

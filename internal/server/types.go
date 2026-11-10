@@ -201,6 +201,7 @@ type NationState struct {
 	MobilizeCap    float64   `json:"mobilize_cap"`
 	MaxArmySize    float64   `json:"max_army_size"`  // men one army can field
 	Ports          int       `json:"ports"`          // ports it has, counting those being built
+	BuildBudget    float64   `json:"build_budget"`   // what it may spend on building today
 	PortAllowance  int       `json:"port_allowance"` // ports it may have
 	Standing       float64   `json:"standing"`       // share of each army's wartime size kept under arms in peace
 	Temperament    string    `json:"temperament"`    // how the computer plays it
@@ -513,7 +514,7 @@ func worldState(w *engine.World, flows bool) State {
 			Researching: n.Researching, Points: n.ResearchPoints, Known: slices.Clone(n.Known),
 			Queue: append([]int{}, n.Queue...), AtWar: slices.Clone(n.AtWar), PeaceOffer: slices.Clone(n.PeaceOffer),
 			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch,
-			MaxArmySize: n.MaxArmySize(), Ports: n.Ports(), PortAllowance: n.PortAllowance(), Standing: n.Standing, Temperament: n.Temper.Describe()}
+			MaxArmySize: n.MaxArmySize(), Ports: n.Ports(), PortAllowance: n.PortAllowance(), BuildBudget: n.BuildingBudget(), Standing: n.Standing, Temperament: n.Temper.Describe()}
 		ns.Soldiers, _ = w.Mobilized(n)
 		ns.PayOwed, ns.Paid = n.PayBill()
 		for _, r := range n.Regions {
