@@ -452,3 +452,18 @@ func TestFinishedResearchAsksThePlayer(t *testing.T) {
 		t.Error("asked the computer")
 	}
 }
+
+// A computer nation's tech order follows from the seed, not from the day a
+// tech finishes: the same techs known draw the same next one any day.
+func TestResearchDrawDoesNotDependOnTheDay(t *testing.T) {
+	w := newTestGame(t)
+	n := w.Nations[0]
+	n.now = 100
+	first := n.drawResearch()
+	for _, day := range []int{101, 2000, 36500} {
+		n.now = day
+		if got := n.drawResearch(); got != first {
+			t.Errorf("day %d draws %s, day 100 %s", day, Techs[got].Name, Techs[first].Name)
+		}
+	}
+}
