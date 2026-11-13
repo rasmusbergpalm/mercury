@@ -22,8 +22,6 @@ type Snapshot struct {
 	NextArmyID  int          `json:"next_army_id"`
 	Events      []Event      `json:"events"`
 	History     History      `json:"history"`
-	PriceLevel  float64      `json:"price_level"`
-	Minted      float64      `json:"minted"`
 }
 
 type ArmySnap struct {
@@ -107,7 +105,6 @@ type NationSnap struct {
 	AI, ChooseResearch                     bool
 	Standing                               float64
 	Revenue, TariffRevenue, Spending       float64
-	Minted, MintRate                       float64
 }
 
 // ErrNotAGame is returned when snapshotting a world that wasn't built by BuildGame.
@@ -118,8 +115,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	if w.Spec == nil {
 		return nil, ErrNotAGame
 	}
-	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick, Ports: append([]int(nil), w.Ports...),
-		PriceLevel: w.PriceLevel, Minted: w.Minted}
+	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick, Ports: append([]int(nil), w.Ports...)}
 	for _, r := range w.Regions {
 		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Collect: r.Collect, Educated: r.Educated, Healthy: r.Healthy, Loyalties: append([]float64(nil), r.Loyalties...), Infra: r.Infra, Battle: r.Battle, Port: r.Port}
 		if r.Siege != nil {
@@ -163,8 +159,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
 			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
 			PeaceOffer: append([]bool(nil), n.PeaceOffer...),
-			Revenue:    n.Revenue, TariffRevenue: n.TariffRevenue, Spending: n.Spending,
-			Minted: n.Minted, MintRate: n.MintRate}
+			Revenue:    n.Revenue, TariffRevenue: n.TariffRevenue, Spending: n.Spending}
 		for _, r := range n.Regions {
 			ns.Regions = append(ns.Regions, r.ID)
 		}
@@ -210,7 +205,6 @@ func Restore(s *Snapshot) (*World, error) {
 		return bad("traders")
 	}
 	w.Tick = s.Tick
-	w.PriceLevel, w.Minted = s.PriceLevel, s.Minted
 	for _, n := range w.Nations {
 		n.Regions = nil
 	}
@@ -301,7 +295,6 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 		n.TradeWith, n.AtWar, n.WarSince, n.PeaceOffer = ns.TradeWith, ns.AtWar, ns.WarSince, ns.PeaceOffer
 		n.Revenue, n.TariffRevenue, n.Spending = ns.Revenue, ns.TariffRevenue, ns.Spending
-		n.Minted, n.MintRate = ns.Minted, ns.MintRate
 		for _, id := range ns.Regions {
 			if id < 0 || id >= len(w.Regions) || w.Regions[id].Nation != nil {
 				return bad("nation " + n.Name + " tiles")

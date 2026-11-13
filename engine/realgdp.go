@@ -158,7 +158,6 @@ func (w *World) linkNationGDP() {
 		r.warm = w.Tick > gdpWarmup
 		links[i] = r.linkGDP()
 	}
-	w.linkPriceLevel(links)
 	for _, n := range w.Nations {
 		var sum gdpLink
 		for i, r := range w.Regions {

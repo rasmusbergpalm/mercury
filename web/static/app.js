@@ -1582,7 +1582,6 @@ function accountsBlock(n, mine) {
     administration: "Officials", education: "Teachers", health: "Public health", pensions: "Pensions" };
   let html = `<h3>The state's accounts, today ${info(`The state pays for everything it needs: roads, armies, officials, teachers, doctors, scholars and pensions. When the treasury can't cover a day's bills, everything is cut alike, and unpaid soldiers desert.`)}</h3>
     <table>${row("Income tax", n.revenue)}${row("Tariffs", n.tariff_revenue)}
-    ${row(`New money ${info(`The world's mint issues money as the economy grows, so prices hold steady instead of falling as output rises. It goes to the nations, each by the size of its economy.`)}`, n.minted)}
     ${world.spending.map((k, i) => row(names[k] || cap(k), -n.spent_on[i], k === "military" && n.pay_owed > 0 ? `of which pay £${fmt(n.pay_owed * n.paid, 1)}` : "")).join("")}
     <tr class="total"><td>Treasury</td><td>£${fmt(n.treasury, 0)}</td></tr>
     <tr><td>Building budget today ${info(`What the state may spend on roads, ports and new building levels today: up to 60% of its income while the treasury holds 15 days of spending, less as it falls below that and nothing at half of it, plus a thirtieth of anything beyond it.`)}</td><td>£${fmt(n.build_budget, 1)}</td></tr></table>
@@ -1868,7 +1867,7 @@ function worldPanel() {
     <tr><th>nation</th><th>tiles</th><th>people</th><th>real GDP<br>/ day</th><th>trade / day</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
     <h3>The race</h3>${row}${chart}
     ${k === "gdp" ? `<p class="sub">Real GDP, in pounds of January 1820 ${info(GDP_NOTE)}</p>` : ""}
-    <p class="sub" style="margin-top:8px">Money in the world: ${short(state.money)}, price level ${fmt(state.price_level, 2)} ${info(`Money only changes hands, but for the world's mint: as the economy grows it issues new money to the nations, each by the size of its economy, so that prices hold steady. The price level is the world's prices against the day the game opened (1); above 1 the mint issues nothing and growth brings prices back down.`)}</p>`;
+    <p class="sub" style="margin-top:8px">Money in the world: ${short(state.money)} ${info(`The world's money is fixed: none is made or destroyed, it only changes hands. As the economy grows, prices fall instead.`)}</p>`;
 }
 
 // ---- news panel ----------------------------------------------------------------

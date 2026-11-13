@@ -25,9 +25,6 @@ type World struct {
 	Ports []int
 	// TradePrices are the prices trade happened at in the last tick, per region.
 	TradePrices [][]float64
-	// PriceLevel is the world's price level, 1 when the game opened, and
-	// Minted all the money the mint has issued (mint.go).
-	PriceLevel, Minted float64
 
 	Armies     []*Army
 	NextArmyID int
@@ -163,7 +160,6 @@ func (w *World) Step() {
 		r.PayDividends(&h.Cash, h.CashBuffer, math.Min(h.DesiredSpend, 2*h.Spent+h.CashBuffer), owners)
 	})
 	w.settleLedgers()
-	w.mint()
 	changed := false
 	for _, n := range w.Nations {
 		changed = n.settle(w) || changed

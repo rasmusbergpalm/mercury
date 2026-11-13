@@ -176,7 +176,6 @@ type NationState struct {
 	Income         float64   `json:"income"` // moving average, tax and tariffs
 	Revenue        float64   `json:"revenue"`
 	TariffRevenue  float64   `json:"tariff_revenue"`
-	Minted         float64   `json:"minted"`    // new money from the mint, today
 	SpendEMA       float64   `json:"spend_avg"` // average spending a day
 	AutoTax        bool      `json:"auto_tax"`  // the computer sets the tax
 	Pension        int       `json:"pension"`   // 0..max_pension
@@ -272,7 +271,6 @@ type State struct {
 	Speed   float64        `json:"speed"`
 	You     int            `json:"you"` // the requester's nation, or -1
 	Money   float64        `json:"money"`
-	Prices  float64        `json:"price_level"` // the world's price level, 1 at the opening
 	Regions []RegionState  `json:"regions"`
 	Flows   []Flow         `json:"flows"`
 	Nations []NationState  `json:"nations"`
@@ -470,7 +468,7 @@ const minFlow = 1e-3
 const FlowsAlways = 100
 
 func worldState(w *engine.World, flows bool) State {
-	st := State{Tick: w.Tick, Date: w.Date().Format("2 January 2006"), Money: w.Money(), Prices: w.PriceLevel, You: -1,
+	st := State{Tick: w.Tick, Date: w.Date().Format("2 January 2006"), Money: w.Money(), You: -1,
 		Flows: []Flow{}, Armies: []ArmyState{}, Made: make([]bool, engine.NumGoods)}
 	for g := range st.Made {
 		st.Made[g] = w.Made(engine.GoodID(g))
@@ -511,7 +509,7 @@ func worldState(w *engine.World, flows bool) State {
 	for _, n := range w.Nations {
 		ns := NationState{ID: n.ID, Controller: "human", Eliminated: n.Eliminated(), Tiles: len(n.Regions),
 			Treasury: n.Treasury, TaxRate: n.TaxRate, Income: n.IncomeEMA, Revenue: n.Revenue,
-			TariffRevenue: n.TariffRevenue, Minted: n.Minted, Spending: n.Spending, SpendEMA: n.SpendEMA, AutoTax: n.AutoTax, Pension: n.Pension,
+			TariffRevenue: n.TariffRevenue, Spending: n.Spending, SpendEMA: n.SpendEMA, AutoTax: n.AutoTax, Pension: n.Pension,
 			SpentOn: append([]float64(nil), n.SpentOn[:]...), AutoBuild: n.AutoBuild, Tariff: slices.Clone(n.Tariff), Embargo: slices.Clone(n.Embargo),
 			Researching: n.Researching, Points: n.ResearchPoints, Known: slices.Clone(n.Known),
 			Queue: append([]int{}, n.Queue...), AtWar: slices.Clone(n.AtWar), PeaceOffer: slices.Clone(n.PeaceOffer),

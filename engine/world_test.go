@@ -16,11 +16,11 @@ func newTestWorld(t *testing.T, cost float64) *World {
 
 func TestMoneyIsConserved(t *testing.T) {
 	w := newTestWorld(t, 1)
-	m0 := heldMoney(w)
+	m0 := w.Money()
 	for i := 0; i < 300; i++ {
 		w.Step()
-		if d := relDiff(heldMoney(w), m0); d > 1e-10 {
-			t.Fatalf("tick %d: money %v, started with %v", w.Tick, heldMoney(w), m0)
+		if d := relDiff(w.Money(), m0); d > 1e-10 {
+			t.Fatalf("tick %d: money %v, started with %v", w.Tick, w.Money(), m0)
 		}
 	}
 }
@@ -208,7 +208,3 @@ func BenchmarkStep(b *testing.B) {
 		w.Step()
 	}
 }
-
-// heldMoney is the money in the world less what the mint issued: it only
-// changes hands.
-func heldMoney(w *World) float64 { return w.Money() - w.Minted }

@@ -129,7 +129,7 @@ func TestTaxRateDrivesRevenue(t *testing.T) {
 
 func TestGameMoneyIsConserved(t *testing.T) {
 	w := newTestGame(t)
-	m0 := heldMoney(w)
+	m0 := w.Money()
 	for i := 0; i < 400; i++ {
 		if i == 100 {
 			for _, name := range []string{"00", "13", "44"} {
@@ -140,8 +140,8 @@ func TestGameMoneyIsConserved(t *testing.T) {
 			}
 		}
 		w.Step()
-		if d := relDiff(heldMoney(w), m0); d > 1e-10 {
-			t.Fatalf("tick %d: money %v, started with %v", w.Tick, heldMoney(w), m0)
+		if d := relDiff(w.Money(), m0); d > 1e-10 {
+			t.Fatalf("tick %d: money %v, started with %v", w.Tick, w.Money(), m0)
 		}
 	}
 }
