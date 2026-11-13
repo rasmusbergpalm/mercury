@@ -182,9 +182,12 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 	// Stock beyond a day's output is stock it failed to sell (when it
 	// plans, its stock still holds yesterday's output, not yet offered): it
 	// makes what it wants to sell less that excess, so goods nobody buys
-	// stop being made instead of piling up. Scaling every factor by
+	// stop being made instead of piling up. A day's output is today's plan
+	// or yesterday's output, whichever is more: a firm whose plan fell
+	// overnight (on a tile just annexed) would otherwise take yesterday's
+	// output for unsold stock and lay everyone off. Scaling every factor by
 	// x^(1/s) scales output by x.
-	if over := f.Inventory - q; over > 0 && q > 0 {
+	if over := f.Inventory - math.Max(q, f.LastOutput); over > 0 && q > 0 {
 		scale := math.Pow(math.Max(0, q-over)/q, 1/s)
 		for i := range want {
 			want[i] *= scale

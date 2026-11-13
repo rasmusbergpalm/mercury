@@ -59,8 +59,8 @@ var (
 const (
 	todoJobs     = "a tile's employment dips to 70-75% for a while (to 30% before the three changes to agglomeration, migration and saving): to investigate"
 	todoGrowth   = "capital grows up to 16% in its best year: to check it is growth, not a boom"
-	todoSmall    = "several small nations: employment collapses on a tile: to investigate"
-	todoBudget   = "several small nations' budgets still swing (tax within 1.4 points, treasury to 2.2 reserves)"
+	todoAnnex    = "a free tile a nation takes loses 30% of its productivity overnight (its people's allegiance): two fifths of its workers are out of work for three days"
+	todoBudget   = "several small nations' tax still swings 1.5 points around its yearly average"
 	todoResearch = "a small nation learns a tech in eight years"
 	todoBigMap   = "big maps burn in for a year and keep the opening boom: wages wobble 3%, a tile falls to the migration floor"
 )
@@ -163,7 +163,7 @@ func TestHealthPlayerNation(t *testing.T) {
 	h := newHealthWatch(w)
 	h.run(int(10*TicksPerYear), 90)
 	h.report(t, todo(withTechs(nationBounds, 10), map[string]string{
-		"workers in work": todoJobs, "most building levels grew": todoGrowth,
+		"most building levels grew": todoGrowth,
 	}))
 }
 
@@ -184,7 +184,7 @@ func TestHealthThreeNations(t *testing.T) {
 	h := newHealthWatch(w)
 	h.run(int(8*TicksPerYear), 90)
 	h.report(t, todo(withTechs(nationBounds, 8), map[string]string{
-		"workers in work": todoSmall, "tax rate's wiggle": todoBudget, "highest treasury": todoBudget,
+		"workers in work": todoAnnex, "tax rate's wiggle": todoBudget,
 		"fewest techs": todoResearch, "most building levels grew": todoGrowth,
 	}))
 }
