@@ -128,6 +128,9 @@ type Nation struct {
 
 	// last tick's flows
 	Revenue, TariffRevenue, Spending float64
+	// Minted is the new money the mint paid it last tick, MintRate what it
+	// pays it a day this month (mint.go)
+	Minted, MintRate float64
 }
 
 // Spending categories.
@@ -635,7 +638,7 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 		n.SpendEMA = spent
 	}
 	n.SpendEMA = 0.95*n.SpendEMA + 0.05*spent
-	income := n.Revenue + n.TariffRevenue
+	income := n.Revenue + n.TariffRevenue + n.Minted
 	if n.IncomeEMA == 0 {
 		n.IncomeEMA = income
 	}

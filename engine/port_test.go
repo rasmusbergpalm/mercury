@@ -101,11 +101,11 @@ func TestRemovePort(t *testing.T) {
 			}
 		}
 	}
-	money := w.Money()
+	money := heldMoney(w)
 	for i := 0; i < 20; i++ {
 		w.Step()
 	}
-	if relDiff(w.Money(), money) > 1e-9 {
+	if relDiff(heldMoney(w), money) > 1e-9 {
 		t.Error("money changed after the removal")
 	}
 	snap, err := w.Snapshot()

@@ -321,7 +321,7 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 	if sea != 2*len(GameTradable) {
 		t.Fatalf("%d sea traders", sea)
 	}
-	money := w.Money()
+	money := heldMoney(w)
 	shipped := 0.0
 	for i := 0; i < 300; i++ {
 		w.Step()
@@ -334,7 +334,7 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 	if shipped <= 0 {
 		t.Error("nothing shipped by sea")
 	}
-	if relDiff(w.Money(), money) > 1e-10 {
+	if relDiff(heldMoney(w), money) > 1e-10 {
 		t.Error("ports broke money conservation")
 	}
 	// steamships make sea routes cheaper

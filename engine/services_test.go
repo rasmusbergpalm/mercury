@@ -101,12 +101,12 @@ func TestWarStopsTrade(t *testing.T) {
 // and money is still conserved.
 func TestServicesConserveMoney(t *testing.T) {
 	w := newAIGame(t)
-	m := w.Money()
+	m := heldMoney(w)
 	for i := 0; i < 2*365; i++ {
 		w.Step()
 	}
-	if relDiff(w.Money(), m) > 1e-9 {
-		t.Errorf("money %v -> %v", m, w.Money())
+	if relDiff(heldMoney(w), m) > 1e-9 {
+		t.Errorf("money %v -> %v", m, heldMoney(w))
 	}
 }
 

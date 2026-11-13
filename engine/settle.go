@@ -191,4 +191,5 @@ func (w *World) burnIn(days int, progress func(done int)) {
 	}
 	w.Investment, w.Demography, w.burning = inv, demo, false
 	w.Tick, w.Events, w.History = 0, nil, History{}
+	w.PriceLevel = 1
 }

@@ -457,7 +457,7 @@ func TestConquestEliminatesANation(t *testing.T) {
 	d, _ := w.RaiseArmy(1, beta.ID, 0)
 	a, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
 	a.Men, a.Region = 20, beta.ID // an army its taxes can pay
-	money := w.Money()
+	money := heldMoney(w)
 	for i := 0; i < 2*int(occupationDays*ownedTileFactor) && !w.Nations[1].Eliminated(); i++ {
 		for g := range a.Supply { // kept supplied, at full strength: it can take ground
 			a.Supply[g] = 1
@@ -478,7 +478,7 @@ func TestConquestEliminatesANation(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		w.Step()
 	}
-	if relDiff(w.Money(), money) > 1e-10 {
+	if relDiff(heldMoney(w), money) > 1e-10 {
 		t.Error("money not conserved through a conquest")
 	}
 }

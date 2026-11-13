@@ -126,7 +126,7 @@ type healthWatch struct {
 // newHealthWatch starts watching w. The price baskets are what each tile's
 // people buy today.
 func newHealthWatch(w *World) *healthWatch {
-	h := &healthWatch{w: w, money0: w.Money(), armyWorst: 1, armyNeeds: map[*Army][]int{}}
+	h := &healthWatch{w: w, money0: heldMoney(w), armyWorst: 1, armyNeeds: map[*Army][]int{}}
 	n := len(w.Regions)
 	h.basket = make([][]float64, n)
 	h.logPrice, h.logWage, h.people = make([][]float64, n), make([][]float64, n), make([][]float64, n)
@@ -265,7 +265,7 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 	h.levels = append(h.levels, levels)
 	h.living = append(h.living, utility/pop)
 	h.worldPeople = append(h.worldPeople, pop)
-	money := w.Money()
+	money := heldMoney(w)
 	finite("money", money, 0)
 	h.moneyDrift = math.Max(h.moneyDrift, relDiff(money, h.money0))
 	treasuries := 0.0
@@ -423,7 +423,7 @@ func (h *healthWatch) checks(l healthLimits) []healthCheck {
 		c = append(c, healthCheck{name, measured, 0, none, note})
 	}
 	never("numbers not finite or below their floor", float64(len(h.notFinite)), strings.Join(h.notFinite, "; "))
-	add("money: largest drift from the start", h.moneyDrift, 1e-9, true, "money is conserved")
+	add("money: largest drift from the start", h.moneyDrift, 1e-9, true, "money changes hands; only the mint makes it")
 
 	pw, ww := wiggles(h.logPrice), wiggles(h.logWage)
 	add("price wiggle, median tile", medianOf(pw), l.PriceWiggle, true, "sd of log price level around its 61-day average")
