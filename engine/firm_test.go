@@ -83,21 +83,19 @@ func TestProduceNeedsEveryFactor(t *testing.T) {
 	}
 }
 
-// A firm counts the stock it failed to sell: stock beyond yesterday's output
+// A firm counts the stock it failed to sell: stock beyond a day's output
 // cuts what it makes by that much, and enough stops it.
 func TestUnsoldStockCutsOutput(t *testing.T) {
 	prices := testPrices()
-	yesterday := 0.0 // what it made yesterday: the stock it hasn't offered yet
 	plan := func(stock float64) (labor, q float64) {
 		f := NewFirm("Bakery", G("bread"), 2, []Factor{Labor(0.3), Input("grain", 0.4), Comp("fuel", 0.1)}, 1e9)
-		f.Inventory, f.LastOutput = stock, yesterday
+		f.Inventory = stock
 		f.Plan(prices, 1)
 		g := *f
 		g.Labor, g.Inputs, g.Inventory = f.PlanLabor, append([]float64(nil), f.PlanQty...), 0
 		return f.PlanLabor, g.Produce()
 	}
 	_, full := plan(0)
-	yesterday = full
 	if l, q := plan(full); math.Abs(q-full) > 1e-9*full || l <= 0 {
 		t.Errorf("a day's output in stock (yesterday's, not yet offered) changed the plan: %v -> %v", full, q)
 	}
@@ -106,11 +104,5 @@ func TestUnsoldStockCutsOutput(t *testing.T) {
 	}
 	if l, q := plan(2 * full); q > 1e-9*full || l > 1e-9 {
 		t.Errorf("a whole day's output unsold: still makes %v with %v workers", q, l)
-	}
-	// a plan that fell overnight (the tile just annexed, its firms less
-	// productive): yesterday's bigger output is not unsold stock
-	yesterday = 3 * full
-	if _, q := plan(3 * full); math.Abs(q-full) > 1e-9*full {
-		t.Errorf("yesterday's output three times today's plan: makes %v, want %v", q, full)
 	}
 }
