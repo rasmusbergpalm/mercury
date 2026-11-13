@@ -79,6 +79,11 @@ type healthLimits struct {
 	ToDo map[string]string
 }
 
+// A tile that changes hands is a shock from outside its economy (its
+// productivity jumps with its people's allegiance to the new owner): its
+// employment counts again once it has had handOverDays to recover.
+const handOverDays = 30
+
 // healthWatch records a world day by day.
 type healthWatch struct {
 	w      *World
@@ -87,8 +92,10 @@ type healthWatch struct {
 
 	logPrice, logWage [][]float64 // per tile, per day
 	people            [][]float64 // per tile, per day
-	employment        []float64   // worst tile, per day
-	living            []float64   // people-weighted utility, per day
+	employment        []float64   // worst tile, per day (but a tile that just changed hands)
+	owner             []*Nation   // each tile's owner, and the day it last changed hands
+	ownerSince        []int
+	living            []float64 // people-weighted utility, per day
 	worldPeople       []float64
 	money0            float64
 	moneyDrift        float64
@@ -139,6 +146,10 @@ func newHealthWatch(w *World) *healthWatch {
 				h.basket[i][g] = 1
 			}
 		}
+	}
+	h.owner, h.ownerSince = make([]*Nation, n), make([]int, n)
+	for i, r := range w.Regions {
+		h.owner[i], h.ownerSince[i] = r.Nation, -handOverDays
 	}
 	h.output, h.startStock, h.maxStock = make([][]float64, n), make([][]float64, n), make([][]float64, n)
 	for i, r := range w.Regions {
@@ -217,7 +228,10 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 				employed += p.Employed()
 			}
 		}
-		if workers > 0 {
+		if r.Nation != h.owner[i] {
+			h.owner[i], h.ownerSince[i] = r.Nation, h.days
+		}
+		if workers > 0 && h.days-h.ownerSince[i] >= handOverDays {
 			worstEmployed = math.Min(worstEmployed, employed/workers)
 		}
 		utility += r.Utility() * people
@@ -499,7 +513,7 @@ func (h *healthWatch) checks(l healthLimits) []healthCheck {
 	for _, e := range h.employment {
 		worstEmp = math.Min(worstEmp, e)
 	}
-	add("workers in work, worst tile-day", worstEmp, l.MinEmployment, false, "")
+	add("workers in work, worst tile-day", worstEmp, l.MinEmployment, false, "but a month after a tile changes hands")
 	livingDrop := 0.0
 	for t := year; t < len(h.living); t += 30 {
 		livingDrop = math.Max(livingDrop, 1-h.living[t]/h.living[t-year])
