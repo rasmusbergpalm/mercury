@@ -72,39 +72,18 @@ func warBounds() healthLimits {
 // What the ladder still finds, to fix (see ToDo in healthLimits): each
 // rung lists the checks these leave failing.
 const (
-	todoEmpty    = "small tiles lose a third of their people in the first year: people move within a nation at up to half a tile a year (migration speed, a design question); some small tile rests at the migration floor even with no building"
-	todoJobs     = "a tile's employment dips for a while (to 30%): a construction boom on a small tile hires its workers and throws them out when it ends"
-	todoBoom     = "construction booms on single tiles make prices and wages wobble 2.5-6%, the budget swing with them, and leave goods unsold"
-	todoBigBoom  = "big maps burn in for a year and keep half the opening boom"
-	todoKit      = "an army takes over two months to get a new doctrine's kit"
+	todoJobs     = "a tile's employment dips to 70-75% for a while (to 30% before the three changes to agglomeration, migration and saving): to investigate"
+	todoGrowth   = "capital grows up to 16% in its best year: to check it is growth, not a boom"
+	todoSmall    = "several small nations: employment collapses on a tile: to investigate"
+	todoBudget   = "several small nations' budgets still swing (tax within 1.4 points, treasury to 2.2 reserves)"
 	todoResearch = "a small nation learns a tech in eight years"
-	todoOpening  = "a player's nation opens with a tax it didn't levy in the burn-in: GDP dips"
-	todoSmall    = "several small nations: employment collapses on a tile, living standard dips; to investigate"
+	todoBigMap   = "big maps burn in for a year and keep the opening boom: wages wobble 3%, a tile falls to the migration floor"
 )
 
 // todo is l with the to-do checks for its rung.
 func todo(l healthLimits, items map[string]string) healthLimits {
 	l.ToDo = items
 	return l
-}
-
-var (
-	boomToDo = map[string]string{
-		"price wiggle, median": todoBoom, "price wiggle, worst": todoBoom,
-		"wage wiggle, median": todoBoom, "wage wiggle, worst": todoBoom,
-		"tax rate's wiggle": todoBoom, "most unsold stock piled up": todoBoom,
-	}
-	emptyToDo = map[string]string{"fewest people on a tile": todoEmpty, "most of a tile's people lost": todoEmpty}
-)
-
-func merge(ms ...map[string]string) map[string]string {
-	out := map[string]string{}
-	for _, m := range ms {
-		for k, v := range m {
-			out[k] = v
-		}
-	}
-	return out
 }
 
 // withTechs is l requiring each nation to learn a tech every two years.
@@ -182,9 +161,9 @@ func TestHealthOneNation(t *testing.T) {
 	w := oneNationGame(t, true)
 	h := newHealthWatch(w)
 	h.run(int(10*TicksPerYear), 90)
-	h.report(t, todo(withTechs(nationBounds, 10), merge(emptyToDo, boomToDo, map[string]string{
-		"workers in work": todoJobs,
-	})))
+	h.report(t, todo(withTechs(nationBounds, 10), map[string]string{
+		"workers in work": todoJobs, "most building levels grew": todoGrowth,
+	}))
 }
 
 // Rung 3: the same, run by a player who keeps the tax automated (as a new
@@ -199,8 +178,7 @@ func TestHealthPlayerNation(t *testing.T) {
 	h := newHealthWatch(w)
 	h.run(int(10*TicksPerYear), 90)
 	h.report(t, todo(withTechs(nationBounds, 10), map[string]string{
-		"fewest people on a tile": todoEmpty,
-		"workers in work":         todoJobs, "largest fall of a nation's real GDP": todoOpening,
+		"workers in work": todoJobs, "most building levels grew": todoGrowth,
 	}))
 }
 
@@ -220,10 +198,10 @@ func TestHealthThreeNations(t *testing.T) {
 	}
 	h := newHealthWatch(w)
 	h.run(int(8*TicksPerYear), 90)
-	h.report(t, todo(withTechs(nationBounds, 8), merge(emptyToDo, boomToDo, map[string]string{
-		"highest treasury": todoBoom, "world price level's largest move": todoBoom,
-		"workers in work": todoSmall, "most living standard falls": todoSmall, "fewest techs": todoResearch,
-	})))
+	h.report(t, todo(withTechs(nationBounds, 8), map[string]string{
+		"workers in work": todoSmall, "tax rate's wiggle": todoBudget, "highest treasury": todoBudget,
+		"fewest techs": todoResearch, "most building levels grew": todoGrowth,
+	}))
 }
 
 // Rung 5: war. The classic map shared out among its three nations (so they
@@ -274,9 +252,8 @@ func TestHealthBigMap(t *testing.T) {
 	}
 	h := newHealthWatch(w)
 	h.run(int(3*TicksPerYear), 90)
-	h.report(t, todo(withTechs(nationBounds, 3), merge(emptyToDo, map[string]string{
-		"price wiggle, median": todoBoom, "price wiggle, worst": todoBoom,
-		"wage wiggle, median": todoBoom, "wage wiggle, worst": todoBoom,
-		"workers in work": todoJobs, "most building levels grew": todoBigBoom, "armies' supply, worst good": todoKit,
-	})))
+	h.report(t, todo(withTechs(nationBounds, 3), map[string]string{
+		"fewest people on a tile": todoBigMap, "most building levels grew": todoBigMap,
+		"wage wiggle, median": todoBigMap, "wage wiggle, worst": todoBigMap, "workers in work": todoJobs,
+	}))
 }

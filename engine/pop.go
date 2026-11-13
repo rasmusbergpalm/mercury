@@ -50,16 +50,23 @@ func (p *Pop) Employed() float64 {
 }
 
 // Demand writes the pop's purchases into out: every member spends an equal
-// share of the pop's cash (see Demand).
+// share of spendShare of the pop's cash (see Demand).
 func (p *Pop) Demand(prices []float64, out []float64) {
 	var d demandPlan
 	d.prepare(prices)
 	p.demand(&d, out)
 }
 
+// People spend spendShare of their cash a day and keep the rest: savings
+// carry them through a bad month, so a dip in wages or a jump in prices
+// moves what they buy by a twentieth as much on the day, and a market's
+// demand doesn't swing with every wage. (Spending it all, they turned every
+// day's wage straight into the next day's demand.)
+const spendShare = 1.0 / 20
+
 // demand is Demand at prices already prepared.
 func (p *Pop) demand(d *demandPlan, out []float64) {
-	d.demand(p.Cash/p.Size, out)
+	d.demand(spendShare*p.Cash/p.Size, out)
 	for i := range out {
 		out[i] *= p.Size
 	}

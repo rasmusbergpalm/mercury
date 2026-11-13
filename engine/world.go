@@ -526,9 +526,13 @@ func (w *World) Annex(region, nation int) { w.transfer(w.Regions[region], w.Nati
 
 // Migration rules (game worlds only).
 const (
-	migrationRate  = 0.02 // share of a tile's people who move per tick per unit of relative utility gap
-	migrationStart = 50   // ticks before anyone moves (utility records need to settle)
-	minPopulation  = 20   // a tile never empties below this
+	// share of a tile's people who move per tick per unit of relative utility
+	// gap: a 10% gap draws about 7% of a tile's people a year (with a hop of
+	// 0). Ten times faster, a building boom on a tile emptied its
+	// neighbours in months, and the people left again when it ended.
+	migrationRate  = 0.002
+	migrationStart = 50 // ticks before anyone moves (utility records need to settle)
+	minPopulation  = 20 // a tile never empties below this
 )
 
 // migrate moves people along each link from the tile with lower (smoothed)
@@ -537,9 +541,7 @@ const (
 // foreignMigration is how much slower people move between tiles under
 // different flags (or between a nation and free land) than within one
 // nation: language, law and distance from home hold them back. A 10% gap in
-// living standards draws about 2% of a border tile's people a year: as
-// emigration ran in the period (faster, it emptied poorer nations into
-// richer ones within decades).
+// living standards draws about 0.2% of a border tile's people a year.
 const foreignMigration = 0.03
 
 // migrationShare is the share of from's people who move to to in a day,

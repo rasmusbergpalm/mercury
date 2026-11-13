@@ -517,10 +517,13 @@ func (r *Region) PayDividends(cash *float64, cashBuffer, desiredSpend float64, o
 // Agglomeration: on every tile, industry and services are more productive the
 // more people live there: (people / sizeBonusPop)^sizeBonusExp. Busy tiles pay
 // better, draw migrants and grow further, so cities emerge where trade and
-// resources concentrate people; thin tiles stay rural.
+// resources concentrate people; thin tiles stay rural. The pull is mild (a
+// tile twice the size is 9% more productive): at 0.45 (37%) a tile that
+// grew drew people from its neighbours, which made it grow further, and
+// small tiles emptied to the migration floor.
 const (
 	sizeBonusPop = 100.0 // a starting tile's people: bonus 1
-	sizeBonusExp = 0.45
+	sizeBonusExp = 0.12
 	// a tile is a city when it has this many times the average tile's people
 	CityMult = 2.0
 )

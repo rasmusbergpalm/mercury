@@ -268,7 +268,9 @@ func buildWorld(transportCost float64, gameMap []string, names []string, game bo
 				}
 				name = names[len(regions)]
 			}
-			reg := NewRegion(len(regions), name, makeFirms(t, coastal, game), 2, 50, 500)
+			// people start with 10 a head of spending a day, in savings of a
+			// twentieth (spendShare)
+			reg := NewRegion(len(regions), name, makeFirms(t, coastal, game), 2, 50, 500/spendShare)
 			if game {
 				addOwnerClasses(reg)
 				reg.Educated = startEducated
