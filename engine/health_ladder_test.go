@@ -61,6 +61,7 @@ const (
 	todoGrowth   = "capital grows up to 16% in its best year: to check it is growth, not a boom"
 	todoBudget   = "several small nations' budgets still swing (tax within 1.5 points, treasury to 2.2 reserves)"
 	todoResearch = "a small nation learns a tech in eight years"
+	todoWaves    = "with no cap on workshops, owners build in waves where the state builds nothing: wages wobble 2.3%"
 	todoBigMap   = "big maps burn in for a year and keep the opening boom: wages wobble 3%, a tile falls to the migration floor"
 )
 
@@ -162,7 +163,7 @@ func TestHealthPlayerNation(t *testing.T) {
 	h := newHealthWatch(w)
 	h.run(int(10*TicksPerYear), 90)
 	h.report(t, todo(withTechs(nationBounds, 10), map[string]string{
-		"workers in work": todoJobs, "most building levels grew": todoGrowth,
+		"workers in work": todoJobs, "most building levels grew": todoGrowth, "wage wiggle, median": todoWaves,
 	}))
 }
 

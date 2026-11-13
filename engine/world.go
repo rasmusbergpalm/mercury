@@ -304,7 +304,7 @@ func (w *World) Expand(region, firm int) error {
 		return ErrExpanding
 	case !f.Enabled:
 		return ErrFirmLocked
-	case f.Levels >= f.MaxLevels:
+	case f.AtCap():
 		return ErrFirmMax
 	}
 	f.Expansion = &Expansion{Public: true}

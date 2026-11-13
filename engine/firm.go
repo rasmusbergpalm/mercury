@@ -54,6 +54,9 @@ type Firm struct {
 	Factors      []Factor
 	// Levels of buildings. Output is constant-returns in levels and the
 	// variable factors together: q = TFP * Levels^(1-s) * prod f_i^a_i.
+	// MaxLevels caps them where something else is scarce: land for farms
+	// and mines (RawMaxLevels), the state's budget for its services; 0 is
+	// no cap (workshops and services grow while a level pays for itself).
 	Levels, MaxLevels int
 	Expansion         *Expansion // a level under construction, or nil
 	// Requires names the tech the owner needs for the firm to work; Enabled
@@ -125,10 +128,13 @@ func (f *Firm) effectiveTFP() float64 {
 	return f.TFP * f.levelsPow * f.Agglom * f.EduMult * f.Loyal
 }
 
+// AtCap reports whether the firm has all the levels it may have.
+func (f *Firm) AtCap() bool { return f.MaxLevels > 0 && f.Levels >= f.MaxLevels }
+
 // NewFirm makes a firm.
 func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash float64) *Firm {
 	return &Firm{Name: name, Output: output, TFP: tfp, BaseTFP: tfp, Factors: factors, Cash: cash,
-		Levels: 1, MaxLevels: 8, Enabled: true, Agglom: 1, EduMult: 1, Loyal: 1,
+		Levels: 1, Enabled: true, Agglom: 1, EduMult: 1, Loyal: 1,
 		CashBuffer: 20, Inputs: make([]float64, NumGoods),
 		PlanQty: make([]float64, NumGoods), PlanHas: make([]bool, NumGoods)}
 }
@@ -293,7 +299,7 @@ func (f *Firm) Bonuses(n *Nation) []Modifier {
 	if !f.State && f.Levels > 0 {
 		m := f.NextLevelMult()
 		note := fmt.Sprintf("%d levels; one more would make every worker and input %.0f%% more productive", f.Levels, 100*(m-1))
-		if f.Levels >= f.MaxLevels {
+		if f.AtCap() {
 			note = fmt.Sprintf("%d levels, the most it can have here", f.Levels)
 		}
 		out = append(out, Modifier{"Crowding", 1 / m, note, false})

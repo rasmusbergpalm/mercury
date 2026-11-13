@@ -238,7 +238,7 @@ func TestNationCommands(t *testing.T) {
 	e.do("GET", "/api/games/"+g.ID+"/regions/0", "", nil, 200, &d)
 	fi := -1
 	for i, f := range d.Firms {
-		if f.Expansion == nil && f.Enabled && f.Levels < f.MaxLevels {
+		if f.Expansion == nil && f.Enabled && (f.MaxLevels == 0 || f.Levels < f.MaxLevels) {
 			fi = i
 			break
 		}

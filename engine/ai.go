@@ -542,7 +542,7 @@ func (w *World) aiServices(n *Nation, war, funding, universities bool) {
 				busy = true
 				break
 			}
-			if f.Levels >= f.MaxLevels {
+			if f.AtCap() {
 				continue
 			}
 			cov := 0.0
@@ -620,7 +620,7 @@ func (w *World) aiExpandFirm(n *Nation) {
 	best := 0.0
 	for _, r := range n.Regions {
 		for i, f := range r.Firms {
-			if f.Expansion != nil || f.State || !f.Enabled || f.Levels >= f.MaxLevels {
+			if f.Expansion != nil || f.State || !f.Enabled || f.AtCap() {
 				continue
 			}
 			if p := f.ProfitEMA / float64(f.Levels); p > best {

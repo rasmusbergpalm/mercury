@@ -594,7 +594,7 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
 			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, f.Bonuses(r.Nation), 0, 0, 0}
 		fs.Wanted = f.PlanLabor
-		if !f.State && f.Levels < f.MaxLevels {
+		if !f.State && !f.AtCap() {
 			fs.LevelGain = f.LastOutput * r.Markets[f.Output].Price * (f.NextLevelMult() - 1)
 		}
 		if f.Labor > 1e-9 {

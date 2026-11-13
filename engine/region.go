@@ -135,7 +135,7 @@ func (r *Region) planInvestment() {
 		payback *= r.Nation.paybackMult()
 	}
 	for _, f := range r.Firms {
-		if f.Expansion == nil && !f.State && f.Enabled && f.Levels < f.MaxLevels && f.Age > investMinAge {
+		if f.Expansion == nil && !f.State && f.Enabled && !f.AtCap() && f.Age > investMinAge {
 			perLevel := f.ProfitEMA / float64(f.Levels)
 			if perLevel > 0 && perLevel*payback > LevelCost*price {
 				f.Expansion = &Expansion{}

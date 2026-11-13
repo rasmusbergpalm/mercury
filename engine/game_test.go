@@ -300,7 +300,7 @@ func TestProfitableFirmsInvest(t *testing.T) {
 			if f.State {
 				continue // public services are the state's to build
 			}
-			if f.Levels > f.MaxLevels || f.Levels < 1 {
+			if (f.MaxLevels > 0 && f.Levels > f.MaxLevels) || f.Levels < 1 {
 				t.Errorf("%s in %s has %d levels (max %d)", f.Name, r.Name, f.Levels, f.MaxLevels)
 			}
 			if f.Levels > 1 {
