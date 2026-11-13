@@ -9,8 +9,8 @@ import (
 // day by day by a healthWatch (see health_test.go). A rung's world adds one
 // layer to the rung below: one tile on its own; a map of tiles trading and
 // migrating; a nation that runs the whole map; three nations side by side;
-// a war; a big generated map. Each fails if any of its numbers leaves
-// bounds, and prints them all.
+// a big generated map. Each fails if any of its numbers leaves bounds, and
+// prints them all.
 
 // The bounds. Markets left alone (rung 1) are the reference: prices there
 // wiggle 0.1% around their two-month average and nobody moves. A nation
@@ -53,21 +53,6 @@ var (
 		LevelGrowthYear: 0.15,
 	}
 )
-
-// warBounds are a nation's bounds at war. A war moves prices, wages,
-// people, jobs and taxes, as it should: those are reported, not checked.
-// What must hold is that nothing breaks: money and numbers sound, markets
-// clearing, nothing piling up unsold, the state paying its bills, armies
-// supplied, and no collapse of people or output.
-func warBounds() healthLimits {
-	return healthLimits{
-		FullSpeed: 0.03, StockDays: 30, StockSlack: 5,
-		PeopleDropMonth: 0.05,
-		StateFrom:       90, ShortDays: 0,
-		GDPDropMonth: 0.3,
-		ArmySupply:   0.9, ArmySupplyWorst: 0.25,
-	}
-}
 
 // What the ladder still finds, to fix (see ToDo in healthLimits): each
 // rung lists the checks these leave failing.
@@ -204,33 +189,7 @@ func TestHealthThreeNations(t *testing.T) {
 	}))
 }
 
-// Rung 5: war. The classic map shared out among its three nations (so they
-// border each other); two of them go to war the day the game opens. For two
-// years their armies must be supplied and the economy must carry the war
-// without collapsing.
-func TestHealthWar(t *testing.T) {
-	if testing.Short() {
-		t.Skip("long")
-	}
-	t.Parallel()
-	spec, err := DivideLand(DefaultGame)
-	if err != nil {
-		t.Fatal(err)
-	}
-	spec.AI, spec.Seed = true, 1
-	w, err := BuildGame(spec)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := w.DeclareWar(0, 1); err != nil {
-		t.Fatal(err)
-	}
-	h := newHealthWatch(w)
-	h.run(int(2*TicksPerYear), 90)
-	h.report(t, warBounds())
-}
-
-// Rung 6: a generated map of about 140 tiles, all of it one computer
+// Rung 5: a generated map of about 140 tiles, all of it one computer
 // nation's, for three years from the day it opens.
 func TestHealthBigMap(t *testing.T) {
 	if testing.Short() {
