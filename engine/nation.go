@@ -101,8 +101,7 @@ type Nation struct {
 	Standing    float64     // share of each army's wartime size kept under arms in peace
 	Temper      Temperament // how the computer plays it
 	seed        int64       // the game's seed, for its deterministic choices
-	IncomeEMA   float64     // moving average of income per tick: taxes, tariffs and new money
-	MintEMA     float64     // the new money in it
+	IncomeEMA   float64     // moving average of tax and tariff income per tick
 
 	ResearchPoints float64 // research delivered towards the current tech
 	Researching    int     // index into Techs, or -1 to pick automatically
@@ -644,7 +643,6 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 		n.IncomeEMA = income
 	}
 	n.IncomeEMA = 0.95*n.IncomeEMA + 0.05*income
-	n.MintEMA = 0.95*n.MintEMA + 0.05*n.Minted
 	if i := n.Researching; i >= 0 && n.ResearchPoints >= n.TechCost(i, w.Nations) {
 		n.ResearchPoints -= n.TechCost(i, w.Nations)
 		n.Known[i] = true
