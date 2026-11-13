@@ -115,3 +115,25 @@ func TestMintIssuesWhenPricesFall(t *testing.T) {
 		}
 	}
 }
+
+// The state's tax makes up what new money doesn't: with the mint paying a
+// fifth of its spending, the computer's tax settles a fifth lower.
+func TestNewMoneyLowersTheTax(t *testing.T) {
+	settle := func(mint float64) float64 {
+		w := newTestGame(t)
+		n := w.Nations[0]
+		n.TaxRate, n.SpendEMA = 0.1, 100
+		n.Treasury = n.reserve()
+		base := 1000.0 // what a tax of 100% would bring in
+		for i := 0; i < 1000; i++ {
+			n.MintEMA = mint
+			n.IncomeEMA = n.TaxRate*base + mint
+			w.aiTax(n)
+		}
+		return n.TaxRate
+	}
+	without, with := settle(0), settle(20)
+	if math.Abs(without-0.1) > 1e-6 || math.Abs(with-0.08) > 1e-6 {
+		t.Errorf("tax %.4f without new money, %.4f with a fifth of the spending minted; want 0.1 and 0.08", without, with)
+	}
+}

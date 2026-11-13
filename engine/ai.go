@@ -597,8 +597,10 @@ func (w *World) aiTax(n *Nation) {
 		n.SetTaxRate(math.Max(n.TaxRate, 0.05)) // nothing to predict from yet
 		return
 	}
-	perPoint := n.IncomeEMA / n.TaxRate
-	want := n.SpendEMA + (n.reserve()-n.Treasury)/aiTaxHorizon
+	// what a point of tax brings in, and what the tax must bring in: the
+	// spending and the gap to the reserve, less the mint's new money
+	perPoint := math.Max(n.IncomeEMA-n.MintEMA, 1e-9) / n.TaxRate
+	want := n.SpendEMA + (n.reserve()-n.Treasury)/aiTaxHorizon - n.MintEMA
 	rate := math.Max(n.TaxRate-aiTaxStep, math.Min(n.TaxRate+aiTaxStep, want/perPoint))
 	n.SetTaxRate(math.Max(0.005, math.Min(0.6, rate)))
 }

@@ -93,6 +93,7 @@ type NationSnap struct {
 	Pension                                int
 	PayScale                               float64
 	IncomeEMA, ResearchPoints              float64
+	MintEMA                                float64
 	RealGDP                                float64
 	Researching                            int
 	Known                                  []bool
@@ -158,7 +159,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	for _, n := range w.Nations {
 		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, SpendEMA: n.SpendEMA, BuildRate: n.MaxBuildRate,
 			Tariff: append([]float64(nil), n.Tariff...), Embargo: append([]bool(nil), n.Embargo...),
-			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Standing: n.Standing, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints, RealGDP: n.RealGDP,
+			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Standing: n.Standing, IncomeEMA: n.IncomeEMA, MintEMA: n.MintEMA, ResearchPoints: n.ResearchPoints, RealGDP: n.RealGDP,
 			Researching: n.Researching, Known: append([]bool(nil), n.Known...), Coalition: n.Coalition, AllianceSince: n.AllianceSince, MightEMA: n.MightEMA, LearnedAt: append([]int(nil), n.LearnedAt...), AI: n.AI, ChooseResearch: n.ChooseResearch,
 			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
 			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
@@ -269,6 +270,7 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 		n.Treasury, n.TaxRate, n.SpendEMA, n.MaxBuildRate = ns.Treasury, ns.TaxRate, ns.SpendEMA, ns.BuildRate
 		n.Tariff, n.Embargo, n.AutoBuild, n.IncomeEMA, n.ResearchPoints = ns.Tariff, ns.Embargo, ns.AutoBuild, ns.IncomeEMA, ns.ResearchPoints
+		n.MintEMA = ns.MintEMA
 		n.RealGDP = math.Max(0, ns.RealGDP)
 		n.now = s.Tick
 		if ns.Coalition < 0 || ns.Coalition > len(s.Nations) || ns.Coalition == n.ID+1 {
