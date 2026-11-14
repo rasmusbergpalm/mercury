@@ -132,17 +132,29 @@ const (
 	depreciation = 0.02
 )
 
+// investDecideDays is how long owners take, on average, to start a project
+// that pays twice what they ask: each day a project that pays starts with a
+// chance in proportion to how far it beats their hurdle, so the clear winners
+// are taken up within months and the marginal ones slowly, owner by owner,
+// rather than every owner on the map the same day.
+const investDecideDays = 180.0
+
+// refitDecideDays is the same for refitting a working level to another
+// method: owners are slower to tear out machinery that still runs than to
+// build anew, so a better method spreads over years, works one by one.
+const refitDecideDays = 365.0
+
 // planInvestment starts private expansions where a level would repay itself,
 // and sets what each firm buys this tick: its upkeep, and the next part of
 // its expansion while what is left of it still pays at today's construction
 // price (when building costs rise, projects wait, as real ones did).
-func (r *Region) planInvestment() {
+func (r *Region) planInvestment(tick int, seed int64) {
 	price := r.Markets[Construction].Price
 	payback := float64(investPayback)
 	if r.Nation != nil {
 		payback *= r.Nation.paybackMult()
 	}
-	for _, f := range r.Firms {
+	for i, f := range r.Firms {
 		f.upkeepWant = 0
 		if f.State || (f.Levels < 1 && len(f.kin) == 0) {
 			continue
@@ -161,10 +173,14 @@ func (r *Region) planInvestment() {
 		}
 		if f.Expansion == nil && f.Enabled && f.Age > investMinAge && perLevel > 0 {
 			full := f.MaxLevels > 0 && f.kinLevels() >= f.MaxLevels
+			// how many times over each project repays its cost within the payback
+			refit := refitGain * payback / (refitShare * LevelCost * price)
+			build := perLevel * payback / (LevelCost * price)
+			roll := investRoll(seed, r.ID, i, tick)
 			switch {
-			case refitGain*payback > refitShare*LevelCost*price:
+			case refit > 1 && roll < math.Min(1, refit-1)/refitDecideDays:
 				f.Expansion = &Expansion{Refit: true}
-			case !full && perLevel*payback > LevelCost*price:
+			case !full && build > 1 && roll < math.Min(1, build-1)/investDecideDays:
 				f.Expansion = &Expansion{}
 			}
 		}
@@ -727,8 +743,9 @@ func (r *Region) TierSpend(prices []float64) [NumTiers]float64 {
 // loyal to its old owner, and one lost and retaken soon still mostly stands
 // by the nation that retook it. Its allegiance to its owner is the owner's
 // share plus freeLandAllegiance of nobody's (people who answer to no one are
-// halfway willing); until it is whole the tile produces less, pays less tax
-// and gives fewer recruits.
+// halfway willing); until it is whole the tile pays less tax and gives
+// fewer recruits, and, while people there stand by another nation, produces
+// less (WorkMult).
 const (
 	allegianceYears    = 8.0
 	freeLandAllegiance = 0.4
@@ -776,14 +793,36 @@ func (r *Region) Allegiance() float64 {
 	return r.Loyalties[r.Nation.ID] + freeLandAllegiance*r.Loyalties[len(r.Loyalties)-1]
 }
 
-// AllegianceMult is what allegiance does to the tile's production and taxes:
-// half at none, all of it when loyal.
+// AllegianceMult is what allegiance does to the tile's taxes: half at none,
+// all of it when loyal.
 func (r *Region) AllegianceMult() float64 { return 0.5 + 0.5*r.Allegiance() }
+
+// WorkMult is what allegiance does to the tile's production: people loyal
+// to another nation work half-heartedly for their new masters (a share s of
+// them costs s/2 of the output); people who answered to nobody work as they
+// did (a free tile taken over doesn't become poorer for it).
+func (r *Region) WorkMult() float64 {
+	if r.Nation == nil || r.Loyalties == nil {
+		return 1
+	}
+	rival := 1 - r.Loyalties[r.Nation.ID] - r.Loyalties[len(r.Loyalties)-1]
+	return 1 - 0.5*math.Max(0, rival)
+}
 
 // applyAllegiance sets the tile's firms' productivity from its allegiance.
 func (r *Region) applyAllegiance() {
-	m := r.AllegianceMult()
+	m := r.WorkMult()
 	for _, f := range r.Firms {
 		f.Loyal = m
 	}
+}
+
+// investRoll is a deterministic number in [0, 1) for a firm's investment
+// decision on a day: the game's seed, the tile, the firm and the day.
+func investRoll(seed int64, region, firm, tick int) float64 {
+	x := uint64(seed)*0x9E3779B97F4A7C15 ^ uint64(region+1)*0xBF58476D1CE4E5B9 ^ uint64(firm+1)*0x94D049BB133111EB ^ uint64(tick+1)*0xD6E8FEB86659FD93
+	x ^= x >> 31
+	x *= 0x9E3779B97F4A7C15
+	x ^= x >> 29
+	return float64(x>>11) / float64(1<<53)
 }

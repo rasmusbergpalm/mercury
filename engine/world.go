@@ -129,7 +129,7 @@ func (w *World) Step() {
 		copy(w.TradePrices[r.ID], r.refreshPrices())
 		r.Plan()
 		if w.Investment {
-			r.planInvestment()
+			r.planInvestment(w.Tick, w.seed())
 		}
 	})
 	w.eachRegion(func(r *Region) { r.House.Plan(w.Tick) })
@@ -692,4 +692,12 @@ func (w *World) IsCity(r *Region) bool {
 		pop += x.Population()
 	}
 	return r.Population() >= CityMult*pop/float64(len(w.Regions))
+}
+
+// seed is the game's seed (0 outside game worlds).
+func (w *World) seed() int64 {
+	if w.Spec == nil {
+		return 0
+	}
+	return w.Spec.Seed
 }

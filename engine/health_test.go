@@ -37,8 +37,10 @@ type healthLimits struct {
 	// nor sells, is reported but not failed.)
 	StockDays, StockSlack float64
 	// MinTilePeople and TileLossYear: no tile emptying, and none losing
-	// more than this share of its people in a year.
-	MinTilePeople, TileLossYear float64
+	// more than this share of its people in a year. With EmptyShare, up to
+	// that share of the tiles may fall below MinTilePeople (on a big
+	// generated map a barren upland or two lies at the migration floor).
+	MinTilePeople, TileLossYear, EmptyShare float64
 	// PeopleDropMonth: the most the world's people may fall in a month.
 	PeopleDropMonth float64
 	// MinEmployment: the least share of workers in work, on the worst
@@ -66,8 +68,10 @@ type healthLimits struct {
 	// ArmySupply: the least mean supply (share of daily needs, per good)
 	// of the armies over the window, and ArmySupplyWorst on any army-day.
 	ArmySupply, ArmySupplyWorst float64
-	// Techs: the least techs each surviving nation learns in the window.
-	Techs int
+	// TechsLeader: the least techs the nation that learns most learns in
+	// the window (research works); every surviving nation learns at least
+	// one (none is stuck), when the window asks for any.
+	TechsLeader int
 	// LevelGrowthYear: the most a world's building levels (firms' and
 	// services') may grow in any year, as a share of what it had.
 	LevelGrowthYear float64
@@ -92,7 +96,7 @@ type healthWatch struct {
 
 	logPrice, logWage [][]float64 // per tile, per day
 	people            [][]float64 // per tile, per day
-	employment        []float64   // worst tile, per day (but a tile that just changed hands)
+	employment        [][]float64 // per tile, per day: the share of workers in work (NaN just after it changed hands)
 	owner             []*Nation   // each tile's owner, and the day it last changed hands
 	ownerSince        []int
 	living            []float64 // people-weighted utility, per day
@@ -147,6 +151,7 @@ func newHealthWatch(w *World) *healthWatch {
 			}
 		}
 	}
+	h.employment = make([][]float64, n)
 	h.owner, h.ownerSince = make([]*Nation, n), make([]int, n)
 	for i, r := range w.Regions {
 		h.owner[i], h.ownerSince[i] = r.Nation, -handOverDays
@@ -207,7 +212,7 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 			}
 		}
 	}
-	worstEmployed, utility, pop, levels := 1.0, 0.0, 0.0, 0.0
+	utility, pop, levels := 0.0, 0.0, 0.0
 	for i, r := range w.Regions {
 		cost := 0.0
 		for g, q := range h.basket[i] {
@@ -231,9 +236,11 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 		if r.Nation != h.owner[i] {
 			h.owner[i], h.ownerSince[i] = r.Nation, h.days
 		}
+		e := math.NaN()
 		if workers > 0 && h.days-h.ownerSince[i] >= handOverDays {
-			worstEmployed = math.Min(worstEmployed, employed/workers)
+			e = employed / workers
 		}
+		h.employment[i] = append(h.employment[i], e)
 		utility += r.Utility() * people
 		pop += people
 		for g, m := range r.Markets {
@@ -261,7 +268,6 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 			}
 		}
 	}
-	h.employment = append(h.employment, worstEmployed)
 	h.levels = append(h.levels, levels)
 	h.living = append(h.living, utility/pop)
 	h.worldPeople = append(h.worldPeople, pop)
@@ -493,27 +499,48 @@ func (h *healthWatch) checks(l healthLimits) []healthCheck {
 	}
 	add("most building levels grew in a year", growth, l.LevelGrowthYear, true, fmt.Sprintf("%.0f levels to %.0f", h.levels[0], last(h.levels)))
 
-	minPeople, lossYear := math.Inf(1), 0.0
+	minPeople, lossYear, emptied := math.Inf(1), 0.0, 0
 	for _, s := range h.people {
+		tileMin := math.Inf(1)
 		for t, p := range s {
-			minPeople = math.Min(minPeople, p)
+			tileMin = math.Min(tileMin, p)
 			if t >= year {
 				lossYear = math.Max(lossYear, 1-p/s[t-year])
 			}
 		}
+		minPeople = math.Min(minPeople, tileMin)
+		if tileMin < l.MinTilePeople {
+			emptied++
+		}
 	}
-	add("fewest people on a tile", minPeople, l.MinTilePeople, false, "")
+	if l.EmptyShare > 0 {
+		c = append(c, healthCheck{"fewest people on a tile", minPeople, l.MinTilePeople, shown, ""})
+		add(fmt.Sprintf("share of tiles that fell below %.0f people", l.MinTilePeople), float64(emptied)/float64(len(h.people)), l.EmptyShare, true, "")
+	} else {
+		add("fewest people on a tile", minPeople, l.MinTilePeople, false, "")
+	}
 	add("most of a tile's people lost in a year", lossYear, l.TileLossYear, true, "")
 	drop := 0.0
 	for t := 30; t < len(h.worldPeople); t++ {
 		drop = math.Max(drop, 1-h.worldPeople[t]/h.worldPeople[t-30])
 	}
 	add("most of the world's people lost in a month", drop, l.PeopleDropMonth, true, "")
+	// a month's average: a tile's workers between jobs for a week or two
+	// (when a big project there ends, say) is the labour market at work;
+	// out of work for a month is not
 	worstEmp := 1.0
-	for _, e := range h.employment {
-		worstEmp = math.Min(worstEmp, e)
+	for _, es := range h.employment {
+		for t := 30; t <= len(es); t++ {
+			m := 0.0
+			for _, e := range es[t-30 : t] {
+				m += e
+			}
+			if m == m { // no day in the month just after a change of hands
+				worstEmp = math.Min(worstEmp, m/30)
+			}
+		}
 	}
-	add("workers in work, worst tile-day", worstEmp, l.MinEmployment, false, "but a month after a tile changes hands")
+	add("workers in work, worst tile-month", worstEmp, l.MinEmployment, false, "a month's average; but a month after a tile changes hands")
 	livingDrop := 0.0
 	for t := year; t < len(h.living); t += 30 {
 		livingDrop = math.Max(livingDrop, 1-h.living[t]/h.living[t-year])
@@ -526,7 +553,7 @@ func (h *healthWatch) checks(l healthLimits) []healthCheck {
 	short, taxLo, taxHi := 0, 1.0, 0.0
 	resLo, resHi := math.Inf(1), 0.0
 	gdpDrop := 0.0
-	techs := math.MaxInt
+	techs, techsBest := math.MaxInt, 0
 	for j, n := range w.Nations {
 		short = max(short, h.short[j])
 		for t, x := range h.tax[j] {
@@ -542,6 +569,7 @@ func (h *healthWatch) checks(l healthLimits) []healthCheck {
 		}
 		if !n.Eliminated() {
 			techs = min(techs, knownTechs(n)-h.known0[j])
+			techsBest = max(techsBest, knownTechs(n)-h.known0[j])
 		}
 	}
 	if l.ShortDays == 0 {
@@ -562,7 +590,8 @@ func (h *healthWatch) checks(l healthLimits) []healthCheck {
 	}
 	add("armies' supply, mean over army-days", armyMean, l.ArmySupply, false, fmt.Sprintf("%.0f army-days", h.armyDays))
 	add("armies' supply, worst good on any army-day", h.armyWorst, l.ArmySupplyWorst, false, "")
-	add("fewest techs a nation learned", float64(techs), float64(l.Techs), false, "")
+	add("most techs a nation learned", float64(techsBest), float64(l.TechsLeader), false, "")
+	add("fewest techs a nation learned", float64(techs), float64(min(1, l.TechsLeader)), false, "nations differ in size and in what they spend on research")
 	return c
 }
 

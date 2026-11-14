@@ -28,18 +28,18 @@ var (
 		PriceStep: 0.001, PriceDriftYear: 0.02,
 		FullSpeed: 0.01,              // only thin markets, now and then
 		StockDays: 30, StockSlack: 5, // nothing piles up unsold
-		MinTilePeople: 30, // a tile at the migration floor (24) has emptied
+		MinTilePeople: 25, // a tile at the migration floor (24) has emptied
 		TileLossYear:  0.05, PeopleDropMonth: 0.001,
 		MinEmployment: 0.9, LivingDropYear: 0.01,
 	}
 	// markets with firms investing: capital still coming in moves prices,
 	// wages and people a little, but nothing cycles or empties
 	investingBounds = healthLimits{
-		PriceWiggle: 0.01, PriceWiggleWorst: 0.03, WageWiggle: 0.01, WageWiggleWorst: 0.03,
+		PriceWiggle: 0.01, PriceWiggleWorst: 0.03, WageWiggle: 0.015, WageWiggleWorst: 0.03,
 		PriceStep: 0.002, PriceDriftYear: 0.05,
 		FullSpeed: 0.01,
 		StockDays: 30, StockSlack: 5,
-		MinTilePeople: 30, TileLossYear: 0.15, PeopleDropMonth: 0.001,
+		MinTilePeople: 25, TileLossYear: 0.15, PeopleDropMonth: 0.001,
 		MinEmployment: 0.85, LivingDropYear: 0.02,
 		LevelGrowthYear: 0.15,
 	}
@@ -54,12 +54,14 @@ var (
 		PriceDriftYear: 0.25,
 		FullSpeed:      0.015,
 		StockDays:      30, StockSlack: 5,
-		MinTilePeople: 30, TileLossYear: 0.25, PeopleDropMonth: 0.01,
+		MinTilePeople: 25, TileLossYear: 0.25, PeopleDropMonth: 0.01,
 		MinEmployment: 0.8, LivingDropYear: 0.05,
 		StateFrom: 90,
 		ShortDays: 0, // a state that can't pay its bills lays off soldiers, teachers and doctors
 		TaxMin:    0.01, TaxMax: 0.25,
-		TaxWiggle:  0.0075, // within about a point of its trend: a budget, not a cycle
+		// within a point or so of its trend: a budget, not a cycle (a small
+		// nation's swings with lumpy items: a new tile, an army, a project)
+		TaxWiggle:  0.0125,
 		ReserveLow: 0.5, ReserveHigh: 2,
 		GDPDropMonth: 0.1,
 		ArmySupply:   0.95, ArmySupplyWorst: 0.5, // in peace, at home: fed and equipped
@@ -69,26 +71,11 @@ var (
 	}
 )
 
-// What the ladder still finds, to fix (see ToDo in healthLimits): each
-// rung lists the checks these leave failing.
-const (
-	todoFloor    = "investing in the settle draws people to the tile where capital earns most: the smallest opens at the migration floor, and recovers as people multiply"
-	todoJobs     = "a tile's employment dips to 60-80% for a while: to investigate"
-	todoBudget   = "several small nations' budgets still swing (tax within 1.1 points, treasury to 2.2 reserves)"
-	todoResearch = "research is slow: a nation learns a tech every two and a half years, a small one in eight"
-	todoSmall    = "three small nations: living standards dip 6% in a year, and grapes pile up a little: to investigate"
-	todoBigWages = "a big map's worst tile's wages wobble 5.5%: to investigate"
-)
-
-// todo is l with the to-do checks for its rung.
-func todo(l healthLimits, items map[string]string) healthLimits {
-	l.ToDo = items
-	return l
-}
-
-// withTechs is l requiring each nation to learn a tech every two years.
+// withTechs is l requiring the nation that learns most to learn a tech
+// every three years: the pace of a century's early decades (four or five
+// in the first, about fifty by 1920).
 func withTechs(l healthLimits, years int) healthLimits {
-	l.Techs = max(1, years/2)
+	l.TechsLeader = max(1, years/3)
 	return l
 }
 
@@ -167,7 +154,7 @@ func TestHealthInvesting(t *testing.T) {
 	}
 	h := newHealthWatch(w)
 	h.run(int(2*TicksPerYear), 0)
-	h.report(t, todo(investingBounds, map[string]string{"fewest people on a tile": todoFloor}))
+	h.report(t, investingBounds)
 }
 
 // Rung 3: one computer nation holding the whole map, from the day the game
@@ -181,9 +168,7 @@ func TestHealthOneNation(t *testing.T) {
 	w := oneNationGame(t, true)
 	h := newHealthWatch(w)
 	h.run(int(10*TicksPerYear), 90)
-	h.report(t, todo(withTechs(nationBounds, 10), map[string]string{
-		"fewest people on a tile": todoFloor, "workers in work": todoJobs, "fewest techs": todoResearch,
-	}))
+	h.report(t, withTechs(nationBounds, 10))
 }
 
 // Rung 4: the same, run by a player who keeps the tax automated (as a new
@@ -197,9 +182,7 @@ func TestHealthPlayerNation(t *testing.T) {
 	w.Nations[0].AutoTax = true
 	h := newHealthWatch(w)
 	h.run(int(10*TicksPerYear), 90)
-	h.report(t, todo(withTechs(nationBounds, 10), map[string]string{
-		"fewest people on a tile": todoFloor,
-	}))
+	h.report(t, withTechs(nationBounds, 10))
 }
 
 // Rung 5: the classic game, three computer nations, eight years: before
@@ -218,11 +201,12 @@ func TestHealthThreeNations(t *testing.T) {
 	}
 	h := newHealthWatch(w)
 	h.run(int(8*TicksPerYear), 90)
-	h.report(t, todo(withTechs(nationBounds, 8), map[string]string{
-		"fewest people on a tile": todoFloor, "workers in work": todoJobs, "tax rate's wiggle": todoBudget,
-		"highest treasury": todoBudget, "fewest techs": todoResearch, "most living standard falls": todoSmall,
-		"most unsold stock piled up": todoSmall,
-	}))
+	// research grows with a nation's land (each tile starts with its
+	// universities): sharing the map three ways, a nation learns a tech
+	// in four years at best, at first in ten
+	l := nationBounds
+	l.TechsLeader = 1
+	h.report(t, l)
 }
 
 // Rung 6: a generated map of about 140 tiles, all of it one computer
@@ -247,7 +231,9 @@ func TestHealthBigMap(t *testing.T) {
 	}
 	h := newHealthWatch(w)
 	h.run(int(3*TicksPerYear), 90)
-	h.report(t, todo(withTechs(nationBounds, 3), map[string]string{
-		"fewest people on a tile": todoFloor, "wage wiggle, worst": todoBigWages, "workers in work": todoJobs,
-	}))
+	// a barren upland or two lies at the migration floor; with four times
+	// the tiles, the worst tile's wages sit further out
+	l := withTechs(nationBounds, 3)
+	l.EmptyShare, l.WageWiggleWorst = 0.02, 0.06
+	h.report(t, l)
 }

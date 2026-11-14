@@ -129,6 +129,7 @@ type RegionState struct {
 	Services     []*ServiceState `json:"services"`      // indexed like WorldInfo.Services
 	Collect      float64         `json:"collect"`       // share of its taxes collected
 	Allegiance   float64         `json:"allegiance"`    // how far its people stand by their owner, 0..1
+	WorkMult     float64         `json:"work_mult"`     // what allegiance does to its production
 	Loyalties    []float64       `json:"loyalties"`     // its people's loyalty to each nation, and last to nobody
 	Educated     float64         `json:"educated"`      // share of its people schooled
 	Healthy      float64         `json:"healthy"`       // share of its crowding covered
@@ -436,7 +437,7 @@ func regionState(w *engine.World, i int, cities float64) RegionState {
 	}
 	st.Collect, st.Educated, st.Healthy, st.Crowding = r.Collect, r.Educated, r.Healthy, r.Crowding()
 	st.HealthGrowth = r.HealthGrowth()
-	st.Allegiance, st.Loyalties = r.Allegiance(), append([]float64{}, r.Loyalties...)
+	st.Allegiance, st.Loyalties, st.WorkMult = r.Allegiance(), append([]float64{}, r.Loyalties...), r.WorkMult()
 	for k := engine.Public(0); k < engine.NumServices; k++ {
 		f := r.Service(k)
 		if f == nil {

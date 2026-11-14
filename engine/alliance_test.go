@@ -63,7 +63,8 @@ func TestAlliancesAgainstADominantNation(t *testing.T) {
 
 // A tile's allegiance: a conquered tile starts at nothing and free land at
 // freeLandAllegiance; both grow towards loyalty, and until then the tile
-// produces less, pays less tax and gives fewer recruits.
+// pays less tax and gives fewer recruits. A conquered tile also produces
+// less (its people stand by another nation); free land taken over doesn't.
 func TestAllegianceGrowsAfterConquest(t *testing.T) {
 	w := newQuietGame(t)
 	m, v := nationByName(w, "Montara"), nationByName(w, "Verdania")
@@ -87,8 +88,8 @@ func TestAllegianceGrowsAfterConquest(t *testing.T) {
 		}
 	}
 	w.transfer(free, m)
-	if math.Abs(free.Allegiance()-freeLandAllegiance) > 1e-12 {
-		t.Errorf("settled free land: allegiance %v, want %v", free.Allegiance(), freeLandAllegiance)
+	if math.Abs(free.Allegiance()-freeLandAllegiance) > 1e-12 || free.Firms[0].Loyal != 1 {
+		t.Errorf("settled free land: allegiance %v (want %v), firms at %v (want 1)", free.Allegiance(), freeLandAllegiance, free.Firms[0].Loyal)
 	}
 	for i := 0; i < int(allegianceYears*TicksPerYear); i++ {
 		w.serviceEffects()
