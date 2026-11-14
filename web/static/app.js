@@ -1711,7 +1711,7 @@ function researchBlock(n) {
     return `<tr class="branch"><th colspan="4">${b} · ${known}/${all}</th></tr>${rows(b)}`;
   }).join("");
   const prog = n.researching >= 0 ? Math.min(1, n.research_points / n.tech_costs[n.researching]) : 0;
-  return `<h3>Research ${info(`Your universities' research goes to one tech at a time; points carry over. Techs your trade partners know are cheaper: ideas travel with trade. A new tech's productivity and growth bonuses come in over five years as it spreads through the works; army size and mobilisation techs over two; unlocks and other military effects are immediate.`)}</h3>
+  return `<h3>Research ${info(`Your universities' research goes to one tech at a time; points carry over. A tech costs more points the more people your nation has, so what sets your pace is research a head, not size. Techs your trade partners know are cheaper: ideas travel with trade. A new tech's productivity and growth bonuses come in over five years as it spreads through the works; army size and mobilisation techs over two; unlocks and other military effects are immediate.`)}</h3>
     <p class="sub">Researching ${current}.</p>
     <div class="progress"><span style="width:${pct(prog)}"></span></div>
     <div class="row">${queue}</div>

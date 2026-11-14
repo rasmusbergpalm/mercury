@@ -298,9 +298,19 @@ func (n *Nation) Discount(i int, nations []*Nation) float64 {
 	return math.Min(0.75, maxDiffusion*math.Min(1, share)*n.diffusionMult())
 }
 
-// TechCost is what a tech costs the nation now, after diffusion.
+// techCostPeople is the nation a tech's listed cost is for: the classic
+// map's people in 1820, all of them one nation's.
+const techCostPeople = 3600
+
+// TechCost is what a tech costs the nation now, after diffusion. A bigger
+// nation pays more for it in proportion to its people: research grows with
+// what a nation spends on it, so with its size, but the century's inventions
+// came from what everyone knew and from the ones before them, not from
+// headcount. Britain had more universities than Belgium and didn't invent
+// the 1900s in 1860; the two industrialized at much the same pace, a head.
+// So a nation's pace is set by its research a head, not by its size.
 func (n *Nation) TechCost(i int, nations []*Nation) float64 {
-	return Techs[i].Cost * (1 - n.Discount(i, nations))
+	return Techs[i].Cost * n.population() / techCostPeople * (1 - n.Discount(i, nations))
 }
 
 // SetQueue replaces the research queue (techs to research after the current one).
