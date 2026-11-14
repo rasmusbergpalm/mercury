@@ -65,6 +65,14 @@ var Goods = []Good{
 	{"vehicles", 3.0, 0.00, true},
 	{"aircraft", 2.0, 0.00, true},
 	{"oil", 1.5, 0.00, true},
+	// machinery, game worlds only: what new production methods run on
+	{"tools", 0.5, 0.00, true},
+	{"steam engines", 2.0, 0.00, true},
+	// chemicals: blasting powder for the mines, fertilizer for the fields
+	{"explosives", 1.0, 0.00, true},
+	{"fertilizer", 1.5, 0.02, true},
+	// power from the tile's station, used where it is made, like transport
+	{"electricity", 0.0, 1.00, true},
 }
 
 // NumGoods is len(Goods).
@@ -96,8 +104,13 @@ var Construction = G("construction")
 // Research is research work; nations buy it to develop technology.
 var Research = G("research")
 
+// Electricity is power from a tile's power station.
+var Electricity = G("electricity")
+
 // IsService reports whether a good is a local service that can't be shipped.
-func IsService(g GoodID) bool { return g == Transport || g == Construction || g == Research }
+func IsService(g GoodID) bool {
+	return g == Transport || g == Construction || g == Research || g == Electricity
+}
 
 // Tradable lists the goods traders ship in the classic world.
 var Tradable = func() []GoodID {

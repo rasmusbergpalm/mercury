@@ -79,6 +79,13 @@ type Firm struct {
 	Public  Public  // which public service, for state firms
 	EduMult float64 // productivity from the tile's schooling (industry and services)
 	Loyal   float64 // productivity from the tile's allegiance to its owner (1: loyal)
+	// Base is the firm this one is another production method of (by name),
+	// or "": a method a tech makes available, with its own recipe and its
+	// own levels, side by side with the old one.
+	Base string
+	// land lists the other land-bound firms working the same land (a
+	// producer's methods): their levels together are capped (MaxLevels).
+	land []*Firm
 	// Site and SiteMult: where a land-bound producer's productivity comes
 	// from (its terrain, or the coast) and how much it multiplies it.
 	Site       string
@@ -133,8 +140,39 @@ func (f *Firm) effectiveTFP() float64 {
 	return f.TFP * f.levelsPow * f.Agglom * f.EduMult * f.Loyal
 }
 
-// AtCap reports whether the firm has all the levels it may have.
-func (f *Firm) AtCap() bool { return f.MaxLevels > 0 && f.Levels >= f.MaxLevels }
+// AtCap reports whether the firm can have no more levels: it is at its cap,
+// and on land it shares, none of the other methods has a level to give up
+// (a new method grows by taking over the old one's land, one level at a
+// time; each keeps at least one).
+func (f *Firm) AtCap() bool {
+	if f.MaxLevels == 0 || f.landLevels() < f.MaxLevels {
+		return false
+	}
+	return f.landDonor() == nil
+}
+
+// landLevels is the levels on the firm's land, its own and its other
+// methods'.
+func (f *Firm) landLevels() int {
+	n := f.Levels
+	for _, o := range f.land {
+		n += o.Levels
+	}
+	return n
+}
+
+// landDonor is the other method on the firm's land that would give up a
+// level for it: the one earning least per level, of those with a level to
+// spare (nil if none).
+func (f *Firm) landDonor() *Firm {
+	var best *Firm
+	for _, o := range f.land {
+		if o.Levels > 1 && (best == nil || o.ProfitEMA/float64(o.Levels) < best.ProfitEMA/float64(best.Levels)) {
+			best = o
+		}
+	}
+	return best
+}
 
 // NewFirm makes a firm.
 func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash float64) *Firm {

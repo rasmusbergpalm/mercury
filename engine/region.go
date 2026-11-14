@@ -148,7 +148,13 @@ func (r *Region) planInvestment() {
 			continue
 		}
 		perLevel := f.ProfitEMA / float64(f.Levels)
-		if f.Expansion == nil && f.Enabled && !f.AtCap() && f.Age > investMinAge && perLevel > 0 && perLevel*payback > LevelCost*price {
+		gain := perLevel // what a level adds; on full land, less what the land earns now
+		if f.MaxLevels > 0 && f.landLevels() >= f.MaxLevels {
+			if d := f.landDonor(); d != nil {
+				gain -= d.ProfitEMA / float64(d.Levels)
+			}
+		}
+		if f.Expansion == nil && f.Enabled && !f.AtCap() && f.Age > investMinAge && gain > 0 && gain*payback > LevelCost*price {
 			f.Expansion = &Expansion{}
 		}
 		upkeep := 0.0
@@ -188,6 +194,11 @@ func (r *Region) settleFirms() {
 		if e := f.Expansion; e != nil && e.Delivered >= LevelCost-1e-9 {
 			f.Levels++
 			f.Expansion = nil
+			if f.MaxLevels > 0 && f.landLevels() > f.MaxLevels {
+				if d := f.landDonor(); d != nil {
+					d.Levels-- // the new method takes over a level of the land
+				}
+			}
 			if f.State {
 				f.Funded++ // a new university level is funded once built
 			}

@@ -108,7 +108,8 @@ var Techs = []Tech{
 
 	// ---- era 2: Railway age, 1840s–60s
 	{Name: "Steam power", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Factory system"},
-		Effect: "All industry +20%, coal mines +15%", IndustryTFP: 1.2, FirmTFP: firms("Coal mine", 1.15)},
+		Effect:      "Engine works can operate; steam-pumped coal mines (engines and coal, more coal a worker); all industry +10%",
+		EnableFirms: []string{"Engine works", "Steam coal mine"}, IndustryTFP: 1.1},
 	{Name: "Mechanized textiles", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Steam power"},
 		Effect: "Textile factories can operate; mills +15%", EnableFirms: []string{"Textile factory"},
 		FirmTFP: firms("Mill", 1.15)},
@@ -116,13 +117,15 @@ var Techs = []Tech{
 		Effect: "Couturiers can operate; silk farms +15%", EnableFirms: []string{"Couturier"},
 		FirmTFP: firms("Silk farm", 1.15)},
 	{Name: "Seed drill", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Crop rotation"},
-		Effect: "Farms and potato farms +15%", FirmTFP: firms("Farm", 1.15, "Potato farm", 1.15)},
+		Effect: "Seed-drill farms (tools, more grain a worker); potato farms +15%", EnableFirms: []string{"Seed-drill farm"},
+		FirmTFP: firms("Potato farm", 1.15)},
 	{Name: "Interchangeable parts", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Factory system"},
-		Effect: "All industry +10%, armories +20%", IndustryTFP: 1.1, FirmTFP: firms("Armory", 1.2)},
+		Effect:      "Machine-tool works (engines and coal, more tools a worker); armories +20%",
+		EnableFirms: []string{"Machine-tool works"}, FirmTFP: firms("Armory", 1.2)},
 	{Name: "Ocean sailing", Branch: BranchTransport, Era: 1, Cost: era2, Requires: []string{"Navigation"},
 		Effect: "Ports on coast tiles: ships sail straight to every other port", Ports: true},
 	{Name: "Steam engine", Branch: BranchTransport, Era: 1, Cost: era2, Requires: []string{"Wagons"},
-		Effect: "Transport +25%", FirmTFP: firms("Transport", 1.25)},
+		Effect: "Steam transport (engines and coal, more transport a worker)", EnableFirms: []string{"Steam transport"}},
 	{Name: "Railways", Branch: BranchTransport, Era: 1, Cost: era2 * 1.2, Requires: []string{"Steam engine", "Masonry"},
 		Effect: "Unlocks railways"},
 	{Name: "Mass conscription", Branch: BranchMilitary, Era: 1, Cost: era2, Requires: []string{"Drill"},
@@ -146,17 +149,18 @@ var Techs = []Tech{
 
 	// ---- era 3: Second industrial revolution, 1870s–90s
 	{Name: "Steel", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Steam power"},
-		Effect: "Steel works can operate; iron mines +20%", EnableFirms: []string{"Steel works"},
-		FirmTFP: firms("Iron mine", 1.2)},
+		Effect:      "Steel works can operate; steam-pumped iron mines (engines and coal, more ore a worker)",
+		EnableFirms: []string{"Steel works", "Steam iron mine"}},
 	{Name: "Fertilizers", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Seed drill"},
-		Effect: "Farms, potato farms and ranches +20%, plantations +15%",
-		FirmTFP: firms("Farm", 1.2, "Potato farm", 1.2, "Ranch", 1.2, "Cotton plantation", 1.15,
-			"Sugar plantation", 1.15, "Tea plantation", 1.15)},
+		Effect:      "Fertilizer works can operate; fertilized farms and potato farms (fertilizer, more a worker); ranches +20%, plantations +15%",
+		EnableFirms: []string{"Fertilizer works", "Fertilized farm", "Fertilized potato farm"},
+		FirmTFP:     firms("Ranch", 1.2, "Cotton plantation", 1.15, "Sugar plantation", 1.15, "Tea plantation", 1.15)},
 	{Name: "Industrial chemistry", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Steel"},
-		Effect: "Munitions plants can operate; all industry +7%", EnableFirms: []string{"Munitions plant"},
-		IndustryTFP: 1.07},
+		Effect:      "Munitions plants and chemical works can operate; blasting iron mines (explosives, more ore a worker)",
+		EnableFirms: []string{"Munitions plant", "Chemical works", "Blasting iron mine"}},
 	{Name: "Electricity", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Steel"},
-		Effect: "All industry +25%", IndustryTFP: 1.25},
+		Effect:      "Power stations; electric smithies, joineries and garment factories (power, more a worker); all industry +10%",
+		EnableFirms: []string{"Power station", "Electric smithy", "Electric joinery", "Garment factory"}, IndustryTFP: 1.1},
 	{Name: "Petroleum", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Industrial chemistry"},
 		Effect: "Oil wells can operate", EnableFirms: []string{"Oil well"}},
 	{Name: "Steamships", Branch: BranchTransport, Era: 2, Cost: era3, Requires: []string{"Steam engine", "Ocean sailing"},
@@ -182,12 +186,13 @@ var Techs = []Tech{
 	{Name: "Research laboratories", Branch: BranchScience, Era: 2, Cost: era3, Requires: []string{"Public education"},
 		Effect: "Universities +40%", FirmTFP: firms("University", 1.4)},
 	{Name: "Engineering", Branch: BranchScience, Era: 2, Cost: era3, Requires: []string{"Public education", "Steam engine"},
-		Effect:  "Construction +20%, smelters and smithies +15%",
-		FirmTFP: firms("Construction", 1.2, "Smelter", 1.15, "Smithy", 1.15)},
+		Effect:      "Steam cranes (engines and coal, more construction a worker); smelters and smithies +15%",
+		EnableFirms: []string{"Steam cranes"}, FirmTFP: firms("Smelter", 1.15, "Smithy", 1.15)},
 
 	// ---- era 4: Machine age, 1900s–1910s
 	{Name: "Assembly line", Branch: BranchEconomy, Era: 3, Cost: era4, Requires: []string{"Electricity"},
-		Effect: "All industry +35%, motor works +20%", IndustryTFP: 1.35, FirmTFP: firms("Motor works", 1.2)},
+		Effect:      "Assembly-line motor works (power, more vehicles a worker); all industry +20%",
+		EnableFirms: []string{"Assembly-line works"}, IndustryTFP: 1.2},
 	{Name: "Mass production", Branch: BranchEconomy, Era: 3, Cost: era4, Requires: []string{"Assembly line"},
 		Effect: "All industry +20%; armories and munitions plants +20%", IndustryTFP: 1.2,
 		FirmTFP: firms("Armory", 1.2, "Munitions plant", 1.2)},
@@ -195,10 +200,11 @@ var Techs = []Tech{
 		Effect: "Motor works can operate; transport +20%", EnableFirms: []string{"Motor works"},
 		FirmTFP: firms("Transport", 1.2)},
 	{Name: "Mechanized agriculture", Branch: BranchEconomy, Era: 3, Cost: era4, Requires: []string{"Internal combustion", "Fertilizers"},
-		Effect: "All land-bound producers +40%", PrimaryTFP: 1.4},
+		Effect:      "Tractor farms (vehicles, oil and fertilizer, far more grain a worker); all land-bound producers +15%",
+		EnableFirms: []string{"Tractor farm"}, PrimaryTFP: 1.15},
 	{Name: "Motor trucks", Branch: BranchTransport, Era: 3, Cost: era4, Requires: []string{"Internal combustion"},
-		Effect: "Transport +35%; supplies need 40% less transport", FirmTFP: firms("Transport", 1.35),
-		SupplyTransport: 0.6},
+		Effect:      "Motor transport (vehicles and oil, more transport a worker); supplies need 40% less transport",
+		EnableFirms: []string{"Motor transport"}, SupplyTransport: 0.6},
 	{Name: "Aviation", Branch: BranchTransport, Era: 3, Cost: era4, Requires: []string{"Internal combustion"},
 		Effect: "Aircraft factories can operate", EnableFirms: []string{"Aircraft factory"}},
 	{Name: "Machine guns", Branch: BranchMilitary, Era: 3, Cost: era4, Requires: []string{"Breech-loading rifles", "Industrial chemistry"},
@@ -281,6 +287,8 @@ func (n *Nation) adopting() bool {
 func techFirmMult(t *Tech, f *Firm) float64 {
 	m := 1.0
 	if x, ok := t.FirmTFP[f.Name]; ok {
+		m *= x
+	} else if x, ok := t.FirmTFP[f.Base]; ok && f.Base != "" { // a method gains what its firm does
 		m *= x
 	}
 	if f.Sector == Primary && t.PrimaryTFP != 0 {
