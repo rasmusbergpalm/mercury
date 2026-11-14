@@ -47,14 +47,14 @@ def load(path):
 def table(name, d):
     n = len(d["year"])
     print(f"== {name}")
-    print(f"{'years':9s} {'people':>7s} {'GDP/head':>8s} {'invest':>7s} {'K/Y':>5s} {'return':>7s} {'farms':>6s} {'techs':>5s}")
+    print(f"{'years':9s} {'people':>7s} {'GDP/head':>8s} {'invest':>7s} {'K/Y':>5s} {'return':>7s} {'farms':>6s} {'servs':>6s} {'techs':>5s}")
     for a in range(0, n, 10):
         b = min(a + 9, n - 1)
         span = max(b - a, 1)
         rate = lambda k: (d[k][b] / d[k][a]) ** (1 / span) - 1
         avg = lambda k: sum(d[k][a:b + 1]) / (b - a + 1)
         print(f"{int(d['year'][a]):3d}-{int(d['year'][b]):<5d} {rate('pop')*100:6.2f}% {rate('gdpHead')*100:7.2f}% "
-              f"{avg('invest')*100:6.1f}% {avg('KY'):5.2f} {avg('ret')*100:6.1f}% {avg('primary')*100:5.0f}% {int(d['techs'][b]):5d}")
+              f"{avg('invest')*100:6.1f}% {avg('KY'):5.2f} {avg('ret')*100:6.1f}% {avg('primary')*100:5.0f}% {avg('service')*100:5.0f}% {int(d['techs'][b]):5d}")
     y = n - 1
     print(f"century: people {((d['pop'][y]/d['pop'][0])**(1/y)-1)*100:.2f}%/yr, GDP a head "
           f"{((d['gdpHead'][y]/d['gdpHead'][0])**(1/y)-1)*100:.2f}%/yr, living {d['living'][0]:.1f} -> {d['living'][y]:.1f}")

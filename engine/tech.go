@@ -108,8 +108,8 @@ var Techs = []Tech{
 
 	// ---- era 2: Railway age, 1840s–60s
 	{Name: "Steam power", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Factory system"},
-		Effect:      "Engine works can operate; steam-pumped coal mines (engines and coal, deeper seams, more coal a worker); steam bakeries, breweries and sugar refineries; all industry +10%",
-		EnableFirms: []string{"Engine works", "Steam coal mine", "Steam bakery", "Steam brewery", "Vacuum-pan refinery"}, IndustryTFP: 1.1},
+		Effect:      "Engine works can operate; steam-pumped coal mines (engines and coal, deeper seams, more coal a worker); steam bakeries, breweries, sugar refineries, sawmills and cane mills; all industry +10%",
+		EnableFirms: []string{"Engine works", "Steam coal mine", "Steam bakery", "Steam brewery", "Vacuum-pan refinery", "Steam sawmill", "Steam-mill plantation"}, IndustryTFP: 1.1},
 	{Name: "Mechanized textiles", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Steam power"},
 		Effect: "Textile factories can operate; mills +15%", EnableFirms: []string{"Textile factory"},
 		FirmTFP: firms("Mill", 1.15)},
@@ -117,7 +117,7 @@ var Techs = []Tech{
 		Effect: "Couturiers can operate; silk farms +15%", EnableFirms: []string{"Couturier"},
 		FirmTFP: firms("Silk farm", 1.15)},
 	{Name: "Seed drill", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Crop rotation"},
-		Effect: "Seed-drill farms (tools, more grain a worker); potato farms +15%", EnableFirms: []string{"Seed-drill farm"},
+		Effect: "Seed-drill farms (tools, more grain a worker); fodder ranches (grain and tools, more meat a worker); potato farms +15%", EnableFirms: []string{"Seed-drill farm", "Fodder ranch"},
 		FirmTFP: firms("Potato farm", 1.15)},
 	{Name: "Interchangeable parts", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Factory system"},
 		Effect:      "Machine-tool works (engines and coal, more tools a worker); factory kilns; armories +20%",
@@ -149,8 +149,8 @@ var Techs = []Tech{
 
 	// ---- era 3: Second industrial revolution, 1870s–90s
 	{Name: "Steel", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Steam power"},
-		Effect:      "Steel works can operate; steam-pumped iron mines (engines and coal, more ore a worker)",
-		EnableFirms: []string{"Steel works", "Steam iron mine"}},
+		Effect:      "Steel works can operate; steam-pumped iron mines (engines and coal, more ore a worker); steam trawlers (more fish a worker)",
+		EnableFirms: []string{"Steel works", "Steam iron mine", "Steam trawler"}},
 	{Name: "Fertilizers", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Seed drill"},
 		Effect:      "Fertilizer works can operate; fertilized farms and potato farms (fertilizer, more a worker); ranches +20%, plantations +15%",
 		EnableFirms: []string{"Fertilizer works", "Fertilized farm", "Fertilized potato farm"},

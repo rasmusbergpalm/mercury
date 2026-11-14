@@ -52,6 +52,11 @@ func TestCentury(t *testing.T) {
 	}
 }
 
+// mined are the goods of mines and wells: the historical series count their
+// workers in industry, so the century's "primary" is farming, forestry and
+// fishing.
+var mined = map[GoodID]bool{G("coal"): true, G("iron ore"): true, G("clay"): true, G("oil"): true}
+
 func runCentury(t *testing.T, seed int64, years int, path string) {
 	spec := DefaultGame
 	spec.NationMap = nil
@@ -158,7 +163,11 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 					k += float64(f.Levels) * LevelCost * r.Markets[Construction].Price
 					levels += float64(f.Levels)
 				}
-				labor[f.Sector] += f.Labor
+				sector := f.Sector
+				if sector == Primary && mined[f.Output] {
+					sector = Industry // mining is industry in the historical series (Kuznets, Maddison)
+				}
+				labor[sector] += f.Labor
 			}
 			p := r.Population()
 			people += p

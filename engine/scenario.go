@@ -96,6 +96,16 @@ var MethodRecipes = []struct {
 	{"Farm", Recipe{"Fertilized farm", "grain", 3.2, []Factor{Labor(0.42), Input("tools", 0.06), Input("fertilizer", 0.12)}}, 0},
 	{"Farm", Recipe{"Tractor farm", "grain", 5.0, []Factor{Labor(0.3), Input("vehicles", 0.12), Input("oil", 0.08), Input("fertilizer", 0.1)}}, 0},
 	{"Potato farm", Recipe{"Fertilized potato farm", "potatoes", 3.6, []Factor{Labor(0.48), Input("fertilizer", 0.12)}}, 0},
+	// the rest of the land was mechanized too, and with demand for food and
+	// timber growing slowly it was this, more than anything, that moved
+	// people off the land: steam sawmills from the 1840s, fodder crops and
+	// bred stock on the ranges, steam crushing mills on the cane fields,
+	// steam trawlers (steel hulls, 1880s) catching several times a sailing
+	// smack's fish
+	{"Forestry", Recipe{"Steam sawmill", "wood", 3.6, []Factor{Labor(0.46), Input("steam engines", 0.08), Input("coal", 0.06)}}, 0},
+	{"Ranch", Recipe{"Fodder ranch", "meat", 2.0, []Factor{Labor(0.48), Input("grain", 0.08), Input("tools", 0.04)}}, 0},
+	{"Sugar plantation", Recipe{"Steam-mill plantation", "sugar cane", 3.4, []Factor{Labor(0.46), Input("steam engines", 0.06), Input("coal", 0.08)}}, 0},
+	{"Fishery", Recipe{"Steam trawler", "fish", 3.0, []Factor{Labor(0.44), Input("steam engines", 0.1), Input("coal", 0.06)}}, 0},
 	{"Transport", Recipe{"Steam transport", "transport", 3.6, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 0},
 	{"Transport", Recipe{"Motor transport", "transport", 4.5, []Factor{Labor(0.35), Input("vehicles", 0.15), Input("oil", 0.1)}}, 0},
 	{"Construction", Recipe{"Steam cranes", "construction", 2.4, []Factor{Labor(0.42), Input("wood", 0.18), Input("steam engines", 0.06), Input("coal", 0.04)}}, 0},
