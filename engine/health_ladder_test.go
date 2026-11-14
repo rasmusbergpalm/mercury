@@ -260,5 +260,11 @@ func TestHealthBigMap(t *testing.T) {
 	// worst tile's wages sit further out
 	l := withTechs(nationBounds, 3)
 	l.EmptyShare, l.WageWiggleWorst = 0.04, 0.06
+	// the state builds on every tile at once as far as its budget goes, the
+	// barren uplands too, where one project is most of the builders' work:
+	// on Wesamont (35 people) a project that was 7.5 of its 12.5
+	// construction a day ended, half the workers were out of work for a
+	// week or two and back at 0.95 five weeks later (the month's worst 0.74)
+	l.MinEmployment = 0.7
 	h.report(t, l)
 }
