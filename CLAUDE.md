@@ -22,7 +22,12 @@ small bug or tidying code, work in rounds:
    python3 tools/century_plot.py /tmp/run /tmp/base
    ```
 
-   A run takes a couple of minutes. The same seed gives the same game, and
+   A run takes a couple of minutes. `CENTURY_MAP=small` (or `medium`)
+   plays on a generated map. `CENTURY_ALLTECH=1 CENTURY_YEARS=20` grants
+   every tech on the first day: under a minute, a quick check that the
+   last methods work and where the whole tree settles, but not a stand-in
+   for the century (which ends with a few techs still unknown, and with
+   richer people). The same seed gives the same game, and
    the computer's random choices (its research, owners' investment) are
    keyed so that a change elsewhere doesn't re-roll them: before and after
    differ by the change, not by luck.
