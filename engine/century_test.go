@@ -21,7 +21,8 @@ import (
 //
 //	CENTURY_OUT=/tmp/run go test ./engine -run TestCentury -timeout 60m
 //
-// CENTURY_SEEDS (default "1,2") and CENTURY_YEARS (default 100) change the
+// CENTURY_MAP (say "small") plays on a generated map of that size instead of
+// the classic one. CENTURY_SEEDS (default "1,2") and CENTURY_YEARS (default 100) change the
 // seeds and the length. See CLAUDE.md for how it is used.
 func TestCentury(t *testing.T) {
 	dir := os.Getenv("CENTURY_OUT")
@@ -58,6 +59,21 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		spec.NationMap = append(spec.NationMap, strings.Repeat("A", len(DefaultMap[0])))
 	}
 	spec.Nations = DefaultGame.Nations[:1]
+	// CENTURY_MAP=small (or medium...): a generated map of that size, made
+	// from the seed, all of it the one nation's, instead of the classic one
+	if size := os.Getenv("CENTURY_MAP"); size != "" {
+		var err error
+		for _, m := range MapSizes {
+			if m.Name == size {
+				if spec, err = GenerateGame(MapOptions{Rows: m.Rows, Cols: m.Cols, Nations: 1, Seed: seed}); err == nil {
+					spec, err = DivideLand(spec)
+				}
+			}
+		}
+		if err != nil || spec.Map == nil {
+			t.Fatalf("map %q: %v", size, err)
+		}
+	}
 	spec.AI, spec.Seed = true, seed
 	w, err := BuildGame(spec)
 	if err != nil {

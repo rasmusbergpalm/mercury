@@ -92,7 +92,7 @@ def macro(run, base, seed, out):
         ax.legend(frameon=False, labelcolor=INK, fontsize=8)
     for ax in axes[-1]:
         ax.set_xlabel("Year of the game (1820 + ...)")
-    fig.suptitle(f"One nation, classic map, seed {seed}, against history", fontsize=11, color=INK, x=0.01, ha="left")
+    fig.suptitle(f"One nation, seed {seed}, against history", fontsize=11, color=INK, x=0.01, ha="left")
     fig.tight_layout()
     fig.savefig(os.path.join(out, f"macro-s{seed}.png"), dpi=150)
     plt.close(fig)
