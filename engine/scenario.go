@@ -92,20 +92,29 @@ var MethodRecipes = []struct {
 	{"Coal mine", Recipe{"Steam coal mine", "coal", 3.8, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 16},
 	{"Iron mine", Recipe{"Steam iron mine", "iron ore", 2.4, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 6},
 	{"Iron mine", Recipe{"Blasting iron mine", "iron ore", 3.0, []Factor{Labor(0.4), Input("explosives", 0.12), Input("steam engines", 0.08)}}, 8},
-	{"Farm", Recipe{"Seed-drill farm", "grain", 2.4, []Factor{Labor(0.56), Input("tools", 0.04)}}, 0},
-	{"Farm", Recipe{"Fertilized farm", "grain", 3.2, []Factor{Labor(0.42), Input("tools", 0.06), Input("fertilizer", 0.12)}}, 0},
-	{"Farm", Recipe{"Tractor farm", "grain", 5.0, []Factor{Labor(0.3), Input("vehicles", 0.12), Input("oil", 0.08), Input("fertilizer", 0.1)}}, 0},
-	{"Potato farm", Recipe{"Fertilized potato farm", "potatoes", 3.6, []Factor{Labor(0.48), Input("fertilizer", 0.12)}}, 0},
+	// on the land a method mostly turns wages into machinery, tools,
+	// fertilizer and fuel bought from industry: a threshing machine or a
+	// tractor did the work of many hands, so labour's share of what the
+	// land earns falls with each (a firm's wage bill is its labour exponent
+	// times its sales: jobs on the land fall even if food spending doesn't).
+	// Each one's productivity keeps it about as far ahead of the old method,
+	// at the prices of its day, as with labour's old share.
+	{"Farm", Recipe{"Seed-drill farm", "grain", 3.0, []Factor{Labor(0.44), Input("tools", 0.16)}}, 0},
+	{"Farm", Recipe{"Fertilized farm", "grain", 3.5, []Factor{Labor(0.32), Input("tools", 0.1), Input("fertilizer", 0.18)}}, 0},
+	{"Farm", Recipe{"Tractor farm", "grain", 5.0, []Factor{Labor(0.18), Input("vehicles", 0.2), Input("oil", 0.1), Input("fertilizer", 0.12)}}, 0},
+	{"Potato farm", Recipe{"Fertilized potato farm", "potatoes", 4.5, []Factor{Labor(0.36), Input("fertilizer", 0.16), Input("tools", 0.08)}}, 0},
 	// the rest of the land was mechanized too, and with demand for food and
 	// timber growing slowly it was this, more than anything, that moved
 	// people off the land: steam sawmills from the 1840s, fodder crops and
-	// bred stock on the ranges, steam crushing mills on the cane fields,
+	// bred stock on the ranges, steam crushing mills on the cane fields, rolling machines on the tea
+	// estates (Jackson's, 1872) doing what many hands had,
 	// steam trawlers (steel hulls, 1880s) catching several times a sailing
 	// smack's fish
-	{"Forestry", Recipe{"Steam sawmill", "wood", 3.6, []Factor{Labor(0.46), Input("steam engines", 0.08), Input("coal", 0.06)}}, 0},
-	{"Ranch", Recipe{"Fodder ranch", "meat", 2.0, []Factor{Labor(0.48), Input("grain", 0.08), Input("tools", 0.04)}}, 0},
-	{"Sugar plantation", Recipe{"Steam-mill plantation", "sugar cane", 3.4, []Factor{Labor(0.46), Input("steam engines", 0.06), Input("coal", 0.08)}}, 0},
-	{"Fishery", Recipe{"Steam trawler", "fish", 3.0, []Factor{Labor(0.44), Input("steam engines", 0.1), Input("coal", 0.06)}}, 0},
+	{"Forestry", Recipe{"Steam sawmill", "wood", 5.0, []Factor{Labor(0.32), Input("steam engines", 0.16), Input("coal", 0.12)}}, 0},
+	{"Ranch", Recipe{"Fodder ranch", "meat", 2.3, []Factor{Labor(0.38), Input("grain", 0.14), Input("tools", 0.08)}}, 0},
+	{"Sugar plantation", Recipe{"Steam-mill plantation", "sugar cane", 4.5, []Factor{Labor(0.34), Input("steam engines", 0.12), Input("coal", 0.14)}}, 0},
+	{"Tea plantation", Recipe{"Tea estate with rollers", "tea", 3.0, []Factor{Labor(0.36), Input("steam engines", 0.12), Input("coal", 0.06), Input("tools", 0.06)}}, 0},
+	{"Fishery", Recipe{"Steam trawler", "fish", 3.9, []Factor{Labor(0.3), Input("steam engines", 0.18), Input("coal", 0.12)}}, 0},
 	{"Transport", Recipe{"Steam transport", "transport", 3.6, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 0},
 	{"Transport", Recipe{"Motor transport", "transport", 4.5, []Factor{Labor(0.35), Input("vehicles", 0.15), Input("oil", 0.1)}}, 0},
 	{"Construction", Recipe{"Steam cranes", "construction", 2.4, []Factor{Labor(0.42), Input("wood", 0.18), Input("steam engines", 0.06), Input("coal", 0.04)}}, 0},

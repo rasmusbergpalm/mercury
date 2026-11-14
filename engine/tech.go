@@ -149,8 +149,8 @@ var Techs = []Tech{
 
 	// ---- era 3: Second industrial revolution, 1870s–90s
 	{Name: "Steel", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Steam power"},
-		Effect:      "Steel works can operate; steam-pumped iron mines (engines and coal, more ore a worker); steam trawlers (more fish a worker)",
-		EnableFirms: []string{"Steel works", "Steam iron mine", "Steam trawler"}},
+		Effect:      "Steel works can operate; steam-pumped iron mines (engines and coal, more ore a worker); steam trawlers and tea-rolling machines (more fish and tea a worker)",
+		EnableFirms: []string{"Steel works", "Steam iron mine", "Steam trawler", "Tea estate with rollers"}},
 	{Name: "Fertilizers", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Seed drill"},
 		Effect:      "Fertilizer works can operate; fertilized farms and potato farms (fertilizer, more a worker); ranches +20%, plantations +15%",
 		EnableFirms: []string{"Fertilizer works", "Fertilized farm", "Fertilized potato farm"},
