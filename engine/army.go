@@ -1338,10 +1338,10 @@ func (w *World) fight(r *Region, x, y *Nation, here []*Army, day int) bool {
 
 // battleLuck is the fortune of war: each side's strength in a battle is
 // multiplied by a factor within battleLuckSpread of 1, drawn afresh each
-// day (deterministically: game seed, day, tile and nation), so even fights
-// have a winner and no two go alike.
+// day of the battle (deterministically: game seed, tile, nation and the
+// battle's day), so even fights have a winner and no two go alike.
 func (w *World) battleLuck(n *Nation, r *Region) float64 {
-	return 1 + battleLuckSpread*w.noise(n, 1000+r.ID)
+	return 1 + battleLuckSpread*w.noise(n, 1000+r.ID, r.Battle)
 }
 
 const battleLuckSpread = 0.1

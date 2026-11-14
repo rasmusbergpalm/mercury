@@ -155,7 +155,7 @@ func (w *World) aiDiplomacy(n *Nation, own float64) {
 		(len(w.expansionTargets(n)) > 0 && t.Aggression < 1.25) {
 		return
 	}
-	advantage := aiWarAdvantage / t.Aggression * (1 + 0.15*w.noise(n, 1))
+	advantage := aiWarAdvantage / t.Aggression * (1 + 0.15*w.noise(n, 1, w.Tick/TicksPerYear)) // this year's resolve
 	var victim *Nation
 	for _, o := range w.Nations {
 		if o == n || o.Eliminated() || !w.nationsBorder(n, o) || w.atWar(o) {
@@ -304,7 +304,7 @@ type aiScope struct {
 func (w *World) newAIScope(n *Nation, a *Army) *aiScope {
 	dist, _ := w.allPaths(a.Region)
 	return &aiScope{w: w, n: n, a: a, dist: dist, best: -1, top: math.Inf(-1),
-		odds: aiFightOdds / math.Sqrt(n.Temper.Aggression) * (1 + 0.1*w.noise(n, 100+a.ID))}
+		odds: aiFightOdds / math.Sqrt(n.Temper.Aggression) * (1 + 0.1*w.noise(n, 100+a.ID, w.Tick/TicksPerYear))}
 }
 
 // forces is the strength of the armies at war with n, and of n's other

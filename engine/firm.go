@@ -106,6 +106,8 @@ type Firm struct {
 	ProfitEMA             float64
 	LossTicks, Age        int     // ticks of losses in a row; ticks alive
 	Wear                  float64 // levels worn out and not yet made good by upkeep (see depreciation)
+	Urge                  float64 // the owners' urge to start the next project (see investDecideDays)
+	Projects              int     // projects they have started
 	tickRevenue, tickCost float64
 	tickInputs            float64   // what the goods it used up cost this tick
 	used                  []float64 // goods it used up producing this tick, by good

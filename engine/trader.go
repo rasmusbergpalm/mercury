@@ -147,6 +147,7 @@ type Trader struct {
 	Good        GoodID
 	Active      bool    // false: at the floor with no margin, so don't buy at all
 	Q           float64 // target purchase per tick
+	buy         float64 // today's purchase: Q less the stock unsold at the destination
 	Tau         float64
 	ship        float64       // share of that stock the house can afford to ship today
 	StockOrigin float64       // bought earlier, still waiting for transport
@@ -175,6 +176,10 @@ type Trader struct {
 	unit          float64 // cost of buying and shipping one more unit today
 	spoilage      float64
 }
+
+// backlogDays is how many days a trader takes to work off stock unsold at
+// its destination, by buying that much less each day.
+const backlogDays = 5.0
 
 // NewTrader makes a trader.
 func NewTrader(good GoodID, origin, dest *Region, distance, transportCost float64) *Trader {
@@ -231,7 +236,7 @@ func (t *Trader) Plan() {
 	}
 	if blocked {
 		t.carry, t.unit = t.StockOrigin*t.Tau*pT, 0
-		t.Q, t.Active, t.RelMargin, t.Margin, t.DesiredSpend = t.QMin, false, 0, 0, t.carry
+		t.Q, t.Active, t.RelMargin, t.Margin, t.DesiredSpend, t.buy = t.QMin, false, 0, 0, t.carry, 0
 		return
 	}
 	t.Margin = pDest*t.Arriving*(1-tariff) - pOrig - t.Tau*pT
@@ -247,8 +252,14 @@ func (t *Trader) Plan() {
 	t.Active = t.Margin > 0 || t.Q > t.QMin
 	q := 0.0
 	if t.Active {
-		q = t.Q
+		// stock still unsold at the destination (beyond what arrives today) is
+		// stock it failed to sell: it buys less, working the backlog off over
+		// backlogDays, so goods stop piling up there instead of the route
+		// swinging between gluts and shortages
+		backlog := math.Max(0, t.StockDest-t.Shipped*t.Arriving)
+		q = math.Max(0, t.Q-backlog/backlogDays)
 	}
+	t.buy = q
 	t.carry = t.StockOrigin * t.Tau * pT
 	t.unit = pOrig + t.Tau*pT
 	// it can't buy more than the market offered (a standing bid for a good
@@ -258,18 +269,12 @@ func (t *Trader) Plan() {
 
 // bidCost is what today's order costs if it is filled in full.
 func (t *Trader) bidCost() float64 {
-	if !t.Active {
-		return 0
-	}
-	return t.Q * t.unit
+	return t.buy * t.unit
 }
 
 // Bid is how much of good the trader wants to buy in its origin market.
 func (t *Trader) Bid(good GoodID) float64 {
-	q := 0.0
-	if t.Active {
-		q = t.Q
-	}
+	q := t.buy
 	switch good {
 	case t.Good:
 		return q

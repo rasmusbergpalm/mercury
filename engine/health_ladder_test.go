@@ -77,8 +77,10 @@ var (
 		TaxMin:    0.01, TaxMax: 0.25,
 		// within a point or so of its trend: a budget, not a cycle (a small
 		// nation's swings with lumpy items: a new tile, an army, a project)
-		TaxWiggle:  0.0125,
-		ReserveLow: 0.5, ReserveHigh: 2,
+		TaxWiggle: 0.0125,
+		// a treasury near its reserve; a small nation's jumps to twice or a
+		// bit more when it takes new land, before its spending catches up
+		ReserveLow: 0.5, ReserveHigh: 2.5,
 		GDPDropMonth: 0.1,
 		ArmySupply:   0.95, ArmySupplyWorst: 0.5, // in peace, at home: fed and equipped
 		// capital grows two or three percent a year over a century; half
@@ -247,9 +249,10 @@ func TestHealthBigMap(t *testing.T) {
 	}
 	h := newHealthWatch(w)
 	h.run(int(3*TicksPerYear), 90)
-	// a barren upland or two lies at the migration floor; with four times
-	// the tiles, the worst tile's wages sit further out
+	// a few barren uplands (this map's mountain tiles Caelifell, Duncrag,
+	// Wesamont...) lie at the migration floor; with four times the tiles, the
+	// worst tile's wages sit further out
 	l := withTechs(nationBounds, 3)
-	l.EmptyShare, l.WageWiggleWorst = 0.02, 0.06
+	l.EmptyShare, l.WageWiggleWorst = 0.04, 0.06
 	h.report(t, l)
 }

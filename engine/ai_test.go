@@ -143,8 +143,11 @@ func TestTemperamentsVary(t *testing.T) {
 	if d := a.Describe(); d == "" {
 		t.Error("no description")
 	}
-	// the AI's whims are deterministic: same tick, same answer
-	if w.noise(w.Nations[0], 3) != w.noise(w.Nations[0], 3) || w.noise(w.Nations[0], 3) == w.noise(w.Nations[1], 3) {
-		t.Error("noise is not a deterministic function of nation and decision")
+	// the AI's whims are deterministic: same key, same answer, whatever the day
+	n0, n1 := w.Nations[0], w.Nations[1]
+	before := w.noise(n0, 3, 7)
+	w.Step()
+	if w.noise(n0, 3, 7) != before || before == w.noise(n1, 3, 7) || before == w.noise(n0, 3, 8) {
+		t.Error("noise is not a deterministic function of nation, decision and key alone")
 	}
 }

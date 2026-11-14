@@ -129,7 +129,7 @@ func (w *World) Step() {
 		copy(w.TradePrices[r.ID], r.refreshPrices())
 		r.Plan()
 		if w.Investment {
-			r.planInvestment(w.Tick, w.seed())
+			r.planInvestment(w.seed())
 		}
 	})
 	w.eachRegion(func(r *Region) { r.House.Plan(w.Tick) })

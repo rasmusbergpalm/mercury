@@ -59,7 +59,8 @@ type FirmSnap struct {
 	TFP, Cash, Inventory, Labor, LastOutput, ProfitEMA float64
 	Levels, MaxLevels, LossTicks, Age, Funded          int
 	Expansion                                          *Expansion
-	Wear                                               float64
+	Wear, Urge                                         float64
+	Projects                                           int
 }
 
 type RegionSnap struct {
@@ -139,7 +140,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 		}
 		for _, f := range r.Firms {
 			fs := FirmSnap{f.TFP, f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA,
-				f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Funded, nil, f.Wear}
+				f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Funded, nil, f.Wear, f.Urge, f.Projects}
 			if f.Expansion != nil {
 				e := *f.Expansion
 				fs.Expansion = &e
@@ -246,7 +247,7 @@ func Restore(s *Snapshot) (*World, error) {
 			f := r.Firms[j]
 			f.TFP, f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = fs.TFP, fs.Cash, fs.Inventory, fs.Labor, fs.LastOutput, fs.ProfitEMA
 			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, fs.Expansion
-			f.Funded, f.Wear = fs.Funded, fs.Wear
+			f.Funded, f.Wear, f.Urge, f.Projects = fs.Funded, fs.Wear, fs.Urge, fs.Projects
 		}
 		if len(s.TradePrices[i]) != NumGoods {
 			return bad("trade prices")

@@ -137,6 +137,14 @@ const (
 // chance in proportion to how far it beats their hurdle, so the clear winners
 // are taken up within months and the marginal ones slowly, owner by owner,
 // rather than every owner on the map the same day.
+//
+// The chance is drawn once a project, not once a day: each owner has a
+// resolve for its next project (an exponential draw keyed by the game's
+// seed, the tile, the firm and how many projects it has started), and each
+// day the project pays its urge grows by that day's chance; it starts when
+// the urge reaches the resolve. The odds are a daily draw's, but a change
+// that moves a project by a day moves only that project: no later draw is
+// re-rolled, so two versions of the economy stay comparable.
 const investDecideDays = 180.0
 
 // refitDecideDays is the same for refitting a working level to another
@@ -148,7 +156,7 @@ const refitDecideDays = 365.0
 // and sets what each firm buys this tick: its upkeep, and the next part of
 // its expansion while what is left of it still pays at today's construction
 // price (when building costs rise, projects wait, as real ones did).
-func (r *Region) planInvestment(tick int, seed int64) {
+func (r *Region) planInvestment(seed int64) {
 	price := r.Markets[Construction].Price
 	payback := float64(investPayback)
 	if r.Nation != nil {
@@ -176,12 +184,18 @@ func (r *Region) planInvestment(tick int, seed int64) {
 			// how many times over each project repays its cost within the payback
 			refit := refitGain * payback / (refitShare * LevelCost * price)
 			build := perLevel * payback / (LevelCost * price)
-			roll := investRoll(seed, r.ID, i, tick)
-			switch {
-			case refit > 1 && roll < math.Min(1, refit-1)/refitDecideDays:
-				f.Expansion = &Expansion{Refit: true}
-			case !full && build > 1 && roll < math.Min(1, build-1)/investDecideDays:
-				f.Expansion = &Expansion{}
+			var refitUrge, buildUrge float64
+			if refit > 1 {
+				refitUrge = math.Min(1, refit-1) / refitDecideDays
+			}
+			if !full && build > 1 {
+				buildUrge = math.Min(1, build-1) / investDecideDays
+			}
+			f.Urge += refitUrge + buildUrge
+			if f.Urge > 0 && f.Urge >= investResolve(seed, r.ID, i, f.Projects) {
+				f.Urge = 0
+				f.Projects++
+				f.Expansion = &Expansion{Refit: refitUrge >= buildUrge}
 			}
 		}
 		upkeep := 0.0
@@ -817,12 +831,14 @@ func (r *Region) applyAllegiance() {
 	}
 }
 
-// investRoll is a deterministic number in [0, 1) for a firm's investment
-// decision on a day: the game's seed, the tile, the firm and the day.
-func investRoll(seed int64, region, firm, tick int) float64 {
-	x := uint64(seed)*0x9E3779B97F4A7C15 ^ uint64(region+1)*0xBF58476D1CE4E5B9 ^ uint64(firm+1)*0x94D049BB133111EB ^ uint64(tick+1)*0xD6E8FEB86659FD93
+// investResolve is a firm's resolve for its next project: an exponential
+// draw (mean 1), deterministic in the game's seed, the tile, the firm and
+// how many projects the firm has started.
+func investResolve(seed int64, region, firm, projects int) float64 {
+	x := uint64(seed)*0x9E3779B97F4A7C15 ^ uint64(region+1)*0xBF58476D1CE4E5B9 ^ uint64(firm+1)*0x94D049BB133111EB ^ uint64(projects+1)*0xD6E8FEB86659FD93
 	x ^= x >> 31
 	x *= 0x9E3779B97F4A7C15
 	x ^= x >> 29
-	return float64(x>>11) / float64(1<<53)
+	u := (float64(x>>11) + 0.5) / float64(1<<53) // in (0, 1)
+	return -math.Log(u)
 }

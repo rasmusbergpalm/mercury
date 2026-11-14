@@ -141,6 +141,7 @@ func (w *World) settleFrom(b *World) {
 			f := r.Firms[j]
 			f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = bf.Cash, bf.Inventory, bf.Labor, bf.LastOutput, bf.ProfitEMA
 			f.Levels, f.Age, f.Wear, f.Expansion = bf.Levels, bf.Age, bf.Wear, nil
+			f.Urge, f.Projects = bf.Urge, bf.Projects
 			if bf.Expansion != nil {
 				e := *bf.Expansion
 				f.Expansion = &e

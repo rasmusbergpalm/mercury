@@ -49,14 +49,13 @@ func (t Temperament) Describe() string {
 }
 
 // noise is a deterministic pseudo-random number in [-1, 1] for a nation's
-// k-th decision this tick: the AI varies its choices a little without
-// breaking the simulation's determinism (saved games continue exactly).
-func (w *World) noise(n *Nation, k int) float64 {
-	seed := int64(0)
-	if w.Spec != nil {
-		seed = w.Spec.Seed
-	}
-	x := uint64(seed)*0x9E3779B97F4A7C15 ^ uint64(n.ID+1)*0xBF58476D1CE4E5B9 ^ uint64(w.Tick)*0x94D049BB133111EB ^ uint64(k+1)*0xD6E8FEB86659FD93
+// k-th kind of decision, the key-th time: the AI varies its choices a little
+// without breaking the simulation's determinism (saved games continue
+// exactly). The key is a stable count (the year, the day of a battle), not
+// the date: a change that moves some event by a day then doesn't re-roll
+// every draw after it, so two versions of the economy stay comparable.
+func (w *World) noise(n *Nation, k, key int) float64 {
+	x := uint64(w.seed())*0x9E3779B97F4A7C15 ^ uint64(n.ID+1)*0xBF58476D1CE4E5B9 ^ uint64(key+1)*0x94D049BB133111EB ^ uint64(k+1)*0xD6E8FEB86659FD93
 	x ^= x >> 31
 	x *= 0x9E3779B97F4A7C15
 	x ^= x >> 29

@@ -943,7 +943,7 @@ func TestBattleLuck(t *testing.T) {
 	n, r := w.Nations[0], w.Regions[1]
 	lo, hi := 2.0, 0.0
 	for d := 0; d < 200; d++ {
-		w.Tick = d
+		r.Battle = d // the battle's day
 		l := w.battleLuck(n, r)
 		lo, hi = math.Min(lo, l), math.Max(hi, l)
 	}

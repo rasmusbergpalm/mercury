@@ -105,6 +105,7 @@ type healthWatch struct {
 	// firms: summed output over the window, the stock they started with
 	// and the most they held
 	output     [][]float64
+	making     [][]int // days on which it made anything
 	startStock [][]float64
 	maxStock   [][]float64
 
@@ -151,8 +152,10 @@ func newHealthWatch(w *World) *healthWatch {
 		h.owner[i], h.ownerSince[i] = r.Nation, -handOverDays
 	}
 	h.output, h.startStock, h.maxStock = make([][]float64, n), make([][]float64, n), make([][]float64, n)
+	h.making = make([][]int, n)
 	for i, r := range w.Regions {
 		h.output[i], h.startStock[i], h.maxStock[i] = make([]float64, len(r.Firms)), make([]float64, len(r.Firms)), make([]float64, len(r.Firms))
+		h.making[i] = make([]int, len(r.Firms))
 		for j, f := range r.Firms {
 			h.startStock[i][j] = f.Inventory
 		}
@@ -258,6 +261,9 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 			finite(r.Name+" "+f.Name+" stock", f.Inventory, -1e-9)
 			if !f.State {
 				h.output[i][j] += f.LastOutput
+				if f.LastOutput > 0 {
+					h.making[i][j]++
+				}
 				h.maxStock[i][j] = math.Max(h.maxStock[i][j], f.Inventory)
 			}
 		}
@@ -464,7 +470,9 @@ func (h *healthWatch) checks(l healthLimits) []healthCheck {
 			if f.State {
 				continue
 			}
-			perDay := h.output[i][j] / float64(h.days)
+			// a day's output while it was making anything (a method that came
+			// in late in the window holds a day's stock of a full day's output)
+			perDay := h.output[i][j] / float64(max(1, h.making[i][j]))
 			days := "no output"
 			if perDay > 0 {
 				days = fmt.Sprintf("%.0f days of output", h.maxStock[i][j]/perDay)
