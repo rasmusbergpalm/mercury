@@ -176,6 +176,8 @@ var (
 	ErrNoPort      = errors.New("tile has no port")
 	ErrPortLimit   = fmt.Errorf("a nation may have one port for every %d tiles it holds (at least one)", TilesPerPort)
 	ErrFirmLocked  = errors.New("that firm needs a technology the nation lacks")
+	ErrMethod      = errors.New("the firm can't run that method here (its technology, or an input nobody makes yet)")
+	ErrNoRefit     = errors.New("the firm has no level on another method to refit")
 	ErrEliminated  = errors.New("the nation has no tiles left")
 )
 
@@ -707,8 +709,8 @@ func (n *Nation) pickResearch() {
 func (n *Nation) applyTech() {
 	for _, r := range n.Regions {
 		for _, f := range r.Firms {
-			f.TFP = f.BaseTFP * n.firmMult(f)
 			f.Enabled = firmEnabled(f, n)
+			f.applyMethods(n)
 		}
 	}
 }

@@ -288,6 +288,20 @@ type PopState struct {
 type Expansion struct {
 	Delivered float64 `json:"delivered"`
 	Public    bool    `json:"public"`
+	Cost      float64 `json:"cost"`             // construction it needs
+	Method    string  `json:"method,omitempty"` // the method the level will run
+	Refit     string  `json:"refit,omitempty"`  // for a refit: the method the level ran
+}
+
+// MethodState is one of a firm's methods: a way of making its good.
+type MethodState struct {
+	Name        string  `json:"name"`
+	Levels      int     `json:"levels"`
+	Known       bool    `json:"known"`              // the owner has its technology
+	Runs        bool    `json:"runs"`               // ...and its inputs are in play
+	Requires    string  `json:"requires,omitempty"` // the technology it needs
+	Produced    float64 `json:"produced"`           // made today
+	LevelProfit float64 `json:"level_profit"`       // what a level would earn on it a day, at today's prices
 }
 
 type FirmState struct {
@@ -304,11 +318,12 @@ type FirmState struct {
 	Enabled   bool              `json:"enabled"`
 	Requires  string            `json:"requires"` // tech that unlocks it, if any
 	Sector    string            `json:"sector"`
-	State     bool              `json:"state"`      // a public service
-	Bonuses   []engine.Modifier `json:"bonuses"`    // productivity, factor by factor
-	Wanted    float64           `json:"wanted"`     // workers it wanted (and could pay) today
-	PerWorker float64           `json:"per_worker"` // profit per worker today: value added per worker less the wage
-	LevelGain float64           `json:"level_gain"` // extra output value a day one more level would bring, same workers and inputs
+	State     bool              `json:"state"`             // a public service
+	Bonuses   []engine.Modifier `json:"bonuses"`           // productivity, factor by factor
+	Wanted    float64           `json:"wanted"`            // workers it wanted (and could pay) today
+	PerWorker float64           `json:"per_worker"`        // profit per worker today: value added per worker less the wage
+	LevelGain float64           `json:"level_gain"`        // extra output value a day one more level would bring, same workers and inputs
+	Methods   []MethodState     `json:"methods,omitempty"` // when it has more than one
 }
 
 type MarketState struct {
@@ -593,7 +608,7 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, f.Bonuses(r.Nation), 0, 0, 0}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, f.Bonuses(r.Nation), 0, 0, 0, nil}
 		fs.Wanted = f.PlanLabor
 		if !f.State && !f.AtCap() {
 			fs.LevelGain = f.LastOutput * r.Markets[f.Output].Price * (f.NextLevelMult() - 1)
@@ -602,7 +617,19 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 			fs.PerWorker = f.ValueAdded(r.Markets[f.Output].Price)/f.Labor - r.Wage
 		}
 		if e := f.Expansion; e != nil {
-			fs.Expansion = &Expansion{e.Delivered, e.Public}
+			fs.Expansion = &Expansion{Delivered: e.Delivered, Public: e.Public, Cost: e.Cost(), Method: f.Methods[e.Method].Name}
+			if e.Refit {
+				fs.Expansion.Refit = f.Methods[e.From].Name
+			}
+		}
+		if len(f.Methods) > 1 {
+			for k, m := range f.Methods {
+				ms := MethodState{Name: m.Name, Levels: f.MethodLevels(k), Known: m.Enabled, Runs: m.Runs(), Requires: m.Requires, Produced: m.Output}
+				if m.Runs() {
+					ms.LevelProfit = f.LevelProfit(k, r.Prices(), r.Wage)
+				}
+				fs.Methods = append(fs.Methods, ms)
+			}
 		}
 		d.Firms = append(d.Firms, fs)
 	}

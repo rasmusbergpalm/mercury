@@ -79,8 +79,8 @@ var serviceFirms = map[string]bool{"Transport": true, "Construction": true, "Uni
 // share for its capital (one less its exponents): with less, it would
 // leave less profit a level and never spread; with more, the economy
 // would need far more capital than 19th-century economies had.
-var Methods = []struct {
-	Base string
+var MethodRecipes = []struct {
+	Base string // the firm whose method it is
 	Recipe
 	// Cap is the levels a land-bound method can work, if more than the
 	// old one's (RawMaxLevels): steam pumps and blasting reach seams the
@@ -92,7 +92,7 @@ var Methods = []struct {
 	{"Coal mine", Recipe{"Steam coal mine", "coal", 3.8, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 16},
 	{"Iron mine", Recipe{"Steam iron mine", "iron ore", 2.4, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 6},
 	{"Iron mine", Recipe{"Blasting iron mine", "iron ore", 3.0, []Factor{Labor(0.4), Input("explosives", 0.12), Input("steam engines", 0.08)}}, 8},
-	{"Farm", Recipe{"Seed-drill farm", "grain", 2.4, []Factor{Labor(0.52), Input("tools", 0.08)}}, 0},
+	{"Farm", Recipe{"Seed-drill farm", "grain", 2.4, []Factor{Labor(0.56), Input("tools", 0.04)}}, 0},
 	{"Farm", Recipe{"Fertilized farm", "grain", 3.2, []Factor{Labor(0.42), Input("tools", 0.06), Input("fertilizer", 0.12)}}, 0},
 	{"Farm", Recipe{"Tractor farm", "grain", 5.0, []Factor{Labor(0.3), Input("vehicles", 0.12), Input("oil", 0.08), Input("fertilizer", 0.1)}}, 0},
 	{"Potato farm", Recipe{"Fertilized potato farm", "potatoes", 3.6, []Factor{Labor(0.48), Input("fertilizer", 0.12)}}, 0},
@@ -232,26 +232,6 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 	}
 	if game {
 		addRaw(GameRawRecipes, GameTerrainRaw[t.Name], t.Name)
-		// a land-bound firm's methods work its land, at its site's productivity
-		for _, base := range append([]*Firm(nil), firms...) {
-			group := []*Firm{base}
-			for _, m := range Methods {
-				if m.Base == base.Name {
-					f := NewFirm(m.Firm, G(m.Output), m.TFP*base.SiteMult, m.Factors, 50)
-					f.MaxLevels, f.Sector, f.Site, f.SiteMult, f.Base = max(RawMaxLevels, m.Cap), Primary, base.Site, base.SiteMult, base.Name
-					f.Levels = 0 // its first level is one of the old method's, refitted once it pays
-					firms = append(firms, f)
-					group = append(group, f)
-				}
-			}
-			for _, f := range group {
-				for _, o := range group {
-					if o != f {
-						f.kin = append(f.kin, o)
-					}
-				}
-			}
-		}
 	}
 	recipes := ProcessingRecipes
 	if game {
@@ -263,25 +243,6 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 			f.Sector = Service
 		}
 		firms = append(firms, f)
-		if game {
-			group := []*Firm{f}
-			for _, m := range Methods {
-				if m.Base == rc.Firm {
-					g := NewFirm(m.Firm, G(m.Output), m.TFP, m.Factors, 50)
-					g.Sector, g.Base = f.Sector, rc.Firm
-					g.Levels = 0 // its first level is one of the old method's, refitted once it pays
-					firms = append(firms, g)
-					group = append(group, g)
-				}
-			}
-			for _, g := range group {
-				for _, o := range group {
-					if o != g {
-						g.kin = append(g.kin, o)
-					}
-				}
-			}
-		}
 	}
 	if game {
 		for k := Public(0); k < NumServices; k++ {
@@ -289,11 +250,24 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 		}
 		for _, f := range firms {
 			f.Requires = FirmTech[f.Name]
-			if f.Base != "" {
-				f.baseTech = FirmTech[f.Base]
-			}
 			f.Enabled = f.Requires == ""
-
+			// the methods techs bring, at the site's productivity; a land-bound
+			// one may work as much of the land as its Cap
+			for _, mr := range MethodRecipes {
+				if mr.Base != f.Name {
+					continue
+				}
+				site := 1.0
+				if f.SiteMult > 0 {
+					site = f.SiteMult
+				}
+				m := newMethod(mr.Firm, mr.TFP*site, mr.Factors)
+				m.Requires, m.Enabled = FirmTech[mr.Firm], false
+				if f.Sector == Primary {
+					m.Cap = max(RawMaxLevels, mr.Cap)
+				}
+				f.Methods = append(f.Methods, m)
+			}
 		}
 	}
 	return firms

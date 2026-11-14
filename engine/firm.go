@@ -43,26 +43,86 @@ var sectorNames = [...]string{"industry", "primary", "service"}
 
 func (s Sector) String() string { return sectorNames[s] }
 
-// Firm turns labor and inputs into one output good with a decreasing-returns
-// Cobb-Douglas technology q = A * prod f_i^a_i, sum a_i < 1.
+// Method is one way a firm makes its good: a Cobb-Douglas recipe
+// q = TFP * L^(1-s) * prod f_i^a_i over the L levels the firm runs it on,
+// with sum a_i = s < 1. Every firm has its first method; techs add others
+// (MethodRecipes), more productive and needing machinery or fuel the first
+// doesn't. The firm runs each of its levels on one method, and its owners
+// refit a level from one method to another when the difference pays.
+type Method struct {
+	Name     string
+	Requires string // the tech it needs ("" for the firm's first method)
+	Enabled  bool
+	// short: an input it needs is out of play (nobody can make it yet, as
+	// engines before Steam power): it can't run, and owners don't build it
+	short   bool
+	Factors []Factor
+	// TFP is productivity per level, including technology; BaseTFP is
+	// without technology.
+	TFP, BaseTFP float64
+	// Cap is the most levels it may run (0: the firm's MaxLevels): steam
+	// pumps and blasting reach seams the old mines couldn't.
+	Cap int
+	// levels it runs; the firm's first method runs the levels the others
+	// don't (see MethodLevels)
+	levels int
+	Output float64 // what it made today
+
+	planLabor, labor float64   // today's plan, and what it got
+	planQty          []float64 // per good
+	powLevels        int
+	levelsPow        float64 // L^(1-s), cached
+}
+
+// checkInputs marks the method short when some input of it is out of play.
+func (m *Method) checkInputs(made []bool) {
+	m.short = false
+	if made == nil {
+		return
+	}
+	for _, fc := range m.Factors {
+		switch fc.Kind {
+		case GoodFactor:
+			m.short = m.short || !made[fc.Good]
+		case CompositeFactor:
+			any := false
+			for _, g := range Composites[fc.Composite].Goods {
+				any = any || made[g]
+			}
+			m.short = m.short || !any
+		}
+	}
+}
+
+// Runs reports whether the method can run: its tech known, its inputs in play.
+func (m *Method) Runs() bool { return m.Enabled && !m.short }
+
+// exponentSum is s, the variable factors' share.
+func (m *Method) exponentSum() float64 {
+	s := 0.0
+	for _, fc := range m.Factors {
+		s += fc.Exp
+	}
+	return s
+}
+
+// Firm turns labor and inputs into one output good, on its levels, by its
+// methods.
 type Firm struct {
 	Name   string
 	Output GoodID
-	// TFP is productivity per building level, including technology; BaseTFP
-	// is without technology.
-	TFP, BaseTFP float64
-	Factors      []Factor
-	// Levels of buildings. Output is constant-returns in levels and the
-	// variable factors together: q = TFP * Levels^(1-s) * prod f_i^a_i.
-	// MaxLevels caps them where something else is scarce: land for farms
-	// and mines (RawMaxLevels), the state's budget for its services; 0 is
-	// no cap (workshops and services grow while a level pays for itself).
+	// Methods are the ways it can make its good, its first one first.
+	Methods []*Method
+	// Levels of buildings, over all its methods. Output is constant-returns
+	// in levels and the variable factors together. MaxLevels caps them where
+	// something else is scarce: land for farms and mines (RawMaxLevels), the
+	// state's budget for its services; 0 is no cap (workshops and services
+	// grow while a level pays for itself).
 	Levels, MaxLevels int
 	Expansion         *Expansion // a level under construction, or nil
 	// Requires names the tech the owner needs for the firm to work; Enabled
 	// says whether it does (always true in the classic world).
 	Requires string
-	baseTech string // a method also needs its firm's tech
 	Enabled  bool
 	Sector   Sector
 	// Agglom multiplies productivity for firms that gain from a city around
@@ -80,15 +140,6 @@ type Firm struct {
 	Public  Public  // which public service, for state firms
 	EduMult float64 // productivity from the tile's schooling (industry and services)
 	Loyal   float64 // productivity from the tile's allegiance to its owner (1: loyal)
-	// Base is the firm this one is another production method of (by name),
-	// or "": a method a tech makes available, with its own recipe and its
-	// own levels, side by side with the old one.
-	Base string
-	// kin lists the firm's other methods on the tile (the firm it is a
-	// method of, and that firm's other methods): a method grows by refitting
-	// their levels, and on land, their levels together are capped
-	// (MaxLevels).
-	kin []*Firm
 	// Site and SiteMult: where a land-bound producer's productivity comes
 	// from (its terrain, or the coast) and how much it multiplies it.
 	Site       string
@@ -113,18 +164,17 @@ type Firm struct {
 	used                  []float64 // goods it used up producing this tick, by good
 	investWant            float64   // construction to buy this tick: upkeep, and a private expansion
 	upkeepWant            float64   // ...of which upkeep
-	powLevels             int       // the Levels levelsPow was worked out for
-	levelsPow             float64   // Levels^(1-s), cached
 }
 
-// Expansion is a building level under construction for a firm.
+// Expansion is a building level under construction for a firm, run by its
+// method Method: a new one, or, with Refit, one of method From's refitted
+// (the building stays; the machinery is new), at refitShare of the cost.
 type Expansion struct {
 	Delivered float64 // construction units delivered so far
 	Public    bool    // paid for by the nation (else by the firm's owners)
-	// Refit: a level of one of the firm's other methods refitted to this
-	// one (the building stays; the machinery is new), at refitShare of a
-	// level's cost
-	Refit bool `json:",omitempty"`
+	Method    int     `json:",omitempty"`
+	Refit     bool    `json:",omitempty"`
+	From      int     `json:",omitempty"`
 }
 
 // refitShare is what refitting a level to another method costs, against
@@ -145,62 +195,167 @@ func (e *Expansion) Cost() float64 {
 // years of its output, as Europe's was in the 19th century.
 const LevelCost = 1200.0
 
-func (f *Firm) exponentSum() float64 {
-	s := 0.0
-	for _, fc := range f.Factors {
-		s += fc.Exp
+// MethodLevels is the levels the firm runs on its i-th method.
+func (f *Firm) MethodLevels(i int) int {
+	if i > 0 {
+		return f.Methods[i].levels
 	}
-	return s
-}
-
-// effectiveTFP is TFP * Levels^(1-s): productivity of the firm's variable factors.
-func (f *Firm) effectiveTFP() float64 {
-	if f.powLevels != f.Levels || f.levelsPow == 0 {
-		f.powLevels, f.levelsPow = f.Levels, math.Pow(float64(f.Levels), 1-f.exponentSum())
-	}
-	return f.TFP * f.levelsPow * f.Agglom * f.EduMult * f.Loyal
-}
-
-// AtCap reports whether the firm can have no more levels: it is at its cap,
-// and on land it shares, none of its other methods has a level to give up
-// (a method grows by refitting the old one's levels, one at a time; each
-// keeps at least one).
-func (f *Firm) AtCap() bool {
-	if f.MaxLevels == 0 || f.kinLevels() < f.MaxLevels {
-		return false
-	}
-	return f.kinDonor() == nil
-}
-
-// kinLevels is the levels of the firm and its other methods.
-func (f *Firm) kinLevels() int {
 	n := f.Levels
-	for _, o := range f.kin {
-		n += o.Levels
+	for _, m := range f.Methods[1:] {
+		n -= m.levels
 	}
-	return n
+	return max(0, n)
 }
 
-// kinDonor is the other method that would give up a level for the firm to
-// refit: the one earning least per level, of those with a level to spare
-// (nil if none).
-func (f *Firm) kinDonor() *Firm {
-	var best *Firm
-	for _, o := range f.kin {
-		if o.Levels > 1 && (best == nil || o.ProfitEMA/float64(o.Levels) < best.ProfitEMA/float64(best.Levels)) {
-			best = o
+// addLevel gives the firm a level of its i-th method; removeLevel takes one
+// away; refit moves one from method from to method to.
+func (f *Firm) addLevel(i int) {
+	if i > 0 {
+		f.Methods[i].levels++
+	}
+	f.Levels++
+}
+func (f *Firm) removeLevel(i int) {
+	if f.MethodLevels(i) == 0 {
+		return
+	}
+	if i > 0 {
+		f.Methods[i].levels--
+	}
+	f.Levels--
+}
+func (f *Firm) refit(from, to int) {
+	if f.MethodLevels(from) == 0 {
+		f.addLevel(to) // nothing left to refit: a level of its own
+		return
+	}
+	f.removeLevel(from)
+	f.addLevel(to)
+}
+
+// methodCap is the most levels method i may run.
+func (f *Firm) methodCap(i int) int {
+	if c := f.Methods[i].Cap; c > 0 {
+		return c
+	}
+	return f.MaxLevels
+}
+
+// landCap is the most levels the firm may have: the most any of its working
+// methods may run (0: no cap).
+func (f *Firm) landCap() int {
+	if f.MaxLevels == 0 {
+		return 0
+	}
+	c := f.MaxLevels
+	for i, m := range f.Methods {
+		if m.Enabled {
+			c = max(c, f.methodCap(i))
+		}
+	}
+	return c
+}
+
+// effectiveTFP is method i's TFP * L^(1-s) with the tile's multipliers: the
+// productivity of its variable factors.
+func (f *Firm) effectiveTFP(i int) float64 {
+	m, l := f.Methods[i], f.MethodLevels(i)
+	if m.powLevels != l || m.levelsPow == 0 {
+		m.powLevels, m.levelsPow = l, math.Pow(float64(l), 1-m.exponentSum())
+	}
+	return m.TFP * m.levelsPow * f.Agglom * f.EduMult * f.Loyal
+}
+
+// main is the method that runs most of the firm's levels (its first, at
+// a tie): what its productivity breakdown describes.
+func (f *Firm) main() int {
+	best := 0
+	for i := range f.Methods {
+		if f.MethodLevels(i) > f.MethodLevels(best) {
+			best = i
 		}
 	}
 	return best
 }
 
-// NewFirm makes a firm.
+// dropLevel closes a level of the method that earns least on it (wear the
+// owners didn't make good, or losses).
+func (f *Firm) dropLevel(r *Region) {
+	if f.Levels <= 0 {
+		return
+	}
+	w, _ := f.worstMethod(r.prices, r.Wage)
+	if w < 0 {
+		w = 0
+	}
+	f.removeLevel(w)
+}
+
+// factors lists the factors of all the firm's methods (what it may buy).
+func (f *Firm) factors() []Factor {
+	if len(f.Methods) == 1 {
+		return f.Methods[0].Factors
+	}
+	var out []Factor
+	for _, m := range f.Methods {
+		out = append(out, m.Factors...)
+	}
+	return out
+}
+
+// AtCap reports whether the firm can have no more levels.
+func (f *Firm) AtCap() bool {
+	c := f.landCap()
+	return c > 0 && f.Levels >= c
+}
+
+// bestMethod is the working method a level would earn most on at today's
+// prices, of those with room for one more (-1 if none), and worstMethod
+// the one with levels that earns least (-1 if none).
+func (f *Firm) bestMethod(prices []float64, wage float64) (int, float64) {
+	best, top := -1, 0.0
+	for i, m := range f.Methods {
+		if !m.Runs() || (f.methodCap(i) > 0 && f.MethodLevels(i) >= f.methodCap(i)) {
+			continue
+		}
+		if p := f.LevelProfit(i, prices, wage); best < 0 || p > top {
+			best, top = i, p
+		}
+	}
+	return best, top
+}
+func (f *Firm) worstMethod(prices []float64, wage float64) (int, float64) {
+	worst, low := -1, 0.0
+	for i, m := range f.Methods {
+		if f.MethodLevels(i) == 0 {
+			continue
+		}
+		p := 0.0 // a method the owner can't run (its tech lost, an input out of play) earns nothing
+		if m.Runs() {
+			p = f.LevelProfit(i, prices, wage)
+		}
+		if worst < 0 || p < low {
+			worst, low = i, p
+		}
+	}
+	return worst, low
+}
+
+// NewFirm makes a firm with one method, its first.
 func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash float64) *Firm {
-	return &Firm{Name: name, Output: output, TFP: tfp, BaseTFP: tfp, Factors: factors, Cash: cash,
-		Levels: 1, Enabled: true, Agglom: 1, EduMult: 1, Loyal: 1,
+	return &Firm{Name: name, Output: output, Cash: cash,
+		Methods: []*Method{newMethod(name, tfp, factors)},
+		Levels:  1, Enabled: true, Agglom: 1, EduMult: 1, Loyal: 1,
 		CashBuffer: 20, Inputs: make([]float64, NumGoods),
 		PlanQty: make([]float64, NumGoods), PlanHas: make([]bool, NumGoods)}
 }
+
+func newMethod(name string, tfp float64, factors []Factor) *Method {
+	return &Method{Name: name, Enabled: true, Factors: factors, TFP: tfp, BaseTFP: tfp, planQty: make([]float64, NumGoods)}
+}
+
+// TFP is the productivity per level of the firm's first method.
+func (f *Firm) TFP() float64 { return f.Methods[0].TFP }
 
 func (f *Firm) unitCost(fc Factor, prices []float64, wage float64) float64 {
 	switch fc.Kind {
@@ -214,14 +369,14 @@ func (f *Firm) unitCost(fc Factor, prices []float64, wage float64) float64 {
 	}
 }
 
-// LevelProfit is what one level of the firm would earn a day at these prices,
-// working at its best: with constant returns, a level's share of revenue,
-// one less the exponents. Owners reckon with it for a method they have yet
-// to build a level of.
-func (f *Firm) LevelProfit(prices []float64, wage float64) float64 {
+// LevelProfit is what one level of the firm's i-th method would earn a day
+// at these prices, working at its best: with constant returns, a level's
+// share of revenue, one less the exponents. Owners compare methods by it.
+func (f *Firm) LevelProfit(i int, prices []float64, wage float64) float64 {
+	m := f.Methods[i]
 	p := prices[f.Output]
-	k, s := f.TFP*f.Agglom*f.EduMult*f.Loyal, 0.0
-	for _, fc := range f.Factors {
+	k, s := m.TFP*f.Agglom*f.EduMult*f.Loyal, 0.0
+	for _, fc := range m.Factors {
 		k *= math.Pow(fc.Exp*p/f.unitCost(fc, prices, wage), fc.Exp)
 		s += fc.Exp
 	}
@@ -229,7 +384,7 @@ func (f *Firm) LevelProfit(prices []float64, wage float64) float64 {
 }
 
 // Plan sets the profit-maximising labor and goods demand at current prices,
-// capped by cash.
+// capped by cash: each method's, added up.
 //
 // With q = A prod f_i^a_i and s = sum a_i < 1:
 //
@@ -237,90 +392,155 @@ func (f *Firm) LevelProfit(prices []float64, wage float64) float64 {
 //
 // Composite factors are then split into their cheapest goods mix.
 func (f *Firm) Plan(prices []float64, wage float64) {
-	if !f.Enabled || f.State { // the state staffs its universities itself
-		f.PlanLabor, f.DesiredSpend = 0, 0
-		for i := range f.PlanQty {
-			f.PlanQty[i], f.PlanHas[i] = 0, false
+	f.PlanLabor, f.DesiredSpend = 0, 0
+	for i := range f.PlanQty {
+		f.PlanQty[i], f.PlanHas[i] = 0, false
+	}
+	for _, m := range f.Methods {
+		m.planLabor = 0
+		for g := range m.planQty {
+			m.planQty[g] = 0
 		}
+	}
+	if !f.Enabled || f.State { // the state staffs its universities itself
 		return
 	}
 	p := prices[f.Output]
-	n := len(f.Factors)
-	cost := make([]float64, n)
-	s := 0.0
-	k := f.effectiveTFP()
-	for i, fc := range f.Factors {
-		cost[i] = f.unitCost(fc, prices, wage)
-		s += fc.Exp
+	type plan struct {
+		m    *Method
+		want []float64
+		cost []float64
+		q, s float64
 	}
-	for i, fc := range f.Factors {
-		k *= math.Pow(fc.Exp*p/cost[i], fc.Exp)
-	}
-	q := math.Pow(k, 1/(1-s))
-	want := make([]float64, n)
-	spend := 0.0
-	for i, fc := range f.Factors {
-		want[i] = fc.Exp * p * q / cost[i]
+	var plans []plan
+	total := 0.0
+	for i, m := range f.Methods {
+		if !m.Runs() || f.MethodLevels(i) == 0 {
+			continue
+		}
+		n := len(m.Factors)
+		pl := plan{m: m, want: make([]float64, n), cost: make([]float64, n)}
+		k := f.effectiveTFP(i)
+		for j, fc := range m.Factors {
+			pl.cost[j] = f.unitCost(fc, prices, wage)
+			pl.s += fc.Exp
+		}
+		for j, fc := range m.Factors {
+			k *= math.Pow(fc.Exp*p/pl.cost[j], fc.Exp)
+		}
+		pl.q = math.Pow(k, 1/(1-pl.s))
+		for j, fc := range m.Factors {
+			pl.want[j] = fc.Exp * p * pl.q / pl.cost[j]
+		}
+		total += pl.q
+		plans = append(plans, pl)
 	}
 	// Stock beyond a day's output is stock it failed to sell (when it
 	// plans, its stock still holds yesterday's output, not yet offered): it
 	// makes what it wants to sell less that excess, so goods nobody buys
-	// stop being made instead of piling up. Scaling every factor by
-	// x^(1/s) scales output by x.
-	if over := f.Inventory - q; over > 0 && q > 0 {
-		scale := math.Pow(math.Max(0, q-over)/q, 1/s)
-		for i := range want {
-			want[i] *= scale
-		}
-	}
-	for i := range f.Factors {
-		spend += want[i] * cost[i]
-	}
-	f.DesiredSpend = spend
-	budget := 0.9 * math.Max(f.Cash, 0)
-	if spend > budget { // liquidity constraint
-		for i := range want {
-			want[i] = want[i] * budget / spend
-		}
-	}
-
-	f.PlanLabor = 0
-	for i := range f.PlanQty {
-		f.PlanQty[i], f.PlanHas[i] = 0, false
-	}
-	for i, fc := range f.Factors {
-		switch fc.Kind {
-		case LaborFactor:
-			f.PlanLabor = want[i]
-		case GoodFactor:
-			f.PlanQty[fc.Good], f.PlanHas[fc.Good] = want[i], true
-		case CompositeFactor:
-			c := Composites[fc.Composite]
-			for j, x := range Split(want[i], prices, c.Goods, c.Sigma) {
-				f.PlanQty[c.Goods[j]], f.PlanHas[c.Goods[j]] = x, true
+	// stop being made instead of piling up. Scaling a method's every factor
+	// by x^(1/s) scales its output by x.
+	if over := f.Inventory - total; over > 0 && total > 0 {
+		x := math.Max(0, total-over) / total
+		for _, pl := range plans {
+			scale := math.Pow(x, 1/pl.s)
+			for j := range pl.want {
+				pl.want[j] *= scale
 			}
 		}
 	}
-}
-
-// FactorAmount is how much of a factor the firm has this tick.
-func (f *Firm) FactorAmount(fc Factor) float64 {
-	switch fc.Kind {
-	case LaborFactor:
-		return f.Labor
-	case CompositeFactor:
-		c := Composites[fc.Composite]
-		return Aggregate(f.Inputs, c.Goods, c.Sigma)
-	default:
-		return math.Max(f.Inputs[fc.Good], 0)
+	spend := 0.0
+	for _, pl := range plans {
+		for j := range pl.want {
+			spend += pl.want[j] * pl.cost[j]
+		}
+	}
+	f.DesiredSpend = spend
+	budget := 0.9 * math.Max(f.Cash, 0)
+	scale := 1.0
+	if spend > budget { // liquidity constraint
+		scale = budget / spend
+	}
+	for _, pl := range plans {
+		for j, fc := range pl.m.Factors {
+			w := pl.want[j] * scale
+			switch fc.Kind {
+			case LaborFactor:
+				pl.m.planLabor += w
+			case GoodFactor:
+				pl.m.planQty[fc.Good] += w
+				f.PlanHas[fc.Good] = true
+			case CompositeFactor:
+				c := Composites[fc.Composite]
+				for k, x := range Split(w, prices, c.Goods, c.Sigma) {
+					pl.m.planQty[c.Goods[k]] += x
+					f.PlanHas[c.Goods[k]] = true
+				}
+			}
+		}
+		f.PlanLabor += pl.m.planLabor
+		for g, x := range pl.m.planQty {
+			f.PlanQty[g] += x
+		}
 	}
 }
 
-// Produce turns this tick's labor and inputs into output.
+// methodInputs is method m's share of what the firm got today: of each
+// good, its planned share (all of it, for a firm's only method).
+func (f *Firm) methodInputs(m *Method, out []float64) {
+	for g, got := range f.Inputs {
+		switch {
+		case f.PlanQty[g] > 0:
+			out[g] = got * m.planQty[g] / f.PlanQty[g]
+		case len(f.Methods) == 1:
+			out[g] = got
+		default:
+			out[g] = 0
+		}
+	}
+}
+
+// factorAmount is how much of a factor a method has, of its labor and goods.
+func factorAmount(fc Factor, labor float64, inputs []float64) float64 {
+	switch fc.Kind {
+	case LaborFactor:
+		return labor
+	case CompositeFactor:
+		c := Composites[fc.Composite]
+		return Aggregate(inputs, c.Goods, c.Sigma)
+	default:
+		return math.Max(inputs[fc.Good], 0)
+	}
+}
+
+// Produce turns this tick's labor and inputs into output: each method's
+// share of them (its share of the plan) into its output.
 func (f *Firm) Produce() float64 {
-	q := f.effectiveTFP()
-	for _, fc := range f.Factors {
-		q *= math.Pow(f.FactorAmount(fc), fc.Exp)
+	q := 0.0
+	var share []float64
+	for i, m := range f.Methods {
+		m.Output, m.labor = 0, 0
+		if !m.Runs() || f.MethodLevels(i) == 0 {
+			continue
+		}
+		in := f.Inputs
+		m.labor = f.Labor
+		if len(f.Methods) > 1 {
+			if share == nil {
+				share = make([]float64, len(f.Inputs))
+			}
+			f.methodInputs(m, share)
+			in = share
+			if f.PlanLabor > 0 {
+				m.labor = f.Labor * m.planLabor / f.PlanLabor
+			}
+		}
+		x := f.effectiveTFP(i)
+		for _, fc := range m.Factors {
+			x *= math.Pow(factorAmount(fc, m.labor, in), fc.Exp)
+		}
+		m.Output = x
+		q += x
 	}
 	f.Inventory += q
 	if f.used == nil {
@@ -344,7 +564,8 @@ func (f *Firm) Bonuses(n *Nation) []Modifier {
 	if f.SiteMult > 0 {
 		site = f.SiteMult
 	}
-	out := []Modifier{{"Base", f.BaseTFP / site, "the recipe's productivity", false}}
+	mi := f.main()
+	out := []Modifier{{"Base", f.Methods[mi].BaseTFP / site, "the recipe's productivity", false}}
 	if f.SiteMult > 0 {
 		out = append(out, Modifier{cap1(f.Site), f.SiteMult, "how well the site suits it", false})
 	}
@@ -353,7 +574,7 @@ func (f *Firm) Bonuses(n *Nation) []Modifier {
 			if !n.Known[i] {
 				continue
 			}
-			full := techFirmMult(&t, f)
+			full := techFirmMult(&t, f, f.Methods[mi])
 			if full == 1 {
 				continue
 			}
@@ -390,7 +611,7 @@ func (f *Firm) Bonuses(n *Nation) []Modifier {
 // depends only on the number of levels.
 func (f *Firm) NextLevelMult() float64 {
 	n := float64(max(f.Levels, 1))
-	return math.Pow((n+1)/n, 1-f.exponentSum())
+	return math.Pow((n+1)/n, 1-f.Methods[f.main()].exponentSum())
 }
 
 func cap1(s string) string {

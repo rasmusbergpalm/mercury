@@ -79,6 +79,7 @@ func New(static fs.FS, dataDir string) *Server {
 		m.HandleFunc("POST /api/games/{gid}/regions/{id}/services/{svc}/"+cmd, s.game(s.regionCommand("service/"+cmd)))
 	}
 	m.HandleFunc("POST /api/games/{gid}/regions/{id}/firms/{firm}/expand", s.game(s.regionCommand("expand")))
+	m.HandleFunc("POST /api/games/{gid}/regions/{id}/firms/{firm}/methods/{method}/refit", s.game(s.regionCommand("refit")))
 	m.HandleFunc("GET /api/saves", s.handleListSaves)
 	m.HandleFunc("POST /api/saves/{slot}/load", s.handleLoad)
 	if static != nil {
@@ -824,6 +825,13 @@ func (s *Server) regionCommand(cmd string) gameHandler {
 			var firm int
 			if firm, err = pathIndex(r, "firm", len(g.w.Regions[id].Firms)); err == nil {
 				err = g.w.Expand(id, firm)
+			}
+		case "refit":
+			var firm, method int
+			if firm, err = pathIndex(r, "firm", len(g.w.Regions[id].Firms)); err == nil {
+				if method, err = pathIndex(r, "method", len(g.w.Regions[id].Firms[firm].Methods)); err == nil {
+					err = g.w.Refit(id, firm, method)
+				}
 			}
 		}
 		if err != nil {

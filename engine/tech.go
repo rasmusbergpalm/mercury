@@ -284,11 +284,11 @@ func (n *Nation) adopting() bool {
 }
 
 // techFirmMult is a tech's full multiplier on a firm's productivity.
-func techFirmMult(t *Tech, f *Firm) float64 {
+func techFirmMult(t *Tech, f *Firm, me *Method) float64 {
 	m := 1.0
-	if x, ok := t.FirmTFP[f.Name]; ok {
+	if x, ok := t.FirmTFP[me.Name]; ok {
 		m *= x
-	} else if x, ok := t.FirmTFP[f.Base]; ok && f.Base != "" { // a method gains what its firm does
+	} else if x, ok := t.FirmTFP[f.Name]; ok { // a method gains what its firm does
 		m *= x
 	}
 	if f.Sector == Primary && t.PrimaryTFP != 0 {
@@ -300,13 +300,13 @@ func techFirmMult(t *Tech, f *Firm) float64 {
 	return m
 }
 
-// firmMult is the technology multiplier on a firm's productivity, each
-// tech's bonus as far as it has been adopted.
-func (n *Nation) firmMult(f *Firm) float64 {
+// methodMult is the technology multiplier on a firm's method's
+// productivity, each tech's bonus as far as it has been adopted.
+func (n *Nation) methodMult(f *Firm, me *Method) float64 {
 	m := 1.0
 	for i := range Techs {
 		if n.Known[i] {
-			m *= 1 + (techFirmMult(&Techs[i], f)-1)*n.Adoption(i)
+			m *= 1 + (techFirmMult(&Techs[i], f, me)-1)*n.Adoption(i)
 		}
 	}
 	return m
@@ -417,10 +417,19 @@ func (n *Nation) CanBuildPorts() bool {
 }
 
 // firmEnabled reports whether a firm works for this owner (nil: unowned).
-func firmEnabled(f *Firm, owner *Nation) bool {
-	if f.baseTech != "" && (owner == nil || !owner.Has(f.baseTech)) {
-		return false
+// applyMethods brings a firm's methods up to its owner's technology (nil:
+// free land, only the methods that need none, at base productivity).
+func (f *Firm) applyMethods(owner *Nation) {
+	for _, m := range f.Methods {
+		m.TFP = m.BaseTFP
+		if owner != nil {
+			m.TFP *= owner.methodMult(f, m)
+		}
+		m.Enabled = m.Requires == "" || (owner != nil && owner.Has(m.Requires))
 	}
+}
+
+func firmEnabled(f *Firm, owner *Nation) bool {
 	if f.Requires == "" {
 		return true
 	}

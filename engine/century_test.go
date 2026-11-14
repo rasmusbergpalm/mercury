@@ -73,7 +73,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 	// each firm with production methods, and its methods
 	groups := map[string][]string{}
 	var order []string
-	for _, m := range Methods {
+	for _, m := range MethodRecipes {
 		if groups[m.Base] == nil {
 			groups[m.Base] = []string{m.Base}
 			order = append(order, m.Base)
@@ -121,7 +121,9 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 					profit += f.tickRevenue - f.tickCost
 				}
 				wages += f.Labor * r.Wage
-				made[f.Name] += f.LastOutput
+				for _, m := range f.Methods {
+					made[f.Name+"|"+m.Name] += m.Output
+				}
 			}
 			for _, p := range r.Pops {
 				ni += p.Income
@@ -160,11 +162,11 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			f4(n.TaxRate), f4(big / people), f0(small)}
 		for _, b := range order {
 			total := 0.0
-			for _, f := range groups[b] {
-				total += made[f]
+			for _, m := range groups[b] {
+				total += made[b+"|"+m]
 			}
-			for _, f := range groups[b] {
-				row = append(row, f4(made[f]/math.Max(total, 1e-12)))
+			for _, m := range groups[b] {
+				row = append(row, f4(made[b+"|"+m]/math.Max(total, 1e-12)))
 			}
 		}
 		for _, g := range machinery {

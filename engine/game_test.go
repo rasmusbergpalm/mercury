@@ -159,15 +159,15 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 		t.Helper()
 		for _, r := range w.Regions {
 			f := firmIn(r, "Transport")
-			want := f.BaseTFP
+			want := f.Methods[0].BaseTFP
 			switch {
 			case r.Nation == n:
 				want *= 1 + 0.2*adopted
 			case r.Nation != nil:
 				continue
 			}
-			if math.Abs(f.TFP-want) > 1e-9 {
-				t.Errorf("%.0f%% adopted: tile %s transport TFP %v, want %v", 100*adopted, r.Name, f.TFP, want)
+			if math.Abs(f.TFP()-want) > 1e-9 {
+				t.Errorf("%.0f%% adopted: tile %s transport TFP %v, want %v", 100*adopted, r.Name, f.TFP(), want)
 			}
 		}
 	}

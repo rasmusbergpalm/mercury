@@ -71,7 +71,13 @@ var (
 		FullSpeed:      0.015,
 		StockDays:      30, StockSlack: 5,
 		MinTilePeople: 25, TileLossYear: 0.25, PeopleDropMonth: 0.01,
-		MinEmployment: 0.8, LivingDropYear: 0.05,
+		// a state's projects end all at once: on a small tile whose builders
+		// were working mostly for the state, half of them can be out of work
+		// for a week or two before private building takes them on (three
+		// nations, seed 1: schools and a health board, 10 of the tile's 18
+		// construction a day, finished the same day; the month's average fell
+		// to 0.79 and was back to 0.98 a month later)
+		MinEmployment: 0.75, LivingDropYear: 0.05,
 		StateFrom: 90,
 		ShortDays: 0, // a state that can't pay its bills lays off soldiers, teachers and doctors
 		TaxMin:    0.01, TaxMax: 0.25,

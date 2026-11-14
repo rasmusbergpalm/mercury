@@ -114,6 +114,11 @@ func (r *Region) Plan() {
 	prices := r.refreshPrices()
 	for _, f := range r.Firms {
 		f.tickRevenue, f.tickCost, f.tickInputs, f.investWant = 0, 0, 0, 0
+		if len(f.Methods) > 1 {
+			for _, m := range f.Methods {
+				m.checkInputs(r.made)
+			}
+		}
 		f.Plan(prices, r.Wage)
 	}
 }
@@ -164,23 +169,21 @@ func (r *Region) planInvestment(seed int64) {
 	}
 	for i, f := range r.Firms {
 		f.upkeepWant = 0
-		if f.State || (f.Levels < 1 && len(f.kin) == 0) {
+		if f.State || f.Levels < 1 {
 			continue
 		}
-		var perLevel float64
-		if f.Levels > 0 {
-			perLevel = f.ProfitEMA / float64(f.Levels)
-		} else { // a method with no level yet: what one would earn
-			perLevel = f.LevelProfit(r.prices, r.Wage)
-		}
-		// what refitting a level of another method would add: this one's
-		// profit a level less what that level earns now
+		perLevel := f.ProfitEMA / float64(f.Levels)
+		// the method a level would earn most on, and the one whose levels
+		// earn least: refitting one of the second to the first adds the
+		// difference
+		best, bestProfit := f.bestMethod(r.prices, r.Wage)
+		worst, worstProfit := f.worstMethod(r.prices, r.Wage)
 		refitGain := 0.0
-		if d := f.kinDonor(); d != nil {
-			refitGain = perLevel - d.ProfitEMA/float64(d.Levels)
+		if best >= 0 && worst >= 0 && best != worst {
+			refitGain = bestProfit - worstProfit
 		}
-		if f.Expansion == nil && f.Enabled && f.Age > investMinAge && perLevel > 0 {
-			full := f.MaxLevels > 0 && f.kinLevels() >= f.MaxLevels
+		if f.Expansion == nil && f.Enabled && f.Age > investMinAge && best >= 0 {
+			full := f.AtCap()
 			// how many times over each project repays its cost within the payback
 			refit := refitGain * payback / (refitShare * LevelCost * price)
 			build := perLevel * payback / (LevelCost * price)
@@ -192,10 +195,16 @@ func (r *Region) planInvestment(seed int64) {
 				buildUrge = math.Min(1, build-1) / investDecideDays
 			}
 			f.Urge += refitUrge + buildUrge
-			if f.Urge > 0 && f.Urge >= investResolve(seed, r.ID, i, f.Projects) {
+			// the urge built up over the days a project paid; it is acted on
+			// only on a day one still does, for the one that pays better then
+			if refitUrge+buildUrge > 0 && f.Urge >= investResolve(seed, r.ID, i, f.Projects) {
 				f.Urge = 0
 				f.Projects++
-				f.Expansion = &Expansion{Refit: refitUrge >= buildUrge}
+				if refitUrge >= buildUrge {
+					f.Expansion = &Expansion{Refit: true, Method: best, From: worst}
+				} else {
+					f.Expansion = &Expansion{Method: best}
+				}
 			}
 		}
 		upkeep := 0.0
@@ -205,8 +214,8 @@ func (r *Region) planInvestment(seed int64) {
 		want := upkeep
 		if e := f.Expansion; e != nil && !e.Public {
 			gain := perLevel
-			if e.Refit {
-				gain = refitGain
+			if e.Refit { // what it still adds at today's prices
+				gain = f.LevelProfit(e.Method, r.prices, r.Wage) - f.LevelProfit(e.From, r.prices, r.Wage)
 			}
 			if gain*payback >= (e.Cost()-e.Delivered)*price {
 				want += math.Min(e.Cost()/buildDays, e.Cost()-e.Delivered) // a refit takes as long to put in
@@ -234,17 +243,19 @@ func (r *Region) settleFirms() {
 		if !f.State && f.Levels > 1 { // wear, less today's upkeep (made good at the market)
 			f.Wear += depreciation * float64(f.Levels) / TicksPerYear
 			if f.Wear >= 1 {
-				f.Levels--
+				f.dropLevel(r)
 				f.Wear--
 			}
 		}
 		if e := f.Expansion; e != nil && e.Delivered >= e.Cost()-1e-9 {
-			f.Levels++
 			f.Expansion = nil
-			if e.Refit || (f.MaxLevels > 0 && f.kinLevels() > f.MaxLevels) {
-				if d := f.kinDonor(); d != nil {
-					d.Levels-- // a level of another method refitted (on land: its land taken over)
-				}
+			if e.Refit {
+				f.refit(e.From, e.Method)
+			} else {
+				f.addLevel(e.Method)
+			}
+			if c := f.landCap(); c > 0 && f.Levels > c {
+				f.dropLevel(r) // on full land the new method takes over the old one's
 			}
 			if f.State {
 				f.Funded++ // a new university level is funded once built
@@ -256,7 +267,7 @@ func (r *Region) settleFirms() {
 		if f.ProfitEMA < 0 && f.Levels > 1 {
 			f.LossTicks++
 			if f.LossTicks > disinvestAt {
-				f.Levels--
+				f.dropLevel(r)
 				f.LossTicks = 0
 			}
 		} else {
@@ -370,7 +381,7 @@ func (r *Region) indexFirms() {
 	r.firmsBuying, r.firmsMaking = make([][]int, NumGoods), make([][]int, NumGoods)
 	for i, f := range r.Firms {
 		r.firmsMaking[f.Output] = append(r.firmsMaking[f.Output], i)
-		for _, fc := range f.Factors {
+		for _, fc := range f.factors() {
 			switch fc.Kind {
 			case GoodFactor:
 				r.addBuyer(fc.Good, i)

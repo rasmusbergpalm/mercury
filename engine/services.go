@@ -140,7 +140,7 @@ func (f *Firm) research() float64 {
 	if f.Funded <= 0 || f.Labor <= 0 {
 		return 0
 	}
-	return f.TFP * f.Agglom * f.EduMult * f.Loyal * math.Pow(float64(f.Funded), 0.4) * math.Pow(f.Labor, 0.6)
+	return f.TFP() * f.Agglom * f.EduMult * f.Loyal * math.Pow(float64(f.Funded), 0.4) * math.Pow(f.Labor, 0.6)
 }
 
 // staffMult is how much one of the nation's staff of a service achieves,
@@ -365,7 +365,7 @@ func (w *World) ServiceStats(r *Region, s Public) ServiceStats {
 	}
 	st := ServiceStats{Staff: f.Labor, Need: w.ServiceNeed(r, s), Coverage: w.Coverage(r, s), Cost: ServiceStaff * r.Wage}
 	if s == University {
-		st.Research, st.PerLevel = f.LastOutput, f.TFP*f.Agglom*f.EduMult*math.Pow(ServiceStaff, 0.6)
+		st.Research, st.PerLevel = f.LastOutput, f.TFP()*f.Agglom*f.EduMult*math.Pow(ServiceStaff, 0.6)
 	}
 	return st
 }

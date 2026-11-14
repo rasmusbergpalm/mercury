@@ -1366,7 +1366,7 @@ function tilePanel() {
     .sort((a, b) => (b.enabled - a.enabled) || (b.state - a.state) || (!!busy(b) - !!busy(a)) || (b.labor - a.labor)).map((f) => {
       if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="4">locked: needs ${esc(f.requires)}</td></tr>`;
       let grow = "";
-      if (f.expansion) grow = `${pct(f.expansion.delivered / world.level_cost)}${f.expansion.public ? " ★" : ""}`;
+      if (f.expansion) grow = `<span title="${f.expansion.refit ? `refitting a ${esc(f.expansion.refit)} level to ${esc(f.expansion.method)}` : `a new level${f.expansion.method && f.methods ? `, ${esc(f.expansion.method)}` : ""}`}">${pct(f.expansion.delivered / f.expansion.cost)}${f.expansion.refit ? " ⟳" : ""}${f.expansion.public ? " ★" : ""}</span>`;
       else if (mine && !f.state && !(f.max_levels > 0 && f.levels >= f.max_levels)) grow = `<button data-cmd="/regions/${selected}/firms/${f.i}/expand" title="Your nation pays ${world.level_cost} construction for a level">+1</button>`;
       // productivity bonuses: everything but the recipe's base, as ×factors
       const bon = (f.bonuses || []).slice(1).map((m) => `${esc(m.name.toLowerCase())} ×${m.value.toFixed(2)}`).join(" · ");
@@ -1376,7 +1376,7 @@ function tilePanel() {
       const m = d.markets.find((x) => x.good === f.output) || { supply: 0, demand: 0 };
       // profit per worker: the value each worker adds a day (output less the goods used up) less the wage
       const per = f.labor > 0.01 ? `<span class="${f.per_worker >= 0 ? "good" : "bad"}">${f.per_worker < 0 ? "−" : ""}£${fmt(Math.abs(f.per_worker))}</span>` : "–";
-      return `<tr${busy(f) ? "" : ` class="idle"`} title="${esc(tip)}${busy(f) ? "" : "\nidle: it doesn't pay to make this here at today's prices"}\nproductivity ×${total.toFixed(2)}\nprofit £${fmt(f.profit, 2)} a day"><td>${esc(f.name)}<br><span class="sub">${f.sector}${bon ? ` · ${bon}` : ""}</span></td>
+      return `<tr${busy(f) ? "" : ` class="idle"`} title="${esc(tip)}${busy(f) ? "" : "\nidle: it doesn't pay to make this here at today's prices"}\nproductivity ×${total.toFixed(2)}\nprofit £${fmt(f.profit, 2)} a day"><td>${esc(f.name)}<br><span class="sub">${f.sector}${bon ? ` · ${bon}` : ""}</span>${methodsLine(f, mine)}</td>
         <td>${G[f.output].name}<br><span class="sub">${fmt(f.produced, 1)} a day</span></td>
         <td class="nowrap">${fmt(f.labor, 1)} / ${fmt(f.wanted, 1)}</td><td class="nowrap">${fmt(m.supply, 1)} / ${fmt(m.demand, 1)}</td><td>${per}</td><td>${f.max_levels > 0 ? `${f.levels}/${f.max_levels}` : f.levels}${grow ? `<br>${grow}` : ""}${f.level_gain > 0.005 && !f.expansion ? `<br><span class="sub" title="Extra output a day one more level would bring, from the same workers and inputs: a level (£${fmt(levelPrice, 0)}) pays for itself in about ${Math.round(levelPrice / f.level_gain)} days">+£${fmt(f.level_gain, 1)}</span>` : ""}</td></tr>`;
     }).join("");
@@ -1575,6 +1575,29 @@ function societyBlock(n) {
 }
 
 // the state's accounts today: what came in, what it paid for, and the treasury
+// methodsLine lists a firm's production methods under its name: the levels
+// each runs, what a level would earn on it, and (for the owner) a button to
+// refit a level to it; methods not yet known show the technology they need.
+function methodsLine(f, mine) {
+  if (!f.methods) return "";
+  // what a level earns is compared with the method most of the firm runs
+  // (an ideal at today's prices, unconstrained by sales: good for comparing
+  // methods, not as a sum of money)
+  const main = f.methods.reduce((a, m) => (m.levels > a.levels ? m : a), f.methods[0]);
+  const rel = (m) => (main.level_profit > 0 ? m.level_profit / main.level_profit : 0);
+  const parts = f.methods.map((m, k) => {
+    if (!m.known) return null;
+    if (!m.runs) return `<span class="dim" title="an input it needs is not made anywhere yet">${esc(m.name)}${m.levels ? ` ${m.levels}` : ""}: no inputs yet</span>`;
+    const others = f.methods.some((o, j) => j !== k && o.levels > 0);
+    const refit = mine && !f.expansion && others ? ` <button data-cmd="/regions/${selected}/firms/${f.i}/methods/${k}/refit" title="Your nation pays ${fmt(world.level_cost * 0.4, 0)} construction to refit the firm's least profitable level of another method to ${esc(m.name)}">⟳</button>` : "";
+    const vs = m === main ? "" : ` · ×${rel(m).toFixed(2)}`;
+    return `<span title="${m === main ? "the method most of its levels run" : `at today's prices a level on it would earn ${rel(m).toFixed(2)} times what one on ${esc(main.name)} does`}; it made ${fmt(m.produced, 1)} today">${esc(m.name)} <b>${m.levels}</b>${vs}${refit}</span>`;
+  });
+  const locked = f.methods.filter((m) => !m.known);
+  const later = locked.length ? ` · <span class="dim" title="${locked.map((m) => `${esc(m.name)}: needs ${esc(m.requires)}`).join("\n")}">+${locked.length} to come</span>` : "";
+  return `<br><span class="sub">${parts.filter((x) => x).join(" · ")}${later}</span>`;
+}
+
 function accountsBlock(n, mine) {
   const spent = n.spent_on.reduce((a, b) => a + b, 0);
   const row = (label, v, note = "") => `<tr><td>${label}${note ? `<br><span class="sub">${note}</span>` : ""}</td><td>${v < 0 ? "−" : ""}£${fmt(Math.abs(v), 1)}</td></tr>`;

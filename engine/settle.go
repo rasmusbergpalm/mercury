@@ -142,6 +142,9 @@ func (w *World) settleFrom(b *World) {
 			f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = bf.Cash, bf.Inventory, bf.Labor, bf.LastOutput, bf.ProfitEMA
 			f.Levels, f.Age, f.Wear, f.Expansion = bf.Levels, bf.Age, bf.Wear, nil
 			f.Urge, f.Projects = bf.Urge, bf.Projects
+			for k, m := range f.Methods {
+				m.levels = bf.Methods[k].levels
+			}
 			if bf.Expansion != nil {
 				e := *bf.Expansion
 				f.Expansion = &e

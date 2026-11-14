@@ -56,11 +56,15 @@ type PopSnap struct {
 }
 
 type FirmSnap struct {
-	TFP, Cash, Inventory, Labor, LastOutput, ProfitEMA float64
-	Levels, MaxLevels, LossTicks, Age, Funded          int
-	Expansion                                          *Expansion
-	Wear, Urge                                         float64
-	Projects                                           int
+	Cash, Inventory, Labor, LastOutput, ProfitEMA float64
+	Levels, MaxLevels, LossTicks, Age, Funded     int
+	Expansion                                     *Expansion
+	Wear, Urge                                    float64
+	Projects                                      int
+	// per method: productivity, and the levels it runs (the first method's
+	// are the rest)
+	TFP          []float64
+	MethodLevels []int `json:",omitempty"`
 }
 
 type RegionSnap struct {
@@ -139,8 +143,15 @@ func (w *World) Snapshot() (*Snapshot, error) {
 				append([]float64(nil), p.Consumed...)})
 		}
 		for _, f := range r.Firms {
-			fs := FirmSnap{f.TFP, f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA,
-				f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Funded, nil, f.Wear, f.Urge, f.Projects}
+			fs := FirmSnap{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
+				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age, Funded: f.Funded,
+				Wear: f.Wear, Urge: f.Urge, Projects: f.Projects}
+			for i, m := range f.Methods {
+				fs.TFP = append(fs.TFP, m.TFP)
+				if i > 0 {
+					fs.MethodLevels = append(fs.MethodLevels, m.levels)
+				}
+			}
 			if f.Expansion != nil {
 				e := *f.Expansion
 				fs.Expansion = &e
@@ -245,7 +256,16 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 		for j, fs := range rs.Firms {
 			f := r.Firms[j]
-			f.TFP, f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = fs.TFP, fs.Cash, fs.Inventory, fs.Labor, fs.LastOutput, fs.ProfitEMA
+			f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = fs.Cash, fs.Inventory, fs.Labor, fs.LastOutput, fs.ProfitEMA
+			if len(fs.TFP) != len(f.Methods) || len(fs.MethodLevels) != len(f.Methods)-1 {
+				return bad("firm methods")
+			}
+			for k, m := range f.Methods {
+				m.TFP = fs.TFP[k]
+				if k > 0 {
+					m.levels = fs.MethodLevels[k-1]
+				}
+			}
 			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, fs.Expansion
 			f.Funded, f.Wear, f.Urge, f.Projects = fs.Funded, fs.Wear, fs.Urge, fs.Projects
 		}
@@ -343,6 +363,7 @@ func Restore(s *Snapshot) (*World, error) {
 		if r.Nation == nil {
 			for _, f := range r.Firms {
 				f.Enabled = firmEnabled(f, nil)
+				f.applyMethods(nil)
 			}
 		}
 	}
@@ -350,7 +371,9 @@ func Restore(s *Snapshot) (*World, error) {
 		n.applyTech()
 		for _, r := range n.Regions { // TFP exactly as saved
 			for j, f := range r.Firms {
-				f.TFP = s.Regions[r.ID].Firms[j].TFP
+				for k, m := range f.Methods {
+					m.TFP = s.Regions[r.ID].Firms[j].TFP[k]
+				}
 			}
 		}
 	}

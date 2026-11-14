@@ -16,7 +16,7 @@ func TestTechTreeIsWellFormed(t *testing.T) {
 	for k := Public(0); k < NumServices; k++ {
 		firms[services[k].Firm] = true
 	}
-	for _, m := range Methods {
+	for _, m := range MethodRecipes {
 		if !firms[m.Base] {
 			t.Errorf("method %s of unknown firm %q", m.Firm, m.Base)
 		}

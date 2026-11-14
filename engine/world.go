@@ -307,7 +307,46 @@ func (w *World) Expand(region, firm int) error {
 	case f.AtCap():
 		return ErrFirmMax
 	}
-	f.Expansion = &Expansion{Public: true}
+	best, _ := f.bestMethod(r.Prices(), r.Wage) // a new level runs the method it earns most on
+	if best < 0 {
+		return ErrFirmMax
+	}
+	f.Expansion = &Expansion{Public: true, Method: best}
+	return nil
+}
+
+// Refit has a tile's nation pay to refit one of a firm's levels to its
+// method-th method: the level of its other methods that earns least.
+func (w *World) Refit(region, firm, method int) error {
+	r := w.Regions[region]
+	f := r.Firms[firm]
+	switch {
+	case r.Nation == nil:
+		return ErrNoNation
+	case f.Expansion != nil:
+		return ErrExpanding
+	case !f.Enabled:
+		return ErrFirmLocked
+	case method < 0 || method >= len(f.Methods) || !f.Methods[method].Runs():
+		return ErrMethod
+	}
+	from, low := -1, 0.0
+	for i := range f.Methods {
+		if i == method || f.MethodLevels(i) == 0 {
+			continue
+		}
+		p := 0.0
+		if f.Methods[i].Runs() {
+			p = f.LevelProfit(i, r.Prices(), r.Wage)
+		}
+		if from < 0 || p < low {
+			from, low = i, p
+		}
+	}
+	if from < 0 {
+		return ErrNoRefit
+	}
+	f.Expansion = &Expansion{Public: true, Refit: true, Method: method, From: from}
 	return nil
 }
 
@@ -508,7 +547,9 @@ func (w *World) transfer(r *Region, n *Nation) {
 	r.Siege = nil
 	r.Project = nil
 	for _, f := range r.Firms {
-		f.TFP = f.BaseTFP
+		for _, m := range f.Methods {
+			m.TFP = m.BaseTFP
+		}
 		if f.Expansion != nil && f.Expansion.Public {
 			f.Expansion = nil
 		}
