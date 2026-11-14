@@ -57,8 +57,6 @@ var GameRecipes = []Recipe{
 	{"Munitions plant", "munitions", 1.5, []Factor{Labor(0.3), Input("iron", 0.2), Input("coal", 0.2)}},
 	{"Motor works", "vehicles", 0.8, []Factor{Labor(0.3), Input("iron", 0.3), Input("coal", 0.1)}},
 	{"Aircraft factory", "aircraft", 0.8, []Factor{Labor(0.4), Input("wood", 0.15), Input("cloth", 0.1), Input("iron", 0.1)}},
-	{"Textile factory", "cloth", 3.0, []Factor{Labor(0.12), Comp("fiber", 0.4), Input("coal", 0.08), Input("steam engines", 0.05)}},
-	{"Steel works", "iron", 2.2, []Factor{Labor(0.15), Input("iron ore", 0.3), Input("coal", 0.15), Input("steam engines", 0.05)}},
 	{"Toolmaker", "tools", 1.2, []Factor{Labor(0.3), Input("iron", 0.25), Input("wood", 0.1)}},
 	{"Engine works", "steam engines", 0.8, []Factor{Labor(0.3), Input("iron", 0.3), Input("coal", 0.1), Input("tools", 0.1)}},
 	{"Chemical works", "explosives", 1.0, []Factor{Labor(0.3), Input("coal", 0.2), Input("clay", 0.1)}},
@@ -77,28 +75,31 @@ var serviceFirms = map[string]bool{"Transport": true, "Construction": true, "Uni
 // them worth building (and the old one comes back where the machinery is
 // dear). A land-bound one shares its land with the old one: it grows by
 // taking the old one's levels over. Like the machines of the period, a
-// method replaces labour with machinery and fuel and keeps at least the
-// old one's share for its capital (one less its exponents): a recipe that
-// only added inputs would leave less profit a level and never spread.
+// method replaces labour with machinery and fuel, and keeps the old one's
+// share for its capital (one less its exponents): with less, it would
+// leave less profit a level and never spread; with more, the economy
+// would need far more capital than 19th-century economies had.
 var Methods = []struct {
 	Base string
 	Recipe
 }{
-	{"Coal mine", Recipe{"Steam coal mine", "coal", 3.3, []Factor{Labor(0.4), Input("steam engines", 0.08), Input("coal", 0.04)}}},
-	{"Iron mine", Recipe{"Steam iron mine", "iron ore", 2.4, []Factor{Labor(0.4), Input("steam engines", 0.08), Input("coal", 0.04)}}},
-	{"Iron mine", Recipe{"Blasting iron mine", "iron ore", 3.0, []Factor{Labor(0.35), Input("explosives", 0.08), Input("steam engines", 0.05)}}},
-	{"Farm", Recipe{"Seed-drill farm", "grain", 2.4, []Factor{Labor(0.5), Input("tools", 0.05)}}},
-	{"Farm", Recipe{"Fertilized farm", "grain", 3.2, []Factor{Labor(0.4), Input("tools", 0.05), Input("fertilizer", 0.1)}}},
-	{"Farm", Recipe{"Tractor farm", "grain", 5.0, []Factor{Labor(0.25), Input("vehicles", 0.08), Input("oil", 0.05), Input("fertilizer", 0.08)}}},
-	{"Potato farm", Recipe{"Fertilized potato farm", "potatoes", 3.6, []Factor{Labor(0.45), Input("fertilizer", 0.1)}}},
-	{"Transport", Recipe{"Steam transport", "transport", 3.0, []Factor{Labor(0.4), Input("steam engines", 0.08), Input("coal", 0.04)}}},
-	{"Transport", Recipe{"Motor transport", "transport", 4.5, []Factor{Labor(0.3), Input("vehicles", 0.1), Input("oil", 0.08)}}},
-	{"Construction", Recipe{"Steam cranes", "construction", 2.0, []Factor{Labor(0.35), Input("wood", 0.15), Input("steam engines", 0.05), Input("coal", 0.03)}}},
-	{"Toolmaker", Recipe{"Machine-tool works", "tools", 2.0, []Factor{Labor(0.2), Input("iron", 0.25), Input("steam engines", 0.05), Input("coal", 0.05)}}},
-	{"Smithy", Recipe{"Electric smithy", "ironware", 2.5, []Factor{Labor(0.15), Input("iron", 0.3), Input("electricity", 0.1)}}},
-	{"Carpenter", Recipe{"Electric joinery", "furniture", 2.5, []Factor{Labor(0.15), Input("wood", 0.4), Input("electricity", 0.07)}}},
-	{"Tailor", Recipe{"Garment factory", "clothes", 3.0, []Factor{Labor(0.15), Input("cloth", 0.4), Input("electricity", 0.05), Input("tools", 0.03)}}},
-	{"Motor works", Recipe{"Assembly-line works", "vehicles", 2.0, []Factor{Labor(0.15), Input("iron", 0.3), Input("coal", 0.05), Input("electricity", 0.1)}}},
+	{"Mill", Recipe{"Textile factory", "cloth", 3.0, []Factor{Labor(0.15), Comp("fiber", 0.4), Input("coal", 0.1), Input("steam engines", 0.05)}}},
+	{"Smelter", Recipe{"Steel works", "iron", 2.2, []Factor{Labor(0.17), Input("iron ore", 0.3), Input("coal", 0.18), Input("steam engines", 0.05)}}},
+	{"Coal mine", Recipe{"Steam coal mine", "coal", 3.3, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}},
+	{"Iron mine", Recipe{"Steam iron mine", "iron ore", 2.4, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}},
+	{"Iron mine", Recipe{"Blasting iron mine", "iron ore", 3.0, []Factor{Labor(0.4), Input("explosives", 0.12), Input("steam engines", 0.08)}}},
+	{"Farm", Recipe{"Seed-drill farm", "grain", 2.4, []Factor{Labor(0.52), Input("tools", 0.08)}}},
+	{"Farm", Recipe{"Fertilized farm", "grain", 3.2, []Factor{Labor(0.42), Input("tools", 0.06), Input("fertilizer", 0.12)}}},
+	{"Farm", Recipe{"Tractor farm", "grain", 5.0, []Factor{Labor(0.3), Input("vehicles", 0.12), Input("oil", 0.08), Input("fertilizer", 0.1)}}},
+	{"Potato farm", Recipe{"Fertilized potato farm", "potatoes", 3.6, []Factor{Labor(0.48), Input("fertilizer", 0.12)}}},
+	{"Transport", Recipe{"Steam transport", "transport", 3.6, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}},
+	{"Transport", Recipe{"Motor transport", "transport", 4.5, []Factor{Labor(0.35), Input("vehicles", 0.15), Input("oil", 0.1)}}},
+	{"Construction", Recipe{"Steam cranes", "construction", 2.4, []Factor{Labor(0.42), Input("wood", 0.18), Input("steam engines", 0.06), Input("coal", 0.04)}}},
+	{"Toolmaker", Recipe{"Machine-tool works", "tools", 2.0, []Factor{Labor(0.25), Input("iron", 0.25), Input("steam engines", 0.08), Input("coal", 0.07)}}},
+	{"Smithy", Recipe{"Electric smithy", "ironware", 2.5, []Factor{Labor(0.2), Input("iron", 0.3), Input("electricity", 0.2)}}},
+	{"Carpenter", Recipe{"Electric joinery", "furniture", 2.5, []Factor{Labor(0.18), Input("wood", 0.4), Input("electricity", 0.12)}}},
+	{"Tailor", Recipe{"Garment factory", "clothes", 3.0, []Factor{Labor(0.18), Input("cloth", 0.4), Input("electricity", 0.08), Input("tools", 0.04)}}},
+	{"Motor works", Recipe{"Assembly-line works", "vehicles", 2.0, []Factor{Labor(0.18), Input("iron", 0.3), Input("coal", 0.05), Input("electricity", 0.17)}}},
 }
 
 // GameRawRecipes are land-bound producers that exist only in game worlds,
@@ -238,7 +239,7 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 			for _, f := range group {
 				for _, o := range group {
 					if o != f {
-						f.land = append(f.land, o)
+						f.kin = append(f.kin, o)
 					}
 				}
 			}
@@ -255,11 +256,21 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 		}
 		firms = append(firms, f)
 		if game {
+			group := []*Firm{f}
 			for _, m := range Methods {
 				if m.Base == rc.Firm {
 					g := NewFirm(m.Firm, G(m.Output), m.TFP, m.Factors, 50)
 					g.Sector, g.Base = f.Sector, rc.Firm
+					g.Levels = 0 // it starts on a level of the old method's, when its tech comes
 					firms = append(firms, g)
+					group = append(group, g)
+				}
+			}
+			for _, g := range group {
+				for _, o := range group {
+					if o != g {
+						g.kin = append(g.kin, o)
+					}
 				}
 			}
 		}
@@ -270,6 +281,9 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 		}
 		for _, f := range firms {
 			f.Requires = FirmTech[f.Name]
+			if f.Base != "" {
+				f.baseTech = FirmTech[f.Base]
+			}
 			f.Enabled = f.Requires == ""
 
 		}

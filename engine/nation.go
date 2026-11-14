@@ -477,7 +477,7 @@ func (n *Nation) plan(w *World) {
 		}
 		for _, f := range r.Firms {
 			if e := f.Expansion; e != nil && e.Public {
-				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(rate, LevelCost-e.Delivered)})
+				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(rate, e.Cost()-e.Delivered)})
 			}
 		}
 	}
@@ -710,7 +710,7 @@ func (n *Nation) applyTech() {
 			f.TFP = f.BaseTFP * n.firmMult(f)
 			f.Enabled = firmEnabled(f, n)
 			if f.Enabled && f.Levels == 0 { // a new method on land: it starts on a level of the old one's
-				if d := f.landDonor(); d != nil {
+				if d := f.kinDonor(); d != nil {
 					d.Levels--
 					f.Levels = 1
 				}

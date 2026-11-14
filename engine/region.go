@@ -124,7 +124,7 @@ const (
 	// 10% a year, about what 19th-century firms asked of new works
 	investPayback = 10 * TicksPerYear
 	investMinAge  = 100 // ticks before a firm's profit record counts
-	buildDays     = 90  // a private level takes this long to build, at the quickest
+	buildDays     = 90  // a private level (or a refit) takes this long to build, at the quickest
 	disinvestAt   = 100 // ticks of losses before a firm closes a level
 	// capital wears out: each year 2% of a firm's levels must be made good
 	// with construction (its upkeep, a cost like any other), or the firm
@@ -148,22 +148,34 @@ func (r *Region) planInvestment() {
 			continue
 		}
 		perLevel := f.ProfitEMA / float64(f.Levels)
-		gain := perLevel // what a level adds; on full land, less what the land earns now
-		if f.MaxLevels > 0 && f.landLevels() >= f.MaxLevels {
-			if d := f.landDonor(); d != nil {
-				gain -= d.ProfitEMA / float64(d.Levels)
+		// what refitting a level of another method would add: this one's
+		// profit a level less what that level earns now
+		refitGain := 0.0
+		if d := f.kinDonor(); d != nil {
+			refitGain = perLevel - d.ProfitEMA/float64(d.Levels)
+		}
+		if f.Expansion == nil && f.Enabled && f.Age > investMinAge && perLevel > 0 {
+			full := f.MaxLevels > 0 && f.kinLevels() >= f.MaxLevels
+			switch {
+			case refitGain*payback > refitShare*LevelCost*price:
+				f.Expansion = &Expansion{Refit: true}
+			case !full && perLevel*payback > LevelCost*price:
+				f.Expansion = &Expansion{}
 			}
 		}
-		if f.Expansion == nil && f.Enabled && !f.AtCap() && f.Age > investMinAge && gain > 0 && gain*payback > LevelCost*price {
-			f.Expansion = &Expansion{}
-		}
 		upkeep := 0.0
-		if f.Enabled {
+		if f.Enabled && f.ProfitEMA > 0 { // capital that loses money is left to wear out
 			upkeep = depreciation * float64(f.Levels) * LevelCost / TicksPerYear
 		}
 		want := upkeep
-		if e := f.Expansion; e != nil && !e.Public && perLevel*payback >= (LevelCost-e.Delivered)*price {
-			want += math.Min(LevelCost/buildDays, LevelCost-e.Delivered)
+		if e := f.Expansion; e != nil && !e.Public {
+			gain := perLevel
+			if e.Refit {
+				gain = refitGain
+			}
+			if gain*payback >= (e.Cost()-e.Delivered)*price {
+				want += math.Min(e.Cost()/buildDays, e.Cost()-e.Delivered) // a refit takes as long to put in
+			}
 		}
 		if want <= 0 {
 			continue
@@ -191,12 +203,12 @@ func (r *Region) settleFirms() {
 				f.Wear--
 			}
 		}
-		if e := f.Expansion; e != nil && e.Delivered >= LevelCost-1e-9 {
+		if e := f.Expansion; e != nil && e.Delivered >= e.Cost()-1e-9 {
 			f.Levels++
 			f.Expansion = nil
-			if f.MaxLevels > 0 && f.landLevels() > f.MaxLevels {
-				if d := f.landDonor(); d != nil {
-					d.Levels-- // the new method takes over a level of the land
+			if e.Refit || (f.MaxLevels > 0 && f.kinLevels() > f.MaxLevels) {
+				if d := f.kinDonor(); d != nil {
+					d.Levels-- // a level of another method refitted (on land: its land taken over)
 				}
 			}
 			if f.State {

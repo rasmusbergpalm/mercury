@@ -418,6 +418,9 @@ func (n *Nation) CanBuildPorts() bool {
 
 // firmEnabled reports whether a firm works for this owner (nil: unowned).
 func firmEnabled(f *Firm, owner *Nation) bool {
+	if f.baseTech != "" && (owner == nil || !owner.Has(f.baseTech)) {
+		return false
+	}
 	if f.Requires == "" {
 		return true
 	}

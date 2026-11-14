@@ -62,6 +62,7 @@ type Firm struct {
 	// Requires names the tech the owner needs for the firm to work; Enabled
 	// says whether it does (always true in the classic world).
 	Requires string
+	baseTech string // a method also needs its firm's tech
 	Enabled  bool
 	Sector   Sector
 	// Agglom multiplies productivity for firms that gain from a city around
@@ -83,9 +84,11 @@ type Firm struct {
 	// or "": a method a tech makes available, with its own recipe and its
 	// own levels, side by side with the old one.
 	Base string
-	// land lists the other land-bound firms working the same land (a
-	// producer's methods): their levels together are capped (MaxLevels).
-	land []*Firm
+	// kin lists the firm's other methods on the tile (the firm it is a
+	// method of, and that firm's other methods): a method grows by refitting
+	// their levels, and on land, their levels together are capped
+	// (MaxLevels).
+	kin []*Firm
 	// Site and SiteMult: where a land-bound producer's productivity comes
 	// from (its terrain, or the coast) and how much it multiplies it.
 	Site       string
@@ -116,6 +119,22 @@ type Firm struct {
 type Expansion struct {
 	Delivered float64 // construction units delivered so far
 	Public    bool    // paid for by the nation (else by the firm's owners)
+	// Refit: a level of one of the firm's other methods refitted to this
+	// one (the building stays; the machinery is new), at refitShare of a
+	// level's cost
+	Refit bool `json:",omitempty"`
+}
+
+// refitShare is what refitting a level to another method costs, against
+// building a new one: the machinery, not the building.
+const refitShare = 0.4
+
+// Cost is the construction the expansion needs.
+func (e *Expansion) Cost() float64 {
+	if e.Refit {
+		return refitShare * LevelCost
+	}
+	return LevelCost
 }
 
 // LevelCost is the construction units one building level costs. A level is
@@ -141,32 +160,31 @@ func (f *Firm) effectiveTFP() float64 {
 }
 
 // AtCap reports whether the firm can have no more levels: it is at its cap,
-// and on land it shares, none of the other methods has a level to give up
-// (a new method grows by taking over the old one's land, one level at a
-// time; each keeps at least one).
+// and on land it shares, none of its other methods has a level to give up
+// (a method grows by refitting the old one's levels, one at a time; each
+// keeps at least one).
 func (f *Firm) AtCap() bool {
-	if f.MaxLevels == 0 || f.landLevels() < f.MaxLevels {
+	if f.MaxLevels == 0 || f.kinLevels() < f.MaxLevels {
 		return false
 	}
-	return f.landDonor() == nil
+	return f.kinDonor() == nil
 }
 
-// landLevels is the levels on the firm's land, its own and its other
-// methods'.
-func (f *Firm) landLevels() int {
+// kinLevels is the levels of the firm and its other methods.
+func (f *Firm) kinLevels() int {
 	n := f.Levels
-	for _, o := range f.land {
+	for _, o := range f.kin {
 		n += o.Levels
 	}
 	return n
 }
 
-// landDonor is the other method on the firm's land that would give up a
-// level for it: the one earning least per level, of those with a level to
-// spare (nil if none).
-func (f *Firm) landDonor() *Firm {
+// kinDonor is the other method that would give up a level for the firm to
+// refit: the one earning least per level, of those with a level to spare
+// (nil if none).
+func (f *Firm) kinDonor() *Firm {
 	var best *Firm
-	for _, o := range f.land {
+	for _, o := range f.kin {
 		if o.Levels > 1 && (best == nil || o.ProfitEMA/float64(o.Levels) < best.ProfitEMA/float64(best.Levels)) {
 			best = o
 		}

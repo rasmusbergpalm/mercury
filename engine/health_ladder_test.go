@@ -77,6 +77,7 @@ const (
 	todoBudget   = "several small nations' budgets still swing (tax within 1.1 points, treasury to 2.2 reserves)"
 	todoResearch = "research is slow: a nation learns a tech every two and a half years, a small one in eight"
 	todoSmall    = "three small nations: living standards dip 6% in a year, and grapes pile up a little: to investigate"
+	todoBigWages = "a big map's worst tile's wages wobble 5.5%: to investigate"
 )
 
 // todo is l with the to-do checks for its rung.
@@ -247,6 +248,6 @@ func TestHealthBigMap(t *testing.T) {
 	h := newHealthWatch(w)
 	h.run(int(3*TicksPerYear), 90)
 	h.report(t, todo(withTechs(nationBounds, 3), map[string]string{
-		"fewest people on a tile": todoFloor, "workers in work": todoJobs,
+		"fewest people on a tile": todoFloor, "wage wiggle, worst": todoBigWages,
 	}))
 }

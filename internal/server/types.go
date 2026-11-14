@@ -446,7 +446,7 @@ func regionState(w *engine.World, i int, cities float64) RegionState {
 		sv := &ServiceState{Levels: f.Levels, Funded: f.Funded, MaxLevels: f.MaxLevels, Staff: ss.Staff, Need: ss.Need,
 			Coverage: ss.Coverage, Research: ss.Research, PerLevel: ss.PerLevel, Cost: ss.Cost, Enabled: f.Enabled}
 		if e := f.Expansion; e != nil {
-			p := e.Delivered / engine.LevelCost
+			p := e.Delivered / e.Cost()
 			sv.Building = &p
 		}
 		st.Services = append(st.Services, sv)
