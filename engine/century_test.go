@@ -21,6 +21,7 @@ import (
 //
 //	CENTURY_OUT=/tmp/run go test ./engine -run TestCentury -timeout 60m
 //
+// CENTURY_ALLTECH=1 grants every tech on the first day (see runCentury).
 // CENTURY_MAP (say "small") plays on a generated map of that size instead of
 // the classic one. CENTURY_SEEDS (default "1,2") and CENTURY_YEARS (default 100) change the
 // seeds and the length. See CLAUDE.md for how it is used.
@@ -85,6 +86,14 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		t.Fatal(err)
 	}
 	n := w.Nations[0]
+	// CENTURY_ALLTECH=1: the nation knows every tech from the first day, a
+	// quick look (CENTURY_YEARS=15 or so) at where the late economy settles;
+	// incomes start at 1820's, so luxuries weigh less than by 1913
+	if os.Getenv("CENTURY_ALLTECH") != "" {
+		for _, tc := range Techs {
+			w.GrantTech(0, tc.Name)
+		}
+	}
 	out, err := os.Create(path)
 	if err != nil {
 		t.Fatal(err)
