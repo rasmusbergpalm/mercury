@@ -213,13 +213,30 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 			}
 		}
 	}
-	for _, a := range armies {
+	// idle and marching armies first: they answer raids, and a besieger
+	// only goes to a fight none of them is answering (aiFight leaves out
+	// tiles another of our armies is heading to)
+	besieging := func(a *Army) bool {
+		here := w.Regions[a.Region]
+		return len(a.Path) == 0 && here.Nation != n && here.Siege != nil && here.Siege.Nation == n
+	}
+	order := make([]*Army, 0, len(armies))
+	for _, pass := range []bool{false, true} {
+		for _, a := range armies {
+			if besieging(a) == pass {
+				order = append(order, a)
+			}
+		}
+	}
+	for _, a := range order {
 		if a.Retreating {
 			continue
 		}
-		// fights come first, even for an army on the march or besieging:
-		// defend our soil, then engage enemies it can beat
-		if fight := w.aiFight(n, a); fight >= 0 {
+		// fights come first, even for an army on the march: defend our
+		// soil, then engage enemies it can beat. A besieger keeps its siege
+		// unless the fight is on its tile or the enemy is further along
+		// taking ours there (see keepSiege).
+		if fight := w.aiFight(n, a); fight >= 0 && !w.keepSiege(n, a, fight) {
 			if going := a.Region; len(a.Path) > 0 {
 				going = a.Path[len(a.Path)-1]
 				if going == fight {
@@ -246,6 +263,26 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 			w.MoveArmy(a.ID, dest)
 		}
 	}
+}
+
+// keepSiege reports whether army a, occupying an enemy (or free) tile,
+// should stay rather than march off to fight in tile fight. A siege lifted
+// is lost: the occupation falls back once the army leaves. So a besieger
+// doesn't chase raiders or seek battle abroad, which the nation's idle and
+// marching armies do first; it breaks off only to save a tile of ours the
+// enemy is further along taking than it is taking this one.
+func (w *World) keepSiege(n *Nation, a *Army, fight int) bool {
+	here := w.Regions[a.Region]
+	s := here.Siege
+	if fight == a.Region || len(a.Path) > 0 || here.Nation == n || s == nil || s.Nation != n {
+		return false
+	}
+	there := w.Regions[fight]
+	t := there.Siege
+	if there.Nation != n || t == nil || t.Nation == n {
+		return true
+	}
+	return t.Progress <= s.Progress
 }
 
 // The computer only seeks battle when its side is this many times as strong.

@@ -814,50 +814,75 @@ func TestOccupationNeedsStrengthOne(t *testing.T) {
 	}
 }
 
-// Regression: a computer army besieging (or marching to take) land must
-// break off to defend its own soil when it can beat the invader there (with
-// the defender's bonus).
-func TestAIDefendsBeforeTakingLand(t *testing.T) {
-	w := newNeighbourGame(t)
-	alpha, beta := w.Nations[0], w.Nations[1]
-	alpha.AI = true
-	home := alpha.Regions[0]
-	var free *Region
-	for _, nb := range HexNeighbors(home.Row, home.Col, w.Rows, w.Cols) {
-		if r := w.Regions[nb[0]*w.Cols+nb[1]]; r.Nation == nil && w.reachable(alpha, r) {
-			free = r
-			break
-		}
-	}
-	if free == nil {
-		t.Fatal("no free tile next to Alpha")
-	}
-	full := func(a *Army, men float64) {
-		a.Target, a.Men = men, men
-		for g := range a.Supply {
-			a.Supply[g] = 1
-		}
-	}
-	w.DeclareWar(beta.ID, alpha.ID)
-	a, err := w.RaiseArmy(alpha.ID, home.ID, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	full(a, 10)
-	a.Region = free.ID
-	free.Siege = &Siege{Nation: alpha, Progress: 0.5} // halfway through taking it
-	e, err := w.RaiseArmy(beta.ID, beta.Regions[0].ID, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	full(e, 10) // as strong as ours: only the defender's bonus makes it beatable
-	e.Region = home.ID
-	if s := w.newAIScope(alpha, a); s.advantage(home) < s.odds {
-		t.Fatalf("set-up: advantage %v below the odds %v", s.advantage(home), s.odds)
-	}
-	w.aiArmies(alpha, w.expansionTargets(alpha))
-	if len(a.Path) == 0 || a.Path[len(a.Path)-1] != home.ID {
-		t.Errorf("the besieging army didn't march to defend tile %s: path %v", home.Name, a.Path)
+// A besieging army breaks off to defend our soil only when no idle or
+// marching army answers, and only when the enemy is further along taking
+// our tile than it is taking its own: a siege lifted is lost.
+func TestAIBesiegerDefendsOnlyWhenBehind(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		ours, theirs  float64 // occupation progress: ours abroad, theirs at home
+		spare, breaks bool    // a second, idle army at home; the besieger marches home
+	}{
+		{"enemy ahead", 0.3, 0.5, false, true},
+		{"enemy behind", 0.5, 0.3, false, false},
+		{"idle army answers", 0.3, 0.5, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := newNeighbourGame(t)
+			alpha, beta := w.Nations[0], w.Nations[1]
+			alpha.AI = true
+			home := alpha.Regions[0]
+			var free *Region
+			for _, nb := range HexNeighbors(home.Row, home.Col, w.Rows, w.Cols) {
+				if r := w.Regions[nb[0]*w.Cols+nb[1]]; r.Nation == nil && w.reachable(alpha, r) {
+					free = r
+					break
+				}
+			}
+			if free == nil {
+				t.Fatal("no free tile next to Alpha")
+			}
+			full := func(a *Army, men float64) {
+				a.Target, a.Men = men, men
+				for g := range a.Supply {
+					a.Supply[g] = 1
+				}
+			}
+			w.DeclareWar(beta.ID, alpha.ID)
+			a, err := w.RaiseArmy(alpha.ID, home.ID, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			full(a, 10)
+			a.Region = free.ID
+			free.Siege = &Siege{Nation: alpha, Progress: tc.ours}
+			e, err := w.RaiseArmy(beta.ID, beta.Regions[0].ID, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			full(e, 10) // as strong as ours: only the defender's bonus makes it beatable
+			e.Region = home.ID
+			home.Siege = &Siege{Nation: beta, Progress: tc.theirs}
+			var spare *Army
+			if tc.spare {
+				near := alpha.Regions[len(alpha.Regions)-1]
+				if spare, err = w.RaiseArmy(alpha.ID, near.ID, 0); err != nil {
+					t.Fatal(err)
+				}
+				full(spare, 10)
+			}
+			if s := w.newAIScope(alpha, a); s.advantage(home) < s.odds {
+				t.Fatalf("set-up: advantage %v below the odds %v", s.advantage(home), s.odds)
+			}
+			w.aiArmies(alpha, w.expansionTargets(alpha))
+			goes := len(a.Path) > 0 && a.Path[len(a.Path)-1] == home.ID
+			if goes != tc.breaks {
+				t.Errorf("besieger marches home: %v, want %v (path %v)", goes, tc.breaks, a.Path)
+			}
+			if spare != nil && spare.Region != home.ID && (len(spare.Path) == 0 || spare.Path[len(spare.Path)-1] != home.ID) {
+				t.Errorf("the idle army didn't answer: at %d, path %v", spare.Region, spare.Path)
+			}
+		})
 	}
 }
 
