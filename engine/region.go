@@ -144,10 +144,15 @@ func (r *Region) planInvestment() {
 	}
 	for _, f := range r.Firms {
 		f.upkeepWant = 0
-		if f.State || f.Levels < 1 {
+		if f.State || (f.Levels < 1 && len(f.kin) == 0) {
 			continue
 		}
-		perLevel := f.ProfitEMA / float64(f.Levels)
+		var perLevel float64
+		if f.Levels > 0 {
+			perLevel = f.ProfitEMA / float64(f.Levels)
+		} else { // a method with no level yet: what one would earn
+			perLevel = f.LevelProfit(r.prices, r.Wage)
+		}
 		// what refitting a level of another method would add: this one's
 		// profit a level less what that level earns now
 		refitGain := 0.0

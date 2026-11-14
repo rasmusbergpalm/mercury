@@ -623,6 +623,9 @@ func (w *World) aiExpandFirm(n *Nation) {
 			if f.Expansion != nil || f.State || !f.Enabled || f.AtCap() {
 				continue
 			}
+			if f.Levels == 0 {
+				continue // a method yet to be refitted to
+			}
 			if p := f.ProfitEMA / float64(f.Levels); p > best {
 				region, firm, best = r.ID, i, p
 			}

@@ -709,12 +709,6 @@ func (n *Nation) applyTech() {
 		for _, f := range r.Firms {
 			f.TFP = f.BaseTFP * n.firmMult(f)
 			f.Enabled = firmEnabled(f, n)
-			if f.Enabled && f.Levels == 0 { // a new method on land: it starts on a level of the old one's
-				if d := f.kinDonor(); d != nil {
-					d.Levels--
-					f.Levels = 1
-				}
-			}
 		}
 	}
 }

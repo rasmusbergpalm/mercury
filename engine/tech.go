@@ -108,8 +108,8 @@ var Techs = []Tech{
 
 	// ---- era 2: Railway age, 1840s–60s
 	{Name: "Steam power", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Factory system"},
-		Effect:      "Engine works can operate; steam-pumped coal mines (engines and coal, more coal a worker); all industry +10%",
-		EnableFirms: []string{"Engine works", "Steam coal mine"}, IndustryTFP: 1.1},
+		Effect:      "Engine works can operate; steam-pumped coal mines (engines and coal, deeper seams, more coal a worker); steam bakeries, breweries and sugar refineries; all industry +10%",
+		EnableFirms: []string{"Engine works", "Steam coal mine", "Steam bakery", "Steam brewery", "Vacuum-pan refinery"}, IndustryTFP: 1.1},
 	{Name: "Mechanized textiles", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Steam power"},
 		Effect: "Textile factories can operate; mills +15%", EnableFirms: []string{"Textile factory"},
 		FirmTFP: firms("Mill", 1.15)},
@@ -120,8 +120,8 @@ var Techs = []Tech{
 		Effect: "Seed-drill farms (tools, more grain a worker); potato farms +15%", EnableFirms: []string{"Seed-drill farm"},
 		FirmTFP: firms("Potato farm", 1.15)},
 	{Name: "Interchangeable parts", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Factory system"},
-		Effect:      "Machine-tool works (engines and coal, more tools a worker); armories +20%",
-		EnableFirms: []string{"Machine-tool works"}, FirmTFP: firms("Armory", 1.2)},
+		Effect:      "Machine-tool works (engines and coal, more tools a worker); factory kilns; armories +20%",
+		EnableFirms: []string{"Machine-tool works", "Factory kiln"}, FirmTFP: firms("Armory", 1.2)},
 	{Name: "Ocean sailing", Branch: BranchTransport, Era: 1, Cost: era2, Requires: []string{"Navigation"},
 		Effect: "Ports on coast tiles: ships sail straight to every other port", Ports: true},
 	{Name: "Steam engine", Branch: BranchTransport, Era: 1, Cost: era2, Requires: []string{"Wagons"},

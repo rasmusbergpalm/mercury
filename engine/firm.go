@@ -212,6 +212,20 @@ func (f *Firm) unitCost(fc Factor, prices []float64, wage float64) float64 {
 	}
 }
 
+// LevelProfit is what one level of the firm would earn a day at these prices,
+// working at its best: with constant returns, a level's share of revenue,
+// one less the exponents. Owners reckon with it for a method they have yet
+// to build a level of.
+func (f *Firm) LevelProfit(prices []float64, wage float64) float64 {
+	p := prices[f.Output]
+	k, s := f.TFP*f.Agglom*f.EduMult*f.Loyal, 0.0
+	for _, fc := range f.Factors {
+		k *= math.Pow(fc.Exp*p/f.unitCost(fc, prices, wage), fc.Exp)
+		s += fc.Exp
+	}
+	return (1 - s) * p * math.Pow(k, 1/(1-s))
+}
+
 // Plan sets the profit-maximising labor and goods demand at current prices,
 // capped by cash.
 //

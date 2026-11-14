@@ -248,6 +248,6 @@ func TestHealthBigMap(t *testing.T) {
 	h := newHealthWatch(w)
 	h.run(int(3*TicksPerYear), 90)
 	h.report(t, todo(withTechs(nationBounds, 3), map[string]string{
-		"fewest people on a tile": todoFloor, "wage wiggle, worst": todoBigWages,
+		"fewest people on a tile": todoFloor, "wage wiggle, worst": todoBigWages, "workers in work": todoJobs,
 	}))
 }

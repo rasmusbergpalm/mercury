@@ -82,24 +82,32 @@ var serviceFirms = map[string]bool{"Transport": true, "Construction": true, "Uni
 var Methods = []struct {
 	Base string
 	Recipe
+	// Cap is the levels a land-bound method can work, if more than the
+	// old one's (RawMaxLevels): steam pumps and blasting reach seams the
+	// old mines couldn't.
+	Cap int
 }{
-	{"Mill", Recipe{"Textile factory", "cloth", 3.0, []Factor{Labor(0.15), Comp("fiber", 0.4), Input("coal", 0.1), Input("steam engines", 0.05)}}},
-	{"Smelter", Recipe{"Steel works", "iron", 2.2, []Factor{Labor(0.17), Input("iron ore", 0.3), Input("coal", 0.18), Input("steam engines", 0.05)}}},
-	{"Coal mine", Recipe{"Steam coal mine", "coal", 3.3, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}},
-	{"Iron mine", Recipe{"Steam iron mine", "iron ore", 2.4, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}},
-	{"Iron mine", Recipe{"Blasting iron mine", "iron ore", 3.0, []Factor{Labor(0.4), Input("explosives", 0.12), Input("steam engines", 0.08)}}},
-	{"Farm", Recipe{"Seed-drill farm", "grain", 2.4, []Factor{Labor(0.52), Input("tools", 0.08)}}},
-	{"Farm", Recipe{"Fertilized farm", "grain", 3.2, []Factor{Labor(0.42), Input("tools", 0.06), Input("fertilizer", 0.12)}}},
-	{"Farm", Recipe{"Tractor farm", "grain", 5.0, []Factor{Labor(0.3), Input("vehicles", 0.12), Input("oil", 0.08), Input("fertilizer", 0.1)}}},
-	{"Potato farm", Recipe{"Fertilized potato farm", "potatoes", 3.6, []Factor{Labor(0.48), Input("fertilizer", 0.12)}}},
-	{"Transport", Recipe{"Steam transport", "transport", 3.6, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}},
-	{"Transport", Recipe{"Motor transport", "transport", 4.5, []Factor{Labor(0.35), Input("vehicles", 0.15), Input("oil", 0.1)}}},
-	{"Construction", Recipe{"Steam cranes", "construction", 2.4, []Factor{Labor(0.42), Input("wood", 0.18), Input("steam engines", 0.06), Input("coal", 0.04)}}},
-	{"Toolmaker", Recipe{"Machine-tool works", "tools", 2.0, []Factor{Labor(0.25), Input("iron", 0.25), Input("steam engines", 0.08), Input("coal", 0.07)}}},
-	{"Smithy", Recipe{"Electric smithy", "ironware", 2.5, []Factor{Labor(0.2), Input("iron", 0.3), Input("electricity", 0.2)}}},
-	{"Carpenter", Recipe{"Electric joinery", "furniture", 2.5, []Factor{Labor(0.18), Input("wood", 0.4), Input("electricity", 0.12)}}},
-	{"Tailor", Recipe{"Garment factory", "clothes", 3.0, []Factor{Labor(0.18), Input("cloth", 0.4), Input("electricity", 0.08), Input("tools", 0.04)}}},
-	{"Motor works", Recipe{"Assembly-line works", "vehicles", 2.0, []Factor{Labor(0.18), Input("iron", 0.3), Input("coal", 0.05), Input("electricity", 0.17)}}},
+	{"Mill", Recipe{"Textile factory", "cloth", 3.0, []Factor{Labor(0.15), Comp("fiber", 0.4), Input("coal", 0.1), Input("steam engines", 0.05)}}, 0},
+	{"Smelter", Recipe{"Steel works", "iron", 2.2, []Factor{Labor(0.17), Input("iron ore", 0.3), Input("coal", 0.18), Input("steam engines", 0.05)}}, 0},
+	{"Coal mine", Recipe{"Steam coal mine", "coal", 3.8, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 16},
+	{"Iron mine", Recipe{"Steam iron mine", "iron ore", 2.4, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 6},
+	{"Iron mine", Recipe{"Blasting iron mine", "iron ore", 3.0, []Factor{Labor(0.4), Input("explosives", 0.12), Input("steam engines", 0.08)}}, 8},
+	{"Farm", Recipe{"Seed-drill farm", "grain", 2.4, []Factor{Labor(0.52), Input("tools", 0.08)}}, 0},
+	{"Farm", Recipe{"Fertilized farm", "grain", 3.2, []Factor{Labor(0.42), Input("tools", 0.06), Input("fertilizer", 0.12)}}, 0},
+	{"Farm", Recipe{"Tractor farm", "grain", 5.0, []Factor{Labor(0.3), Input("vehicles", 0.12), Input("oil", 0.08), Input("fertilizer", 0.1)}}, 0},
+	{"Potato farm", Recipe{"Fertilized potato farm", "potatoes", 3.6, []Factor{Labor(0.48), Input("fertilizer", 0.12)}}, 0},
+	{"Transport", Recipe{"Steam transport", "transport", 3.6, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 0},
+	{"Transport", Recipe{"Motor transport", "transport", 4.5, []Factor{Labor(0.35), Input("vehicles", 0.15), Input("oil", 0.1)}}, 0},
+	{"Construction", Recipe{"Steam cranes", "construction", 2.4, []Factor{Labor(0.42), Input("wood", 0.18), Input("steam engines", 0.06), Input("coal", 0.04)}}, 0},
+	{"Toolmaker", Recipe{"Machine-tool works", "tools", 2.0, []Factor{Labor(0.25), Input("iron", 0.25), Input("steam engines", 0.08), Input("coal", 0.07)}}, 0},
+	{"Bakery", Recipe{"Steam bakery", "bread", 2.8, []Factor{Labor(0.22), Input("grain", 0.4), Input("coal", 0.12), Input("steam engines", 0.06)}}, 0},
+	{"Brewery", Recipe{"Steam brewery", "beer", 2.2, []Factor{Labor(0.18), Input("grain", 0.4), Input("coal", 0.07), Input("steam engines", 0.05)}}, 0},
+	{"Refinery", Recipe{"Vacuum-pan refinery", "sugar", 1.8, []Factor{Labor(0.12), Input("sugar cane", 0.4), Input("coal", 0.12), Input("steam engines", 0.06)}}, 0},
+	{"Kiln", Recipe{"Factory kiln", "porcelain", 1.6, []Factor{Labor(0.25), Input("clay", 0.2), Input("coal", 0.25), Input("steam engines", 0.05), Input("tools", 0.05)}}, 0},
+	{"Smithy", Recipe{"Electric smithy", "ironware", 2.5, []Factor{Labor(0.2), Input("iron", 0.3), Input("electricity", 0.2)}}, 0},
+	{"Carpenter", Recipe{"Electric joinery", "furniture", 2.5, []Factor{Labor(0.18), Input("wood", 0.4), Input("electricity", 0.12)}}, 0},
+	{"Tailor", Recipe{"Garment factory", "clothes", 3.0, []Factor{Labor(0.18), Input("cloth", 0.4), Input("electricity", 0.08), Input("tools", 0.04)}}, 0},
+	{"Motor works", Recipe{"Assembly-line works", "vehicles", 2.0, []Factor{Labor(0.18), Input("iron", 0.3), Input("coal", 0.05), Input("electricity", 0.17)}}, 0},
 }
 
 // GameRawRecipes are land-bound producers that exist only in game worlds,
@@ -230,8 +238,8 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 			for _, m := range Methods {
 				if m.Base == base.Name {
 					f := NewFirm(m.Firm, G(m.Output), m.TFP*base.SiteMult, m.Factors, 50)
-					f.MaxLevels, f.Sector, f.Site, f.SiteMult, f.Base = RawMaxLevels, Primary, base.Site, base.SiteMult, base.Name
-					f.Levels = 0 // it starts on a level of the old method's, when its tech comes
+					f.MaxLevels, f.Sector, f.Site, f.SiteMult, f.Base = max(RawMaxLevels, m.Cap), Primary, base.Site, base.SiteMult, base.Name
+					f.Levels = 0 // its first level is one of the old method's, refitted once it pays
 					firms = append(firms, f)
 					group = append(group, f)
 				}
@@ -261,7 +269,7 @@ func makeFirms(t Terrain, coastal, game bool) []*Firm {
 				if m.Base == rc.Firm {
 					g := NewFirm(m.Firm, G(m.Output), m.TFP, m.Factors, 50)
 					g.Sector, g.Base = f.Sector, rc.Firm
-					g.Levels = 0 // it starts on a level of the old method's, when its tech comes
+					g.Levels = 0 // its first level is one of the old method's, refitted once it pays
 					firms = append(firms, g)
 					group = append(group, g)
 				}
