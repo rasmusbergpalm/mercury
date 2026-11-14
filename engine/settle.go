@@ -8,10 +8,12 @@ import (
 )
 
 // SettleYears is how long the world runs before a game starts: no nations,
-// no technology, no construction and no population growth, only markets,
-// trade and migration, so that the game opens on prices that have found
-// their level and people who have moved to where the work is, instead of
-// every price at £1.
+// no technology and no population growth, only markets, trade, migration
+// and firms' investment, so that the game opens on prices that have found
+// their level, people who have moved to where the work is and the capital
+// its returns justify, instead of every price at £1 and every firm at one
+// level. (Opening without that capital, the first decade spent a third of
+// its output building it.)
 const SettleYears = 20
 
 // Big maps settle for fewer years, so that a new game doesn't take minutes
@@ -110,7 +112,7 @@ func settle(spec GameSpec, progress func(done, total int)) (*World, error) {
 	if err != nil {
 		return nil, err
 	}
-	w.Migration = true
+	w.Migration, w.Investment = true, true
 	days := SettleDays(len(w.Regions))
 	for d := 0; d < days; d++ {
 		w.Step()
@@ -138,6 +140,11 @@ func (w *World) settleFrom(b *World) {
 		for j, bf := range br.Firms {
 			f := r.Firms[j]
 			f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = bf.Cash, bf.Inventory, bf.Labor, bf.LastOutput, bf.ProfitEMA
+			f.Levels, f.Age, f.Wear, f.Expansion = bf.Levels, bf.Age, bf.Wear, nil
+			if bf.Expansion != nil {
+				e := *bf.Expansion
+				f.Expansion = &e
+			}
 		}
 		copy(w.TradePrices[i], b.TradePrices[i])
 		r.updateAgglomeration()
@@ -152,8 +159,8 @@ func (w *World) settleFrom(b *World) {
 // computer running each computer nation's peacetime economy (in a server
 // game every nation is the computer's until a player joins): taxes, public
 // services and standing armies. Nothing that is the game's
-// to play happens: no wars or alliances, no research, no building, no
-// taking of free land, no births and deaths and no private investment. Then
+// to play happens: no wars or alliances, no research, no state building,
+// no taking of free land and no births and deaths (firms do invest). Then
 // the clock is set back to the start, with no history or events.
 func (w *World) burnIn(days int, progress func(done int)) {
 	// a nation the computer doesn't run spends nothing in the burn-in, so

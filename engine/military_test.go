@@ -471,7 +471,7 @@ func TestConquestEliminatesANation(t *testing.T) {
 		t.Error("fallen nation's army or war survived")
 	}
 	for _, f := range beta.Firms {
-		if f.Name == "Transport" && math.Abs(f.TFP/f.BaseTFP-1.3) > 1e-12 {
+		if f.Name == "Transport" && math.Abs(f.TFP/f.BaseTFP-1.2) > 1e-12 {
 			t.Errorf("conquered tile lacks the conqueror's tech: %v", f.TFP/f.BaseTFP)
 		}
 	}

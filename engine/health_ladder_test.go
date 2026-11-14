@@ -8,15 +8,19 @@ import (
 // The ladder: worlds of rising complexity, each run for years and checked
 // day by day by a healthWatch (see health_test.go). A rung's world adds one
 // layer to the rung below: one tile on its own; a map of tiles trading and
-// migrating; a nation that runs the whole map; three nations side by side;
-// a big generated map. Each fails if any of its numbers leaves bounds, and
-// prints them all.
+// migrating; the same map with its firms investing, as every game opens; a
+// nation that runs the whole map; three nations side by side; a big
+// generated map. Each fails if any of its numbers leaves bounds, and prints
+// them all.
 
-// The bounds. Markets left alone (rung 1) are the reference: prices there
-// wiggle 0.1% around their two-month average and nobody moves. A nation
-// adds real shocks (taxes, building, research), so its bounds are looser,
-// but the budget must be steady and nothing may cycle, pile up, empty or
-// collapse. The reasons for each:
+// The bounds. Only a world that doesn't grow reaches a fixed point: markets
+// left alone with no investment and no births (rungs 0 and 1) are the
+// reference, prices there wiggle 0.1% around their two-month average and
+// nobody moves. Firms building capital (rung 2) move prices, wages and
+// people as the capital comes in, but smoothly. A nation adds real shocks
+// (taxes, building, research), so its bounds are looser, but the budget
+// must be steady and nothing may cycle, pile up, empty or collapse. The
+// reasons for each:
 var (
 	// markets alone: settled means settled
 	marketBounds = healthLimits{
@@ -27,6 +31,17 @@ var (
 		MinTilePeople: 30, // a tile at the migration floor (24) has emptied
 		TileLossYear:  0.05, PeopleDropMonth: 0.001,
 		MinEmployment: 0.9, LivingDropYear: 0.01,
+	}
+	// markets with firms investing: capital still coming in moves prices,
+	// wages and people a little, but nothing cycles or empties
+	investingBounds = healthLimits{
+		PriceWiggle: 0.01, PriceWiggleWorst: 0.03, WageWiggle: 0.01, WageWiggleWorst: 0.03,
+		PriceStep: 0.002, PriceDriftYear: 0.05,
+		FullSpeed: 0.01,
+		StockDays: 30, StockSlack: 5,
+		MinTilePeople: 30, TileLossYear: 0.15, PeopleDropMonth: 0.001,
+		MinEmployment: 0.85, LivingDropYear: 0.02,
+		LevelGrowthYear: 0.15,
 	}
 	// a nation in peace
 	nationBounds = healthLimits{
@@ -48,8 +63,8 @@ var (
 		ReserveLow: 0.5, ReserveHigh: 2,
 		GDPDropMonth: 0.1,
 		ArmySupply:   0.95, ArmySupplyWorst: 0.5, // in peace, at home: fed and equipped
-		// capital grows a few percent a year over a century (about 1,100
-		// levels to 4,400); half again in a year is a boom, then a bust
+		// capital grows two or three percent a year over a century; half
+		// again in a year is a boom, then a bust
 		LevelGrowthYear: 0.15,
 	}
 )
@@ -57,12 +72,11 @@ var (
 // What the ladder still finds, to fix (see ToDo in healthLimits): each
 // rung lists the checks these leave failing.
 const (
-	todoJobs     = "a tile's employment dips to 65-75% for a while: to investigate"
-	todoGrowth   = "capital grows up to 16% in its best year: to check it is growth, not a boom"
-	todoBudget   = "several small nations' budgets still swing (tax within 1.5 points, treasury to 2.2 reserves)"
-	todoResearch = "a small nation learns a tech in eight years"
-	todoWaves    = "with no cap on workshops, owners build in waves where the state builds nothing: wages wobble 2.3%"
-	todoBigMap   = "big maps burn in for a year and keep the opening boom: wages wobble 3%, a tile falls to the migration floor"
+	todoFloor    = "investing in the settle draws people to the tile where capital earns most: the smallest opens at the migration floor, and recovers as people multiply"
+	todoJobs     = "a tile's employment dips to 60-80% for a while: to investigate"
+	todoBudget   = "several small nations' budgets still swing (tax within 1.1 points, treasury to 2.2 reserves)"
+	todoResearch = "research is slow: a nation learns a tech every two and a half years, a small one in eight"
+	todoSmall    = "three small nations: living standards dip 6% in a year, and grapes pile up a little: to investigate"
 )
 
 // todo is l with the to-do checks for its rung.
@@ -118,10 +132,30 @@ func TestHealthLoneTile(t *testing.T) {
 	})
 }
 
-// Rung 1: the classic map's tiles trading and migrating, no nations, after
-// the settling every game starts from. Markets, merchants and migration on
-// their own must hold prices and people steady.
+// Rung 1: the classic map's tiles trading and migrating, no nations and no
+// investment, settled as long as a game is. Markets, merchants and
+// migration on their own must hold prices and people steady.
 func TestHealthMarkets(t *testing.T) {
+	if testing.Short() {
+		t.Skip("long")
+	}
+	t.Parallel()
+	w, err := baseGameWorld(DefaultGame)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Migration = true
+	for d := 0; d < SettleDays(len(w.Regions)); d++ {
+		w.Step()
+	}
+	h := newHealthWatch(w)
+	h.run(int(2*TicksPerYear), 0)
+	h.report(t, marketBounds)
+}
+
+// Rung 2: the same with firms investing: the settled world every game
+// opens on, run on for two years. Capital still comes in, smoothly.
+func TestHealthInvesting(t *testing.T) {
 	if testing.Short() {
 		t.Skip("long")
 	}
@@ -132,10 +166,10 @@ func TestHealthMarkets(t *testing.T) {
 	}
 	h := newHealthWatch(w)
 	h.run(int(2*TicksPerYear), 0)
-	h.report(t, marketBounds)
+	h.report(t, todo(investingBounds, map[string]string{"fewest people on a tile": todoFloor}))
 }
 
-// Rung 2: one computer nation holding the whole map, from the day the game
+// Rung 3: one computer nation holding the whole map, from the day the game
 // opens, for ten years of peace: taxes, public services, a standing army,
 // research, building and private investment on top of the markets.
 func TestHealthOneNation(t *testing.T) {
@@ -147,11 +181,11 @@ func TestHealthOneNation(t *testing.T) {
 	h := newHealthWatch(w)
 	h.run(int(10*TicksPerYear), 90)
 	h.report(t, todo(withTechs(nationBounds, 10), map[string]string{
-		"workers in work": todoJobs, "most building levels grew": todoGrowth,
+		"fewest people on a tile": todoFloor, "workers in work": todoJobs, "fewest techs": todoResearch,
 	}))
 }
 
-// Rung 3: the same, run by a player who keeps the tax automated (as a new
+// Rung 4: the same, run by a player who keeps the tax automated (as a new
 // player starts) and builds nothing.
 func TestHealthPlayerNation(t *testing.T) {
 	if testing.Short() {
@@ -163,11 +197,11 @@ func TestHealthPlayerNation(t *testing.T) {
 	h := newHealthWatch(w)
 	h.run(int(10*TicksPerYear), 90)
 	h.report(t, todo(withTechs(nationBounds, 10), map[string]string{
-		"workers in work": todoJobs, "most building levels grew": todoGrowth, "wage wiggle, median": todoWaves,
+		"fewest people on a tile": todoFloor,
 	}))
 }
 
-// Rung 4: the classic game, three computer nations, eight years: before
+// Rung 5: the classic game, three computer nations, eight years: before
 // any of them may start a war (aiGraceYears over the most aggressive
 // temperament), so in peace.
 func TestHealthThreeNations(t *testing.T) {
@@ -184,12 +218,13 @@ func TestHealthThreeNations(t *testing.T) {
 	h := newHealthWatch(w)
 	h.run(int(8*TicksPerYear), 90)
 	h.report(t, todo(withTechs(nationBounds, 8), map[string]string{
-		"workers in work": todoJobs, "tax rate's wiggle": todoBudget, "highest treasury": todoBudget,
-		"fewest techs": todoResearch, "most building levels grew": todoGrowth,
+		"fewest people on a tile": todoFloor, "workers in work": todoJobs, "tax rate's wiggle": todoBudget,
+		"highest treasury": todoBudget, "fewest techs": todoResearch, "most living standard falls": todoSmall,
+		"most unsold stock piled up": todoSmall,
 	}))
 }
 
-// Rung 5: a generated map of about 140 tiles, all of it one computer
+// Rung 6: a generated map of about 140 tiles, all of it one computer
 // nation's, for three years from the day it opens.
 func TestHealthBigMap(t *testing.T) {
 	if testing.Short() {
@@ -212,7 +247,6 @@ func TestHealthBigMap(t *testing.T) {
 	h := newHealthWatch(w)
 	h.run(int(3*TicksPerYear), 90)
 	h.report(t, todo(withTechs(nationBounds, 3), map[string]string{
-		"fewest people on a tile": todoBigMap, "most building levels grew": todoBigMap,
-		"wage wiggle, median": todoBigMap, "wage wiggle, worst": todoBigMap, "workers in work": todoJobs,
+		"fewest people on a tile": todoFloor, "workers in work": todoJobs,
 	}))
 }

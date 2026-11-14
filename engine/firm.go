@@ -94,11 +94,13 @@ type Firm struct {
 
 	// ProfitEMA is a moving average of profit per tick; it drives investment.
 	ProfitEMA             float64
-	LossTicks, Age        int // ticks of losses in a row; ticks alive
+	LossTicks, Age        int     // ticks of losses in a row; ticks alive
+	Wear                  float64 // levels worn out and not yet made good by upkeep (see depreciation)
 	tickRevenue, tickCost float64
 	tickInputs            float64   // what the goods it used up cost this tick
 	used                  []float64 // goods it used up producing this tick, by good
-	investWant            float64   // construction to buy this tick for a private expansion
+	investWant            float64   // construction to buy this tick: upkeep, and a private expansion
+	upkeepWant            float64   // ...of which upkeep
 	powLevels             int       // the Levels levelsPow was worked out for
 	levelsPow             float64   // Levels^(1-s), cached
 }
@@ -109,8 +111,11 @@ type Expansion struct {
 	Public    bool    // paid for by the nation (else by the firm's owners)
 }
 
-// LevelCost is the construction units one building level costs.
-const LevelCost = 120.0
+// LevelCost is the construction units one building level costs. A level is
+// the firm's capital (its buildings and machines; for farms and mines, its
+// land too), priced so that a tile's capital is worth about three to four
+// years of its output, as Europe's was in the 19th century.
+const LevelCost = 1200.0
 
 func (f *Firm) exponentSum() float64 {
 	s := 0.0

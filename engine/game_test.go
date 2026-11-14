@@ -153,7 +153,7 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 	if err := n.SetResearch(TechID("Steam engine")); err != nil {
 		t.Errorf("Steam engine after Wagons: %v", err)
 	}
-	// its bonus (transport +30%) comes in over techAdoptDays: none yet, half
+	// its bonus (transport +20%) comes in over techAdoptDays: none yet, half
 	// halfway, all of it at the end
 	check := func(adopted float64) {
 		t.Helper()
@@ -162,7 +162,7 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 			want := f.BaseTFP
 			switch {
 			case r.Nation == n:
-				want *= 1 + 0.3*adopted
+				want *= 1 + 0.2*adopted
 			case r.Nation != nil:
 				continue
 			}
@@ -342,7 +342,7 @@ func TestNationFundedExpansion(t *testing.T) {
 		t.Errorf("second expansion: %v", err)
 	}
 	levels, spent := f.Levels, 0.0
-	for i := 0; i < 400 && f.Levels == levels; i++ {
+	for i := 0; i < 3000 && f.Levels == levels; i++ {
 		w.Step()
 		spent += r.Nation.Spending
 	}

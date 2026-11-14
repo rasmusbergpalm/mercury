@@ -120,14 +120,22 @@ func (r *Region) Plan() {
 
 // Investment rules (game worlds only).
 const (
-	investPayback = 50  // ticks of profit a new level must repay its cost in
+	// a new level must repay its cost in ten years of profit: a return of
+	// 10% a year, about what 19th-century firms asked of new works
+	investPayback = 10 * TicksPerYear
 	investMinAge  = 100 // ticks before a firm's profit record counts
-	investRate    = 3.0 // construction units a private expansion buys per tick at most
+	buildDays     = 90  // a private level takes this long to build, at the quickest
 	disinvestAt   = 100 // ticks of losses before a firm closes a level
+	// capital wears out: each year 2% of a firm's levels must be made good
+	// with construction (its upkeep, a cost like any other), or the firm
+	// loses them
+	depreciation = 0.02
 )
 
 // planInvestment starts private expansions where a level would repay itself,
-// and sets what expanding firms buy this tick.
+// and sets what each firm buys this tick: its upkeep, and the next part of
+// its expansion while what is left of it still pays at today's construction
+// price (when building costs rise, projects wait, as real ones did).
 func (r *Region) planInvestment() {
 	price := r.Markets[Construction].Price
 	payback := float64(investPayback)
@@ -135,21 +143,32 @@ func (r *Region) planInvestment() {
 		payback *= r.Nation.paybackMult()
 	}
 	for _, f := range r.Firms {
-		if f.Expansion == nil && !f.State && f.Enabled && !f.AtCap() && f.Age > investMinAge {
-			perLevel := f.ProfitEMA / float64(f.Levels)
-			if perLevel > 0 && perLevel*payback > LevelCost*price {
-				f.Expansion = &Expansion{}
-			}
+		f.upkeepWant = 0
+		if f.State || f.Levels < 1 {
+			continue
 		}
-		if e := f.Expansion; e != nil && !e.Public {
-			want := math.Min(investRate, LevelCost-e.Delivered)
-			f.DesiredSpend += want * price
-			planned := f.PlanLabor * r.Wage
-			for g, q := range f.PlanQty {
-				planned += q * r.prices[g]
-			}
-			f.investWant = math.Max(0, math.Min(want, (0.9*f.Cash-planned)/price))
+		perLevel := f.ProfitEMA / float64(f.Levels)
+		if f.Expansion == nil && f.Enabled && !f.AtCap() && f.Age > investMinAge && perLevel > 0 && perLevel*payback > LevelCost*price {
+			f.Expansion = &Expansion{}
 		}
+		upkeep := 0.0
+		if f.Enabled {
+			upkeep = depreciation * float64(f.Levels) * LevelCost / TicksPerYear
+		}
+		want := upkeep
+		if e := f.Expansion; e != nil && !e.Public && perLevel*payback >= (LevelCost-e.Delivered)*price {
+			want += math.Min(LevelCost/buildDays, LevelCost-e.Delivered)
+		}
+		if want <= 0 {
+			continue
+		}
+		f.DesiredSpend += want * price
+		planned := f.PlanLabor * r.Wage
+		for g, q := range f.PlanQty {
+			planned += q * r.prices[g]
+		}
+		f.investWant = math.Max(0, math.Min(want, (0.9*f.Cash-planned)/price))
+		f.upkeepWant = math.Min(upkeep, f.investWant)
 	}
 }
 
@@ -159,6 +178,13 @@ func (r *Region) settleFirms() {
 	for _, f := range r.Firms {
 		f.Age++
 		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.tickRevenue-f.tickCost)
+		if !f.State && f.Levels > 1 { // wear, less today's upkeep (made good at the market)
+			f.Wear += depreciation * float64(f.Levels) / TicksPerYear
+			if f.Wear >= 1 {
+				f.Levels--
+				f.Wear--
+			}
+		}
 		if e := f.Expansion; e != nil && e.Delivered >= LevelCost-1e-9 {
 			f.Levels++
 			f.Expansion = nil
@@ -393,8 +419,14 @@ func (r *Region) GoodsMarkets() {
 				t.House.Spent += got * price
 			case nationAgent:
 				r.publicGot[g] = got
-			case investAgent:
-				r.Firms[ref.idx].Expansion.Delivered += got
+			case investAgent: // upkeep first, then the expansion
+				f := r.Firms[ref.idx]
+				upkeep := math.Min(got, f.upkeepWant)
+				f.Wear = math.Max(0, f.Wear-upkeep/LevelCost)
+				f.tickCost += upkeep * price
+				if e := f.Expansion; e != nil && !e.Public {
+					e.Delivered += got - upkeep
+				}
 			}
 		}
 		for i, ref := range askRefs {
@@ -551,8 +583,13 @@ func (r *Region) updateAgglomeration() {
 
 // Population growth per year: well-fed people multiply, hungry ones don't.
 // growth = popGrowthSlope * (basic needs met - popGrowthNeutral) + tech bonus,
-// within [popGrowthMin, popGrowthMax].
+// within [popGrowthMin, popGrowthMax], less schooledBirths times the
+// educated share: schooled people have fewer children (the demographic
+// transition: birth rates fell about a third as literacy rose from half to
+// nearly all), so growth falls from about 1.4% a year in 1820 to under 1% as
+// a nation schools everyone.
 const (
+	schooledBirths   = 0.012
 	popGrowthSlope   = 0.035
 	popGrowthNeutral = 0.5
 	popGrowthMin     = -0.03
@@ -585,7 +622,7 @@ func (r *Region) GrowthRate() float64 {
 	if r.Nation != nil {
 		g += r.Nation.popGrowthBonus()
 	}
-	return math.Max(popGrowthMin, math.Min(popGrowthMax, g))
+	return math.Max(popGrowthMin, math.Min(popGrowthMax, g)-schooledBirths*r.Educated)
 }
 
 // grow applies a day of population growth. Newborns bring no cash.
