@@ -150,7 +150,7 @@ func TestResearchQueueAndDiffusion(t *testing.T) {
 	if d := n.Discount(cer, w.Nations); math.Abs(d-maxDiffusion) > 1e-12 {
 		t.Errorf("discount %v, want %v", d, maxDiffusion)
 	}
-	if c := n.TechCost(cer, w.Nations); math.Abs(c-Techs[cer].Cost*(1-maxDiffusion)) > 1e-9 {
+	if c := n.TechCost(cer, w); math.Abs(c-Techs[cer].Cost*(1-maxDiffusion)) > 1e-9 {
 		t.Errorf("cost %v", c)
 	}
 }

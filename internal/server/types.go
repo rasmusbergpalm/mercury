@@ -563,7 +563,7 @@ func worldState(w *engine.World, flows bool) State {
 		l := w.LaborShares(n)
 		ns.Labor = l[:]
 		for i := range engine.Techs {
-			ns.TechCosts = append(ns.TechCosts, n.TechCost(i, w.Nations))
+			ns.TechCosts = append(ns.TechCosts, n.TechCost(i, w))
 		}
 		if n.AI {
 			ns.Controller = "ai"

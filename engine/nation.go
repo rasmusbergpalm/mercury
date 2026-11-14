@@ -298,19 +298,18 @@ func (n *Nation) Discount(i int, nations []*Nation) float64 {
 	return math.Min(0.75, maxDiffusion*math.Min(1, share)*n.diffusionMult())
 }
 
-// techCostPeople is the nation a tech's listed cost is for: the classic
-// map's people in 1820, all of them one nation's.
-const techCostPeople = 3600
+// techCostTiles is the map a tech's listed cost is for: the classic one.
+const techCostTiles = 36
 
-// TechCost is what a tech costs the nation now, after diffusion. A bigger
-// nation pays more for it in proportion to its people: research grows with
-// what a nation spends on it, so with its size, but the century's inventions
-// came from what everyone knew and from the ones before them, not from
-// headcount. Britain had more universities than Belgium and didn't invent
-// the 1900s in 1860; the two industrialized at much the same pace, a head.
-// So a nation's pace is set by its research a head, not by its size.
-func (n *Nation) TechCost(i int, nations []*Nation) float64 {
-	return Techs[i].Cost * n.population() / techCostPeople * (1 - n.Discount(i, nations))
+// TechCost is what a tech costs the nation now, after diffusion. Techs cost
+// more on a bigger map, in proportion to its tiles. Research grows with the
+// universities a nation's land holds, and a map is a whole world: a nation
+// holding a quarter of a big map should take about as long over the
+// century's inventions as one holding a quarter of a small one, not race
+// through them because its quarter has more tiles. The cost is the same for
+// every nation and stays put through the game, whatever a nation wins or loses.
+func (n *Nation) TechCost(i int, w *World) float64 {
+	return Techs[i].Cost * float64(len(w.Regions)) / techCostTiles * (1 - n.Discount(i, w.Nations))
 }
 
 // SetQueue replaces the research queue (techs to research after the current one).
@@ -652,8 +651,8 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 		n.IncomeEMA = income
 	}
 	n.IncomeEMA = 0.95*n.IncomeEMA + 0.05*income
-	if i := n.Researching; i >= 0 && n.ResearchPoints >= n.TechCost(i, w.Nations) {
-		n.ResearchPoints -= n.TechCost(i, w.Nations)
+	if i := n.Researching; i >= 0 && n.ResearchPoints >= n.TechCost(i, w) {
+		n.ResearchPoints -= n.TechCost(i, w)
 		n.Known[i] = true
 		n.LearnedAt[i] = max(1, w.Tick)
 		n.Researching = -1

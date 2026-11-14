@@ -210,7 +210,7 @@ func TestFundedUniversitiesDriveResearch(t *testing.T) {
 		points = n.ResearchPoints
 		for i, k := range n.Known { // plus what was spent on techs
 			if k {
-				points += n.TechCost(i, w.Nations)
+				points += n.TechCost(i, w)
 			}
 		}
 		return

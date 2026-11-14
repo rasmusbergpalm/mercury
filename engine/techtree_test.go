@@ -424,7 +424,7 @@ func TestFinishedResearchAsksThePlayer(t *testing.T) {
 	w := newTestGame(t)
 	finish := func(n *Nation) {
 		n.pickResearch()
-		n.ResearchPoints = n.TechCost(n.Researching, w.Nations)
+		n.ResearchPoints = n.TechCost(n.Researching, w)
 		w.Step()
 	}
 	human, ai := w.Nations[0], w.Nations[1]
