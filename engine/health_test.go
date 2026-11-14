@@ -75,12 +75,6 @@ type healthLimits struct {
 	// LevelGrowthYear: the most a world's building levels (firms' and
 	// services') may grow in any year, as a share of what it had.
 	LevelGrowthYear float64
-
-	// ToDo are checks known to fail for now, by the start of their name,
-	// with the reason: reported, not failed. A to-do check that passes
-	// fails the test until it is taken off the list, so fixes show and the
-	// list can't go stale.
-	ToDo map[string]string
 }
 
 // A tile that changes hands is a shock from outside its economy (its
@@ -600,15 +594,8 @@ func (h *healthWatch) report(t *testing.T, l healthLimits) {
 	t.Helper()
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d days, %d tiles, %d nations\n", h.days, len(h.w.Regions), len(h.w.Nations))
-	var failed, todo []string
-	used := map[string]bool{}
+	var failed []string
 	for _, c := range h.checks(l) {
-		reason := ""
-		for prefix, why := range l.ToDo {
-			if strings.HasPrefix(c.name, prefix) {
-				reason, used[prefix] = why, true
-			}
-		}
 		mark, limit := "  ", "-"
 		switch c.kind {
 		case atMost:
@@ -618,31 +605,16 @@ func (h *healthWatch) report(t *testing.T, l healthLimits) {
 		case none:
 			limit = "none"
 		}
-		switch {
-		case !c.ok() && reason != "":
-			mark = "… "
-			todo = append(todo, fmt.Sprintf("%s (%s)", c.name, reason))
-		case !c.ok():
+		if !c.ok() {
 			mark = "✗ "
 			failed = append(failed, c.name)
-		case reason != "":
-			failed = append(failed, c.name+": passes now, take it off the to-do list")
 		}
 		fmt.Fprintf(&b, "%s%-50s %12.4g   %-10s %s\n", mark, c.name, c.measured, limit, c.note)
 	}
-	for prefix := range l.ToDo {
-		if !used[prefix] {
-			failed = append(failed, fmt.Sprintf("to-do %q matches no check", prefix))
-		}
-	}
 	sort.Strings(failed)
-	sort.Strings(todo)
-	if len(todo) > 0 {
-		fmt.Fprintf(&b, "to do:\n  %s\n", strings.Join(todo, "\n  "))
-	}
 	t.Log("\n" + b.String())
 	if len(failed) > 0 {
-		t.Errorf("out of bounds: %s", strings.Join(failed, "; "))
+		t.Errorf("out of bounds: %s (a signal, not a verdict: see the ladder's note on bounds)", strings.Join(failed, "; "))
 	}
 }
 

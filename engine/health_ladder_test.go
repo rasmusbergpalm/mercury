@@ -12,6 +12,22 @@ import (
 // nation that runs the whole map; three nations side by side; a big
 // generated map. Each fails if any of its numbers leaves bounds, and prints
 // them all.
+//
+// The bounds are signals, not laws. They are there to catch someone
+// accidentally breaking the economy: a price cycle, goods piling up, a tile
+// emptying, a budget swinging, a collapse. They are not there to keep the
+// economy from ever changing. When a rung fails, look at what moved and
+// why (the rung prints every number; the cmd/probe and century runs show
+// the long view):
+//
+//   - if a change broke something by accident, fix the change;
+//   - if the economy now behaves differently on purpose, and the new
+//     behaviour is sound (checked against history where there is one,
+//     against common sense where there isn't), move the bound, and say
+//     why next to it.
+//
+// Each bound below carries the reason it sits where it does, so the next
+// person can tell a deliberate allowance from a guess.
 
 // The bounds. Only a world that doesn't grow reaches a fixed point: markets
 // left alone with no investment and no births (rungs 0 and 1) are the
