@@ -449,19 +449,19 @@ func (w *World) aiBuild(n *Nation) {
 	if !n.canAffordBuilding() {
 		return
 	}
+	if !w.roomToBuild(n) {
+		return
+	}
 	ports := 0
 	for _, r := range n.Regions {
-		if r.Project != nil {
-			return
-		}
-		if r.Port {
+		if r.Port || (r.Project != nil && r.Project.Port) {
 			ports++
 		}
 	}
 	if n.CanBuildPorts() && ports < min(2, n.PortAllowance()) {
 		var best *Region
 		for _, r := range n.Regions {
-			if r.Coastal && !r.Port && (best == nil || r.Population() > best.Population()) {
+			if r.Coastal && !r.Port && r.Project == nil && (best == nil || r.Population() > best.Population()) {
 				best = r
 			}
 		}
@@ -478,6 +478,9 @@ func (w *World) aiBuild(n *Nation) {
 	var best *Region
 	bestScore := 0.0
 	for _, r := range n.Regions {
+		if r.Project != nil {
+			continue
+		}
 		next := r.Infra + 1
 		if next >= len(InfraLevels) || !n.Has(InfraLevels[next].Tech) {
 			continue
@@ -491,13 +494,40 @@ func (w *World) aiBuild(n *Nation) {
 	}
 }
 
+// roomToBuild reports whether the nation's building budget has room for
+// another project beside those under way, each taking construction at the
+// most a project can take a day. A state builds schools and roads in every
+// province at once, as far as its money goes: a nation with four times the
+// land had four times the ministry, not a queue four times as long.
+func (w *World) roomToBuild(n *Nation) bool {
+	price, k := 0.0, 0
+	under := 0
+	for _, r := range n.Regions {
+		price += r.Markets[Construction].Price
+		k++
+		if r.Project != nil {
+			under++
+		}
+		for _, f := range r.Firms {
+			if e := f.Expansion; e != nil && e.Public {
+				under++
+			}
+		}
+	}
+	if k == 0 {
+		return false
+	}
+	day := n.MaxBuildRate * n.buildRateMult() * price / float64(k)
+	return float64(under+1)*day <= n.BuildingBudget()
+}
+
 // The computer's public services: it funds every level (universities only
 // half when it can't pay its bills or is at war), and builds a level of a
 // service where it falls furthest short: administration and public health
 // to cover the need, schools to its Learning (aiSchooling of children at
 // Learning 1), universities while they cost less than aiScience of income
-// times its Learning. One level of each service at a time, and only while
-// the treasury holds a month of spending.
+// times its Learning. A level of each service at a time on a tile, as
+// many tiles at once as its building budget runs to (roomToBuild).
 const (
 	aiScience   = 0.12
 	aiSchooling = 0.6
@@ -530,17 +560,15 @@ func (w *World) aiServices(n *Nation, war, funding, universities bool) {
 		if k == Schools {
 			target = math.Min(1, aiSchooling*n.Temper.Learning)
 		}
+		if !w.roomToBuild(n) {
+			return
+		}
 		var best *Region
 		bestCov := 2.0
-		busy := false
 		for _, r := range n.Regions {
 			f := r.Service(k)
-			if f == nil || !f.Enabled {
+			if f == nil || !f.Enabled || f.Expansion != nil {
 				continue
-			}
-			if f.Expansion != nil {
-				busy = true
-				break
 			}
 			if f.AtCap() {
 				continue
@@ -560,7 +588,7 @@ func (w *World) aiServices(n *Nation, war, funding, universities bool) {
 				best, bestCov = r, cov
 			}
 		}
-		if !busy && best != nil {
+		if best != nil {
 			w.ExpandService(best.ID, k)
 		}
 	}
