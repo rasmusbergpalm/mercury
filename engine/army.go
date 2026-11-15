@@ -584,7 +584,7 @@ func (w *World) MoveArmy(id, dest int) error {
 	if !w.reachable(a.Nation, w.Regions[dest]) {
 		return ErrNoPath
 	}
-	if w.tileTaken(a.Nation, dest, a) {
+	if w.tileTaken(a.Nation, dest, a) || w.peaceTaken(a.Nation, dest) {
 		return ErrTileTaken
 	}
 	// no marching through an enemy army: a tile one holds can only be the
@@ -612,6 +612,19 @@ func (w *World) tileTaken(n *Nation, region int, except *Army) bool {
 				return true
 			}
 		} else if dest == region {
+			return true
+		}
+	}
+	return false
+}
+
+// peaceTaken reports whether an army of a nation at peace with n stands in
+// a tile or is marching there. Armies at peace don't share a tile: a free
+// tile goes to whoever claims it first (two would come to blows over it),
+// and a nation's own tile is its army's to hold.
+func (w *World) peaceTaken(n *Nation, region int) bool {
+	for _, o := range w.Nations {
+		if o != n && !n.AtWar[o.ID] && w.tileTaken(o, region, nil) {
 			return true
 		}
 	}
@@ -1278,7 +1291,16 @@ func (w *World) march(a *Army) {
 	}
 	next := a.Path[0]
 	if !a.Retreating && !w.reachable(a.Nation, w.Regions[next]) {
-		a.Path, a.March = nil, 0 // the way is closed (peace, the tile changed hands, the supply line is cut)
+		// the way is closed (peace, the tile changed hands, the supply line
+		// is cut): find another way there, else stop - but not on a tile
+		// another of its armies holds, nor in another nation's land
+		dest := a.Path[len(a.Path)-1]
+		a.Path, a.March = nil, 0
+		if w.MoveArmy(a.ID, dest) != nil {
+			if here := w.Regions[a.Region]; here.Nation != a.Nation || w.tileTaken(a.Nation, a.Region, a) {
+				w.sendHome(a)
+			}
+		}
 		return
 	}
 	a.March++

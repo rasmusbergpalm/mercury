@@ -129,3 +129,77 @@ func TestIdleArmiesStartSieges(t *testing.T) {
 		t.Errorf("arrived at %s but isn't occupying it", r.Name)
 	}
 }
+
+// freeNeighbour is a free tile next to r.
+func freeNeighbour(t *testing.T, w *World, r *Region) *Region {
+	t.Helper()
+	for _, nb := range HexNeighbors(r.Row, r.Col, w.Rows, w.Cols) {
+		if x := w.Regions[nb[0]*w.Cols+nb[1]]; x.Nation == nil {
+			return x
+		}
+	}
+	t.Fatal("no free tile next to", r.Name)
+	return nil
+}
+
+// Regression: an army whose way is closed mid-march (the tile ahead changed
+// hands) stopped where it was, even on a tile another of its armies held:
+// two armies of one nation on one tile.
+func TestClosedMarchDoesntDoubleUp(t *testing.T) {
+	w := newNeighbourGame(t)
+	alpha, beta := w.Nations[0], w.Nations[1]
+	h2 := freeNeighbour(t, w, alpha.Regions[0])
+	w.Annex(h2.ID, alpha.ID)
+	x := freeNeighbour(t, w, h2)
+	sceneArmy(t, w, alpha, h2, 10) // holds h2
+	b := sceneArmy(t, w, alpha, alpha.Regions[0], 10)
+	b.Region, b.Path = h2.ID, []int{x.ID} // passing through h2 on its way to x
+	w.Annex(x.ID, beta.ID)                // x is Beta's now, at peace: closed
+	w.march(b)
+	if b.Region == h2.ID && len(b.Path) == 0 {
+		t.Errorf("halted on %s, which another of its armies holds", h2.Name)
+	}
+}
+
+// Regression: an army with nothing to do in another nation's land stayed
+// there (the small bonus for keeping its plan made standing still worth
+// something); it goes home.
+func TestIdleArmyAbroadGoesHome(t *testing.T) {
+	w := newNeighbourGame(t)
+	alpha, beta := w.Nations[0], w.Nations[1]
+	alpha.AI = true
+	a := sceneArmy(t, w, alpha, alpha.Regions[0], 10)
+	x := freeNeighbour(t, w, alpha.Regions[0])
+	a.Region = x.ID        // took up a free tile ...
+	w.Annex(x.ID, beta.ID) // ... that Beta settled, at peace
+	w.aiPlan(alpha, []*Army{a}, nil)
+	if aiGoing(a) == x.ID {
+		t.Errorf("stays in Beta's tile %s with nothing to do", x.Name)
+	}
+}
+
+// Armies at peace don't share a tile: a free tile another nation's army
+// holds, or is marching to, is taken; neither the player nor the computer
+// can send an army there.
+func TestNoTwoNationsOnAFreeTile(t *testing.T) {
+	w := newNeighbourGame(t)
+	alpha, beta := w.Nations[0], w.Nations[1]
+	alpha.AI = true
+	x := freeNeighbour(t, w, alpha.Regions[0])
+	if !w.borders(beta, x) {
+		t.Skip("set-up: the free tile doesn't border Beta")
+	}
+	e := sceneArmy(t, w, beta, beta.Regions[0], 10)
+	if err := w.MoveArmy(e.ID, x.ID); err != nil {
+		t.Fatal(err)
+	}
+	a := sceneArmy(t, w, alpha, alpha.Regions[0], 30)
+	if err := w.MoveArmy(a.ID, x.ID); err == nil {
+		t.Errorf("sent to %s, which Beta's army is marching to", x.Name)
+	}
+	a.Path = nil
+	w.aiPlan(alpha, []*Army{a}, w.expansionTargets(alpha))
+	if aiGoing(a) == x.ID {
+		t.Errorf("the computer sends its army to %s too", x.Name)
+	}
+}

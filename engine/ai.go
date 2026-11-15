@@ -386,7 +386,7 @@ func (w *World) aiPlan(n *Nation, armies []*Army, targets []expansionTarget) {
 	for len(free) > 0 {
 		best, pick := aiOption{-1, math.Inf(-1)}, -1
 		for i, a := range free {
-			if o := w.aiBest(n, a, targets); o.value > best.value {
+			if o := w.aiBest(n, a, targets); pick < 0 || o.value > best.value {
 				best, pick = o, i
 			}
 		}
@@ -483,10 +483,10 @@ func (w *World) aiBest(n *Nation, a *Army, targets []expansionTarget) aiOption {
 		}
 	}
 	here := w.Regions[a.Region]
-	best := aiOption{a.Region, 0}
+	best := aiOption{going, math.Inf(-1)} // (nothing better: carry on, or go home)
 	consider := func(dest int, v float64) {
-		if dest == going {
-			v += aiKeepPlan
+		if dest == going && v > 0 {
+			v += aiKeepPlan // (a move worth nothing gets no bonus: an army with nothing to do goes home)
 		}
 		if v > best.value {
 			best = aiOption{dest, v}
@@ -506,7 +506,9 @@ func (w *World) aiBest(n *Nation, a *Army, targets []expansionTarget) aiOption {
 		}
 	}
 	_, worth := fight(here) // an enemy army on its tile: the fight happens anyway
-	consider(a.Region, stay+worth)
+	if len(a.Path) == 0 || !w.tileTaken(n, a.Region, a) {
+		consider(a.Region, stay+worth) // (not halting on a tile another of its armies holds)
+	}
 	// defend a tile of ours an enemy army stands on
 	for _, t := range threats {
 		d := days[t.r.ID]
@@ -534,7 +536,7 @@ func (w *World) aiBest(n *Nation, a *Army, targets []expansionTarget) aiOption {
 			continue
 		}
 		enemyLand := r.Nation != nil && n.AtWar[r.Nation.ID] && w.borders(n, r)
-		if !enemyLand && !(free[r.ID] && w.strongestOn(n, a, r.ID)) {
+		if !enemyLand && !(free[r.ID] && !w.peaceTaken(n, r.ID)) {
 			continue
 		}
 		d := days[r.ID]
@@ -840,28 +842,6 @@ func (w *World) expansionTargets(n *Nation) []expansionTarget {
 		})
 	}
 	return out
-}
-
-// strongestOn reports whether army a (with its nation's other armies there)
-// would be stronger in tile r than every other nation's armies on it.
-func (w *World) strongestOn(n *Nation, a *Army, r int) bool {
-	ours, theirs := a.Strength(), map[*Nation]float64{}
-	for _, e := range w.Armies {
-		if e.Region != r || e == a {
-			continue
-		}
-		if e.Nation == n {
-			ours += e.Strength()
-		} else {
-			theirs[e.Nation] += e.Strength()
-		}
-	}
-	for _, s := range theirs {
-		if s >= ours {
-			return false
-		}
-	}
-	return true
 }
 
 // allyTaken reports whether an army of one of n's allies holds tile r or is
