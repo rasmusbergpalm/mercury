@@ -230,6 +230,13 @@ func TestHealthThreeNations(t *testing.T) {
 	// in four years at best, at first in ten
 	l := nationBounds
 	l.TechsLeader = 1
+	// two nations ally against the third on the last day and embargo it:
+	// its trade stops at once and living standards fall 6% overnight
+	// (back to within 2% two months later)
+	l.LivingDropYear = 0.07
+	// the free land is shared out within five years, a tile every few
+	// months, each one shifting a nation's budget
+	l.TaxWiggle = 0.0135
 	h.report(t, l)
 }
 

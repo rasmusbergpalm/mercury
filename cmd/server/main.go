@@ -18,15 +18,26 @@ func main() {
 	addr := flag.String("addr", envOr("PORT", ":8080", ":"), "listen address")
 	data := flag.String("data", envOr("MERCURY_DATA", "saves", ""), "directory for saved games (empty disables saving)")
 	flag.Parse()
+	// the classic map ships settled, so its games open in a second or two
+	// instead of settling it first (engine.SettleYears)
+	if err := preloadSettled(); err != nil {
+		log.Printf("the shipped settled map doesn't fit this build (%v): games will settle it", err)
+		go engine.BuildGame(settledSpec())
+	}
 	s := server.New(web.Static, *data)
-	if s.NumGames() == 0 { // nothing to resume
-		if _, err := s.CreateGame("The Three Crowns", 1, 0); err != nil {
-			log.Fatal(err)
+	if s.NumGames() == 0 { // nothing to resume: open the default game, shipped ready to play
+		w, err := shippedThreeCrowns()
+		if err == nil {
+			_, err = s.AddGame("The Three Crowns", w, 0)
 		}
-	} else {
-		// settle the map now (engine.SettleYears), so the first new game
-		// doesn't wait for it
-		go engine.BuildGame(engine.DefaultGame)
+		if err != nil {
+			log.Printf("the shipped game doesn't fit this build (%v): building it", err)
+			go func() {
+				if _, err := s.CreateGame("The Three Crowns", classicCost, 0); err != nil {
+					log.Fatal(err)
+				}
+			}()
+		}
 	}
 	go s.Run(make(chan struct{}))
 	log.Printf("Mercury on http://localhost%s (saves in %q)", *addr, *data)

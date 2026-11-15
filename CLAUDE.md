@@ -47,6 +47,11 @@ small bug or tidying code, work in rounds:
    until it looks right.
 6. **Run the health ladder** (`go test ./engine -run TestHealth`, a few
    minutes; `go test -short ./...` skips it).
+7. **Re-ship the server's starting game.** The server starts from snapshots
+   of The Three Crowns and of the settled classic map, so it is ready at
+   once; after a change to the economy `go test ./cmd/server` fails as they
+   are stale, and `MERCURY_WRITE_SHIPPED=1 go test ./cmd/server` rewrites
+   them.
 
 ## The health ladder
 

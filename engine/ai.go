@@ -6,6 +6,10 @@ import "math"
 // simulation: deterministic, so saved games and replays continue exactly.
 const aiInterval = 30
 
+// aiArmyEvery is how often (in days) the computer's armies get new orders
+// while it is at war or has free land to take.
+const aiArmyEvery = 7
+
 // AI war policy.
 const (
 	aiGraceYears    = 15  // no wars of choice before this
@@ -25,6 +29,18 @@ func (w *World) runAI() {
 		}
 	}
 	if w.Tick%aiInterval != 0 {
+		// between the monthly reviews, armies get new orders weekly while
+		// there is fighting or free land to take: a month is long in a
+		// campaign, and a siege or a raid can't wait for the next review
+		if w.Tick%aiArmyEvery == 0 && !w.burning {
+			for _, n := range w.Nations {
+				if !n.Eliminated() && n.AI {
+					if targets := w.expansionTargets(n); w.atWar(n) || len(targets) > 0 {
+						w.aiArmies(n, targets)
+					}
+				}
+			}
+		}
 		return
 	}
 	if !w.burning { // (no alliances in the burn-in)

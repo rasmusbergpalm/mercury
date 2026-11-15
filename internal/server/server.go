@@ -104,6 +104,17 @@ func (s *Server) CreateGame(name string, transportCost float64, turnDays int) (*
 // createClassic adds a game on the classic map; divided shares out all its
 // land among the nations from the start (engine.DivideLand).
 func (s *Server) createClassic(name string, transportCost float64, turnDays int, divided bool) (*Game, error) {
+	// each game's rivals have their own temperaments
+	w, err := ClassicWorld(transportCost, divided, time.Now().UnixNano())
+	if err != nil {
+		return nil, err
+	}
+	return s.add(name, w, turnDays)
+}
+
+// ClassicWorld is a new game's world on the classic map, as a server opens
+// it: settled, burnt in and warmed up, every nation the computer's.
+func ClassicWorld(transportCost float64, divided bool, seed int64) (*engine.World, error) {
 	spec := engine.DefaultGame
 	if divided {
 		var err error
@@ -113,7 +124,7 @@ func (s *Server) createClassic(name string, transportCost float64, turnDays int,
 	}
 	spec.TransportCost = transportCost
 	spec.AI = true
-	spec.Seed = time.Now().UnixNano() // each game's rivals have their own temperaments
+	spec.Seed = seed
 	w, err := engine.BuildGame(spec)
 	if err != nil {
 		return nil, err
@@ -121,6 +132,11 @@ func (s *Server) createClassic(name string, transportCost float64, turnDays int,
 	for i := 0; i < Warmup; i++ {
 		w.Step()
 	}
+	return w, nil
+}
+
+// AddGame adds a game on a world built elsewhere (a shipped starting game).
+func (s *Server) AddGame(name string, w *engine.World, turnDays int) (*Game, error) {
 	return s.add(name, w, turnDays)
 }
 

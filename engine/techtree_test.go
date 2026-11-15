@@ -498,10 +498,22 @@ func TestCatchUpSlot(t *testing.T) {
 	if b.Copying >= 0 && !a.Known[b.Copying] {
 		t.Errorf("Beta catches up on %s, which Alpha doesn't know", Techs[b.Copying].Name)
 	}
+	// an embargo (either way) closes the border to it
+	b.Known[TechID("Drill")] = true
+	a.Researching, a.Copying = -1, -1
+	a.Embargo[b.ID] = true
+	if a.pickCopy(w); a.Copying >= 0 {
+		t.Errorf("catching up on %s across an embargo", Techs[a.Copying].Name)
+	}
+	a.Embargo[b.ID], b.Embargo[a.ID] = false, true
+	if a.pickCopy(w); a.Copying >= 0 {
+		t.Errorf("catching up on %s across the neighbour's embargo", Techs[a.Copying].Name)
+	}
 }
 
-// A nation behind its neighbour in arms leans its research to military techs.
-func TestMilitaryLagLeansResearch(t *testing.T) {
+// A nation facing a neighbour that could field far more leans its research
+// to military techs.
+func TestMilitaryThreatLeansResearch(t *testing.T) {
 	w := newNeighbourGame(t)
 	a, b := w.Nations[0], w.Nations[1]
 	share := func() float64 {
@@ -515,13 +527,13 @@ func TestMilitaryLagLeansResearch(t *testing.T) {
 		return float64(mil) / 200
 	}
 	even := share()
-	for i, tc := range Techs {
-		if tc.Branch == BranchMilitary && tc.Era == 0 {
-			b.Known[i] = true
-		}
+	e, err := w.RaiseArmy(b.ID, b.Regions[0].ID, 0)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if w.militaryLag(a) == 0 {
-		t.Fatal("set-up: Alpha isn't behind")
+	e.Target, e.Men = 30, 30
+	if w.militaryThreat(a) < 2 {
+		t.Fatalf("set-up: threat %v", w.militaryThreat(a))
 	}
 	if behind := share(); behind < 1.5*even {
 		t.Errorf("military share of the draw %.2f behind, %.2f even: it should lean to arms", behind, even)

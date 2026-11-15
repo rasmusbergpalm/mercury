@@ -90,17 +90,18 @@ func (n *Nation) drawResearch(w *World) int {
 	}
 	t := n.Temper
 	lean := map[string]float64{BranchScience: t.Learning, BranchMilitary: t.Militarism, BranchPolitics: t.Aggression, BranchTransport: t.Expansion}
-	// a nation that falls behind a rival's arms answers it: France's
-	// chassepot after Prussia's needle gun won in 1866, the naval races
-	behind := float64(w.militaryLag(n))
+	// a nation facing a neighbour or enemy that could field more than it
+	// can arms itself: France's chassepot after Prussia's needle gun won in
+	// 1866, the naval races before 1914
+	threat := w.militaryThreat(n)
 	weights, total := make([]float64, len(ids)), 0.0
 	for k, i := range ids {
 		x := math.Pow(cheapest/cost[i], 2)
 		if l, ok := lean[Techs[i].Branch]; ok && l > 0 {
 			x *= l * l
 		}
-		if Techs[i].Branch == BranchMilitary {
-			x *= (1 + behind) * (1 + behind)
+		if Techs[i].Branch == BranchMilitary && threat > 1 {
+			x *= threat * threat
 		}
 		weights[k] = x
 		total += x
@@ -115,25 +116,19 @@ func (n *Nation) drawResearch(w *World) int {
 	return ids[len(ids)-1]
 }
 
-// militaryLag is how many military techs the nation is behind the best
-// armed of the nations it borders or is at war with.
-func (w *World) militaryLag(n *Nation) int {
-	count := func(o *Nation) int {
-		k := 0
-		for i, x := range o.Known {
-			if x && Techs[i].Branch == BranchMilitary {
-				k++
-			}
-		}
-		return k
-	}
-	own, lag := count(n), 0
+// militaryThreat is how many times what the nation could field the
+// strongest nation it borders or is at war with could field (ArmyPotential:
+// armies at full size and supply, not what each has under arms today). A
+// man's worth of strength is added to each side, so a nation with no army
+// yet doesn't face an infinite threat.
+func (w *World) militaryThreat(n *Nation) float64 {
+	threat := 0.0
 	for _, o := range w.Nations {
 		if o != n && !o.Eliminated() && (n.AtWar[o.ID] || w.nationsBorder(n, o)) {
-			lag = max(lag, count(o)-own)
+			threat = max(threat, w.ArmyPotential(o))
 		}
 	}
-	return lag
+	return (threat + 1) / (w.ArmyPotential(n) + 1)
 }
 
 // random is a deterministic pseudo-random number in [0, 1) for the nation's

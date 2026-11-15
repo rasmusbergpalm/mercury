@@ -82,7 +82,7 @@ type settledWorld struct {
 // settledBase runs (or recalls) the settling of a game's map, reporting
 // progress (days done of the total) if asked.
 func settledBase(spec GameSpec, progress func(done, total int)) (*World, error) {
-	key := fmt.Sprintf("%g|%s", spec.TransportCost, strings.Join(spec.Map, "/"))
+	key := settledKey(spec)
 	tiles := 0
 	for _, row := range spec.Map {
 		tiles += len(row) - strings.Count(row, string(rune(Sea)))
@@ -104,6 +104,47 @@ func settledBase(spec GameSpec, progress func(done, total int)) (*World, error) 
 	settled.Unlock()
 	s.once.Do(func() { s.w, s.err = settle(spec, progress) })
 	return s.w, s.err
+}
+
+// SettledSnapshot is a snapshot of a game on spec's map, settled and with
+// its nations in place but before any burn-in: what PreloadSettled takes.
+// A server ships the classic map's so it needn't settle it at start.
+func SettledSnapshot(spec GameSpec) (*Snapshot, error) {
+	b, err := settledBase(spec, nil)
+	if err != nil {
+		return nil, err
+	}
+	w, err := buildGame(spec, false, nil)
+	if err != nil {
+		return nil, err
+	}
+	w.settleFrom(b)
+	return w.Snapshot()
+}
+
+// PreloadSettled puts a settled world (from SettledSnapshot) in the cache,
+// so games on its map open without settling it. Only a server does this:
+// the engine's tests and the century games settle afresh, so a stale
+// snapshot can't creep into them.
+func PreloadSettled(s *Snapshot) error {
+	w, err := Restore(s)
+	if err != nil {
+		return err
+	}
+	key := settledKey(s.Spec)
+	settled.Lock()
+	defer settled.Unlock()
+	if _, ok := settled.worlds[key]; !ok {
+		settled.order = append(settled.order, key)
+	}
+	sw := &settledWorld{}
+	sw.once.Do(func() { sw.w = w })
+	settled.worlds[key] = sw
+	return nil
+}
+
+func settledKey(spec GameSpec) string {
+	return fmt.Sprintf("%g|%s", spec.TransportCost, strings.Join(spec.Map, "/"))
 }
 
 // settle builds a game's map and runs it without nations until it settles.

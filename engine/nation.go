@@ -700,8 +700,9 @@ func (n *Nation) learn(w *World, i int) {
 }
 
 // pickCopy chooses the tech the nation catches up on, alongside its own
-// research: the cheapest it can research that a nation it trades with or
-// borders already knows (not the one it researches itself). Its
+// research: the cheapest it can research that a neighbour it isn't
+// embargoed against (either way) already knows (not the one it researches
+// itself). Its
 // universities' work goes to both: a follower adopts what exists abroad
 // through engineers and emigrants, journals and imported machines while it
 // still works on its own, and what others know costs it less (the
@@ -727,10 +728,12 @@ func (n *Nation) pickCopy(w *World) {
 	}
 }
 
-// knownNearby reports whether a nation n trades with or borders knows tech i.
+// knownNearby reports whether a neighbour of n knows tech i and the border
+// between them is open: an embargo, either way, stops the engineers,
+// machines and journals a tech crosses with.
 func (w *World) knownNearby(n *Nation, i int) bool {
 	for _, o := range w.Nations {
-		if o != n && !o.Eliminated() && o.Known[i] && (n.TradeWith[o.ID] > 0 || w.nationsBorder(n, o)) {
+		if o != n && !o.Eliminated() && o.Known[i] && !n.Embargo[o.ID] && !o.Embargo[n.ID] && w.nationsBorder(n, o) {
 			return true
 		}
 	}
