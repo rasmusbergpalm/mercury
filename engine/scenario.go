@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // Recipe is a firm template: output, base TFP and Cobb-Douglas factors.
@@ -87,46 +88,115 @@ var MethodRecipes = []struct {
 	// old mines couldn't.
 	Cap int
 }{
-	{"Mill", Recipe{"Textile factory", "cloth", 3.0, []Factor{Labor(0.15), Comp("fiber", 0.4), Input("coal", 0.1), Input("steam engines", 0.05)}}, 0},
-	{"Smelter", Recipe{"Steel works", "iron", 2.2, []Factor{Labor(0.17), Input("iron ore", 0.3), Input("coal", 0.18), Input("steam engines", 0.05)}}, 0},
-	{"Coal mine", Recipe{"Steam coal mine", "coal", 3.8, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 16},
-	{"Iron mine", Recipe{"Steam iron mine", "iron ore", 2.4, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 6},
-	{"Iron mine", Recipe{"Blasting iron mine", "iron ore", 3.0, []Factor{Labor(0.4), Input("explosives", 0.12), Input("steam engines", 0.08)}}, 8},
-	// on the land a method mostly turns wages into machinery, tools,
-	// fertilizer and fuel bought from industry: a threshing machine or a
-	// tractor did the work of many hands, so labour's share of what the
-	// land earns falls with each (a firm's wage bill is its labour exponent
-	// times its sales: jobs on the land fall even if food spending doesn't).
-	// Each one's productivity keeps it about as far ahead of the old method,
-	// at the prices of its day, as with labour's old share.
-	{"Farm", Recipe{"Seed-drill farm", "grain", 3.0, []Factor{Labor(0.44), Input("tools", 0.16)}}, 0},
-	{"Farm", Recipe{"Fertilized farm", "grain", 3.5, []Factor{Labor(0.32), Input("tools", 0.1), Input("fertilizer", 0.18)}}, 0},
-	{"Farm", Recipe{"Tractor farm", "grain", 5.0, []Factor{Labor(0.18), Input("vehicles", 0.2), Input("oil", 0.1), Input("fertilizer", 0.12)}}, 0},
-	{"Potato farm", Recipe{"Fertilized potato farm", "potatoes", 4.5, []Factor{Labor(0.36), Input("fertilizer", 0.16), Input("tools", 0.08)}}, 0},
-	// the rest of the land was mechanized too, and with demand for food and
-	// timber growing slowly it was this, more than anything, that moved
-	// people off the land: steam sawmills from the 1840s, fodder crops and
-	// bred stock on the ranges, steam crushing mills on the cane fields, rolling machines on the tea
-	// estates (Jackson's, 1872) doing what many hands had,
-	// steam trawlers (steel hulls, 1880s) catching several times a sailing
-	// smack's fish
-	{"Forestry", Recipe{"Steam sawmill", "wood", 5.0, []Factor{Labor(0.32), Input("steam engines", 0.16), Input("coal", 0.12)}}, 0},
-	{"Ranch", Recipe{"Fodder ranch", "meat", 2.3, []Factor{Labor(0.38), Input("grain", 0.14), Input("tools", 0.08)}}, 0},
-	{"Sugar plantation", Recipe{"Steam-mill plantation", "sugar cane", 4.5, []Factor{Labor(0.34), Input("steam engines", 0.12), Input("coal", 0.14)}}, 0},
-	{"Tea plantation", Recipe{"Tea estate with rollers", "tea", 3.0, []Factor{Labor(0.36), Input("steam engines", 0.12), Input("coal", 0.06), Input("tools", 0.06)}}, 0},
-	{"Fishery", Recipe{"Steam trawler", "fish", 3.9, []Factor{Labor(0.3), Input("steam engines", 0.18), Input("coal", 0.12)}}, 0},
-	{"Transport", Recipe{"Steam transport", "transport", 3.6, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 0},
-	{"Transport", Recipe{"Motor transport", "transport", 4.5, []Factor{Labor(0.35), Input("vehicles", 0.15), Input("oil", 0.1)}}, 0},
-	{"Construction", Recipe{"Steam cranes", "construction", 2.4, []Factor{Labor(0.42), Input("wood", 0.18), Input("steam engines", 0.06), Input("coal", 0.04)}}, 0},
-	{"Toolmaker", Recipe{"Machine-tool works", "tools", 2.0, []Factor{Labor(0.25), Input("iron", 0.25), Input("steam engines", 0.08), Input("coal", 0.07)}}, 0},
-	{"Bakery", Recipe{"Steam bakery", "bread", 2.8, []Factor{Labor(0.22), Input("grain", 0.4), Input("coal", 0.12), Input("steam engines", 0.06)}}, 0},
-	{"Brewery", Recipe{"Steam brewery", "beer", 2.2, []Factor{Labor(0.18), Input("grain", 0.4), Input("coal", 0.07), Input("steam engines", 0.05)}}, 0},
-	{"Refinery", Recipe{"Vacuum-pan refinery", "sugar", 1.8, []Factor{Labor(0.12), Input("sugar cane", 0.4), Input("coal", 0.12), Input("steam engines", 0.06)}}, 0},
-	{"Kiln", Recipe{"Factory kiln", "porcelain", 1.6, []Factor{Labor(0.25), Input("clay", 0.2), Input("coal", 0.25), Input("steam engines", 0.05), Input("tools", 0.05)}}, 0},
-	{"Smithy", Recipe{"Electric smithy", "ironware", 2.5, []Factor{Labor(0.2), Input("iron", 0.3), Input("electricity", 0.2)}}, 0},
-	{"Carpenter", Recipe{"Electric joinery", "furniture", 2.5, []Factor{Labor(0.18), Input("wood", 0.4), Input("electricity", 0.12)}}, 0},
-	{"Tailor", Recipe{"Garment factory", "clothes", 3.0, []Factor{Labor(0.18), Input("cloth", 0.4), Input("electricity", 0.08), Input("tools", 0.04)}}, 0},
-	{"Motor works", Recipe{"Assembly-line works", "vehicles", 2.0, []Factor{Labor(0.18), Input("iron", 0.3), Input("coal", 0.05), Input("electricity", 0.17)}}, 0},
+	// Every firm that exists in 1820 has a method for each later era: the
+	// steam age (1840s-60s), steel, electricity and chemistry (1870s-90s)
+	// and the motor age (1900s-10s). Each keeps the capital share of the
+	// one before (one less its exponents) and turns labour into that
+	// era's machinery and fuel: engines and coal, then iron, power,
+	// fertilizer and explosives, then vehicles and oil. A firm's wage bill
+	// is its labour exponent times its sales, so each frees workers even
+	// where demand for its good doesn't grow. Each is about a tenth more
+	// profitable a level than the one before at the prices of its day
+	// (its productivity is set so), so it spreads as owners refit, as the
+	// machines of the period did.
+	{"Farm", Recipe{"Seed-drill farm", "grain", 3.32, []Factor{Labor(0.44), Input("tools", 0.16)}}, 0},                                                                                            // era 2: Seed drill
+	{"Farm", Recipe{"Fertilized farm", "grain", 4.61, []Factor{Labor(0.32), Input("tools", 0.1), Input("fertilizer", 0.18)}}, 0},                                                                  // era 3: Fertilizers
+	{"Farm", Recipe{"Tractor farm", "grain", 5.59, []Factor{Labor(0.18), Input("vehicles", 0.2), Input("oil", 0.1), Input("fertilizer", 0.12)}}, 0},                                               // era 4: Mechanized agriculture
+	{"Potato farm", Recipe{"Horse-hoe potato farm", "potatoes", 3.9, []Factor{Labor(0.48), Input("tools", 0.12)}}, 0},                                                                             // era 2: Seed drill
+	{"Potato farm", Recipe{"Fertilized potato farm", "potatoes", 5.46, []Factor{Labor(0.36), Input("fertilizer", 0.16), Input("tools", 0.08)}}, 0},                                                // era 3: Fertilizers
+	{"Potato farm", Recipe{"Motorized potato farm", "potatoes", 6.64, []Factor{Labor(0.24), Input("fertilizer", 0.14), Input("vehicles", 0.12), Input("oil", 0.1)}}, 0},                           // era 4: Mechanized agriculture
+	{"Ranch", Recipe{"Fodder ranch", "meat", 2.19, []Factor{Labor(0.38), Input("grain", 0.14), Input("tools", 0.08)}}, 0},                                                                         // era 2: Seed drill
+	{"Ranch", Recipe{"Fenced ranch", "meat", 2.94, []Factor{Labor(0.3), Input("grain", 0.14), Input("iron", 0.08), Input("tools", 0.08)}}, 0},                                                     // era 3: Steel
+	{"Ranch", Recipe{"Motorized ranch", "meat", 3.13, []Factor{Labor(0.22), Input("grain", 0.14), Input("vehicles", 0.14), Input("oil", 0.1)}}, 0},                                                // era 4: Mechanized agriculture
+	{"Fishery", Recipe{"Ice-packed fishery", "fish", 2.25, []Factor{Labor(0.5), Input("tools", 0.1)}}, 0},                                                                                         // era 2: Railways
+	{"Fishery", Recipe{"Steam trawler", "fish", 4.4, []Factor{Labor(0.3), Input("steam engines", 0.18), Input("coal", 0.12)}}, 0},                                                                 // era 3: Steel
+	{"Fishery", Recipe{"Motor trawler", "fish", 3.14, []Factor{Labor(0.22), Input("vehicles", 0.2), Input("oil", 0.18)}}, 0},                                                                      // era 4: Internal combustion
+	{"Forestry", Recipe{"Steam sawmill", "wood", 5.44, []Factor{Labor(0.32), Input("steam engines", 0.16), Input("coal", 0.12)}}, 0},                                                              // era 2: Steam power
+	{"Forestry", Recipe{"Band-saw mill", "wood", 6.9, []Factor{Labor(0.24), Input("steam engines", 0.14), Input("coal", 0.1), Input("tools", 0.12)}}, 0},                                          // era 3: Steel
+	{"Forestry", Recipe{"Motor logging", "wood", 5.57, []Factor{Labor(0.18), Input("vehicles", 0.18), Input("oil", 0.12), Input("tools", 0.12)}}, 0},                                              // era 4: Internal combustion
+	{"Coal mine", Recipe{"Steam coal mine", "coal", 4.04, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 16},                                                           // era 2: Steam power
+	{"Coal mine", Recipe{"Mechanized coal mine", "coal", 5.63, []Factor{Labor(0.32), Input("steam engines", 0.08), Input("electricity", 0.12), Input("tools", 0.08)}}, 16},                        // era 3: Electricity
+	{"Coal mine", Recipe{"Conveyor coal mine", "coal", 6.35, []Factor{Labor(0.22), Input("electricity", 0.18), Input("tools", 0.1), Input("steam engines", 0.1)}}, 16},                            // era 4: Mass production
+	{"Iron mine", Recipe{"Steam iron mine", "iron ore", 3.03, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 6},                                                        // era 2: Steam power
+	{"Iron mine", Recipe{"Blasting iron mine", "iron ore", 3.38, []Factor{Labor(0.4), Input("explosives", 0.12), Input("steam engines", 0.08)}}, 8},                                               // era 3: Industrial chemistry
+	{"Iron mine", Recipe{"Motor ore mine", "iron ore", 3.8, []Factor{Labor(0.26), Input("explosives", 0.12), Input("vehicles", 0.12), Input("oil", 0.1)}}, 8},                                     // era 4: Internal combustion
+	{"Sheep farm", Recipe{"Bred-flock sheep farm", "wool", 2.11, []Factor{Labor(0.48), Input("grain", 0.12)}}, 0},                                                                                 // era 2: Seed drill
+	{"Sheep farm", Recipe{"Machine-shorn sheep farm", "wool", 2.91, []Factor{Labor(0.38), Input("grain", 0.12), Input("tools", 0.1)}}, 0},                                                         // era 3: Steel
+	{"Sheep farm", Recipe{"Motorized sheep station", "wool", 3.61, []Factor{Labor(0.28), Input("grain", 0.12), Input("vehicles", 0.12), Input("oil", 0.08)}}, 0},                                  // era 4: Mechanized agriculture
+	{"Cotton plantation", Recipe{"Steam-gin plantation", "cotton", 2.92, []Factor{Labor(0.46), Input("steam engines", 0.08), Input("coal", 0.06)}}, 0},                                            // era 2: Steam power
+	{"Cotton plantation", Recipe{"Fertilized cotton plantation", "cotton", 4.03, []Factor{Labor(0.36), Input("steam engines", 0.08), Input("coal", 0.06), Input("fertilizer", 0.1)}}, 0},          // era 3: Fertilizers
+	{"Cotton plantation", Recipe{"Mechanized cotton plantation", "cotton", 3.77, []Factor{Labor(0.24), Input("fertilizer", 0.1), Input("vehicles", 0.14), Input("oil", 0.12)}}, 0},                // era 4: Mechanized agriculture
+	{"Tea plantation", Recipe{"Estate tea garden", "tea", 1.56, []Factor{Labor(0.48), Input("tools", 0.12)}}, 0},                                                                                  // era 2: Seed drill
+	{"Tea plantation", Recipe{"Tea estate with rollers", "tea", 2.82, []Factor{Labor(0.36), Input("steam engines", 0.12), Input("coal", 0.06), Input("tools", 0.06)}}, 0},                         // era 3: Steel
+	{"Tea plantation", Recipe{"Mechanized tea estate", "tea", 2.6, []Factor{Labor(0.26), Input("vehicles", 0.14), Input("oil", 0.1), Input("tools", 0.1)}}, 0},                                    // era 4: Mechanized agriculture
+	{"Sugar plantation", Recipe{"Steam-mill plantation", "sugar cane", 5.09, []Factor{Labor(0.34), Input("steam engines", 0.12), Input("coal", 0.14)}}, 0},                                        // era 2: Steam power
+	{"Sugar plantation", Recipe{"Fertilized cane plantation", "sugar cane", 6.35, []Factor{Labor(0.28), Input("steam engines", 0.1), Input("coal", 0.1), Input("fertilizer", 0.12)}}, 0},          // era 3: Fertilizers
+	{"Sugar plantation", Recipe{"Mechanized cane plantation", "sugar cane", 5.38, []Factor{Labor(0.2), Input("fertilizer", 0.12), Input("vehicles", 0.16), Input("oil", 0.12)}}, 0},               // era 4: Mechanized agriculture
+	{"Vineyard", Recipe{"Trellised vineyard", "grapes", 2.25, []Factor{Labor(0.5), Input("tools", 0.1)}}, 0},                                                                                      // era 2: Seed drill
+	{"Vineyard", Recipe{"Grafted vineyard", "grapes", 3.05, []Factor{Labor(0.42), Input("tools", 0.1), Input("fertilizer", 0.08)}}, 0},                                                            // era 3: Industrial chemistry
+	{"Vineyard", Recipe{"Motorized vineyard", "grapes", 4.25, []Factor{Labor(0.3), Input("tools", 0.1), Input("fertilizer", 0.08), Input("vehicles", 0.08), Input("oil", 0.04)}}, 0},              // era 4: Mechanized agriculture
+	{"Silk farm", Recipe{"Steam filature", "silk", 1.56, []Factor{Labor(0.46), Input("steam engines", 0.08), Input("coal", 0.06)}}, 0},                                                            // era 2: Steam filatures
+	{"Silk farm", Recipe{"Selected-egg silk farm", "silk", 2.03, []Factor{Labor(0.4), Input("steam engines", 0.08), Input("coal", 0.06), Input("fertilizer", 0.06)}}, 0},                          // era 3: Industrial chemistry
+	{"Silk farm", Recipe{"Electric filature", "silk", 2.02, []Factor{Labor(0.3), Input("electricity", 0.14), Input("tools", 0.1), Input("fertilizer", 0.06)}}, 0},                                 // era 4: Mass production
+	{"Clay pit", Recipe{"Steam clay works", "clay", 3.89, []Factor{Labor(0.46), Input("steam engines", 0.08), Input("coal", 0.06)}}, 0},                                                           // era 2: Steam power
+	{"Clay pit", Recipe{"Blasted clay pit", "clay", 4.8, []Factor{Labor(0.38), Input("explosives", 0.1), Input("steam engines", 0.12)}}, 0},                                                       // era 3: Industrial chemistry
+	{"Clay pit", Recipe{"Excavator clay pit", "clay", 5.1, []Factor{Labor(0.26), Input("vehicles", 0.16), Input("oil", 0.1), Input("explosives", 0.08)}}, 0},                                      // era 4: Internal combustion
+	{"Oil well", Recipe{"Rotary-drilled well", "oil", 2.67, []Factor{Labor(0.4), Input("steam engines", 0.1), Input("tools", 0.1)}}, 0},                                                           // era 4: Internal combustion
+	{"Bakery", Recipe{"Steam bakery", "bread", 2.87, []Factor{Labor(0.22), Input("grain", 0.4), Input("coal", 0.12), Input("steam engines", 0.06)}}, 0},                                           // era 2: Steam power
+	{"Bakery", Recipe{"Electric bakery", "bread", 3.34, []Factor{Labor(0.16), Input("grain", 0.4), Input("electricity", 0.1), Input("tools", 0.04), Input("coal", 0.1)}}, 0},                      // era 3: Electricity
+	{"Bakery", Recipe{"Industrial bakery", "bread", 3.48, []Factor{Labor(0.1), Input("grain", 0.4), Input("electricity", 0.16), Input("tools", 0.06), Input("coal", 0.08)}}, 0},                   // era 4: Mass production
+	{"Brewery", Recipe{"Steam brewery", "beer", 2.44, []Factor{Labor(0.18), Input("grain", 0.4), Input("coal", 0.07), Input("steam engines", 0.05)}}, 0},                                          // era 2: Steam power
+	{"Brewery", Recipe{"Refrigerated brewery", "beer", 2.92, []Factor{Labor(0.14), Input("grain", 0.4), Input("coal", 0.06), Input("steam engines", 0.04), Input("electricity", 0.06)}}, 0},       // era 3: Refrigeration
+	{"Brewery", Recipe{"Bottling brewery", "beer", 2.96, []Factor{Labor(0.1), Input("grain", 0.4), Input("electricity", 0.1), Input("tools", 0.06), Input("coal", 0.04)}}, 0},                     // era 4: Mass production
+	{"Mill", Recipe{"Textile factory", "cloth", 2.53, []Factor{Labor(0.15), Comp("fiber", 0.4), Input("coal", 0.1), Input("steam engines", 0.05)}}, 0},                                            // era 2: Mechanized textiles
+	{"Mill", Recipe{"Ring-spinning mill", "cloth", 2.6, []Factor{Labor(0.12), Comp("fiber", 0.4), Input("electricity", 0.1), Input("tools", 0.08)}}, 0},                                           // era 3: Electricity
+	{"Mill", Recipe{"Automatic-loom mill", "cloth", 2.75, []Factor{Labor(0.08), Comp("fiber", 0.4), Input("electricity", 0.14), Input("tools", 0.08)}}, 0},                                        // era 4: Assembly line
+	{"Tailor", Recipe{"Sewing-machine tailor", "clothes", 1.96, []Factor{Labor(0.24), Input("cloth", 0.4), Input("tools", 0.06)}}, 0},                                                             // era 2: Interchangeable parts
+	{"Tailor", Recipe{"Garment factory", "clothes", 2.47, []Factor{Labor(0.18), Input("cloth", 0.4), Input("electricity", 0.08), Input("tools", 0.04)}}, 0},                                       // era 3: Electricity
+	{"Tailor", Recipe{"Garment assembly line", "clothes", 2.72, []Factor{Labor(0.12), Input("cloth", 0.4), Input("electricity", 0.1), Input("tools", 0.08)}}, 0},                                  // era 4: Assembly line
+	{"Smelter", Recipe{"Hot-blast furnace", "iron", 1.21, []Factor{Labor(0.18), Input("iron ore", 0.3), Input("coal", 0.2), Input("steam engines", 0.02)}}, 0},                                    // era 2: Steam power
+	{"Smelter", Recipe{"Steel works", "iron", 1.43, []Factor{Labor(0.17), Input("iron ore", 0.3), Input("coal", 0.18), Input("steam engines", 0.05)}}, 0},                                         // era 3: Steel
+	{"Smelter", Recipe{"Electric arc furnace", "iron", 1.49, []Factor{Labor(0.1), Input("iron ore", 0.3), Input("electricity", 0.15), Input("coal", 0.1), Input("tools", 0.05)}}, 0},              // era 4: Mass production
+	{"Smithy", Recipe{"Steam-hammer forge", "ironware", 1.72, []Factor{Labor(0.22), Input("iron", 0.3), Input("coal", 0.12), Input("steam engines", 0.06)}}, 0},                                   // era 2: Steam power
+	{"Smithy", Recipe{"Electric smithy", "ironware", 1.55, []Factor{Labor(0.2), Input("iron", 0.3), Input("electricity", 0.2)}}, 0},                                                               // era 3: Electricity
+	{"Smithy", Recipe{"Drop-forge works", "ironware", 1.83, []Factor{Labor(0.12), Input("iron", 0.3), Input("electricity", 0.2), Input("tools", 0.08)}}, 0},                                       // era 4: Mass production
+	{"Carpenter", Recipe{"Steam joinery", "furniture", 1.8, []Factor{Labor(0.22), Input("wood", 0.4), Input("coal", 0.04), Input("steam engines", 0.04)}}, 0},                                     // era 2: Steam power
+	{"Carpenter", Recipe{"Electric joinery", "furniture", 1.84, []Factor{Labor(0.18), Input("wood", 0.4), Input("electricity", 0.12)}}, 0},                                                        // era 3: Electricity
+	{"Carpenter", Recipe{"Furniture factory", "furniture", 2.12, []Factor{Labor(0.1), Input("wood", 0.4), Input("electricity", 0.14), Input("tools", 0.06)}}, 0},                                  // era 4: Mass production
+	{"Refinery", Recipe{"Vacuum-pan refinery", "sugar", 1.65, []Factor{Labor(0.12), Input("sugar cane", 0.4), Input("coal", 0.12), Input("steam engines", 0.06)}}, 0},                             // era 2: Steam power
+	{"Refinery", Recipe{"Centrifugal refinery", "sugar", 1.92, []Factor{Labor(0.08), Input("sugar cane", 0.4), Input("coal", 0.08), Input("electricity", 0.1), Input("steam engines", 0.04)}}, 0}, // era 3: Electricity
+	{"Refinery", Recipe{"Continuous refinery", "sugar", 1.91, []Factor{Labor(0.06), Input("sugar cane", 0.4), Input("electricity", 0.14), Input("coal", 0.06), Input("tools", 0.04)}}, 0},         // era 4: Mass production
+	{"Winery", Recipe{"Steam-press winery", "wine", 1.7, []Factor{Labor(0.24), Input("grapes", 0.4), Input("coal", 0.03), Input("steam engines", 0.03)}}, 0},                                      // era 2: Steam power
+	{"Winery", Recipe{"Pasteurizing winery", "wine", 2.13, []Factor{Labor(0.18), Input("grapes", 0.4), Input("coal", 0.06), Input("steam engines", 0.06)}}, 0},                                    // era 3: Research laboratories
+	{"Winery", Recipe{"Industrial winery", "wine", 2.05, []Factor{Labor(0.12), Input("grapes", 0.4), Input("electricity", 0.1), Input("tools", 0.08)}}, 0},                                        // era 4: Mass production
+	{"Couturier", Recipe{"Sewing-machine atelier", "fine clothes", 1.39, []Factor{Labor(0.32), Input("silk", 0.3), Input("tools", 0.08)}}, 0},                                                     // era 2: Interchangeable parts
+	{"Couturier", Recipe{"Electric atelier", "fine clothes", 1.79, []Factor{Labor(0.26), Input("silk", 0.3), Input("electricity", 0.08), Input("tools", 0.06)}}, 0},                               // era 3: Electricity
+	{"Couturier", Recipe{"Couture workshop line", "fine clothes", 1.99, []Factor{Labor(0.2), Input("silk", 0.3), Input("electricity", 0.12), Input("tools", 0.08)}}, 0},                           // era 4: Assembly line
+	{"Kiln", Recipe{"Factory kiln", "porcelain", 1.68, []Factor{Labor(0.25), Input("clay", 0.2), Input("coal", 0.25), Input("steam engines", 0.05), Input("tools", 0.05)}}, 0},                    // era 2: Interchangeable parts
+	{"Kiln", Recipe{"Tunnel kiln", "porcelain", 1.92, []Factor{Labor(0.18), Input("clay", 0.2), Input("coal", 0.3), Input("steam engines", 0.06), Input("tools", 0.06)}}, 0},                      // era 3: Industrial chemistry
+	{"Kiln", Recipe{"Electric kiln", "porcelain", 1.66, []Factor{Labor(0.12), Input("clay", 0.2), Input("electricity", 0.3), Input("tools", 0.08), Input("steam engines", 0.1)}}, 0},              // era 4: Mass production
+	{"Transport", Recipe{"Steam transport", "transport", 4.04, []Factor{Labor(0.45), Input("steam engines", 0.1), Input("coal", 0.05)}}, 0},                                                       // era 2: Locomotives
+	{"Transport", Recipe{"Heavy rail freight", "transport", 5.9, []Factor{Labor(0.34), Input("steam engines", 0.14), Input("coal", 0.08), Input("iron", 0.04)}}, 0},                               // era 3: Rail network
+	{"Transport", Recipe{"Motor transport", "transport", 4.47, []Factor{Labor(0.26), Input("vehicles", 0.2), Input("oil", 0.14)}}, 0},                                                             // era 4: Motor trucks
+	{"Construction", Recipe{"Steam shovels", "construction", 2.37, []Factor{Labor(0.42), Input("wood", 0.2), Input("steam engines", 0.05), Input("coal", 0.03)}}, 0},                              // era 2: Locomotives
+	{"Construction", Recipe{"Steam cranes", "construction", 3.57, []Factor{Labor(0.32), Input("wood", 0.12), Input("iron", 0.12), Input("steam engines", 0.08), Input("coal", 0.06)}}, 0},         // era 3: Engineering
+	{"Construction", Recipe{"Motorized construction", "construction", 3.28, []Factor{Labor(0.22), Input("wood", 0.1), Input("iron", 0.14), Input("vehicles", 0.14), Input("oil", 0.1)}}, 0},       // era 4: Internal combustion
+	{"Armory", Recipe{"Armory system", "arms", 1.35, []Factor{Labor(0.22), Input("iron", 0.25), Input("wood", 0.1), Input("tools", 0.08)}}, 0},                                                    // era 2: Interchangeable parts
+	{"Armory", Recipe{"Steel arms works", "arms", 1.64, []Factor{Labor(0.16), Input("iron", 0.28), Input("wood", 0.05), Input("tools", 0.08), Input("coal", 0.08)}}, 0},                           // era 3: Steel
+	{"Armory", Recipe{"Mass-production armory", "arms", 1.59, []Factor{Labor(0.1), Input("iron", 0.28), Input("wood", 0.04), Input("tools", 0.1), Input("electricity", 0.13)}}, 0},                // era 4: Mass production
+	{"Foundry", Recipe{"Steam foundry", "artillery", 1.15, []Factor{Labor(0.22), Input("iron", 0.3), Input("coal", 0.12), Input("steam engines", 0.06)}}, 0},                                      // era 2: Steam power
+	{"Foundry", Recipe{"Steel gun works", "artillery", 1.32, []Factor{Labor(0.16), Input("iron", 0.32), Input("coal", 0.14), Input("steam engines", 0.08)}}, 0},                                   // era 3: Steel
+	{"Foundry", Recipe{"Electric foundry", "artillery", 1.1, []Factor{Labor(0.1), Input("iron", 0.32), Input("electricity", 0.18), Input("tools", 0.1)}}, 0},                                      // era 4: Mass production
+	{"Toolmaker", Recipe{"Machine-tool works", "tools", 1.71, []Factor{Labor(0.25), Input("iron", 0.25), Input("steam engines", 0.08), Input("coal", 0.07)}}, 0},                                  // era 2: Interchangeable parts
+	{"Toolmaker", Recipe{"Electric tool works", "tools", 2, []Factor{Labor(0.16), Input("iron", 0.25), Input("electricity", 0.14), Input("steam engines", 0.04), Input("tools", 0.06)}}, 0},       // era 3: Electricity
+	{"Toolmaker", Recipe{"Tool assembly line", "tools", 1.84, []Factor{Labor(0.1), Input("iron", 0.25), Input("electricity", 0.2), Input("tools", 0.1)}}, 0},                                      // era 4: Assembly line
+	{"Engine works", Recipe{"Compound-engine works", "steam engines", 1.04, []Factor{Labor(0.2), Input("iron", 0.3), Input("coal", 0.1), Input("tools", 0.14), Input("electricity", 0.06)}}, 0},   // era 3: Steel
+	{"Engine works", Recipe{"Engine assembly line", "steam engines", 1.05, []Factor{Labor(0.12), Input("iron", 0.3), Input("tools", 0.16), Input("electricity", 0.16), Input("coal", 0.06)}}, 0},  // era 4: Assembly line
+	{"Chemical works", Recipe{"Electrochemical works", "explosives", 1.17, []Factor{Labor(0.18), Input("coal", 0.14), Input("clay", 0.1), Input("electricity", 0.18)}}, 0},                        // era 4: Mass production
+	{"Fertilizer works", Recipe{"Haber-process plant", "fertilizer", 1.38, []Factor{Labor(0.16), Input("coal", 0.2), Input("clay", 0.06), Input("electricity", 0.18)}}, 0},                        // era 4: Mass production
+	{"Power station", Recipe{"Turbine power station", "electricity", 2.37, []Factor{Labor(0.1), Input("coal", 0.32), Input("steam engines", 0.14), Input("tools", 0.04)}}, 0},                     // era 4: Mass production
+	{"Munitions plant", Recipe{"Shell production line", "munitions", 1.76, []Factor{Labor(0.16), Input("iron", 0.22), Input("coal", 0.16), Input("electricity", 0.16)}}, 0},                       // era 4: Mass production
+	{"Motor works", Recipe{"Assembly-line works", "vehicles", 0.9, []Factor{Labor(0.18), Input("iron", 0.3), Input("coal", 0.05), Input("electricity", 0.17)}}, 0},                                // era 4: Assembly line
 }
 
 // GameRawRecipes are land-bound producers that exist only in game worlds,
@@ -555,4 +625,30 @@ func addOwnerClasses(r *Region) {
 	p.Class = Owners
 	r.Pops = append(r.Pops, p)
 	r.popDemand = append(r.popDemand, make([]float64, NumGoods))
+}
+
+// A tech's description lists the production methods it brings, from the
+// method table, so that the two can't disagree.
+func init() {
+	method := map[string]bool{}
+	for _, m := range MethodRecipes {
+		method[m.Firm] = true
+	}
+	for i := range Techs {
+		var names []string
+		for _, f := range Techs[i].EnableFirms {
+			if method[f] {
+				names = append(names, strings.ToLower(f[:1])+f[1:])
+			}
+		}
+		if len(names) == 0 {
+			continue
+		}
+		list := "new methods: " + strings.Join(names, ", ")
+		if Techs[i].Effect == "" {
+			Techs[i].Effect = strings.ToUpper(list[:1]) + list[1:]
+		} else {
+			Techs[i].Effect += "; " + list
+		}
+	}
 }

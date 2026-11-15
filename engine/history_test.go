@@ -38,8 +38,8 @@ func TestArmyHistoryAndBreakdown(t *testing.T) {
 		w.Step()
 	}
 	m := nationByName(w, "Montara")
-	w.GrantTech(m.ID, "Drill")
-	w.GrantTech(m.ID, "Field artillery")
+	w.GrantTech(m.ID, "Percussion caps")
+	w.GrantTech(m.ID, "Shrapnel shells")
 	a, _ := w.RaiseArmy(m.ID, regionByName(w, "11").ID, 5)
 	for i := 0; i < 100; i++ {
 		w.Step()

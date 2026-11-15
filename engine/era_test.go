@@ -120,7 +120,7 @@ func TestIndustrializationMovesLabor(t *testing.T) {
 func TestResearchQueueAndDiffusion(t *testing.T) {
 	w := newTestGame(t)
 	n, o := w.Nations[0], w.Nations[1]
-	vit, cer := TechID("Viticulture"), TechID("Ceramics")
+	vit, cer := TechID("Tile drainage"), TechID("Portland cement")
 	if err := n.SetQueue([]int{vit, cer}); err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestResearchQueueAndDiffusion(t *testing.T) {
 	n.Known[vit] = true
 	n.pickResearch(w)
 	if n.Researching != cer {
-		t.Errorf("after Viticulture, researching %d", n.Researching)
+		t.Errorf("after Tile drainage, researching %d", n.Researching)
 	}
 	if err := n.SetQueue([]int{vit}); err == nil {
 		t.Error("queueing a known tech accepted")
@@ -168,8 +168,8 @@ func TestTradeIsTrackedBetweenNations(t *testing.T) {
 func TestEventsAreRecorded(t *testing.T) {
 	w := newNeighbourGame(t)
 	n := w.Nations[0]
-	n.SetResearch(TechID("Wagons"))
-	n.ResearchPoints = Techs[TechID("Wagons")].Cost
+	n.SetResearch(TechID("Canals"))
+	n.ResearchPoints = Techs[TechID("Canals")].Cost
 	w.Step()
 	w.DeclareWar(0, 1)
 	kinds := map[string]bool{}

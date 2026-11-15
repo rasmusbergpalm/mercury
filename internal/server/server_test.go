@@ -196,7 +196,7 @@ func TestNationCommands(t *testing.T) {
 		t.Error("embargo not set")
 	}
 	e.do("POST", base+"embargo?target=0", tok, nil, 409, nil)
-	masonry, railways := engine.TechID("Masonry"), engine.TechID("Railways")
+	masonry, railways := engine.TechID("Macadam roads"), engine.TechID("Railways")
 	e.do("POST", fmt.Sprintf("%sresearch?tech=%d", base, masonry), tok, nil, 200, &st)
 	if st.Nations[0].Researching != masonry {
 		t.Errorf("researching %d", st.Nations[0].Researching)
@@ -260,11 +260,11 @@ func TestTechTreeAndPorts(t *testing.T) {
 	}
 	tok := e.join(g.ID, 2) // Thalassa: tile 54 (index 34) is coastal
 	var st State
-	e.do("POST", "/api/games/"+g.ID+"/regions/34/port", tok, nil, 409, nil) // needs Ocean sailing
+	e.do("POST", "/api/games/"+g.ID+"/regions/34/port", tok, nil, 409, nil) // needs Clipper ships
 	game := e.srv.games[g.ID]
 	game.mu.Lock()
-	game.w.GrantTech(2, "Navigation")
-	game.w.GrantTech(2, "Ocean sailing")
+	game.w.GrantTech(2, "Hydrographic charts")
+	game.w.GrantTech(2, "Clipper ships")
 	if p := game.w.Regions[34].Project; p != nil { // the computer may have started a road while warming up
 		game.w.CancelBuild(34)
 	}

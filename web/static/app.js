@@ -434,7 +434,7 @@ function lineChart(ticks, list, o = {}) {
       d += `${pen ? "L" : "M"}${tx(i).toFixed(1)},${ty(v).toFixed(1)}`;
       pen = true;
     });
-    svg += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    svg += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${s.dash ? ` stroke-dasharray="5 4"` : ""}/>`;
     const last = s.values[s.values.length - 1];
     if (labels && last !== null) ends.push({ y: ty(last), name: s.name, color: s.color });
   }
@@ -449,7 +449,7 @@ function lineChart(ticks, list, o = {}) {
   svg += `<line class="cross" x1="0" x2="0" y1="${y1}" y2="${y0}" visibility="hidden"/>`;
   svg += list.map((s) => `<circle r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`).join("");
   const legend = list.length >= 2
-    ? `<div class="legend-inline">${list.map((s) => `<span><span class="swatch" style="background:${s.color};height:3px;vertical-align:4px"></span>${esc(s.name)}</span>`).join("")}</div>` : "";
+    ? `<div class="legend-inline">${list.map((s) => `<span><span class="swatch" style="${s.dash ? `background:none;border-top:2px dashed ${s.color};height:0` : `background:${s.color};height:3px`};vertical-align:4px"></span>${esc(s.name)}</span>`).join("")}</div>` : "";
   return `${legend}<div class="chart" data-chart="${id}"><svg viewBox="0 0 ${CW} ${h}" role="img" aria-label="${esc(list.map((s) => s.name).join(", "))} over time">${svg}</svg></div>`;
 }
 
@@ -1547,6 +1547,9 @@ function pricesBlock(h, n) {
   return html;
 }
 
+// what might and its dashed potential mean, under their charts
+const MIGHT_NOTE = "Might (solid): the strength of the armies as they stand. Potential (dashed): what they could field at full size and fully supplied, which is what rivals arm against.";
+
 // what real GDP means, under its charts
 const GDP_NOTE = "Real GDP: what the firms add (their output less the goods they use up), valued at constant prices in pounds of January 1820, linked month by month. The money in the world is fixed, so prices fall as output grows; real GDP counts the goods, not the pounds.";
 
@@ -1560,6 +1563,7 @@ function nationChart(h, n) {
   if (k === "classes") return row + lineChart(T, world.classes.map((cl, i) => ({ name: cl, color: series(i), values: d.class_income[i] })), { f: (v) => fmt(v) }) + `<p class="sub">Income per head per day.</p>`;
   if (k === "labor") return row + lineChart(T, world.sectors.map((s, i) => ({ name: s, color: series(i), values: d.labor[i] })), { share: true }) + `<p class="sub">Share of workers by sector: the march from the fields into the mills.</p>`;
   if (k === "gdp") return row + lineChart(T, [{ name: names[k], color: c, values: d[k] }], { f: money }) + `<p class="sub">Real GDP, in pounds of January 1820 ${info(GDP_NOTE)}</p>`;
+  if (k === "strength") return row + lineChart(T, [{ name: "might", color: c, values: d.strength }, { name: "potential", color: c, values: d.potential || [], dash: true }], { f: short }) + `<p class="sub">${MIGHT_NOTE}</p>`;
   return row + lineChart(T, [{ name: names[k], color: c, values: d[k] }], { f: k === "utility" ? (v) => fmt(v) : ["gdp", "income", "treasury"].includes(k) ? money : short });
 }
 
@@ -1892,7 +1896,10 @@ function worldPanel() {
   const hs = world.nations.map((o) => getHist(`nations/${o.id}`));
   const [k, row] = seg("world", [["population", "People"], ["gdp", "GDP"], ["utility", "Living"], ["soldiers", "Soldiers"], ["strength", "Might"], ["techs", "Techs"], ["tiles", "Tiles"]], "gdp");
   const ready = hs.every((h) => h && h.data);
-  const chart = ready ? lineChart(hs[0].ticks, world.nations.map((o, i) => ({ name: o.name, color: nationColor(o.id), values: hs[i].data[k] })), { f: k === "utility" ? (v) => fmt(v) : k === "gdp" ? money : short }) : lineChart(null, []);
+  const lines = k === "strength"
+    ? world.nations.flatMap((o, i) => [{ name: o.name, color: nationColor(o.id), values: hs[i].data.strength }, { name: `${o.name} potential`, color: nationColor(o.id), values: hs[i].data.potential || [], dash: true }])
+    : world.nations.map((o, i) => ({ name: o.name, color: nationColor(o.id), values: hs[i].data[k] }));
+  const chart = ready ? lineChart(hs[0].ticks, lines, { f: k === "utility" ? (v) => fmt(v) : k === "gdp" ? money : short }) + (k === "strength" ? `<p class="sub">${MIGHT_NOTE}</p>` : "") : lineChart(null, []);
   return `<h2>The powers ${info(`<b>War</b>: you can only declare war on a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless; after peace a truce holds for some years.<br><br><b>Balance of power</b>: when one nation's might (over a year) is half again every other's, the rest ally against it, for at least three years and until it falls below 1.2 times the next. Allies embargo it, can't fight each other, join each other's wars against it the same day, and make peace with it together.`)}</h2><div class="table-scroll"><table>
     <tr><th>nation</th><th>tiles</th><th>people</th><th>real GDP<br>/ day</th><th>trade / day</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
     <h3>The race</h3>${row}${chart}

@@ -22,7 +22,7 @@ type InfraLevel struct {
 var InfraLevels = []InfraLevel{
 	{Name: "none", MoveMult: 1.0},
 	{Name: "road", MoveMult: 0.6, Cost: 200, Upkeep: 0.5},
-	{Name: "paved road", MoveMult: 0.4, Cost: 400, Upkeep: 1.0, Tech: "Masonry"},
+	{Name: "paved road", MoveMult: 0.4, Cost: 400, Upkeep: 1.0, Tech: "Macadam roads"},
 	{Name: "railway", MoveMult: 0.15, Cost: 600, Upkeep: 2.0, Tech: "Railways",
 		Materials: map[GoodID]float64{G("iron"): 60}},
 }

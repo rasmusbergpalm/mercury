@@ -27,7 +27,7 @@ func TestWarGoodsKeepAPriceInPeacetime(t *testing.T) {
 		}
 	}
 	m := nationByName(w, "Montara")
-	w.GrantTech(m.ID, "Drill") // Line infantry wants artillery
+	w.GrantTech(m.ID, "Percussion caps") // Line infantry wants artillery
 	a, err := w.RaiseArmy(m.ID, m.Regions[0].ID, 0.5*w.MobilizationCap(m))
 	if err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func TestNationPriceIndex(t *testing.T) {
 func TestArmiesKeepOrderingAsPricesRise(t *testing.T) {
 	w := newQuietGame(t)
 	m := nationByName(w, "Montara")
-	w.GrantTech(m.ID, "Drill")
+	w.GrantTech(m.ID, "Percussion caps")
 	if _, err := w.RaiseArmy(m.ID, m.Regions[0].ID, 0.5*w.MobilizationCap(m)); err != nil {
 		t.Fatal(err)
 	}

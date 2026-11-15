@@ -204,11 +204,11 @@ func TestBuildingRoadsLowersHopCosts(t *testing.T) {
 		}
 	}
 
-	// paving needs Masonry
+	// paving needs Macadam roads
 	if err := w.Build(id); !errors.Is(err, ErrNeedTech) {
-		t.Fatalf("paving without Masonry: %v", err)
+		t.Fatalf("paving without Macadam roads: %v", err)
 	}
-	n.Known[TechID("Masonry")] = true
+	n.Known[TechID("Macadam roads")] = true
 	if err := w.Build(id); err != nil {
 		t.Fatal(err)
 	}

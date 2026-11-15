@@ -18,7 +18,7 @@ func TestPortAllowance(t *testing.T) {
 		t.Fatal(err)
 	}
 	n := w.Nations[0]
-	w.GrantTech(n.ID, "Ocean sailing")
+	w.GrantTech(n.ID, "Clipper ships")
 	if want := len(n.Regions) / TilesPerPort; n.PortAllowance() != want || want < 2 {
 		t.Fatalf("%d tiles allow %d ports, want %d", len(n.Regions), n.PortAllowance(), want)
 	}
@@ -57,7 +57,7 @@ func TestRemovePort(t *testing.T) {
 	}
 	var ports []*Region
 	for _, n := range w.Nations {
-		w.GrantTech(n.ID, "Ocean sailing")
+		w.GrantTech(n.ID, "Clipper ships")
 		for _, r := range n.Regions {
 			if r.Coastal && len(ports) < 4 {
 				r.Port = true

@@ -45,7 +45,7 @@ const armyEquipmentScale = 10.0
 // Doctrines, from late-medieval levies to combined arms.
 var Doctrines = []Doctrine{
 	{"Levies", "", 0.7, needs("bread", 0.08, "clothes", 0.015, "arms", 0.016)},
-	{"Line infantry", "Drill", 1.0, needs("bread", 0.08, "clothes", 0.02, "arms", 0.032, "artillery", 0.004)},
+	{"Line infantry", "Percussion caps", 1.0, needs("bread", 0.08, "clothes", 0.02, "arms", 0.032, "artillery", 0.004)},
 	{"Napoleonic corps", "Mass conscription", 1.5, needs("bread", 0.08, "clothes", 0.025, "arms", 0.048, "artillery", 0.012)},
 	{"Rifle infantry", "Rifled muskets", 2.3, needs("bread", 0.09, "clothes", 0.025, "arms", 0.072, "artillery", 0.016)},
 	{"Industrial army", "Breech-loading rifles", 3.5, needs("bread", 0.09, "clothes", 0.03, "arms", 0.08, "artillery", 0.024, "munitions", 0.04)},

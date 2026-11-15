@@ -54,7 +54,7 @@ func TestRaiseArmyRecruitsFromTheNation(t *testing.T) {
 	if err := w.SetArmyTarget(a.ID, cap*2); !errors.Is(err, ErrMobilized) {
 		t.Errorf("target beyond the cap: %v", err)
 	}
-	w.GrantTech(m.ID, "Drill")
+	w.GrantTech(m.ID, "Percussion caps")
 	w.GrantTech(m.ID, "Mass conscription")
 	if w.MobilizationCap(m) <= cap*1.9 {
 		t.Errorf("Mass conscription: cap %v, was %v", w.MobilizationCap(m), cap)
@@ -303,7 +303,7 @@ func TestArmySizeLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.GrantTech(m.ID, "Drill")
+	w.GrantTech(m.ID, "Percussion caps")
 	if m.MaxArmySize() != 20 {
 		t.Fatalf("Drill: armies of %v", m.MaxArmySize())
 	}
@@ -409,7 +409,7 @@ func TestDoctrineLadder(t *testing.T) {
 	}
 	near(a.Effectiveness(), Doctrines[0].Power, "levies, fully supplied")
 
-	w.GrantTech(m.ID, "Drill")
+	w.GrantTech(m.ID, "Percussion caps")
 	a.followDoctrine()
 	if a.Doctrine != 1 || a.Supply[G("artillery")] != 0 {
 		t.Fatalf("after Drill: doctrine %d, artillery %v", a.Doctrine, a.Supply[G("artillery")])
@@ -451,7 +451,7 @@ func TestDoctrineLadder(t *testing.T) {
 
 func TestConquestEliminatesANation(t *testing.T) {
 	w := newNeighbourGame(t)
-	w.GrantTech(0, "Wagons")
+	w.GrantTech(0, "Canals")
 	w.DeclareWar(0, 1)
 	beta := regionByName(w, "01")
 	d, _ := w.RaiseArmy(1, beta.ID, 0)
@@ -731,7 +731,7 @@ func TestArmiesBidHardForScarceSupplies(t *testing.T) {
 	w := newQuietGame(t)
 	m := nationByName(w, "Montara")
 	m.Treasury = 1e4
-	w.GrantTech(m.ID, "Drill") // line infantry needs artillery
+	w.GrantTech(m.ID, "Percussion caps") // line infantry needs artillery
 	home := regionByName(w, "11")
 	a, _ := w.RaiseArmy(m.ID, home.ID, 8)
 	a.Men = 100 // an order (~0.6 a day) between construction's limit and the army's
@@ -755,7 +755,7 @@ func TestArmiesBidHardForScarceSupplies(t *testing.T) {
 func TestArmySizeTechsFadeIn(t *testing.T) {
 	w := newQuietGame(t)
 	n := nationByName(w, "Montara")
-	drill := TechID("Drill")
+	drill := TechID("Percussion caps")
 	n.Known[drill], n.LearnedAt[drill] = true, 100
 	n.now = 100
 	if got := n.MaxArmySize(); got != baseArmySize {

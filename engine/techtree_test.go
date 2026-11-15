@@ -79,23 +79,23 @@ func TestGatedFirmsNeedTheirTech(t *testing.T) {
 		w.Step()
 	}
 	for _, r := range []*Region{own, unowned} {
-		k := firmIn(r, "Kiln")
+		k := firmIn(r, "Fertilizer works")
 		if k.Enabled || k.Labor != 0 || k.LastOutput != 0 {
-			t.Errorf("tile %s kiln works without Ceramics: labor %v output %v", r.Name, k.Labor, k.LastOutput)
+			t.Errorf("tile %s fertilizer works work without Fertilizers: labor %v output %v", r.Name, k.Labor, k.LastOutput)
 		}
-		if err := w.Expand(own.ID, firmIndex(own, "Kiln")); !errors.Is(err, ErrFirmLocked) {
+		if err := w.Expand(own.ID, firmIndex(own, "Fertilizer works")); !errors.Is(err, ErrFirmLocked) {
 			t.Errorf("expanding a locked firm: %v", err)
 		}
 	}
-	w.GrantTech(m.ID, "Ceramics")
-	for i := 0; i < 150; i++ { // tile 00 has no clay: it must be imported
+	w.GrantTech(m.ID, "Fertilizers")
+	for i := 0; i < 150; i++ { // its coal and clay may have to be imported
 		w.Step()
 	}
-	if k := firmIn(own, "Kiln"); !k.Enabled || k.LastOutput <= 0 {
-		t.Errorf("kiln idle after Ceramics: enabled %v output %v", k.Enabled, k.LastOutput)
+	if k := firmIn(own, "Fertilizer works"); !k.Enabled || k.LastOutput <= 0 {
+		t.Errorf("fertilizer works idle after Fertilizers: enabled %v output %v", k.Enabled, k.LastOutput)
 	}
-	if firmIn(unowned, "Kiln").Enabled {
-		t.Error("an unowned tile's kiln was unlocked by another nation's tech")
+	if firmIn(unowned, "Fertilizer works").Enabled {
+		t.Error("an unowned tile's fertilizer works were unlocked by another nation's tech")
 	}
 	// the classic world has no gating
 	classic := newTestWorld(t, 1)
@@ -118,19 +118,19 @@ func firmIndex(r *Region, name string) int {
 
 func TestConquestTransfersFirmGating(t *testing.T) {
 	w := newNeighbourGame(t)
-	w.GrantTech(0, "Viticulture")
+	w.GrantTech(0, "Fertilizers")
 	tile := regionByName(w, "01")
-	if firmIn(tile, "Winery").Enabled {
-		t.Fatal("Beta's winery works without Viticulture")
+	if firmIn(tile, "Fertilizer works").Enabled {
+		t.Fatal("Beta's fertilizer works work without Fertilizers")
 	}
 	w.Annex(tile.ID, 0)
-	if !firmIn(tile, "Winery").Enabled {
-		t.Error("conquered tile's winery didn't get the conqueror's tech")
+	if !firmIn(tile, "Fertilizer works").Enabled {
+		t.Error("conquered tile's fertilizer works didn't get the conqueror's tech")
 	}
 }
 
 func TestMilitaryAndPoliticsTechs(t *testing.T) {
-	// occupation pace: Administration speeds it, the owner's Fortifications slow it
+	// occupation pace: Statistical bureaus speed it, the owner's Polygonal forts slow it
 	progress := func(attacker, defender []string) float64 {
 		w := newNeighbourGame(t)
 		for _, g := range attacker {
@@ -148,21 +148,21 @@ func TestMilitaryAndPoliticsTechs(t *testing.T) {
 		return regionByName(w, "01").Siege.Progress
 	}
 	base := progress(nil, nil)
-	if admin := progress([]string{"Administration"}, nil); math.Abs(admin-1.5*base) > 1e-9 {
+	if admin := progress([]string{"Statistical bureaus"}, nil); math.Abs(admin-1.5*base) > 1e-9 {
 		t.Errorf("Administration: progress %v, want %v", admin, 1.5*base)
 	}
-	if fort := progress(nil, []string{"Fortifications"}); math.Abs(fort-base/1.5) > 1e-9 {
-		t.Errorf("Fortifications: progress %v, want %v", fort, base/1.5)
+	if fort := progress(nil, []string{"Polygonal forts"}); math.Abs(fort-base/1.5) > 1e-9 {
+		t.Errorf("Polygonal forts: progress %v, want %v", fort, base/1.5)
 	}
 	// attack bonuses raise strength; desertion techs cut hunger losses
 	w := newNeighbourGame(t)
 	a, _ := w.RaiseArmy(0, regionByName(w, "00").ID, 0)
 	a.Men = 10
 	s0 := a.Strength()
-	w.GrantTech(0, "Drill")
-	w.GrantTech(0, "Field artillery")
+	w.GrantTech(0, "Percussion caps")
+	w.GrantTech(0, "Shrapnel shells")
 	if got := a.Strength(); math.Abs(got-1.1*s0) > 1e-9 {
-		t.Errorf("Field artillery: strength %v, want %v", got, 1.1*s0)
+		t.Errorf("Shrapnel shells: strength %v, want %v", got, 1.1*s0)
 	}
 	if m := w.Nations[0].desertionMult(); m != 1 {
 		t.Errorf("desertion multiplier %v before Military logistics", m)
@@ -185,8 +185,8 @@ func TestBureaucracyBuildsFaster(t *testing.T) {
 		}
 		r := regionByName(w, "13")
 		if grant {
-			w.GrantTech(r.Nation.ID, "Administration")
-			w.GrantTech(r.Nation.ID, "Bureaucracy")
+			w.GrantTech(r.Nation.ID, "Statistical bureaus")
+			w.GrantTech(r.Nation.ID, "Civil service reform")
 		}
 		w.Build(r.ID)
 		start := w.Tick
@@ -204,8 +204,8 @@ func TestScienceTechsSpeedResearch(t *testing.T) {
 	points := func(grant bool) float64 {
 		w := newTestGame(t)
 		if grant {
-			w.GrantTech(0, "Printing press")
-			w.GrantTech(0, "Scientific method")
+			w.GrantTech(0, "Steam printing")
+			w.GrantTech(0, "Research universities")
 		}
 		for i := 0; i < 300; i++ {
 			w.Step()
@@ -213,7 +213,7 @@ func TestScienceTechsSpeedResearch(t *testing.T) {
 		n := w.Nations[0]
 		total := n.ResearchPoints
 		for i, k := range n.Known {
-			if k && !(grant && (Techs[i].Name == "Printing press" || Techs[i].Name == "Scientific method")) {
+			if k && !(grant && (Techs[i].Name == "Steam printing" || Techs[i].Name == "Research universities")) {
 				total += Techs[i].Cost
 			}
 		}
@@ -263,10 +263,10 @@ func TestPortRules(t *testing.T) {
 	th := nationByName(w, "Thalassa")
 	coast, inland := regionByName(w, "54"), regionByName(w, "43")
 	if err := w.BuildPort(coast.ID); !errors.Is(err, ErrNeedTech) {
-		t.Errorf("port without Ocean sailing: %v", err)
+		t.Errorf("port without Clipper ships: %v", err)
 	}
-	w.GrantTech(th.ID, "Navigation")
-	w.GrantTech(th.ID, "Ocean sailing")
+	w.GrantTech(th.ID, "Hydrographic charts")
+	w.GrantTech(th.ID, "Clipper ships")
 	if err := w.BuildPort(inland.ID); !errors.Is(err, ErrNotCoast) {
 		t.Errorf("port inland: %v", err)
 	}
@@ -292,8 +292,8 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 	w := newTestGame(t)
 	th, mo := nationByName(w, "Thalassa"), nationByName(w, "Montara")
 	for _, n := range []*Nation{th, mo} {
-		w.GrantTech(n.ID, "Navigation")
-		w.GrantTech(n.ID, "Ocean sailing")
+		w.GrantTech(n.ID, "Hydrographic charts")
+		w.GrantTech(n.ID, "Clipper ships")
 	}
 	// a coast tile at the far end of the south coast, for a second nation
 	// (each of these small ones may have one port)
@@ -344,8 +344,8 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 		t.Error("ports broke money conservation")
 	}
 	// steamships make sea routes cheaper
-	w.GrantTech(th.ID, "Wagons")
-	w.GrantTech(th.ID, "Steam engine")
+	w.GrantTech(th.ID, "Canals")
+	w.GrantTech(th.ID, "Locomotives")
 	w.GrantTech(th.ID, "Steamships")
 	for _, tr := range w.Traders {
 		if tr.Sea && tr.Distance >= want {
@@ -359,10 +359,10 @@ func TestSaveLoadWithPorts(t *testing.T) {
 	th := nationByName(w, "Thalassa")
 	mo, ve := nationByName(w, "Montara"), nationByName(w, "Verdania")
 	for _, n := range []*Nation{th, mo, ve} { // one port each: the most these small nations may have
-		w.GrantTech(n.ID, "Navigation")
-		w.GrantTech(n.ID, "Ocean sailing")
+		w.GrantTech(n.ID, "Hydrographic charts")
+		w.GrantTech(n.ID, "Clipper ships")
 	}
-	w.GrantTech(ve.ID, "Ceramics") // its kilns work on 44, which it gets
+	w.GrantTech(ve.ID, "Portland cement") // its kilns work on 44, which it gets
 	w.Annex(regionByName(w, "50").ID, mo.ID)
 	w.Annex(regionByName(w, "44").ID, ve.ID)
 	buildPortNow(t, w, "54")
@@ -407,13 +407,13 @@ func TestCoastMovementTakesTheCheaperWay(t *testing.T) {
 	if coast.MoveCost() != 0.15 {
 		t.Errorf("coast with a railway: %v", coast.MoveCost())
 	}
-	w.GrantTech(th.ID, "Navigation") // sea: 0.25 * 0.8 = 0.2 > 0.15
+	w.GrantTech(th.ID, "Hydrographic charts") // sea: 0.25 * 0.8 = 0.2 > 0.15
 	if coast.MoveCost() != 0.15 {
-		t.Errorf("railway coast after Navigation: %v", coast.MoveCost())
+		t.Errorf("railway coast after Hydrographic charts: %v", coast.MoveCost())
 	}
 	w.SetInfra(coast.ID, 0)
 	if got := coast.MoveCost(); math.Abs(got-0.2) > 1e-12 {
-		t.Errorf("coast after Navigation: %v", got)
+		t.Errorf("coast after Hydrographic charts: %v", got)
 	}
 }
 
@@ -479,19 +479,19 @@ func TestResearchDrawDoesNotDependOnTheDay(t *testing.T) {
 func TestCatchUpSlot(t *testing.T) {
 	w := newNeighbourGame(t)
 	a, b := w.Nations[0], w.Nations[1]
-	masonry := TechID("Masonry")
+	masonry := TechID("Macadam roads")
 	b.Known[masonry] = true
-	a.SetResearch(TechID("Drill"))
+	a.SetResearch(TechID("Percussion caps"))
 	a.pickCopy(w)
 	if a.Copying != masonry {
-		t.Fatalf("catching up on %d, want Masonry (%d)", a.Copying, masonry)
+		t.Fatalf("catching up on %d, want Macadam roads (%d)", a.Copying, masonry)
 	}
 	a.CopyPoints = 2 * Techs[masonry].Cost * float64(len(w.Regions)) / techCostTiles // more than it costs, whatever the discount
 	w.Step()
 	if !a.Known[masonry] {
-		t.Error("Masonry not learned from the catch-up slot")
+		t.Error("Macadam roads not learned from the catch-up slot")
 	}
-	if a.Researching != TechID("Drill") {
+	if a.Researching != TechID("Percussion caps") {
 		t.Errorf("own research changed to %d", a.Researching)
 	}
 	b.pickCopy(w)
@@ -499,7 +499,7 @@ func TestCatchUpSlot(t *testing.T) {
 		t.Errorf("Beta catches up on %s, which Alpha doesn't know", Techs[b.Copying].Name)
 	}
 	// an embargo (either way) closes the border to it
-	b.Known[TechID("Drill")] = true
+	b.Known[TechID("Percussion caps")] = true
 	a.Researching, a.Copying = -1, -1
 	a.Embargo[b.ID] = true
 	if a.pickCopy(w); a.Copying >= 0 {
@@ -546,14 +546,14 @@ func TestMilitaryThreatLeansResearch(t *testing.T) {
 func TestEmbargoStopsDiffusion(t *testing.T) {
 	w := newNeighbourGame(t)
 	a, b := w.Nations[0], w.Nations[1]
-	masonry := TechID("Masonry")
+	masonry := TechID("Macadam roads")
 	b.Known[masonry] = true
 	a.TradeWith[b.ID] = 1e6 // a great deal of trade, before the embargo
 	a.IncomeEMA = 1
 	a.Researching = -1
 	a.pickCopy(w)
 	if a.Copying != masonry {
-		t.Fatalf("set-up: catching up on %d, want Masonry", a.Copying)
+		t.Fatalf("set-up: catching up on %d, want Macadam roads", a.Copying)
 	}
 	if a.Discount(masonry, w.Nations) <= 0 {
 		t.Fatal("set-up: no discount from a trading neighbour")
@@ -566,7 +566,7 @@ func TestEmbargoStopsDiffusion(t *testing.T) {
 		a.Copying = masonry
 		a.pickCopy(w)
 		if a.Copying == masonry {
-			t.Error("still catching up on Masonry across an embargo")
+			t.Error("still catching up on Macadam roads across an embargo")
 		}
 		if d := a.Discount(masonry, w.Nations); d != 0 {
 			t.Errorf("discount %v across an embargo", d)

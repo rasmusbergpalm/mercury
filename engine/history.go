@@ -23,6 +23,7 @@ type NationHistory struct {
 	Utility     []float64             `json:"utility"`
 	Soldiers    []float64             `json:"soldiers"`
 	Strength    []float64             `json:"strength"`
+	Potential   []float64             `json:"potential"` // what its armies could field at full size and supply (ArmyPotential)
 	Techs       []float64             `json:"techs"`
 	Exports     []float64             `json:"exports"` // value shipped to other nations or free land
 	Imports     []float64             `json:"imports"`
@@ -206,6 +207,7 @@ func (w *World) record() {
 		push(&nh.Utility, util)
 		push(&nh.Soldiers, men)
 		push(&nh.Strength, w.ArmyStrength(n))
+		push(&nh.Potential, w.ArmyPotential(n))
 		push(&nh.Techs, float64(known))
 		push(&nh.Exports, out)
 		push(&nh.Imports, in)

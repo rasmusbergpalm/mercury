@@ -351,7 +351,7 @@ func (w *World) Refit(region, firm, method int) error {
 }
 
 // BuildPort starts a port on a coast tile, paid for by its nation. The nation
-// needs a tech that allows ports (Ocean sailing).
+// needs a tech that allows ports (Clipper ships).
 func (w *World) BuildPort(region int) error {
 	r := w.Regions[region]
 	switch {

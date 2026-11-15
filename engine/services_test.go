@@ -121,9 +121,9 @@ func TestPensions(t *testing.T) {
 	for i := 0; i < 30; i++ { // some taxes in the treasury first
 		w.Step()
 	}
-	n.SetPension(2) // half the average wage
+	n.SetPension(2)                                                 // half the average wage
+	want := n.population() * pensionerShare * n.averageWage() * 0.5 // at the day's opening wages, which the bill is reckoned at
 	w.Step()
-	want := n.population() * pensionerShare * n.averageWage() * 0.5
 	if got := n.SpentOn[Pensions]; math.Abs(got-want) > 0.05*want {
 		t.Errorf("pensions cost %v, want about %v", got, want)
 	}

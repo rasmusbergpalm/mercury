@@ -130,10 +130,10 @@ func TestEmbargoStopsCrossBorderTrade(t *testing.T) {
 func TestResearchUnlocksTechInOrder(t *testing.T) {
 	w := newTestGame(t)
 	n := w.Nations[0]
-	if err := n.SetResearch(TechID("Steam engine")); !errors.Is(err, ErrBadTech) {
-		t.Errorf("researching Steam engine before Wagons: %v", err)
+	if err := n.SetResearch(TechID("Locomotives")); !errors.Is(err, ErrBadTech) {
+		t.Errorf("researching Locomotives before Canals: %v", err)
 	}
-	if err := n.SetResearch(TechID("Wagons")); err != nil {
+	if err := n.SetResearch(TechID("Canals")); err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 50; i++ {
@@ -142,16 +142,16 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 	if n.ResearchPoints <= 0 {
 		t.Fatal("no research produced")
 	}
-	n.ResearchPoints = Techs[TechID("Wagons")].Cost
+	n.ResearchPoints = Techs[TechID("Canals")].Cost
 	w.Step()
-	if !n.Has("Wagons") {
-		t.Fatalf("Wagons not researched with its full cost banked")
+	if !n.Has("Canals") {
+		t.Fatalf("Canals not researched with its full cost banked")
 	}
-	if err := n.SetResearch(TechID("Wagons")); !errors.Is(err, ErrBadTech) {
+	if err := n.SetResearch(TechID("Canals")); !errors.Is(err, ErrBadTech) {
 		t.Errorf("researching a known tech: %v", err)
 	}
-	if err := n.SetResearch(TechID("Steam engine")); err != nil {
-		t.Errorf("Steam engine after Wagons: %v", err)
+	if err := n.SetResearch(TechID("Locomotives")); err != nil {
+		t.Errorf("Steam engine after Canals: %v", err)
 	}
 	// its bonus (transport +20%) comes in over techAdoptDays: none yet, half
 	// halfway, all of it at the end
@@ -171,10 +171,10 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 			}
 		}
 	}
-	wagons := TechID("Wagons")
+	wagons := TechID("Canals")
 	learned := n.LearnedAt[wagons]
 	if a := n.Adoption(wagons); a > 0.01 {
-		t.Errorf("Wagons %v adopted the day after it was learned", a)
+		t.Errorf("Canals %v adopted the day after it was learned", a)
 	}
 	check(n.Adoption(wagons))
 	for w.Tick-1-learned < techAdoptDays/2 {
