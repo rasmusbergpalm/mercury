@@ -34,6 +34,17 @@ func TestCentury(t *testing.T) {
 	if y, err := strconv.Atoi(os.Getenv("CENTURY_YEARS")); err == nil {
 		years = y
 	}
+	// CENTURY_NOINFRA=1: roads and railways are built and paid for as ever
+	// but move nothing faster, to see what they do (set here, around every
+	// seed's run, which run in parallel)
+	if os.Getenv("CENTURY_NOINFRA") != "" {
+		saved := InfraLevels
+		InfraLevels = append([]InfraLevel(nil), InfraLevels...)
+		for i := range InfraLevels {
+			InfraLevels[i].MoveMult = 1
+		}
+		t.Cleanup(func() { InfraLevels = saved })
+	}
 	seeds := os.Getenv("CENTURY_SEEDS")
 	if seeds == "" {
 		seeds = "1,2"
@@ -81,11 +92,34 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		}
 	}
 	spec.AI, spec.Seed = true, seed
+	// CENTURY_TRANSPORT: the transport cost multiplier on every hop ("Inf":
+	// no trade between tiles at all)
+	if c := os.Getenv("CENTURY_TRANSPORT"); c != "" {
+		x, err := strconv.ParseFloat(c, 64)
+		if err != nil {
+			t.Fatalf("CENTURY_TRANSPORT %q: %v", c, err)
+		}
+		spec.TransportCost = x
+	}
 	w, err := BuildGame(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
 	n := w.Nations[0]
+	// CENTURY_NOTRADE=1: no trading house ever ships between tiles (sea
+	// routes opened later too), while armies and the state still move
+	// their supplies at the usual cost: each tile lives off its own output
+	noTrade, routes := os.Getenv("CENTURY_NOTRADE") != "", -1
+	closeRoutes := func() {
+		if noTrade && len(w.Traders) != routes {
+			for _, tr := range w.Traders {
+				tr.TransportCost = 1e6
+				tr.SetDistance(tr.Distance)
+			}
+			routes = len(w.Traders)
+		}
+	}
+	closeRoutes()
 	// CENTURY_ALLTECH=1: the nation knows every tech from the first day, a
 	// quick look (CENTURY_YEARS=15 or so) at where the late economy settles;
 	// incomes start at 1820's, so luxuries weigh less than by 1913
@@ -112,7 +146,8 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 	}
 	machinery := []string{"tools", "steam engines", "explosives", "fertilizer", "electricity", "coal", "iron", "vehicles", "oil"}
 	cols := []string{"year", "pop", "gdp", "gdpHead", "living", "nominal", "invest", "investPriv", "KY", "ret", "laborShare",
-		"primary", "industry", "service", "levels", "techs", "tax", "bigShare", "smallest"}
+		"primary", "industry", "service", "levels", "techs", "tax", "bigShare", "smallest",
+		"traded", "transportJobs", "priceSpread", "infra"}
 	for _, b := range order {
 		for _, f := range groups[b] {
 			cols = append(cols, "share "+b+"|"+f)
@@ -124,7 +159,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 	fmt.Fprintln(out, strings.Join(cols, ","))
 
 	days := int(TicksPerYear)
-	var ni, wages, constr, constrPriv, profit float64
+	var ni, wages, constr, constrPriv, profit, shipped float64
 	made := map[string]float64{}
 	for d := 1; d <= years*days; d++ {
 		building := map[*Firm][2]float64{} // private expansions under way: what they had, and need
@@ -159,7 +194,11 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 				ni += p.Income
 			}
 		}
+		closeRoutes()
 		ni += n.Revenue + n.TariffRevenue
+		for _, tr := range w.Traders {
+			shipped += tr.Shipped * tr.Origin.Markets[tr.Good].Price
+		}
 		if d%days != 0 {
 			continue
 		}
@@ -190,10 +229,45 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			}
 		}
 		lt := labor[0] + labor[1] + labor[2]
+		// trade: what is shipped between tiles (a share of national income),
+		// transport's share of jobs, how far a good's price differs between
+		// the tiles that trade it (sd of log price, averaged over goods), and
+		// the average road level
+		transportJobs, infra := 0.0, 0.0
+		for _, r := range w.Regions {
+			for _, f := range r.Firms {
+				if f.Output == Transport {
+					transportJobs += f.Labor
+				}
+			}
+			infra += float64(r.Infra) / float64(len(w.Regions))
+		}
+		spread, goods := 0.0, 0
+		for _, g := range GameTradable {
+			var logs []float64
+			for _, r := range w.Regions {
+				if m := r.Markets[g]; m.Supply > 0 || m.Demand > 0 {
+					logs = append(logs, math.Log(m.Price))
+				}
+			}
+			if len(logs) < 3 {
+				continue
+			}
+			mean, sd := 0.0, 0.0
+			for _, x := range logs {
+				mean += x / float64(len(logs))
+			}
+			for _, x := range logs {
+				sd += (x - mean) * (x - mean) / float64(len(logs))
+			}
+			spread += math.Sqrt(sd)
+			goods++
+		}
 		row := []string{fmt.Sprint(d / days), f0(people), f0(n.RealGDP), f4(n.RealGDP / people), f4(util / people), f4(ni / float64(days)),
 			f4(constr / ni), f4(constrPriv / ni), f4(k / ni), f4(profit / k), f4(wages / ni),
 			f4(labor[Primary] / lt), f4(labor[Industry] / lt), f4(labor[Service] / lt), f0(levels), fmt.Sprint(techs),
-			f4(n.TaxRate), f4(big / people), f0(small)}
+			f4(n.TaxRate), f4(big / people), f0(small),
+			f4(shipped / ni), f4(transportJobs / lt), f4(spread / math.Max(1, float64(goods))), f4(infra)}
 		for _, b := range order {
 			total := 0.0
 			for _, m := range groups[b] {
@@ -211,7 +285,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			row = append(row, f4(p))
 		}
 		fmt.Fprintln(out, strings.Join(row, ","))
-		ni, wages, constr, constrPriv, profit = 0, 0, 0, 0, 0
+		ni, wages, constr, constrPriv, profit, shipped = 0, 0, 0, 0, 0, 0
 		made = map[string]float64{}
 	}
 }
