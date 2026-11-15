@@ -86,12 +86,12 @@ func (w *World) think(n *Nation) {
 	// it has under arms now, which moves with the very decision; enough
 	// that its standing army is at least a third of the strongest
 	// neighbour's full strength, and everyone at war or when invaded
-	ownPot, threatPot, invaded := w.ArmyPotential(n), 0.0, false
+	ownPot, threatPot, invaded := w.ArmyFullStrength(n), 0.0, false
 	for _, o := range w.Nations {
 		if o == n || o.Eliminated() || !w.nationsBorder(n, o) {
 			continue
 		}
-		threatPot = math.Max(threatPot, w.ArmyPotential(o))
+		threatPot = math.Max(threatPot, w.ArmyFullStrength(o))
 	}
 	for _, a := range w.Armies {
 		if a.Nation != n && w.Regions[a.Region].Nation == n {
@@ -127,15 +127,25 @@ func (w *World) think(n *Nation) {
 // strength under arms in peace.
 const aiStandingVsThreat = 1.0 / 3
 
-// ArmyPotential is what a nation's armies could field: each at its full
-// (wartime) size and fully supplied. Unlike its might, it doesn't move when
-// the nation calls up or stands down its reserves.
-func (w *World) ArmyPotential(n *Nation) float64 {
+// ArmyFullStrength is what a nation's armies, as raised, could field: each
+// at its full (wartime) size and fully supplied. Unlike its might, it
+// doesn't move when the nation calls up or stands down its reserves. The
+// computer sizes its standing army against its neighbours' (think).
+func (w *World) ArmyFullStrength(n *Nation) float64 {
 	s := 0.0
 	for _, a := range w.ArmiesOf(n) {
 		s += math.Max(a.Men, a.Target) * Doctrines[a.Doctrine].Power * n.attackMult()
 	}
 	return s
+}
+
+// ArmyPotential is the might a nation could raise: everyone it can call up
+// (MobilizationCap: the loyal share of its people its techs allow, and
+// those already serving), at its best doctrine, fully supplied. It is what
+// its people, techs and loyalty make possible, whatever armies it has
+// chosen to raise so far: what rivals arm against.
+func (w *World) ArmyPotential(n *Nation) float64 {
+	return w.MobilizationCap(n) * Doctrines[n.bestDoctrine()].Power * n.attackMult()
 }
 
 // nationsBorder reports whether any tiles of a and b are neighbours.

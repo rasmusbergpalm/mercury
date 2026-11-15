@@ -116,11 +116,10 @@ func (n *Nation) drawResearch(w *World) int {
 	return ids[len(ids)-1]
 }
 
-// militaryThreat is how many times what the nation could field the
-// strongest nation it borders or is at war with could field (ArmyPotential:
-// armies at full size and supply, not what each has under arms today). A
-// man's worth of strength is added to each side, so a nation with no army
-// yet doesn't face an infinite threat.
+// militaryThreat is how many times the nation's potential might the
+// strongest nation it borders or is at war with could raise (ArmyPotential:
+// everyone it can call up, at its best doctrine, not what it has under
+// arms today). A man's worth of strength is added to each side.
 func (w *World) militaryThreat(n *Nation) float64 {
 	threat := 0.0
 	for _, o := range w.Nations {

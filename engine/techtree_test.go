@@ -511,7 +511,8 @@ func TestCatchUpSlot(t *testing.T) {
 	}
 }
 
-// A nation facing a neighbour that could field far more leans its research
+// A nation facing a neighbour that could raise far more (its potential
+// might: everyone it can call up, at its best doctrine) leans its research
 // to military techs.
 func TestMilitaryThreatLeansResearch(t *testing.T) {
 	w := newNeighbourGame(t)
@@ -527,11 +528,9 @@ func TestMilitaryThreatLeansResearch(t *testing.T) {
 		return float64(mil) / 200
 	}
 	even := share()
-	e, err := w.RaiseArmy(b.ID, b.Regions[0].ID, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	e.Target, e.Men = 30, 30
+	// the neighbour can call up twice the share of its people, at a better doctrine
+	w.GrantTech(b.ID, "Percussion caps")
+	w.GrantTech(b.ID, "Mass conscription")
 	if w.militaryThreat(a) < 2 {
 		t.Fatalf("set-up: threat %v", w.militaryThreat(a))
 	}

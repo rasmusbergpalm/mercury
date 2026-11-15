@@ -1548,7 +1548,7 @@ function pricesBlock(h, n) {
 }
 
 // what might and its dashed potential mean, under their charts
-const MIGHT_NOTE = "Might (solid): the strength of the armies as they stand. Potential (dashed): what they could field at full size and fully supplied, which is what rivals arm against.";
+const MIGHT_NOTE = "Might (solid): the strength of the armies as they stand. Potential (dashed): the might the nation could raise if it called up everyone it can (its loyal people, as far as its techs allow), at its best doctrine and fully supplied: what rivals arm against.";
 
 // what real GDP means, under its charts
 const GDP_NOTE = "Real GDP: what the firms add (their output less the goods they use up), valued at constant prices in pounds of January 1820, linked month by month. The money in the world is fixed, so prices fall as output grows; real GDP counts the goods, not the pounds.";
