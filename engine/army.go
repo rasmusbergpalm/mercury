@@ -587,7 +587,12 @@ func (w *World) MoveArmy(id, dest int) error {
 	if w.tileTaken(a.Nation, dest, a) {
 		return ErrTileTaken
 	}
-	dist, prev := w.shortestPaths(a.Region, func(r *Region) bool { return w.reachable(a.Nation, r) })
+	// no marching through an enemy army: a tile one holds can only be the
+	// end of the march (an attack on it)
+	held := w.enemyHeld(a.Nation)
+	dist, prev := w.shortestPaths(a.Region, func(r *Region) bool {
+		return w.reachable(a.Nation, r) && (!held[r.ID] || r.ID == dest)
+	})
 	if math.IsInf(dist[dest], 1) {
 		return ErrNoPath
 	}
@@ -614,14 +619,22 @@ func (w *World) tileTaken(n *Nation, region int, except *Army) bool {
 }
 
 // sendHome sets an army marching to the nearest tile of its own nation that
-// none of its other armies holds, through any land. It returns false if
-// there is none.
+// none of its other armies holds: by its own and free land and around enemy
+// armies where it can, else through any land. It returns false if there is
+// none.
 func (w *World) sendHome(a *Army) bool {
 	if w.Regions[a.Region].Nation == a.Nation && !w.tileTaken(a.Nation, a.Region, a) {
 		a.Path = nil
 		return true
 	}
-	dist, prev := w.allPaths(a.Region)
+	dist, prev := w.safePaths(a)
+	reach := false
+	for _, r := range a.Nation.Regions {
+		reach = reach || (!math.IsInf(dist[r.ID], 1) && !w.tileTaken(a.Nation, r.ID, a))
+	}
+	if !reach {
+		dist, prev = w.allPaths(a.Region)
+	}
 	best := -1
 	for _, r := range a.Nation.Regions {
 		if w.tileTaken(a.Nation, r.ID, a) {
@@ -636,6 +649,17 @@ func (w *World) sendHome(a *Army) bool {
 	}
 	a.Path, a.March = pathTo(prev, a.Region, best), 0
 	return true
+}
+
+// safePaths are the shortest ways from the army's tile through its own
+// nation's land and free land (and the land of nations at peace with it),
+// never into the land of a nation at war with it nor through a tile one of
+// its armies holds.
+func (w *World) safePaths(a *Army) ([]float64, []int) {
+	held := w.enemyHeld(a.Nation)
+	return w.shortestPaths(a.Region, func(r *Region) bool {
+		return !held[r.ID] && (r.Nation == nil || !a.Nation.AtWar[r.Nation.ID])
+	})
 }
 
 // DeclareWar puts two nations at war. Only neighbours can fight.
@@ -1065,17 +1089,12 @@ func (w *World) armies() {
 }
 
 // fallBack sends a beaten army back to the nearest of its nation's tiles
-// that none of its other armies holds (not the one it was beaten on), along
-// a way no enemy army bars. It reports false if there is none: the army is
+// that none of its other armies holds (not the one it was beaten on), by its
+// own and free land, around enemy armies: a beaten army doesn't flee deeper
+// into the enemy's country. It reports false if there is none: the army is
 // surrounded.
 func (w *World) fallBack(a *Army) bool {
-	barred := make([]bool, len(w.Regions))
-	for _, e := range w.Armies {
-		if e.Nation != a.Nation && a.Nation.AtWar[e.Nation.ID] && !e.Retreating && e.Men >= minOccupiers {
-			barred[e.Region] = true
-		}
-	}
-	dist, prev := w.shortestPaths(a.Region, func(r *Region) bool { return !barred[r.ID] })
+	dist, prev := w.safePaths(a)
 	best := -1
 	for _, r := range a.Nation.Regions {
 		if r.ID == a.Region || w.tileTaken(a.Nation, r.ID, a) || math.IsInf(dist[r.ID], 1) {
@@ -1162,7 +1181,10 @@ func (w *World) recruitAll() {
 		}
 		avail, pool := make([]float64, len(n.Regions)), 0.0
 		for i, r := range n.Regions {
-			avail[i] = math.Max(0, math.Min(recruitRate*r.Population()*r.Allegiance(), sizeOf(movable(r))-minPopulation))
+			// a tile gives up to recruitRate of its people a day, or faster
+			// where the nation can call up its whole share in its call-up time
+			rate := math.Max(recruitRate, n.Mobilization()/n.CallUpDays())
+			avail[i] = math.Max(0, math.Min(rate*r.Population()*r.Allegiance(), sizeOf(movable(r))-minPopulation))
 			pool += avail[i]
 		}
 		if pool <= 0 {
@@ -1188,14 +1210,31 @@ func (w *World) recruitAll() {
 	}
 }
 
-// mobilizeDays is how long filling an army takes: its ranks grow by at most
-// 1/mobilizeDays of its full strength a day, so a full mobilization from
-// nothing takes this many days (from the lowest peacetime share a little
-// less), plus the march out.
-const mobilizeDays = 90.0
+// callUpDays is how long filling an army takes in 1820: its ranks grow by
+// at most 1/callUpDays of its full strength a day, so a full mobilization
+// from nothing takes this many days (from the peacetime share less), plus
+// the march out. Long-service armies with few trained reserves, recruits
+// marching to their depots: Britain and France took months to gather their
+// armies for the Crimea in 1854. Railways, the telegraph, trained reserves
+// and general staffs' timetables (Tech.CallUp) cut it to two or three
+// weeks: Prussia had 1.2 million men at the frontier 18 days after its
+// call-up in 1870, and Germany and France theirs in about as long in 1914.
+const callUpDays = 120.0
+
+// CallUpDays is how long the nation's armies take to call up: callUpDays,
+// cut by each of its techs' CallUp as it comes in (over militaryAdoptDays).
+func (n *Nation) CallUpDays() float64 {
+	d := callUpDays
+	for i := range Techs {
+		if m := Techs[i].CallUp; m > 0 && n.Known[i] {
+			d *= 1 + (m-1)*n.adoptionOver(i, militaryAdoptDays)
+		}
+	}
+	return d
+}
 
 // callUpRate is how many men an army takes in a day.
-func callUpRate(a *Army) float64 { return a.Target / mobilizeDays }
+func callUpRate(a *Army) float64 { return a.Target / a.Nation.CallUpDays() }
 
 // UnderArms is how many men an army keeps: its target at war, and its
 // nation's standing share of it in peace (the rest are reservists at home).

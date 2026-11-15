@@ -239,76 +239,7 @@ func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 			}
 		}
 	}
-	// idle and marching armies first: they answer raids, and a besieger
-	// only goes to a fight none of them is answering (aiFight leaves out
-	// tiles another of our armies is heading to)
-	besieging := func(a *Army) bool {
-		here := w.Regions[a.Region]
-		return len(a.Path) == 0 && here.Nation != n && here.Siege != nil && here.Siege.Nation == n
-	}
-	order := make([]*Army, 0, len(armies))
-	for _, pass := range []bool{false, true} {
-		for _, a := range armies {
-			if besieging(a) == pass {
-				order = append(order, a)
-			}
-		}
-	}
-	for _, a := range order {
-		if a.Retreating {
-			continue
-		}
-		// fights come first, even for an army on the march: defend our
-		// soil, then engage enemies it can beat. A besieger keeps its siege
-		// unless the fight is on its tile or the enemy is further along
-		// taking ours there (see keepSiege).
-		if fight := w.aiFight(n, a); fight >= 0 && !w.keepSiege(n, a, fight) {
-			if going := a.Region; len(a.Path) > 0 {
-				going = a.Path[len(a.Path)-1]
-				if going == fight {
-					continue
-				}
-			} else if going == fight {
-				continue
-			}
-			w.MoveArmy(a.ID, fight)
-			continue
-		}
-		if len(a.Path) > 0 {
-			continue
-		}
-		atHome := w.Regions[a.Region].Nation == n
-		if atHome && a.Men < aiRefill*w.UnderArms(a) && !w.underAttack(n) {
-			continue // let a new army fill up (to what it keeps under arms now) before it marches; field armies are reinforced where they stand
-		}
-		here := w.Regions[a.Region]
-		if here.Nation != n && here.Siege != nil && here.Siege.Nation == n && a.canOccupy() {
-			continue // besieging
-		}
-		if dest := w.aiDestination(n, a, targets); dest >= 0 && dest != a.Region {
-			w.MoveArmy(a.ID, dest)
-		}
-	}
-}
-
-// keepSiege reports whether army a, occupying an enemy (or free) tile,
-// should stay rather than march off to fight in tile fight. A siege lifted
-// is lost: the occupation falls back once the army leaves. So a besieger
-// doesn't chase raiders or seek battle abroad, which the nation's idle and
-// marching armies do first; it breaks off only to save a tile of ours the
-// enemy is further along taking than it is taking this one.
-func (w *World) keepSiege(n *Nation, a *Army, fight int) bool {
-	here := w.Regions[a.Region]
-	s := here.Siege
-	if fight == a.Region || len(a.Path) > 0 || here.Nation == n || s == nil || s.Nation != n {
-		return false
-	}
-	there := w.Regions[fight]
-	t := there.Siege
-	if there.Nation != n || t == nil || t.Nation == n {
-		return true
-	}
-	return t.Progress <= s.Progress
+	w.aiPlan(n, armies, targets)
 }
 
 // The computer only seeks battle when its side is this many times as strong.
@@ -404,90 +335,252 @@ func (s *aiScope) advantage(r *Region) float64 {
 	return mine / theirs
 }
 
-// pick keeps the best-scoring tile (a little less for distance).
-func (s *aiScope) pick(r *Region, score float64) {
-	if score -= 0.01 * s.dist[r.ID]; score > s.top {
-		s.best, s.top = r.ID, score
+// The computer's armies weigh a few concrete moves by what they are likely
+// to gain: tiles first, then the enemy's losses less their own.
+//
+// A tile of its own saved is worth 1. A tile taken is worth half that:
+// newly conquered land starts disloyal (Allegiance), paying little tax and
+// giving few recruits for years, while a home tile pays in full; free land
+// settles slowly too. A tile counts fully if it falls within aiHorizon
+// days, and less the longer it takes. A battle's worth is the losses it is
+// expected to cause the enemy less those it costs, as a share of the two
+// sides' strength, times aiBattleWeight and the nation's Aggression: enough
+// to choose between moves of equal stakes, never to throw an army away.
+const (
+	aiOwnTile      = 1.0
+	aiOtherTile    = 0.5
+	aiHorizon      = 180.0
+	aiBattleWeight = 0.5
+	aiKeepPlan     = 0.05 // a small preference for the move already under way, so plans don't flip
+)
+
+// aiOption is a move: march to dest (or stay, dest = the army's tile), and
+// what it is worth.
+type aiOption struct {
+	dest  int
+	value float64
+}
+
+// aiPlan gives the nation's armies their orders as one plan. Each round
+// every free army's best move is weighed, and the best of all is ordered
+// first; the rest are weighed again knowing where it goes (a tile holds
+// one army of a nation, so no two chase the same siege or answer the same
+// raid). An army filling up at home waits; one that can't take ground goes
+// home.
+func (w *World) aiPlan(n *Nation, armies []*Army, targets []expansionTarget) {
+	var free []*Army
+	for _, a := range armies {
+		switch {
+		case a.Retreating:
+		case w.Regions[a.Region].Nation == n && len(a.Path) == 0 && a.Men < aiRefill*w.UnderArms(a) && !w.underAttack(n):
+			// a new army fills up (to what it keeps under arms now) before it
+			// marches; field armies are reinforced where they stand
+		case !a.canOccupy():
+			if w.Regions[a.Region].Nation != n {
+				w.sendHome(a)
+			}
+		default:
+			free = append(free, a)
+		}
+	}
+	for len(free) > 0 {
+		best, pick := aiOption{-1, math.Inf(-1)}, -1
+		for i, a := range free {
+			if o := w.aiBest(n, a, targets); o.value > best.value {
+				best, pick = o, i
+			}
+		}
+		a := free[pick]
+		free = append(free[:pick:pick], free[pick+1:]...)
+		w.aiOrder(n, a, best)
 	}
 }
 
-// aiFight is where the army should fight, or -1: first defend (enemy armies
-// on our soil it can beat, with our home bonus), then engage (enemy armies
-// anywhere it can reach and beat, with their home bonus on their soil); in
-// each, the one it beats by the widest margin. Fights come before any
-// march or siege.
-func (w *World) aiFight(n *Nation, a *Army) int {
-	s := w.newAIScope(n, a)
-	return s.fight()
-}
-
-func (s *aiScope) fight() int {
-	w, n, a := s.w, s.n, s.a
-	for _, home := range []bool{true, false} {
-		for _, e := range w.Armies {
-			r := w.Regions[e.Region]
-			if e.Nation == n || !n.AtWar[e.Nation.ID] || e.Retreating || (r.Nation == n) != home ||
-				w.tileTaken(n, r.ID, a) || !w.reachable(n, r) {
-				continue
-			}
-			if adv := s.advantage(r); adv >= s.odds {
-				s.pick(r, adv)
-			}
-		}
-		if s.best >= 0 {
-			return s.best
-		}
+// aiOrder carries out an army's chosen move.
+func (w *World) aiOrder(n *Nation, a *Army, o aiOption) {
+	if o.value <= 0 && w.Regions[a.Region].Nation != n && !w.besieging(n, a) {
+		w.sendHome(a) // nothing worth doing out here
+		return
 	}
-	return -1
+	if o.dest == aiGoing(a) {
+		return
+	}
+	w.MoveArmy(a.ID, o.dest) // (to its own tile: it stops where it is)
 }
 
-// aiDestination picks where an idle army should go, or -1: a fight (see
-// aiFight), else enemy land, else free land.
+// aiGoing is where an army is going: the end of its path, or where it is.
+func aiGoing(a *Army) int {
+	if len(a.Path) > 0 {
+		return a.Path[len(a.Path)-1]
+	}
+	return a.Region
+}
+
+// besieging reports whether the army is occupying the (enemy or free) tile
+// it stands on.
+func (w *World) besieging(n *Nation, a *Army) bool {
+	here := w.Regions[a.Region]
+	return len(a.Path) == 0 && here.Nation != n && here.Siege != nil && here.Siege.Nation == n
+}
+
+// aiDestination is where the army would go now, or -1 to stay.
 func (w *World) aiDestination(n *Nation, a *Army, targets []expansionTarget) int {
-	s := w.newAIScope(n, a)
-	if f := s.fight(); f >= 0 {
-		return f
-	}
-	forces, advantage, odds := s.forces, s.advantage, s.odds
-	pick := s.pick
-	// too weak to take ground: home to refill
-	if !a.canOccupy() {
-		if w.Regions[a.Region].Nation != n {
-			w.sendHome(a)
-		}
-		return -1
-	}
-	// then take land: enemy border tiles it can win, the weakest held and
-	// then the most populous first
-	for _, r := range w.Regions {
-		if r.Nation == nil || r.Nation == n || !n.AtWar[r.Nation.ID] || !w.borders(n, r) || w.tileTaken(n, r.ID, a) || w.allyTaken(n, r.ID) || advantage(r) < odds {
-			continue
-		}
-		enemy, _ := forces(r.ID)
-		pick(r, -enemy*1000+r.Population())
-	}
-	if s.best >= 0 {
-		return s.best
-	}
-	// expand: free land, where it is stronger than any other nation's armies
-	// (the strongest there occupies it; a weaker army would only wait to be
-	// beaten)
-	best, bestScore := -1, 0.0
-	for _, t := range targets {
-		if w.tileTaken(n, t.region.ID, a) || w.allyTaken(n, t.region.ID) || !w.strongestOn(n, a, t.region.ID) {
-			continue
-		}
-		if t.score > bestScore {
-			best, bestScore = t.region.ID, t.score
-		}
-	}
-	if best >= 0 {
-		return best
-	}
-	if w.Regions[a.Region].Nation != n {
-		w.sendHome(a)
+	if o := w.aiBest(n, a, targets); o.value > 0 && o.dest != a.Region {
+		return o.dest
 	}
 	return -1
+}
+
+// aiBest is the army's best move: staying (and keeping a siege), defending
+// one of its nation's tiles an enemy army stands on, or marching on an enemy
+// or free tile (fighting the army there, if any, and occupying it).
+func (w *World) aiBest(n *Nation, a *Army, targets []expansionTarget) aiOption {
+	s := w.newAIScope(n, a)
+	days := w.aiMarchDays(n, a)
+	going := aiGoing(a)
+	tf := func(d float64) float64 { // a tile's worth by when it falls
+		if d <= aiHorizon {
+			return 1
+		}
+		return aiHorizon / d
+	}
+	// the chance of winning a fight in tile r, and what the fight is worth
+	fight := func(r *Region) (p, worth float64) {
+		enemy, own := s.forces(r.ID)
+		if enemy <= 0 {
+			return 1, 0
+		}
+		adv := s.advantage(r)
+		p = adv * adv / (1 + adv*adv)
+		mine := own + a.Strength()
+		// the loser ends at breakShare and loses retreatLoss of the rest on
+		// the way; the winner loses in proportion to the loser's strength
+		lost := 1 - breakShare*(1-retreatLoss)
+		theirLoss := p*enemy*lost + (1-p)*enemy*(1-breakShare)*math.Min(1, adv)
+		ownLoss := p*mine*(1-breakShare)*math.Min(1, 1/adv) + (1-p)*mine*lost
+		return p, aiBattleWeight * n.Temper.Aggression * (theirLoss - ownLoss) / (mine + enemy)
+	}
+	// a siege's days left, at the occupier's pace
+	left := func(r *Region, occupier *Nation) float64 {
+		rate, prog := w.siegeRate(r, occupier), 0.0
+		if sg := r.Siege; sg != nil && sg.Nation == occupier {
+			prog = sg.Progress
+		}
+		return (1 - prog) / rate
+	}
+	// the enemy's sieges of our tiles, and when each would fall
+	type threat struct {
+		r    *Region
+		left float64
+	}
+	var threats []threat
+	for _, r := range n.Regions {
+		for _, e := range w.Armies {
+			if e.Region == r.ID && n.AtWar[e.Nation.ID] && !e.Retreating && e.canOccupy() && len(e.Path) == 0 {
+				threats = append(threats, threat{r, left(r, e.Nation)})
+				break
+			}
+		}
+	}
+	here := w.Regions[a.Region]
+	best := aiOption{a.Region, 0}
+	consider := func(dest int, v float64) {
+		if dest == going {
+			v += aiKeepPlan
+		}
+		if v > best.value {
+			best = aiOption{dest, v}
+		}
+	}
+	// stay: keep a siege (and defend afterwards whatever it can still reach in time), or hold
+	stay := 0.0
+	if w.besieging(n, a) {
+		ours := left(here, n)
+		stay = aiOtherTile * tf(ours)
+		for _, t := range threats {
+			if d := days[t.r.ID]; !w.tileTaken(n, t.r.ID, a) && ours+d < t.left {
+				p, _ := fight(t.r)
+				stay += aiOwnTile * p * tf(t.left)
+				break
+			}
+		}
+	}
+	_, worth := fight(here) // an enemy army on its tile: the fight happens anyway
+	consider(a.Region, stay+worth)
+	// defend a tile of ours an enemy army stands on
+	for _, t := range threats {
+		d := days[t.r.ID]
+		if t.r.ID == a.Region || math.IsInf(d, 1) || w.tileTaken(n, t.r.ID, a) {
+			continue
+		}
+		p, worth := fight(t.r)
+		v := worth
+		if d < t.left { // in time to save it
+			v += aiOwnTile * p * tf(t.left)
+		}
+		consider(t.r.ID, v)
+	}
+	// march on an enemy or free tile: fight what stands there, then occupy it
+	free := map[int]bool{}
+	for _, t := range targets {
+		free[t.region.ID] = true
+	}
+	maxPop := 1.0
+	for _, r := range w.Regions {
+		maxPop = math.Max(maxPop, r.Population())
+	}
+	for _, r := range w.Regions {
+		if r.ID == a.Region || r.Nation == n {
+			continue
+		}
+		enemyLand := r.Nation != nil && n.AtWar[r.Nation.ID] && w.borders(n, r)
+		if !enemyLand && !(free[r.ID] && w.strongestOn(n, a, r.ID)) {
+			continue
+		}
+		d := days[r.ID]
+		if math.IsInf(d, 1) || !w.reachable(n, r) || w.tileTaken(n, r.ID, a) || w.allyTaken(n, r.ID) {
+			continue
+		}
+		p, worth := fight(r)
+		// a populous tile is worth a little more
+		consider(r.ID, aiOtherTile*p*tf(d+left(r, n))*(0.9+0.1*r.Population()/maxPop)+worth)
+	}
+	return best
+}
+
+// aiMarchDays is how many days the army would take to reach each tile,
+// through land its nation may enter and around tiles an enemy army holds
+// (into which it can only march as its destination).
+func (w *World) aiMarchDays(n *Nation, a *Army) []float64 {
+	barred := w.enemyHeld(n)
+	dist, _ := w.shortestPaths(a.Region, func(r *Region) bool { return w.reachable(n, r) && !barred[r.ID] })
+	days := make([]float64, len(w.Regions))
+	for i := range days {
+		days[i] = marchDaysPerHop * dist[i]
+	}
+	for i, r := range w.Regions { // a held tile: from the nearest open neighbour
+		if !barred[i] || !w.reachable(n, r) {
+			continue
+		}
+		for _, x := range w.adj[i] {
+			if v := marchDaysPerHop * (dist[x[0]] + w.Links[x[1]].Hop); v < days[i] {
+				days[i] = v
+			}
+		}
+	}
+	days[a.Region] = 0
+	return days
+}
+
+// enemyHeld marks the tiles where an army of a nation at war with n stands.
+func (w *World) enemyHeld(n *Nation) []bool {
+	held := make([]bool, len(w.Regions))
+	for _, e := range w.Armies {
+		if e.Nation != n && n.AtWar[e.Nation.ID] && !e.Retreating && e.Men >= minOccupiers {
+			held[e.Region] = true
+		}
+	}
+	return held
 }
 
 // aiBuildMaxTax is the tax rate above which the computer (and automated

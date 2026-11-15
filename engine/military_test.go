@@ -735,11 +735,12 @@ func TestFieldArmiesAreReinforced(t *testing.T) {
 	if a.coming() <= 0 || len(a.Coming) == 0 || a.Coming[0].Arrive <= w.Tick {
 		t.Fatalf("no recruits on the way: %+v", a.Coming)
 	}
-	for i := 0; i < 90; i++ {
+	days := int(m.CallUpDays()) // the nation's call-up time
+	for i := 0; i < days; i++ {
 		w.Step()
 	}
 	if a.Men < 0.8*a.Target {
-		t.Errorf("after 90 days of reinforcements: %v of %v men", a.Men, a.Target)
+		t.Errorf("after %d days of reinforcements: %v of %v men", days, a.Men, a.Target)
 	}
 }
 
@@ -855,17 +856,19 @@ func TestOccupationNeedsStrengthOne(t *testing.T) {
 }
 
 // A besieging army breaks off to defend our soil only when no idle or
-// marching army answers, and only when the enemy is further along taking
-// our tile than it is taking its own: a siege lifted is lost.
+// marching army answers, and only when the enemy would take our tile before
+// it takes its own (and it can likely win): a siege lifted is lost. Days
+// left count, not progress: an enemy tile is taken at half a free one's
+// pace.
 func TestAIBesiegerDefendsOnlyWhenBehind(t *testing.T) {
 	for _, tc := range []struct {
 		name          string
 		ours, theirs  float64 // occupation progress: ours abroad, theirs at home
 		spare, breaks bool    // a second, idle army at home; the besieger marches home
 	}{
-		{"enemy ahead", 0.3, 0.5, false, true},
-		{"enemy behind", 0.5, 0.3, false, false},
-		{"idle army answers", 0.3, 0.5, true, false},
+		{"enemy ahead", 0.1, 0.9, false, true},
+		{"enemy behind", 0.9, 0.1, false, false},
+		{"idle army answers", 0.1, 0.9, true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := newNeighbourGame(t)
@@ -1043,5 +1046,117 @@ func TestMostCasualtiesComeHome(t *testing.T) {
 	}
 	if got, want := people()-before, 5*(1-killedShare); math.Abs(got-want) > 1e-9 {
 		t.Errorf("%v of the 5 lost men came home, want %v", got, want)
+	}
+}
+
+// Calling up an army takes months in 1820 and two or three weeks once
+// railways, the telegraph, trained reserves and a general staff's
+// timetables have come in.
+func TestCallUpQuickensWithTechs(t *testing.T) {
+	w := newNeighbourGame(t)
+	n := w.Nations[0]
+	if d := n.CallUpDays(); d != callUpDays {
+		t.Errorf("call-up in 1820: %v days, want %v", d, callUpDays)
+	}
+	for _, tech := range []string{"Railways", "Telegraph", "Mass conscription", "General staff"} {
+		w.GrantTech(n.ID, tech)
+	}
+	if d := n.CallUpDays(); d < 15 || d > 30 {
+		t.Errorf("call-up with railways, telegraph, reserves and a general staff: %v days, want two or three weeks", d)
+	}
+}
+
+// No march goes through a tile an enemy army holds: it can only be the end
+// of one (an attack on it).
+func TestNoMarchThroughEnemyArmy(t *testing.T) {
+	w := newNeighbourGame(t)
+	alpha, beta := w.Nations[0], w.Nations[1]
+	for _, name := range []string{"10", "11", "12"} {
+		w.Annex(regionByName(w, name).ID, alpha.ID)
+	}
+	w.DeclareWar(beta.ID, alpha.ID)
+	a, err := w.RaiseArmy(alpha.ID, regionByName(w, "10").ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.Men = 10
+	dest := regionByName(w, "12").ID
+	if err := w.MoveArmy(a.ID, dest); err != nil || len(a.Path) < 2 {
+		t.Fatalf("set-up: march %v %v", err, a.Path)
+	}
+	// an enemy army steps onto the way the march would take
+	e, err := w.RaiseArmy(beta.ID, beta.Regions[0].ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Men, e.Region = 10, a.Path[0]
+	if err := w.MoveArmy(a.ID, dest); err != nil && !errors.Is(err, ErrNoPath) {
+		t.Fatal(err)
+	}
+	for _, r := range a.Path {
+		if r == e.Region {
+			t.Errorf("the march goes through the enemy army at %s: %v", w.Regions[r].Name, a.Path)
+		}
+	}
+	// it may march on the enemy army itself
+	if err := w.MoveArmy(a.ID, e.Region); err != nil || len(a.Path) == 0 || a.Path[len(a.Path)-1] != e.Region {
+		t.Errorf("can't attack the enemy army: %v %v", err, a.Path)
+	}
+}
+
+// A beaten army falls back by its own and free land, never deeper into the
+// enemy's country.
+func TestRetreatAvoidsEnemyLand(t *testing.T) {
+	w := newNeighbourGame(t)
+	alpha, beta := w.Nations[0], w.Nations[1]
+	for _, name := range []string{"02", "11", "12"} {
+		w.Annex(regionByName(w, name).ID, beta.ID)
+	}
+	w.DeclareWar(beta.ID, alpha.ID)
+	a, err := w.RaiseArmy(alpha.ID, alpha.Regions[0].ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.Men, a.Region = 10, regionByName(w, "12").ID // beaten deep in Beta's land
+	if !w.fallBack(a) {
+		t.Fatal("no way home over free land")
+	}
+	for _, r := range a.Path[:len(a.Path)-1] {
+		if w.Regions[r].Nation == beta {
+			t.Errorf("the retreat runs through Beta's %s: %v", w.Regions[r].Name, a.Path)
+		}
+	}
+}
+
+// The computer's armies plan together: two armies with free land about them
+// head for different tiles, not both for the best one.
+func TestArmiesSplitUp(t *testing.T) {
+	w := newNeighbourGame(t)
+	alpha := w.Nations[0]
+	alpha.AI = true
+	for _, name := range []string{"10", "11"} {
+		w.Annex(regionByName(w, name).ID, alpha.ID)
+	}
+	var armies []*Army
+	for _, name := range []string{"10", "11"} {
+		a, err := w.RaiseArmy(alpha.ID, regionByName(w, name).ID, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.Target, a.Men = 10, 10
+		for g := range a.Supply {
+			a.Supply[g] = 1
+		}
+		armies = append(armies, a)
+	}
+	w.aiPlan(alpha, armies, w.expansionTargets(alpha))
+	x, y := aiGoing(armies[0]), aiGoing(armies[1])
+	if x == y {
+		t.Errorf("both armies make for %s", w.Regions[x].Name)
+	}
+	for _, a := range armies {
+		if len(a.Path) == 0 {
+			t.Errorf("army %d sits at home with free land about it", a.ID)
+		}
 	}
 }

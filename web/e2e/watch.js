@@ -34,7 +34,13 @@ try {
   await page.goto(base + '/');
   await page.waitForSelector('button[data-open]', { timeout: 15000 });
   await page.click('button[data-open]');
-  await page.waitForTimeout(2500); // the world, the state, then each nation's history
+  // the game is open once its tabs show, or the page has thrown and gone back
+  // to the lobby; on a busy machine that can take a while
+  await page.waitForFunction(() => {
+    const tab = document.querySelector('button[data-tab]');
+    return (/^#\/game\//.test(location.hash) && tab && tab.offsetParent !== null) || location.hash === '#/' && (document.getElementById('lobby-err') || {}).textContent;
+  }, null, { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(1500); // then each nation's history
   const hash = await page.evaluate(() => location.hash);
   if (!/^#\/game\/[0-9a-f]+$/.test(hash)) {
     const shown = await page.evaluate(() => (document.getElementById('lobby-err') || {}).textContent || '');

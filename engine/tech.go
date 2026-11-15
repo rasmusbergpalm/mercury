@@ -42,6 +42,7 @@ type Tech struct {
 
 	Doctrine        string  // unlocks this army doctrine
 	Mobilization    float64 // raises the share of the population that can serve (the highest counts)
+	CallUp          float64 // multiplies how long calling up an army takes
 	ArmySize        float64 // raises how many men one army can field (the highest counts)
 	AdminMult       float64 // multiplies what each official administers
 	SchoolMult      float64 // multiplies what each teacher teaches
@@ -126,10 +127,10 @@ var Techs = []Tech{
 	{Name: "Locomotives", Branch: BranchTransport, Era: 1, Cost: era2, Requires: []string{"Canals"},
 		Effect: "", EnableFirms: []string{"Steam transport", "Steam shovels"}},
 	{Name: "Railways", Branch: BranchTransport, Era: 1, Cost: era2 * 1.2, EnableFirms: []string{"Ice-packed fishery"}, Requires: []string{"Locomotives", "Macadam roads"},
-		Effect: "Unlocks railways"},
+		Effect: "Unlocks railways; armies call up 45% faster (reservists by train)", CallUp: 0.55},
 	{Name: "Mass conscription", Branch: BranchMilitary, Era: 1, Cost: era2, Requires: []string{"Percussion caps"},
-		Effect: "Reserve army doctrine; up to 4% of people can serve; armies of up to 40 men", Doctrine: "Reserve army",
-		Mobilization: 0.04, ArmySize: 40},
+		Effect: "Reserve army doctrine; up to 4% of people can serve; armies of up to 40 men; armies call up 35% faster (trained reservists on the rolls)", Doctrine: "Reserve army",
+		Mobilization: 0.04, ArmySize: 40, CallUp: 0.65},
 	{Name: "Rifled muskets", Branch: BranchMilitary, Era: 1, Cost: era2, Requires: []string{"Mass conscription", "Interchangeable parts"},
 		Effect: "Rifle infantry doctrine", Doctrine: "Rifle infantry"},
 	{Name: "Military logistics", Branch: BranchMilitary, Era: 1, Cost: era2, Requires: []string{"Mass conscription"},
@@ -147,8 +148,8 @@ var Techs = []Tech{
 		SchoolMult: 1.4},
 
 	{Name: "Telegraph", Branch: BranchScience, Era: 1, Cost: era2, Requires: []string{"Research universities", "Railways"},
-		Effect:  "Universities +15%; ideas from trade partners spread 50% better",
-		FirmTFP: firms("University", 1.15), Diffusion: 1.5},
+		Effect:  "Universities +15%; ideas from trade partners spread 50% better; armies call up 25% faster (the order reaches every district in hours)",
+		FirmTFP: firms("University", 1.15), Diffusion: 1.5, CallUp: 0.75},
 
 	// ---- era 3: Second industrial revolution, 1870s–90s
 	{Name: "Steel", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Steam power"},
@@ -178,7 +179,7 @@ var Techs = []Tech{
 	{Name: "Universal conscription", Branch: BranchMilitary, Era: 2, Cost: era3, Requires: []string{"Mass conscription"},
 		Effect: "Up to 8% of people can serve", Mobilization: 0.08},
 	{Name: "General staff", Branch: BranchMilitary, Era: 2, Cost: era3, Requires: []string{"Military logistics"},
-		Effect: "Attack +20%, sieges 30% faster; armies of up to 120 men", Attack: 1.2, OccupySpeed: 1.3, ArmySize: 120},
+		Effect: "Attack +20%, sieges 30% faster; armies of up to 120 men; armies call up 30% faster (mobilization timetables)", Attack: 1.2, OccupySpeed: 1.3, ArmySize: 120, CallUp: 0.7},
 	{Name: "Public health", Branch: BranchPolitics, Era: 2, Cost: era3, Requires: []string{"Civil service reform"},
 		Effect: "Population growth +0.6% a year; public health staff cover 60% more", PopGrowth: 0.006, HealthMult: 1.6},
 	{Name: "Social insurance", Branch: BranchPolitics, Era: 2, Cost: era3, Requires: []string{"Public health"},
