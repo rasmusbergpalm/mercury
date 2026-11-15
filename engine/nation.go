@@ -295,7 +295,7 @@ const (
 func (n *Nation) Discount(i int, nations []*Nation) float64 {
 	trade := 0.0
 	for _, o := range nations {
-		if o != n && o.Known[i] {
+		if o != n && o.Known[i] && !n.closedTo(o) { // ideas cross only an open border: the trade of before an embargo carries none
 			trade += n.TradeWith[o.ID]
 		}
 	}
@@ -710,8 +710,8 @@ func (n *Nation) learn(w *World, i int) {
 // (Gerschenkron): Germany, the United States and Japan caught Britain up
 // in decades. A leader has nothing to copy and gains nothing from it.
 func (n *Nation) pickCopy(w *World) {
-	if i := n.Copying; i >= 0 && n.CanResearch(i) && i != n.Researching {
-		return
+	if i := n.Copying; i >= 0 && n.CanResearch(i) && i != n.Researching && w.knownNearby(n, i) {
+		return // still on it, and the border it comes across is still open
 	}
 	n.Copying = -1
 	best := 0.0
@@ -729,15 +729,23 @@ func (n *Nation) pickCopy(w *World) {
 }
 
 // knownNearby reports whether a neighbour of n knows tech i and the border
-// between them is open: an embargo, either way, stops the engineers,
-// machines and journals a tech crosses with.
+// between them is open (closedTo): an embargo, either way, stops the
+// engineers, machines and journals a tech crosses with.
 func (w *World) knownNearby(n *Nation, i int) bool {
 	for _, o := range w.Nations {
-		if o != n && !o.Eliminated() && o.Known[i] && !n.Embargo[o.ID] && !o.Embargo[n.ID] && w.nationsBorder(n, o) {
+		if o != n && !o.Eliminated() && o.Known[i] && !n.closedTo(o) && w.nationsBorder(n, o) {
 			return true
 		}
 	}
 	return false
+}
+
+// closedTo reports whether no goods, and so no ideas, cross between n and
+// o: an embargo either way, a war, or an alliance of one against the other
+// (which embargoes it).
+func (n *Nation) closedTo(o *Nation) bool {
+	return n.Embargo[o.ID] || o.Embargo[n.ID] || n.AtWar[o.ID] ||
+		n.Coalition == o.ID+1 || o.Coalition == n.ID+1
 }
 
 // pickResearch chooses what to research when the nation isn't researching

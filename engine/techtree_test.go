@@ -539,3 +539,38 @@ func TestMilitaryThreatLeansResearch(t *testing.T) {
 		t.Errorf("military share of the draw %.2f behind, %.2f even: it should lean to arms", behind, even)
 	}
 }
+
+// An embargo (either way) stops ideas at once: a catch-up already under way
+// on a tech the embargoed neighbour knows stops, and the trade of before
+// the embargo no longer cheapens that neighbour's techs.
+func TestEmbargoStopsDiffusion(t *testing.T) {
+	w := newNeighbourGame(t)
+	a, b := w.Nations[0], w.Nations[1]
+	masonry := TechID("Masonry")
+	b.Known[masonry] = true
+	a.TradeWith[b.ID] = 1e6 // a great deal of trade, before the embargo
+	a.IncomeEMA = 1
+	a.Researching = -1
+	a.pickCopy(w)
+	if a.Copying != masonry {
+		t.Fatalf("set-up: catching up on %d, want Masonry", a.Copying)
+	}
+	if a.Discount(masonry, w.Nations) <= 0 {
+		t.Fatal("set-up: no discount from a trading neighbour")
+	}
+	for _, embargo := range []func(bool){
+		func(on bool) { a.Embargo[b.ID] = on },
+		func(on bool) { b.Embargo[a.ID] = on },
+	} {
+		embargo(true)
+		a.Copying = masonry
+		a.pickCopy(w)
+		if a.Copying == masonry {
+			t.Error("still catching up on Masonry across an embargo")
+		}
+		if d := a.Discount(masonry, w.Nations); d != 0 {
+			t.Errorf("discount %v across an embargo", d)
+		}
+		embargo(false)
+	}
+}
