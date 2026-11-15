@@ -1896,10 +1896,11 @@ function worldPanel() {
   const hs = world.nations.map((o) => getHist(`nations/${o.id}`));
   const [k, row] = seg("world", [["population", "People"], ["gdp", "GDP"], ["utility", "Living"], ["soldiers", "Soldiers"], ["strength", "Might"], ["techs", "Techs"], ["tiles", "Tiles"]], "gdp");
   const ready = hs.every((h) => h && h.data);
-  const lines = k === "strength"
+  // the series only once every nation's history has come in (until then hs[i] is null)
+  const lines = () => k === "strength"
     ? world.nations.flatMap((o, i) => [{ name: o.name, color: nationColor(o.id), values: hs[i].data.strength }, { name: `${o.name} potential`, color: nationColor(o.id), values: hs[i].data.potential || [], dash: true }])
     : world.nations.map((o, i) => ({ name: o.name, color: nationColor(o.id), values: hs[i].data[k] }));
-  const chart = ready ? lineChart(hs[0].ticks, lines, { f: k === "utility" ? (v) => fmt(v) : k === "gdp" ? money : short }) + (k === "strength" ? `<p class="sub">${MIGHT_NOTE}</p>` : "") : lineChart(null, []);
+  const chart = ready ? lineChart(hs[0].ticks, lines(), { f: k === "utility" ? (v) => fmt(v) : k === "gdp" ? money : short }) + (k === "strength" ? `<p class="sub">${MIGHT_NOTE}</p>` : "") : lineChart(null, []);
   return `<h2>The powers ${info(`<b>War</b>: you can only declare war on a neighbour. Peace needs both sides: a computer nation accepts after a year if it isn't clearly winning, or after three years regardless; after peace a truce holds for some years.<br><br><b>Balance of power</b>: when one nation's might (over a year) is half again every other's, the rest ally against it, for at least three years and until it falls below 1.2 times the next. Allies embargo it, can't fight each other, join each other's wars against it the same day, and make peace with it together.`)}</h2><div class="table-scroll"><table>
     <tr><th>nation</th><th>tiles</th><th>people</th><th>real GDP<br>/ day</th><th>trade / day</th><th>soldiers</th><th>techs</th><th>relations</th></tr>${rows}</table></div>
     <h3>The race</h3>${row}${chart}
