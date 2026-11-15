@@ -134,7 +134,7 @@ const aiStandingVsThreat = 1.0 / 3
 func (w *World) ArmyFullStrength(n *Nation) float64 {
 	s := 0.0
 	for _, a := range w.ArmiesOf(n) {
-		s += math.Max(a.Men, a.Target) * Doctrines[a.Doctrine].Power * n.attackMult()
+		s += math.Max(a.Men, a.Target) * n.doctrinePower(a.Doctrine) * n.attackMult()
 	}
 	return s
 }
@@ -145,7 +145,7 @@ func (w *World) ArmyFullStrength(n *Nation) float64 {
 // its people, techs and loyalty make possible, whatever armies it has
 // chosen to raise so far: what rivals arm against.
 func (w *World) ArmyPotential(n *Nation) float64 {
-	return w.MobilizationCap(n) * Doctrines[n.bestDoctrine()].Power * n.attackMult()
+	return w.MobilizationCap(n) * n.doctrinePower(n.bestDoctrine()) * n.attackMult()
 }
 
 // nationsBorder reports whether any tiles of a and b are neighbours.

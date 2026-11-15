@@ -42,10 +42,9 @@ var armyGoodScale = map[string]float64{"bread": 1.5, "clothes": 4}
 
 const armyEquipmentScale = 10.0
 
-// Doctrines, from late-medieval levies to combined arms.
+// Doctrines, from the line infantry of 1820 to combined arms.
 var Doctrines = []Doctrine{
-	{"Levies", "", 0.7, needs("bread", 0.08, "clothes", 0.015, "arms", 0.016)},
-	{"Line infantry", "Percussion caps", 1.0, needs("bread", 0.08, "clothes", 0.02, "arms", 0.032, "artillery", 0.004)},
+	{"Line infantry", "", 1.0, needs("bread", 0.08, "clothes", 0.02, "arms", 0.032, "artillery", 0.004)},
 	{"Napoleonic corps", "Mass conscription", 1.5, needs("bread", 0.08, "clothes", 0.025, "arms", 0.048, "artillery", 0.012)},
 	{"Rifle infantry", "Rifled muskets", 2.3, needs("bread", 0.09, "clothes", 0.025, "arms", 0.072, "artillery", 0.016)},
 	{"Industrial army", "Breech-loading rifles", 3.5, needs("bread", 0.09, "clothes", 0.03, "arms", 0.08, "artillery", 0.024, "munitions", 0.04)},
@@ -55,7 +54,7 @@ var Doctrines = []Doctrine{
 }
 
 // supplyWeight is how much food and clothing count on the first rung of
-// effectiveness (the levies' arms take the rest, equipmentWeight; kit above
+// effectiveness (the first doctrine's arms take the rest, equipmentWeight; kit above
 // counts by rung, see Effectiveness).
 func supplyWeight(d *Doctrine, g GoodID) float64 {
 	switch Goods[g].Name {
@@ -151,13 +150,13 @@ var (
 )
 
 // Effectiveness is the army's fighting power per soldier. Doctrines form a
-// ladder: the first (levies) gives its power, cut by short food, clothing
+// ladder: the first (line infantry) gives its power, cut by short food, clothing
 // and arms; each doctrine above multiplies it by its power over the one
 // below (rₖ), as far as the kit it adds is supplied, and never further than
 // the tier beneath it is (an army with tanks but no rifles fights like one
 // with no rifles):
 //
-//	levies power × food, clothing, arms × Π (1 + (rₖ - 1) × min(tier k filled, tier k-1))
+//	line infantry power × food, clothing, arms × Π (1 + (rₖ - 1) × min(tier k filled, tier k-1))
 //
 // A new doctrine with none of its kit fights like the old one, and an army
 // that loses its newest kit falls back down the ladder.
@@ -169,9 +168,9 @@ func (a *Army) Effectiveness() float64 {
 	return e
 }
 
-// baseEffectiveness is the first rung: levies' power cut by short food and
+// baseEffectiveness is the first rung: the first doctrine's power cut by short food and
 // clothing (to the current doctrine's rations) and by arms short of the
-// levies' ration.
+// first doctrine's ration.
 func (a *Army) baseEffectiveness() float64 {
 	d, base := &Doctrines[a.Doctrine], &Doctrines[0]
 	e := base.Power
@@ -181,7 +180,7 @@ func (a *Army) baseEffectiveness() float64 {
 	return e * math.Pow(math.Max(a.tierFill(0), 0.05), equipmentWeight)
 }
 
-// equipmentWeight is how much the levies' arms count on the first rung:
+// equipmentWeight is how much the first doctrine's arms count on the first rung:
 // what food and clothing leave.
 const equipmentWeight = 0.55
 
@@ -198,7 +197,7 @@ func equipment(g GoodID) bool {
 }
 
 // tierFill is how much of the kit doctrine k adds to the one below (for the
-// levies: their arms) the army has, 0..1: the average over the goods whose
+// first doctrine: its arms) the army has, 0..1: the average over the goods whose
 // ration it raises, each as the share of the raise supplied.
 func (a *Army) tierFill(k int) float64 {
 	sum, n := 0.0, 0
@@ -222,7 +221,7 @@ func (a *Army) tierFill(k int) float64 {
 	return sum / float64(n)
 }
 
-// Rung is one step of the army's doctrine ladder above the levies.
+// Rung is one step of the army's doctrine ladder above the first.
 type Rung struct {
 	Doctrine int
 	Ratio    float64 // its power over the doctrine below
@@ -231,7 +230,7 @@ type Rung struct {
 	Mult     float64 // 1 + (Ratio-1) × Counted
 }
 
-// Rungs lists the army's rungs above the levies, up to its doctrine.
+// Rungs lists the army's rungs above the first, up to its doctrine.
 func (a *Army) Rungs() []Rung {
 	var out []Rung
 	below := a.tierFill(0)
@@ -239,7 +238,8 @@ func (a *Army) Rungs() []Rung {
 		r := Doctrines[k].Power / Doctrines[k-1].Power
 		f := a.tierFill(k)
 		c := math.Min(f, below)
-		out = append(out, Rung{k, r, f, c, 1 + (r-1)*c})
+		counted := c * a.Nation.doctrinePhase(k) // its edge comes in as the army trains to it
+		out = append(out, Rung{k, r, f, counted, 1 + (r-1)*counted})
 		below = c
 	}
 	return out
@@ -274,7 +274,34 @@ func (a *Army) Strength() float64 {
 // under arms now (its target at war, its mobilization share in peace),
 // fully supplied.
 func (a *Army) FullStrength() float64 {
-	return math.Max(a.Men, a.underArms()) * Doctrines[a.Doctrine].Power * a.Nation.attackMult()
+	return math.Max(a.Men, a.underArms()) * a.Nation.doctrinePower(a.Doctrine) * a.Nation.attackMult()
+}
+
+// doctrineAdoptDays is how long a new doctrine's edge over the one before
+// takes to come in: drilling a whole army in new tactics, and re-equipping
+// it, took years (the Prussian army's needle gun, adopted in 1841, was in
+// every regiment only in the 1850s).
+const doctrineAdoptDays = 3 * 365
+
+// doctrinePhase is how far the nation has taken up doctrine k: 0 the day
+// its tech is learned, 1 after doctrineAdoptDays (and always 1 for the
+// first doctrine, which needs no tech).
+func (n *Nation) doctrinePhase(k int) float64 {
+	if Doctrines[k].Tech == "" {
+		return 1
+	}
+	return n.adoptionOver(TechID(Doctrines[k].Tech), doctrineAdoptDays)
+}
+
+// doctrinePower is doctrine k's power to the nation as far as it has taken
+// it up: each step up the ladder adds its edge over the one below in
+// proportion to doctrinePhase.
+func (n *Nation) doctrinePower(k int) float64 {
+	p := Doctrines[0].Power
+	for j := 1; j <= k; j++ {
+		p *= 1 + (Doctrines[j].Power/Doctrines[j-1].Power-1)*n.doctrinePhase(j)
+	}
+	return p
 }
 
 // occupyMinStrength is the strength an army needs to occupy a tile (free
@@ -1455,7 +1482,7 @@ type Modifier struct {
 	Add   bool    `json:"add"` // added, not multiplied (losses)
 }
 
-// Breakdown explains an army's strength per soldier: the levies' power, food,
+// Breakdown explains an army's strength per soldier: line infantry's power, food,
 // clothing and arms, each doctrine rung above as far as its kit counts, and
 // its nation's technology; then what applies when it defends its own tile,
 // and its daily losses.
@@ -1467,8 +1494,8 @@ func (w *World) Breakdown(a *Army) (attack []Modifier, defense []Modifier, attri
 		attack = append(attack, Modifier{Goods[g].Name + " supply", math.Pow(math.Max(a.Supply[g], 0.05), wt),
 			fmt.Sprintf("%.0f%% supplied, weight %.2f", 100*a.Supply[g], wt), false})
 	}
-	attack = append(attack, Modifier{"arms (levies' kit)", math.Pow(math.Max(a.tierFill(0), 0.05), equipmentWeight),
-		fmt.Sprintf("%.0f%% of the levies' arms", 100*a.tierFill(0)), false})
+	attack = append(attack, Modifier{"arms (line infantry's kit)", math.Pow(math.Max(a.tierFill(0), 0.05), equipmentWeight),
+		fmt.Sprintf("%.0f%% of line infantry's arms", 100*a.tierFill(0)), false})
 	below := Doctrines[0].Name
 	for _, r := range a.Rungs() {
 		var kit []string

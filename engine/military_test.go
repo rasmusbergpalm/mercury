@@ -407,21 +407,24 @@ func TestDoctrineLadder(t *testing.T) {
 			t.Errorf("%s: effectiveness %v, want %v", what, got, want)
 		}
 	}
-	near(a.Effectiveness(), Doctrines[0].Power, "levies, fully supplied")
+	near(a.Effectiveness(), Doctrines[0].Power, "line infantry, fully supplied")
 
-	w.GrantTech(m.ID, "Percussion caps")
+	w.GrantTech(m.ID, "Mass conscription")
 	a.followDoctrine()
-	if a.Doctrine != 1 || a.Supply[G("artillery")] != 0 {
-		t.Fatalf("after Drill: doctrine %d, artillery %v", a.Doctrine, a.Supply[G("artillery")])
+	if a.Doctrine != 1 {
+		t.Fatalf("after Mass conscription: doctrine %d", a.Doctrine)
 	}
-	// arms were the levies' full ration, now half of line infantry's
-	if got := a.Supply[G("arms")]; math.Abs(got-0.5) > 1e-9 {
-		t.Errorf("arms restated to %v of the new ration, want 0.5", got)
+	// line infantry's arms and guns, restated against the corps' larger rations
+	for g, want := range map[string]float64{"arms": 0.032 / 0.048, "artillery": 0.004 / 0.012} {
+		if got := a.Supply[G(g)]; math.Abs(got-want) > 1e-9 {
+			t.Errorf("%s restated to %v of the new ration, want %v", g, got, want)
+		}
 	}
-	// (its clothing ration is higher too: the old uniforms cover 75% of it)
-	near(a.Effectiveness(), Doctrines[0].Power*math.Pow(0.75, 0.1), "line infantry with none of its kit")
+	if e := a.Effectiveness(); e >= Doctrines[1].Power-1e-9 {
+		t.Errorf("Napoleonic corps without its kit: effectiveness %v, the full %v", e, Doctrines[1].Power)
+	}
 	full()
-	near(a.Effectiveness(), Doctrines[1].Power, "line infantry fully supplied")
+	near(a.Effectiveness(), Doctrines[1].Power, "Napoleonic corps fully supplied")
 
 	// up to combined arms, everything supplied
 	for _, tech := range []string{"Mass conscription", "Rifled muskets", "Breech-loading rifles", "Machine guns", "Tanks"} {
@@ -441,11 +444,48 @@ func TestDoctrineLadder(t *testing.T) {
 	}
 	a.Supply[G("munitions")] = Doctrines[top-1].Needs[G("munitions")] / Doctrines[top].Needs[G("munitions")]
 	near(a.Effectiveness(), Doctrines[top-1].Power, "combined arms without its kit")
-	// tanks but no arms at all: every rung above the levies counts for nothing
+	// tanks but neither rifles nor guns, line infantry's kit: every rung
+	// above the first counts for nothing
 	full()
-	a.Supply[G("arms")] = 0
+	a.Supply[G("arms")], a.Supply[G("artillery")] = 0, 0
 	if e := a.Effectiveness(); e > Doctrines[0].Power {
-		t.Errorf("tanks without rifles: effectiveness %v, above even the levies' %v", e, Doctrines[0].Power)
+		t.Errorf("tanks without rifles or guns: effectiveness %v, above even line infantry's %v", e, Doctrines[0].Power)
+	}
+}
+
+// A new doctrine's edge comes in over doctrineAdoptDays as the army drills
+// and re-equips: none of it the day its tech is learned, half after half
+// the time, all of it after; the nation's potential might follows.
+func TestDoctrinePhasesIn(t *testing.T) {
+	w := newTestGame(t)
+	m := nationByName(w, "Montara")
+	a, err := w.RaiseArmy(m.ID, m.Regions[0].ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	i := TechID("Mass conscription")
+	m.Known[i], m.LearnedAt[i], m.now = true, 100, 100 // learned today, by research
+	m.applyTech()
+	a.followDoctrine()
+	for g := range a.Supply {
+		a.Supply[g] = 1
+	}
+	if a.Doctrine != 1 {
+		t.Fatalf("doctrine %d after Mass conscription", a.Doctrine)
+	}
+	edge := Doctrines[1].Power/Doctrines[0].Power - 1
+	for _, c := range []struct {
+		days int
+		got  float64
+	}{{0, 0}, {doctrineAdoptDays / 2, 0.5}, {doctrineAdoptDays, 1}, {2 * doctrineAdoptDays, 1}} {
+		m.now = 100 + c.days
+		want := Doctrines[0].Power * (1 + edge*c.got)
+		if e := a.Effectiveness(); math.Abs(e-want) > 1e-3 {
+			t.Errorf("%d days after Mass conscription: effectiveness %v, want %v", c.days, e, want)
+		}
+		if p, q := m.doctrinePower(1), want; math.Abs(p-q) > 1e-3 {
+			t.Errorf("%d days on: doctrine power %v, want %v", c.days, p, q)
+		}
 	}
 }
 

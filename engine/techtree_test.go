@@ -160,9 +160,13 @@ func TestMilitaryAndPoliticsTechs(t *testing.T) {
 	a.Men = 10
 	s0 := a.Strength()
 	w.GrantTech(0, "Percussion caps")
-	w.GrantTech(0, "Shrapnel shells")
 	if got := a.Strength(); math.Abs(got-1.1*s0) > 1e-9 {
-		t.Errorf("Shrapnel shells: strength %v, want %v", got, 1.1*s0)
+		t.Errorf("Percussion caps: strength %v, want %v", got, 1.1*s0)
+	}
+	s1 := a.Strength()
+	w.GrantTech(0, "Shrapnel shells")
+	if got := a.Strength(); math.Abs(got-1.1*s1) > 1e-9 {
+		t.Errorf("Shrapnel shells: strength %v, want %v", got, 1.1*s1)
 	}
 	if m := w.Nations[0].desertionMult(); m != 1 {
 		t.Errorf("desertion multiplier %v before Military logistics", m)
