@@ -110,11 +110,10 @@ type Nation struct {
 	// See pickCopy.
 	Copying       int
 	CopyPoints    float64
-	Queue         []int   // techs to research next, in order
-	Known         []bool  // per tech
-	Coalition     int     // 1 + the nation it is allied against; 0: none (see alliance.go)
-	AllianceSince int     // tick its alliance formed
-	MightEMA      float64 // its might, averaged over about a year (for alliances)
+	Queue         []int  // techs to research next, in order
+	Known         []bool // per tech
+	Coalition     int    // 1 + the nation it is allied against; 0: none (see alliance.go)
+	AllianceSince int    // tick its alliance formed
 	// LearnedAt is the tick each known tech was learned (0: always known, or
 	// granted outright: fully adopted); see Adoption.
 	LearnedAt []int

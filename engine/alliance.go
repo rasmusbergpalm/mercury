@@ -3,7 +3,11 @@ package engine
 import "errors"
 
 // Balance of power: when one nation grows far stronger than all the others,
-// they ally against it, and embargo it while the alliance lasts. An alliance
+// they ally against it, and embargo it while the alliance lasts. Strength
+// here is potential might (ArmyPotential: what a nation could raise at full
+// call-up), not the armies it happens to keep under arms: Europe's powers
+// combined against the nation whose people, industry and arms could
+// dominate them, whether or not it had mobilized yet. An alliance
 // forms when the strongest nation's might is at least allianceForm times
 // every other's, and breaks up when it falls below allianceBreak times the
 // next strongest (or the leader or a member falls). Allies can't make war
@@ -11,14 +15,16 @@ import "errors"
 // against, the others join that war the same day (without needing a
 // border); and they make peace with it together.
 //
-// Might is judged over a year (a moving average, updated monthly), and an
-// alliance holds for at least allianceYears unless its foe or a member falls:
-// month-to-month swings in small early armies mustn't make and break it.
+// Potential is judged as it stands at each monthly review: it moves with
+// people, loyalty and techs, not with call-ups, so a neighbour whose
+// potential doubles with a new tech is answered at once. The gap between
+// forming (allianceForm) and breaking (allianceBreak), and a treaty's
+// minimum term of allianceYears (unless its foe or a member falls), keep
+// alliances from flickering at the threshold.
 const (
 	allianceForm  = 1.5
 	allianceBreak = 1.2
 	allianceYears = 3
-	mightMonths   = 12 // the moving average of might spans about this many months
 )
 
 // ErrAllied is returned when a nation declares war on an ally.
@@ -44,11 +50,9 @@ func (w *World) updateAlliances() {
 	might := make([]float64, len(w.Nations))
 	for i, n := range w.Nations {
 		if n.Eliminated() {
-			n.MightEMA = 0
 			continue
 		}
-		n.MightEMA += (w.ArmyStrength(n) - n.MightEMA) / mightMonths
-		might[i] = n.MightEMA
+		might[i] = w.ArmyPotential(n)
 		if leader == nil || might[i] > might[leader.ID] {
 			leader = n
 		}

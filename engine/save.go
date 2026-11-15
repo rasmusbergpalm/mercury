@@ -100,9 +100,8 @@ type NationSnap struct {
 	RealGDP                                float64
 	Researching, Copying                   int
 	Known                                  []bool
-	Coalition                              int     `json:",omitempty"`
-	AllianceSince                          int     `json:",omitempty"`
-	MightEMA                               float64 `json:",omitempty"`
+	Coalition                              int `json:",omitempty"`
+	AllianceSince                          int `json:",omitempty"`
 	LearnedAt                              []int
 	Queue                                  []int
 	TradeWith                              []float64
@@ -168,7 +167,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, SpendEMA: n.SpendEMA, BuildRate: n.MaxBuildRate,
 			Tariff: append([]float64(nil), n.Tariff...), Embargo: append([]bool(nil), n.Embargo...),
 			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Standing: n.Standing, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints, CopyPoints: n.CopyPoints, Copying: n.Copying, RealGDP: n.RealGDP,
-			Researching: n.Researching, Known: append([]bool(nil), n.Known...), Coalition: n.Coalition, AllianceSince: n.AllianceSince, MightEMA: n.MightEMA, LearnedAt: append([]int(nil), n.LearnedAt...), AI: n.AI, ChooseResearch: n.ChooseResearch,
+			Researching: n.Researching, Known: append([]bool(nil), n.Known...), Coalition: n.Coalition, AllianceSince: n.AllianceSince, LearnedAt: append([]int(nil), n.LearnedAt...), AI: n.AI, ChooseResearch: n.ChooseResearch,
 			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
 			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
 			PeaceOffer: append([]bool(nil), n.PeaceOffer...),
@@ -291,7 +290,7 @@ func Restore(s *Snapshot) (*World, error) {
 		if ns.Coalition < 0 || ns.Coalition > len(s.Nations) || ns.Coalition == n.ID+1 {
 			return bad("alliance of " + n.Name)
 		}
-		n.Coalition, n.AllianceSince, n.MightEMA = ns.Coalition, ns.AllianceSince, ns.MightEMA
+		n.Coalition, n.AllianceSince = ns.Coalition, ns.AllianceSince
 		if len(ns.LearnedAt) != len(Techs) {
 			return bad("nation " + n.Name)
 		}

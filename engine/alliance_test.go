@@ -12,26 +12,12 @@ import (
 func TestAlliancesAgainstADominantNation(t *testing.T) {
 	w := newQuietGame(t)
 	m, v, th := nationByName(w, "Montara"), nationByName(w, "Verdania"), nationByName(w, "Thalassa")
-	army := func(n *Nation, men float64) *Army {
-		a, err := w.RaiseArmy(n.ID, n.Regions[0].ID, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		a.Target, a.Men = men, men
-		for g := range a.Supply {
-			a.Supply[g] = 1
-		}
-		return a
+	// Thalassa can call up twice the share of its people, at a better
+	// doctrine: its potential might dwarfs the others'
+	strong := []string{"Percussion caps", "Mass conscription", "Universal conscription"}
+	for _, tech := range strong {
+		w.GrantTech(th.ID, tech)
 	}
-	big := army(th, 30)
-	army(m, 10)
-	army(v, 10)
-	settle := func() { // might is judged over a year: start the averages where they are
-		for _, n := range w.Nations {
-			n.MightEMA = w.ArmyStrength(n)
-		}
-	}
-	settle()
 	w.updateAlliances()
 	if !w.Allied(m, v) || w.AlliedAgainst(m) != th || w.Allied(m, th) {
 		t.Fatalf("no alliance of Montara and Verdania against Thalassa: %d %d %d", m.Coalition, v.Coalition, th.Coalition)
@@ -45,19 +31,50 @@ func TestAlliancesAgainstADominantNation(t *testing.T) {
 	if !m.AtWar[th.ID] || !th.AtWar[m.ID] {
 		t.Error("Montara didn't join its ally's war on Thalassa")
 	}
-	// Thalassa's edge shrinks below allianceBreak: the alliance holds for
-	// its minimum term, then breaks up
-	big.Men = 11
-	settle()
+	// the others catch up: the alliance holds for its minimum term, then
+	// breaks up
+	for _, n := range []*Nation{m, v} {
+		for _, tech := range strong {
+			w.GrantTech(n.ID, tech)
+		}
+	}
 	w.updateAlliances()
 	if m.Coalition == 0 {
 		t.Error("alliance broke up within its first years")
 	}
 	w.Tick += allianceYears * TicksPerYear
-	settle()
 	w.updateAlliances()
 	if m.Coalition != 0 || v.Coalition != 0 {
 		t.Errorf("alliance outlived its reason: %d %d", m.Coalition, v.Coalition)
+	}
+}
+
+// Regression: nations ally against the one that could raise the most
+// (potential might), not the one that happens to keep the most under arms. Thalassa, the smallest
+// nation, kept the most men under arms, and the other two allied against
+// it at once.
+func TestNoAllianceAgainstTheArmedButWeak(t *testing.T) {
+	w := newQuietGame(t)
+	m, v, th := nationByName(w, "Montara"), nationByName(w, "Verdania"), nationByName(w, "Thalassa")
+	raise := func(n *Nation, men float64) {
+		a, err := w.RaiseArmy(n.ID, n.Regions[0].ID, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.Target, a.Men = men, men
+	}
+	raise(m, 5)
+	raise(v, 5)
+	raise(th, 30) // under arms, far beyond anyone else
+	if w.ArmyStrength(th) <= 2*math.Max(w.ArmyStrength(m), w.ArmyStrength(v)) {
+		t.Fatal("set-up: Thalassa isn't the most armed")
+	}
+	if w.ArmyPotential(th) > 1.5*math.Max(w.ArmyPotential(m), w.ArmyPotential(v)) {
+		t.Fatal("set-up: Thalassa's potential dominates")
+	}
+	w.updateAlliances()
+	if w.AlliedAgainst(m) == th || w.AlliedAgainst(v) == th {
+		t.Error("allied against Thalassa for the men it keeps under arms")
 	}
 }
 
