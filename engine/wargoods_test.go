@@ -27,7 +27,7 @@ func TestWarGoodsKeepAPriceInPeacetime(t *testing.T) {
 		}
 	}
 	m := nationByName(w, "Montara")
-	w.GrantTech(m.ID, "Percussion caps") // Line infantry wants artillery
+	w.GrantTech(m.ID, "Percussion caps") // the Napoleonic corps wants artillery
 	a, err := w.RaiseArmy(m.ID, m.Regions[0].ID, 0.5*w.MobilizationCap(m))
 	if err != nil {
 		t.Fatal(err)

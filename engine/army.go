@@ -42,12 +42,12 @@ var armyGoodScale = map[string]float64{"bread": 1.5, "clothes": 4}
 
 const armyEquipmentScale = 10.0
 
-// Doctrines, from the line infantry of 1820 to combined arms.
+// Doctrines, from the Napoleonic corps of 1820 to combined arms.
 var Doctrines = []Doctrine{
-	{"Line infantry", "", 1.0, needs("bread", 0.08, "clothes", 0.02, "arms", 0.032, "artillery", 0.004)},
-	{"Napoleonic corps", "Mass conscription", 1.5, needs("bread", 0.08, "clothes", 0.025, "arms", 0.048, "artillery", 0.012)},
+	{"Napoleonic corps", "", 1.0, needs("bread", 0.08, "clothes", 0.02, "arms", 0.032, "artillery", 0.004)},
+	{"Reserve army", "Mass conscription", 1.5, needs("bread", 0.08, "clothes", 0.025, "arms", 0.048, "artillery", 0.012)},
 	{"Rifle infantry", "Rifled muskets", 2.3, needs("bread", 0.09, "clothes", 0.025, "arms", 0.072, "artillery", 0.016)},
-	{"Industrial army", "Breech-loading rifles", 3.5, needs("bread", 0.09, "clothes", 0.03, "arms", 0.08, "artillery", 0.024, "munitions", 0.04)},
+	{"Open-order infantry", "Breech-loading rifles", 3.5, needs("bread", 0.09, "clothes", 0.03, "arms", 0.08, "artillery", 0.024, "munitions", 0.04)},
 	{"Machine-gun infantry", "Machine guns", 5.5, needs("bread", 0.1, "clothes", 0.03, "arms", 0.08, "artillery", 0.032, "munitions", 0.1)},
 	{"Combined arms", "Tanks", 9.0, needs("bread", 0.1, "clothes", 0.03, "arms", 0.08, "artillery", 0.032, "munitions", 0.12,
 		"vehicles", 0.016, "aircraft", 0.008, "oil", 0.048)},
@@ -150,13 +150,13 @@ var (
 )
 
 // Effectiveness is the army's fighting power per soldier. Doctrines form a
-// ladder: the first (line infantry) gives its power, cut by short food, clothing
+// ladder: the first (the Napoleonic corps) gives its power, cut by short food, clothing
 // and arms; each doctrine above multiplies it by its power over the one
 // below (rₖ), as far as the kit it adds is supplied, and never further than
 // the tier beneath it is (an army with tanks but no rifles fights like one
 // with no rifles):
 //
-//	line infantry power × food, clothing, arms × Π (1 + (rₖ - 1) × min(tier k filled, tier k-1))
+//	the Napoleonic corps power × food, clothing, arms × Π (1 + (rₖ - 1) × min(tier k filled, tier k-1))
 //
 // A new doctrine with none of its kit fights like the old one, and an army
 // that loses its newest kit falls back down the ladder.
@@ -1482,7 +1482,7 @@ type Modifier struct {
 	Add   bool    `json:"add"` // added, not multiplied (losses)
 }
 
-// Breakdown explains an army's strength per soldier: line infantry's power, food,
+// Breakdown explains an army's strength per soldier: the Napoleonic corps' power, food,
 // clothing and arms, each doctrine rung above as far as its kit counts, and
 // its nation's technology; then what applies when it defends its own tile,
 // and its daily losses.
@@ -1494,8 +1494,8 @@ func (w *World) Breakdown(a *Army) (attack []Modifier, defense []Modifier, attri
 		attack = append(attack, Modifier{Goods[g].Name + " supply", math.Pow(math.Max(a.Supply[g], 0.05), wt),
 			fmt.Sprintf("%.0f%% supplied, weight %.2f", 100*a.Supply[g], wt), false})
 	}
-	attack = append(attack, Modifier{"arms (line infantry's kit)", math.Pow(math.Max(a.tierFill(0), 0.05), equipmentWeight),
-		fmt.Sprintf("%.0f%% of line infantry's arms", 100*a.tierFill(0)), false})
+	attack = append(attack, Modifier{"arms (the Napoleonic corps' kit)", math.Pow(math.Max(a.tierFill(0), 0.05), equipmentWeight),
+		fmt.Sprintf("%.0f%% of the Napoleonic corps' arms", 100*a.tierFill(0)), false})
 	below := Doctrines[0].Name
 	for _, r := range a.Rungs() {
 		var kit []string

@@ -407,24 +407,24 @@ func TestDoctrineLadder(t *testing.T) {
 			t.Errorf("%s: effectiveness %v, want %v", what, got, want)
 		}
 	}
-	near(a.Effectiveness(), Doctrines[0].Power, "line infantry, fully supplied")
+	near(a.Effectiveness(), Doctrines[0].Power, "the Napoleonic corps, fully supplied")
 
 	w.GrantTech(m.ID, "Mass conscription")
 	a.followDoctrine()
 	if a.Doctrine != 1 {
 		t.Fatalf("after Mass conscription: doctrine %d", a.Doctrine)
 	}
-	// line infantry's arms and guns, restated against the corps' larger rations
+	// the Napoleonic corps' arms and guns, restated against the reserve army's larger rations
 	for g, want := range map[string]float64{"arms": 0.032 / 0.048, "artillery": 0.004 / 0.012} {
 		if got := a.Supply[G(g)]; math.Abs(got-want) > 1e-9 {
 			t.Errorf("%s restated to %v of the new ration, want %v", g, got, want)
 		}
 	}
 	if e := a.Effectiveness(); e >= Doctrines[1].Power-1e-9 {
-		t.Errorf("Napoleonic corps without its kit: effectiveness %v, the full %v", e, Doctrines[1].Power)
+		t.Errorf("Reserve army without its kit: effectiveness %v, the full %v", e, Doctrines[1].Power)
 	}
 	full()
-	near(a.Effectiveness(), Doctrines[1].Power, "Napoleonic corps fully supplied")
+	near(a.Effectiveness(), Doctrines[1].Power, "Reserve army fully supplied")
 
 	// up to combined arms, everything supplied
 	for _, tech := range []string{"Mass conscription", "Rifled muskets", "Breech-loading rifles", "Machine guns", "Tanks"} {
@@ -444,12 +444,12 @@ func TestDoctrineLadder(t *testing.T) {
 	}
 	a.Supply[G("munitions")] = Doctrines[top-1].Needs[G("munitions")] / Doctrines[top].Needs[G("munitions")]
 	near(a.Effectiveness(), Doctrines[top-1].Power, "combined arms without its kit")
-	// tanks but neither rifles nor guns, line infantry's kit: every rung
+	// tanks but neither rifles nor guns, the Napoleonic corps' kit: every rung
 	// above the first counts for nothing
 	full()
 	a.Supply[G("arms")], a.Supply[G("artillery")] = 0, 0
 	if e := a.Effectiveness(); e > Doctrines[0].Power {
-		t.Errorf("tanks without rifles or guns: effectiveness %v, above even line infantry's %v", e, Doctrines[0].Power)
+		t.Errorf("tanks without rifles or guns: effectiveness %v, above even the Napoleonic corps' %v", e, Doctrines[0].Power)
 	}
 }
 
@@ -771,7 +771,7 @@ func TestArmiesBidHardForScarceSupplies(t *testing.T) {
 	w := newQuietGame(t)
 	m := nationByName(w, "Montara")
 	m.Treasury = 1e4
-	w.GrantTech(m.ID, "Percussion caps") // line infantry needs artillery
+	w.GrantTech(m.ID, "Percussion caps") // (the Napoleonic corps, from 1820, needs artillery)
 	home := regionByName(w, "11")
 	a, _ := w.RaiseArmy(m.ID, home.ID, 8)
 	a.Men = 100 // an order (~0.6 a day) between construction's limit and the army's
