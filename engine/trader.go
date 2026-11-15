@@ -168,6 +168,7 @@ type Trader struct {
 	QMin          float64
 	Bought        float64 // bought this tick
 	TransportQty  float64 // transport units bought this tick
+	usedTransport float64 // transport units used up shipping today (for GDP: trade's input)
 	Shipped       float64 // last tick's shipment (as loaded)
 	Margin        float64
 	RelMargin     float64
@@ -298,6 +299,7 @@ func (t *Trader) Receive(good GoodID, qty float64) {
 // (unsold at dest, or stuck at origin) spoils; fresh purchases don't, except
 // for what is lost in transit.
 func (t *Trader) Ship() {
+	t.usedTransport = t.TransportQty
 	if t.StockDest == 0 && t.StockOrigin == 0 && t.Bought == 0 && t.TransportQty == 0 {
 		t.Shipped = 0 // an idle route (most of them): nothing moves
 		return

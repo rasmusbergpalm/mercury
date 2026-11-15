@@ -20,8 +20,8 @@ const gdpWarmup = 90
 
 // GDPChain measures a tile's real GDP: its value added at constant prices,
 // in pounds of the first month. Each day it adds up the tile's net output
-// (what its firms made less the goods they used up, plus its public
-// services) and what the goods traded for; each month it links the month's
+// (what its firms made less the goods they and its merchants used up, plus
+// its public services) and what the goods traded for; each month it links the month's
 // average to the last one with a Fisher index, so the quantities are valued
 // at both months' prices and the result does not drift as relative prices
 // change. Money only changes hands, so with a fixed money stock it is
@@ -59,6 +59,12 @@ func (r *Region) accumulateGDP() {
 		for g, q := range f.used {
 			c.AccNet[g] -= q
 		}
+	}
+	// the transport the tile's merchants used up moving goods is an input
+	// to trade, like a firm's coal, not a product anyone consumes: hauling
+	// adds to GDP only through the goods it brings where they are worth more
+	for _, t := range r.House.today {
+		c.AccNet[Transport] -= t.usedTransport
 	}
 	for g, m := range r.Markets {
 		if v := math.Min(m.Supply, m.Demand); v > 1e-9 {
