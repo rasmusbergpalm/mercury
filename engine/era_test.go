@@ -125,12 +125,12 @@ func TestResearchQueueAndDiffusion(t *testing.T) {
 		t.Fatal(err)
 	}
 	n.Researching = -1
-	n.pickResearch()
+	n.pickResearch(w)
 	if n.Researching != vit || len(n.Queue) != 1 {
 		t.Fatalf("researching %d, queue %v", n.Researching, n.Queue)
 	}
 	n.Known[vit] = true
-	n.pickResearch()
+	n.pickResearch(w)
 	if n.Researching != cer {
 		t.Errorf("after Viticulture, researching %d", n.Researching)
 	}

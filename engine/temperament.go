@@ -74,13 +74,15 @@ func clamp01(x float64) float64 { return math.Max(0, math.Min(1, x)) }
 // learns its techs in, whatever day each comes (keyed on the day, a tech
 // finished a day sooner drew another next tech, and the smallest change to
 // the economy sent a game down another tree). -1 if nothing is left.
-func (n *Nation) drawResearch() int {
+func (n *Nation) drawResearch(w *World) int {
 	var ids []int
+	cost := make([]float64, len(Techs))
 	cheapest := math.Inf(1)
 	for i := range Techs {
-		if n.CanResearch(i) {
+		if n.CanResearch(i) && i != n.Copying {
 			ids = append(ids, i)
-			cheapest = math.Min(cheapest, Techs[i].Cost)
+			cost[i] = n.TechCost(i, w) // what it costs this nation: less where its partners know it
+			cheapest = math.Min(cheapest, cost[i])
 		}
 	}
 	if len(ids) == 0 {
@@ -88,14 +90,20 @@ func (n *Nation) drawResearch() int {
 	}
 	t := n.Temper
 	lean := map[string]float64{BranchScience: t.Learning, BranchMilitary: t.Militarism, BranchPolitics: t.Aggression, BranchTransport: t.Expansion}
+	// a nation that falls behind a rival's arms answers it: France's
+	// chassepot after Prussia's needle gun won in 1866, the naval races
+	behind := float64(w.militaryLag(n))
 	weights, total := make([]float64, len(ids)), 0.0
 	for k, i := range ids {
-		w := math.Pow(cheapest/Techs[i].Cost, 2)
+		x := math.Pow(cheapest/cost[i], 2)
 		if l, ok := lean[Techs[i].Branch]; ok && l > 0 {
-			w *= l * l
+			x *= l * l
 		}
-		weights[k] = w
-		total += w
+		if Techs[i].Branch == BranchMilitary {
+			x *= (1 + behind) * (1 + behind)
+		}
+		weights[k] = x
+		total += x
 	}
 	x := n.random(len(ids)) * total
 	for k, w := range weights {
@@ -105,6 +113,27 @@ func (n *Nation) drawResearch() int {
 		x -= w
 	}
 	return ids[len(ids)-1]
+}
+
+// militaryLag is how many military techs the nation is behind the best
+// armed of the nations it borders or is at war with.
+func (w *World) militaryLag(n *Nation) int {
+	count := func(o *Nation) int {
+		k := 0
+		for i, x := range o.Known {
+			if x && Techs[i].Branch == BranchMilitary {
+				k++
+			}
+		}
+		return k
+	}
+	own, lag := count(n), 0
+	for _, o := range w.Nations {
+		if o != n && !o.Eliminated() && (n.AtWar[o.ID] || w.nationsBorder(n, o)) {
+			lag = max(lag, count(o)-own)
+		}
+	}
+	return lag
 }
 
 // random is a deterministic pseudo-random number in [0, 1) for the nation's

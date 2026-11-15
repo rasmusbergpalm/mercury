@@ -431,20 +431,19 @@ func BenchmarkGameStep(b *testing.B) {
 	}
 }
 
-// Regression: emigration between nations is slow. A 10% gap in living
-// standards across a border draws a fraction of a percent of a tile's
-// people a year, not the 15% that emptied poorer nations into their
-// neighbours within decades; within a nation people move far more freely.
-func TestEmigrationIsSlow(t *testing.T) {
+// People cross borders as freely as they move within a nation, going where
+// living is better; but slowly enough that a poorer nation isn't emptied
+// into its neighbours within decades (a 10% gap once drew 15% of a tile's
+// people a year): a few percent a year.
+func TestEmigrationAsFreeAsMoving(t *testing.T) {
 	w := newNeighbourGame(t)
 	a, b := w.Nations[0].Regions[0], w.Nations[1].Regions[0]
 	const gap, hop = 0.1, 1.0
 	yearly := 1 - math.Pow(1-migrationShare(a, b, gap, hop), TicksPerYear)
-	if yearly > 0.01 || yearly < 0.0005 {
-		t.Errorf("a 10%% gap draws %.2f%% of a border tile's people a year, want 0.05-1%%", 100*yearly)
+	if yearly > 0.06 || yearly < 0.01 {
+		t.Errorf("a 10%% gap draws %.2f%% of a border tile's people a year, want 1-6%%", 100*yearly)
 	}
-	home := migrationShare(a, a, gap, hop) // same nation
-	if home < 10*migrationShare(a, b, gap, hop) {
-		t.Errorf("moving within a nation (%v a day) should be far freer than emigrating", home)
+	if home := migrationShare(a, a, gap, hop); home != migrationShare(a, b, gap, hop) {
+		t.Errorf("moving within a nation (%v a day) and across a border (%v) differ", home, migrationShare(a, b, gap, hop))
 	}
 }

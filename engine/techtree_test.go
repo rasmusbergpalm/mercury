@@ -423,7 +423,7 @@ func TestCoastMovementTakesTheCheaperWay(t *testing.T) {
 func TestFinishedResearchAsksThePlayer(t *testing.T) {
 	w := newTestGame(t)
 	finish := func(n *Nation) {
-		n.pickResearch()
+		n.pickResearch(w)
 		n.ResearchPoints = n.TechCost(n.Researching, w)
 		w.Step()
 	}
@@ -465,11 +465,65 @@ func TestResearchDrawDoesNotDependOnTheDay(t *testing.T) {
 	w := newTestGame(t)
 	n := w.Nations[0]
 	n.now = 100
-	first := n.drawResearch()
+	first := n.drawResearch(w)
 	for _, day := range []int{101, 2000, 36500} {
 		n.now = day
-		if got := n.drawResearch(); got != first {
+		if got := n.drawResearch(w); got != first {
 			t.Errorf("day %d draws %s, day 100 %s", day, Techs[got].Name, Techs[first].Name)
 		}
+	}
+}
+
+// A nation catches up on a tech its neighbour knows in a second slot,
+// alongside its own research, and learns it from the points that slot gets.
+func TestCatchUpSlot(t *testing.T) {
+	w := newNeighbourGame(t)
+	a, b := w.Nations[0], w.Nations[1]
+	masonry := TechID("Masonry")
+	b.Known[masonry] = true
+	a.SetResearch(TechID("Drill"))
+	a.pickCopy(w)
+	if a.Copying != masonry {
+		t.Fatalf("catching up on %d, want Masonry (%d)", a.Copying, masonry)
+	}
+	a.CopyPoints = 2 * Techs[masonry].Cost * float64(len(w.Regions)) / techCostTiles // more than it costs, whatever the discount
+	w.Step()
+	if !a.Known[masonry] {
+		t.Error("Masonry not learned from the catch-up slot")
+	}
+	if a.Researching != TechID("Drill") {
+		t.Errorf("own research changed to %d", a.Researching)
+	}
+	b.pickCopy(w)
+	if b.Copying >= 0 && !a.Known[b.Copying] {
+		t.Errorf("Beta catches up on %s, which Alpha doesn't know", Techs[b.Copying].Name)
+	}
+}
+
+// A nation behind its neighbour in arms leans its research to military techs.
+func TestMilitaryLagLeansResearch(t *testing.T) {
+	w := newNeighbourGame(t)
+	a, b := w.Nations[0], w.Nations[1]
+	share := func() float64 {
+		mil := 0
+		for k := 0; k < 200; k++ {
+			a.seed = int64(k)
+			if i := a.drawResearch(w); i >= 0 && Techs[i].Branch == BranchMilitary {
+				mil++
+			}
+		}
+		return float64(mil) / 200
+	}
+	even := share()
+	for i, tc := range Techs {
+		if tc.Branch == BranchMilitary && tc.Era == 0 {
+			b.Known[i] = true
+		}
+	}
+	if w.militaryLag(a) == 0 {
+		t.Fatal("set-up: Alpha isn't behind")
+	}
+	if behind := share(); behind < 1.5*even {
+		t.Errorf("military share of the draw %.2f behind, %.2f even: it should lean to arms", behind, even)
 	}
 }

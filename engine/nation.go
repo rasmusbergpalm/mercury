@@ -105,11 +105,16 @@ type Nation struct {
 
 	ResearchPoints float64 // research delivered towards the current tech
 	Researching    int     // index into Techs, or -1 to pick automatically
-	Queue          []int   // techs to research next, in order
-	Known          []bool  // per tech
-	Coalition      int     // 1 + the nation it is allied against; 0: none (see alliance.go)
-	AllianceSince  int     // tick its alliance formed
-	MightEMA       float64 // its might, averaged over about a year (for alliances)
+	// Copying is the tech the nation is catching up on (one others it
+	// learns from know), or -1; CopyPoints the research delivered to it.
+	// See pickCopy.
+	Copying       int
+	CopyPoints    float64
+	Queue         []int   // techs to research next, in order
+	Known         []bool  // per tech
+	Coalition     int     // 1 + the nation it is allied against; 0: none (see alliance.go)
+	AllianceSince int     // tick its alliance formed
+	MightEMA      float64 // its might, averaged over about a year (for alliances)
 	// LearnedAt is the tick each known tech was learned (0: always known, or
 	// granted outright: fully adopted); see Adoption.
 	LearnedAt []int
@@ -185,7 +190,7 @@ func newNation(id int, name, color string, nNations int, taxRate float64) *Natio
 	return &Nation{ID: id, Name: name, Color: color, TaxRate: taxRate,
 		MaxBuildRate: 5,
 		Tariff:       make([]float64, NumGoods), Embargo: make([]bool, nNations),
-		Standing: DefaultStanding, payScale: 1, Researching: -1, Known: make([]bool, len(Techs)), LearnedAt: make([]int, len(Techs)),
+		Standing: DefaultStanding, payScale: 1, Researching: -1, Copying: -1, Known: make([]bool, len(Techs)), LearnedAt: make([]int, len(Techs)),
 		TradeWith: make([]float64, nNations), AtWar: make([]bool, nNations), WarSince: make([]int, nNations),
 		PeaceOffer: make([]bool, nNations)}
 }
@@ -428,7 +433,8 @@ func (n *Nation) plan(w *World) {
 	n.now = w.Tick
 	n.Revenue, n.TariffRevenue, n.Spending = 0, 0, 0
 	n.SpentOn = [NumSpending]float64{}
-	n.pickResearch()
+	n.pickResearch(w)
+	n.pickCopy(w)
 	if n.Eliminated() {
 		return
 	}
@@ -651,30 +657,90 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 		n.IncomeEMA = income
 	}
 	n.IncomeEMA = 0.95*n.IncomeEMA + 0.05*income
+	learned := false
+	if i := n.Copying; i >= 0 && n.CopyPoints >= n.TechCost(i, w) {
+		n.CopyPoints -= n.TechCost(i, w)
+		n.learn(w, i)
+		w.emit(n.ID, "tech", -1, "%s adopts %s from abroad", n.Name, Techs[i].Name)
+		learned = true
+	}
 	if i := n.Researching; i >= 0 && n.ResearchPoints >= n.TechCost(i, w) {
 		n.ResearchPoints -= n.TechCost(i, w)
-		n.Known[i] = true
-		n.LearnedAt[i] = max(1, w.Tick)
-		n.Researching = -1
+		n.learn(w, i)
 		queued := false
 		for _, q := range n.Queue {
 			queued = queued || n.CanResearch(q)
 		}
-		n.pickResearch()
+		n.pickResearch(w)
 		n.ChooseResearch = !n.AI && !queued && n.Researching >= 0
+		w.emit(n.ID, "tech", -1, "%s discovers %s", n.Name, Techs[i].Name)
+		learned = true
+	}
+	if learned {
+		n.pickCopy(w)
 		n.applyTech()
 		hopsChanged = true
-		w.emit(n.ID, "tech", -1, "%s discovers %s", n.Name, Techs[i].Name)
 	} else if n.adopting() { // bonuses still coming in
 		n.applyTech()
 	}
 	return hopsChanged
 }
 
+// learn makes tech i known; if the nation was researching or catching up
+// on it, that slot is free again (its points carry over).
+func (n *Nation) learn(w *World, i int) {
+	n.Known[i] = true
+	n.LearnedAt[i] = max(1, w.Tick)
+	if n.Researching == i {
+		n.Researching = -1
+	}
+	if n.Copying == i {
+		n.Copying = -1
+	}
+}
+
+// pickCopy chooses the tech the nation catches up on, alongside its own
+// research: the cheapest it can research that a nation it trades with or
+// borders already knows (not the one it researches itself). Its
+// universities' work goes to both: a follower adopts what exists abroad
+// through engineers and emigrants, journals and imported machines while it
+// still works on its own, and what others know costs it less (the
+// diffusion discount). That is the advantage of backwardness
+// (Gerschenkron): Germany, the United States and Japan caught Britain up
+// in decades. A leader has nothing to copy and gains nothing from it.
+func (n *Nation) pickCopy(w *World) {
+	if i := n.Copying; i >= 0 && n.CanResearch(i) && i != n.Researching {
+		return
+	}
+	n.Copying = -1
+	best := 0.0
+	for i := range Techs {
+		if i == n.Researching || !n.CanResearch(i) || !w.knownNearby(n, i) {
+			continue
+		}
+		if c := n.TechCost(i, w); n.Copying < 0 || c < best {
+			n.Copying, best = i, c
+		}
+	}
+	if n.Copying < 0 {
+		n.CopyPoints = 0 // nothing to catch up on
+	}
+}
+
+// knownNearby reports whether a nation n trades with or borders knows tech i.
+func (w *World) knownNearby(n *Nation, i int) bool {
+	for _, o := range w.Nations {
+		if o != n && !o.Eliminated() && o.Known[i] && (n.TradeWith[o.ID] > 0 || w.nationsBorder(n, o)) {
+			return true
+		}
+	}
+	return false
+}
+
 // pickResearch chooses what to research when the nation isn't researching
 // anything: the first available tech in its queue, else the cheapest
 // available one (ties go to the earlier one).
-func (n *Nation) pickResearch() {
+func (n *Nation) pickResearch(w *World) {
 	if n.Researching >= 0 && !n.Known[n.Researching] {
 		return
 	}
@@ -690,7 +756,7 @@ func (n *Nation) pickResearch() {
 		}
 	}
 	if n.AI {
-		n.Researching = n.drawResearch()
+		n.Researching = n.drawResearch(w)
 		return
 	}
 	// else the cheapest available tech, preferring the branch the nation
@@ -708,7 +774,7 @@ func (n *Nation) pickResearch() {
 		return known[Techs[i].Branch] < known[Techs[j].Branch]
 	}
 	for i := range Techs {
-		if n.CanResearch(i) && (n.Researching < 0 || better(i, n.Researching)) {
+		if n.CanResearch(i) && i != n.Copying && (n.Researching < 0 || better(i, n.Researching)) {
 			n.Researching = i
 		}
 	}

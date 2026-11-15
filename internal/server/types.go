@@ -190,6 +190,8 @@ type NationState struct {
 	Embargo        []bool    `json:"embargo"`
 	Researching    int       `json:"researching"`
 	Points         float64   `json:"research_points"`
+	Copying        int       `json:"copying"`     // the tech it catches up on from abroad, -1: none
+	CopyPoints     float64   `json:"copy_points"` // research delivered to it
 	Known          []bool    `json:"known"`
 	Adoption       []float64 `json:"adoption"`       // per tech: how far its productivity and growth bonuses have come in
 	AlliedAgainst  int       `json:"allied_against"` // the nation its alliance stands against, -1: none
@@ -527,7 +529,7 @@ func worldState(w *engine.World, flows bool) State {
 			Treasury: n.Treasury, TaxRate: n.TaxRate, Income: n.IncomeEMA, Revenue: n.Revenue,
 			TariffRevenue: n.TariffRevenue, Spending: n.Spending, SpendEMA: n.SpendEMA, AutoTax: n.AutoTax, Pension: n.Pension,
 			SpentOn: append([]float64(nil), n.SpentOn[:]...), AutoBuild: n.AutoBuild, Tariff: slices.Clone(n.Tariff), Embargo: slices.Clone(n.Embargo),
-			Researching: n.Researching, Points: n.ResearchPoints, Known: slices.Clone(n.Known),
+			Researching: n.Researching, Points: n.ResearchPoints, Copying: n.Copying, CopyPoints: n.CopyPoints, Known: slices.Clone(n.Known),
 			Queue: append([]int{}, n.Queue...), AtWar: slices.Clone(n.AtWar), PeaceOffer: slices.Clone(n.PeaceOffer),
 			MobilizeCap: w.MobilizationCap(n), Mobilization: n.Mobilization(), ChooseResearch: n.ChooseResearch,
 			MaxArmySize: n.MaxArmySize(), Ports: n.Ports(), PortAllowance: n.PortAllowance(), BuildBudget: n.BuildingBudget(), Standing: n.Standing, Temperament: n.Temper.Describe()}

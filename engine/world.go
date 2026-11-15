@@ -576,25 +576,20 @@ const (
 	minPopulation  = 20 // a tile never empties below this
 )
 
+// migrationShare is the share of from's people who move to to in a day,
+// for a relative gap in living standards and the hop between them. A border
+// holds no one back: in the nineteenth century some fifty million Europeans
+// left for the Americas and elsewhere, and millions more crossed into the
+// industrial regions next door (the Irish into Britain, Poles into the
+// Ruhr, Italians into France), going where wages were. So a nation that
+// lives well draws its neighbours' people.
+func migrationShare(from, to *Region, gap, hop float64) float64 {
+	return migrationRate * gap / (1 + hop)
+}
+
 // migrate moves people along each link from the tile with lower (smoothed)
 // utility to the one with higher. Cheaper hops mean more migration. People
 // take their cash with them.
-// foreignMigration is how much slower people move between tiles under
-// different flags (or between a nation and free land) than within one
-// nation: language, law and distance from home hold them back. A 10% gap in
-// living standards draws about 0.2% of a border tile's people a year.
-const foreignMigration = 0.03
-
-// migrationShare is the share of from's people who move to to in a day,
-// for a relative gap in living standards and the hop between them.
-func migrationShare(from, to *Region, gap, hop float64) float64 {
-	rate := migrationRate
-	if from.Nation != to.Nation {
-		rate *= foreignMigration // leaving one's country is a bigger step
-	}
-	return rate * gap / (1 + hop)
-}
-
 func (w *World) migrate() {
 	w.eachRegion(func(r *Region) {
 		u := r.Utility()

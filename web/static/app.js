@@ -1682,8 +1682,14 @@ function researchPanel() {
     <div class="table-scroll"><table class="unis"><tr><th>tile</th><th>levels</th><th>funded</th><th>per level</th><th>wages per level</th><th>research</th><th>cost</th></tr>${rows}
     <tr class="total"><td>Total</td><td>${lv}</td><td>${fu}</td><td></td><td></td><td>${fmt(made, 1)}</td><td>£${fmt(cost, 1)}</td></tr></table></div>`;
   if (mine) html += researchBlock(n);
-  else html += `<h3>Researching</h3><p class="sub">${n.researching >= 0 ? `${world.techs[n.researching].name} (${pct(Math.min(1, n.research_points / n.tech_costs[n.researching]))})` : "nothing"}.</p>`;
+  else html += `<h3>Researching</h3><p class="sub">${n.researching >= 0 ? `${world.techs[n.researching].name} (${pct(Math.min(1, n.research_points / n.tech_costs[n.researching]))})` : "nothing"}.${copyLine(n)}</p>`;
   return html;
+}
+
+// copyLine is what the nation catches up on from abroad, alongside its own research.
+function copyLine(n) {
+  if (n.copying < 0) return "";
+  return ` Catching up on ${world.techs[n.copying].name} from abroad (${pct(Math.min(1, n.copy_points / n.tech_costs[n.copying]))}).`;
 }
 
 function researchBlock(n) {
@@ -1697,6 +1703,7 @@ function researchBlock(n) {
     let action;
     if (n.known[i]) action = n.adoption && n.adoption[i] < 0.999 ? `✓<br><span class="sub" title="Its productivity and growth bonuses come in over five years">adopted ${pct(n.adoption[i])}</span>` : "✓";
     else if (n.researching === i) action = pct(Math.min(1, n.research_points / n.tech_costs[i]));
+    else if (n.copying === i) action = `<span title="Catching up on it from abroad, alongside your own research">${pct(Math.min(1, n.copy_points / n.tech_costs[i]))} ⇠</span>`;
     else {
       const now = available(t) ? `<button data-cmd="/nations/${n.id}/research?tech=${i}">Now</button>` : "";
       const q = n.queue.includes(i) ? "" : `<button data-queue="${i}">Queue</button>`;
@@ -1711,8 +1718,8 @@ function researchBlock(n) {
     return `<tr class="branch"><th colspan="4">${b} · ${known}/${all}</th></tr>${rows(b)}`;
   }).join("");
   const prog = n.researching >= 0 ? Math.min(1, n.research_points / n.tech_costs[n.researching]) : 0;
-  return `<h3>Research ${info(`Your universities' research goes to one tech at a time; points carry over. Techs cost more on bigger maps, in proportion to their tiles. Techs your trade partners know are cheaper: ideas travel with trade. A new tech's productivity and growth bonuses come in over five years as it spreads through the works; army size and mobilisation techs over two; unlocks and other military effects are immediate.`)}</h3>
-    <p class="sub">Researching ${current}.</p>
+  return `<h3>Research ${info(`Your universities' research goes to one tech at a time; points carry over. Techs cost more on bigger maps, in proportion to their tiles. Techs your trade partners know are cheaper: ideas travel with trade. Your universities also catch up, at the same time, on the cheapest tech a neighbour or trade partner already knows: followers copy what exists abroad (engineers, emigrants, journals, imported machines). A leader has nothing to copy. A new tech's productivity and growth bonuses come in over five years as it spreads through the works; army size and mobilisation techs over two; unlocks and other military effects are immediate.`)}</h3>
+    <p class="sub">Researching ${current}.${copyLine(n)}</p>
     <div class="progress"><span style="width:${pct(prog)}"></span></div>
     <div class="row">${queue}</div>
     <div class="table-scroll"><table>${branches}</table></div>`;

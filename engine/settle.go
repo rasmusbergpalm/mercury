@@ -196,6 +196,7 @@ func (w *World) burnIn(days int, progress func(done int)) {
 			n.TaxRate = tax[i]
 		}
 		n.Researching, n.ResearchPoints, n.RealGDP = -1, 0, 0
+		n.Copying, n.CopyPoints = -1, 0
 	}
 	for i, r := range w.Regions {
 		r.Real = real[i]

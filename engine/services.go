@@ -270,6 +270,9 @@ func (n *Nation) settleServices() {
 			if f.Public == University {
 				f.LastOutput = f.research()
 				n.ResearchPoints += f.LastOutput
+				if n.Copying >= 0 {
+					n.CopyPoints += f.LastOutput
+				}
 			}
 			if f.Cash > 0 {
 				n.Treasury += f.Cash
