@@ -55,9 +55,11 @@ try {
     await settle();
     // every chart the tab offers (People, GDP, ..., Might)
     for (const [key, val] of await visible('button[data-pick]')) {
-      const b = await page.$(`button[data-pick="${key}"][data-val="${val}"]`);
-      if (b && (await b.isVisible())) {
-        await b.click();
+      // a locator, found again at the click: the page redraws its buttons
+      // as the game runs, and a handle to the old one is left detached
+      const b = page.locator(`button[data-pick="${key}"][data-val="${val}"]`).first();
+      if (await b.isVisible()) {
+        await b.click({ timeout: 5000 });
         await settle();
       }
     }

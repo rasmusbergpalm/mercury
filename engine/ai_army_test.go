@@ -1,6 +1,9 @@
 package engine
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 // siegeScene sets up Alpha (the computer) besieging the free tile next to
 // its home tile, with progress ours, while an army of Beta (at war with it)
@@ -201,5 +204,90 @@ func TestNoTwoNationsOnAFreeTile(t *testing.T) {
 	w.aiPlan(alpha, []*Army{a}, w.expansionTargets(alpha))
 	if aiGoing(a) == x.ID {
 		t.Errorf("the computer sends its army to %s too", x.Name)
+	}
+}
+
+// twoNations is a 6x6 map split down the middle between Alpha (west) and
+// Beta (east), at war; Alpha is run by the computer.
+func twoNations(t *testing.T) (w *World, alpha, beta *Nation) {
+	t.Helper()
+	spec := DefaultGame
+	spec.NationMap = []string{"AAABBB", "AAABBB", "AAABBB", "AAABBB", "AAABBB", "AAABBB"}
+	spec.Nations = []NationSpec{{'A', "Alpha", "#c00"}, {'B', "Beta", "#00c"}}
+	w, err := BuildGame(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range append([]*Army(nil), w.Armies...) {
+		w.removeArmy(a)
+	}
+	alpha, beta = w.Nations[0], w.Nations[1]
+	alpha.AI = true
+	if err := w.DeclareWar(alpha.ID, beta.ID); err != nil {
+		t.Fatal(err)
+	}
+	return
+}
+
+func tileAt(w *World, row, col int) *Region { return w.Regions[row*w.Cols+col] }
+
+// An army that can beat a weak enemy army within reach goes for it, rather
+// than for the nearer empty tile, before the enemy army fills up.
+func TestArmiesHuntWeakArmies(t *testing.T) {
+	w, alpha, beta := twoNations(t)
+	a := sceneArmy(t, w, alpha, tileAt(w, 0, 2), 10)
+	prey := sceneArmy(t, w, beta, tileAt(w, 2, 3), 2) // two hops off, on its own soil
+	w.aiPlan(alpha, []*Army{a}, nil)
+	if aiGoing(a) != prey.Region {
+		t.Errorf("goes to %s, not for the weak army at %s", w.Regions[aiGoing(a)].Name, w.Regions[prey.Region].Name)
+	}
+}
+
+// A weak army doesn't wait next to an enemy army that would beat it: it
+// draws back, away from it.
+func TestWeakArmiesKeepOutOfReach(t *testing.T) {
+	w, alpha, beta := twoNations(t)
+	a := sceneArmy(t, w, alpha, tileAt(w, 2, 2), 3)
+	strong := sceneArmy(t, w, beta, tileAt(w, 2, 3), 15) // next door, idle on its own soil
+	before := w.aiMarchDays(beta, strong)[a.Region]
+	w.aiPlan(alpha, []*Army{a}, nil)
+	dest := w.Regions[aiGoing(a)]
+	if after := w.aiMarchDays(beta, strong)[dest.ID]; after <= before || dest.Nation != alpha {
+		t.Errorf("goes to %s, within %v days of an army five times its size", dest.Name, after)
+	}
+}
+
+// Regression: two besiegers each marched across the map to save its own
+// tile from the other, and back, again and again. A besieger far from its
+// threatened tile, with the two sieges as far along, keeps its siege.
+func TestNoChaseAcrossTheMap(t *testing.T) {
+	w, alpha, beta := twoNations(t)
+	far := tileAt(w, 5, 3) // a Beta tile at the south end
+	a := sceneArmy(t, w, alpha, tileAt(w, 5, 2), 10)
+	a.Region = far.ID
+	far.Siege = &Siege{Nation: alpha, Progress: 0.1}
+	home := tileAt(w, 0, 2) // an Alpha tile at the north end
+	e := sceneArmy(t, w, beta, tileAt(w, 0, 3), 8)
+	e.Region = home.ID
+	home.Siege = &Siege{Nation: beta, Progress: 0.1}
+	w.aiPlan(alpha, []*Army{a}, nil)
+	if aiGoing(a) != far.ID {
+		t.Errorf("leaves its siege to march %d hops home", len(a.Path))
+	}
+}
+
+// At war, the computer keeps no more soldiers than it is feeding: while its
+// armies go short, it fields only as many as it supplies.
+func TestNoMoreSoldiersThanSupplied(t *testing.T) {
+	w, alpha, _ := twoNations(t)
+	a := sceneArmy(t, w, alpha, tileAt(w, 2, 1), 20)
+	if got := w.sustainableSoldiers(alpha); !math.IsInf(got, 1) {
+		t.Fatalf("fully supplied, limited to %v", got)
+	}
+	for g := range a.Supply {
+		a.Supply[g] = 0.3
+	}
+	if got := w.sustainableSoldiers(alpha); got >= a.Men*0.6 {
+		t.Errorf("armies at 30%% of their rations, yet %v of %v men sustained", got, a.Men)
 	}
 }

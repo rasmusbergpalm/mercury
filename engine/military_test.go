@@ -917,7 +917,7 @@ func TestAIBesiegerDefendsOnlyWhenBehind(t *testing.T) {
 			if s := w.newAIScope(alpha, a); s.advantage(home) < s.odds {
 				t.Fatalf("set-up: advantage %v below the odds %v", s.advantage(home), s.odds)
 			}
-			w.aiArmies(alpha, w.expansionTargets(alpha))
+			w.aiPlan(alpha, w.ArmiesOf(alpha), w.expansionTargets(alpha))
 			goes := len(a.Path) > 0 && a.Path[len(a.Path)-1] == home.ID
 			if goes != tc.breaks {
 				t.Errorf("besieger marches home: %v, want %v (path %v)", goes, tc.breaks, a.Path)
