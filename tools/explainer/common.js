@@ -14,7 +14,7 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const R = 30, W = Math.sqrt(3) * R;
 function hexXY(t) { return [W * (t.col + 0.5 + 0.5 * (t.row % 2)) + 6, R * (1 + 1.5 * t.row) + 6]; }
 function hexPts(x, y, r = R) { return [...Array(6)].map((_, i) => { const a = Math.PI / 180 * (60 * i - 30); return `${(x + r * Math.cos(a)).toFixed(1)},${(y + r * Math.sin(a)).toFixed(1)}`; }).join(" "); }
-function hexMap(svg, { fill, label = (t) => t.name, arrows = [], selected = null, onPick = null, path = null }) {
+function hexMap(svg, { fill, label = (t) => t.name, arrows = [], selected = null, onPick = null, path = null, edges = [] }) {
   const w = W * 6.5 + 12, h = R * (2 + 1.5 * 5) + 12;
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
   let s = `<rect x="0" y="0" width="${w}" height="${h}" fill="${css("--sea")}"/>`;
@@ -24,6 +24,11 @@ function hexMap(svg, { fill, label = (t) => t.name, arrows = [], selected = null
     s += `<polygon data-id="${t.id}" points="${hexPts(x, y)}" fill="${fill(t)}" stroke="${t.id === selected ? css("--accent") : css("--hex")}" stroke-width="${t.id === selected ? 3 : 1}" ${onPick ? 'style="cursor:pointer" tabindex="0" role="button" aria-label="' + esc(t.name) + '"' : ""}/>`;
   }
   s += "</g>";
+  // undirected links between tiles' centres, [a, b, width]
+  for (const [a, b, sw] of edges) {
+    const [x1, y1] = hexXY(byId[a]), [x2, y2] = hexXY(byId[b]);
+    s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${css("--s1")}" stroke-opacity=".8" stroke-width="${sw.toFixed(2)}" stroke-linecap="round"/>`;
+  }
   // a route, drawn through the centres of its tiles
   if (path) s += `<polyline points="${path.map((id) => hexXY(byId[id]).join(",")).join(" ")}" fill="none" stroke="${css("--ink")}" stroke-opacity=".4" stroke-width="2.5" stroke-dasharray="7 5" stroke-linecap="round"/>`;
   for (const [a, b, q] of arrows) {

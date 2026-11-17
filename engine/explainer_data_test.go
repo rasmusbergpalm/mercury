@@ -44,8 +44,8 @@ import (
 //     tile, with and without migration: its workers by trade and its wage;
 //
 //   - corridor.json: a cheap route across the map (the coast's cheap
-//     shipping taken away): each tile's people and living standard with
-//     and without the route, with and without migration;
+//     shipping taken away): each tile's people and each link's trade, on
+//     the map as it is, without its cheap coast, and with the route;
 //
 //   - recipes.json: the production functions and the growth and migration
 //     constants.
@@ -534,33 +534,49 @@ func TestExplainerData(t *testing.T) {
 	// ---- a corridor: a road (or canal, or railway) across the map. The
 	// coast's cheap shipping is taken away, so every hop costs the same,
 	// and the hops along a diagonal route from corner to corner cost a
-	// tenth. The map settles with and without the route, with people free
-	// to move and with nobody moving.
+	// tenth. Three runs, people free to move: the map as it is ("coast"),
+	// the map without its cheap coast ("flat"), and the flat map with the
+	// route ("route"). Each tile's people, and the value of the trade over
+	// each link (both ways, at the prices it sells for) over the last year.
 	route := explainerDiagonal(world())
 	type corridorRun struct {
-		Corridor, Migration bool
-		People, Utility     []float64
+		Name   string
+		People []float64
+		Trade  [][3]float64 // a, b, value a day
 	}
-	corridorRuns := make([]corridorRun, 4)
+	corridorRuns := []corridorRun{{Name: "coast"}, {Name: "flat"}, {Name: "route"}}
 	var corridorJobs []func()
 	for k := range corridorRuns {
 		k := k
 		corridorJobs = append(corridorJobs, func() {
 			cr := &corridorRuns[k]
-			cr.Corridor, cr.Migration = k%2 == 1, k < 2
-			var rt []int
-			if cr.Corridor {
-				rt = route
-			}
 			w := world()
-			w.Migration = cr.Migration
-			explainerCorridor(w, rt)
+			switch cr.Name {
+			case "flat":
+				explainerCorridor(w, nil)
+			case "route":
+				explainerCorridor(w, route)
+			}
+			value := map[[2]int]float64{}
 			for d := 0; d < end; d++ {
 				w.Step()
+				if d < end-days {
+					continue
+				}
+				for _, tr := range w.Traders {
+					a, b := tr.Origin.ID, tr.Dest.ID
+					if a > b {
+						a, b = b, a
+					}
+					value[[2]int{a, b}] += tr.Shipped * tr.Arriving * tr.Dest.Markets[tr.Good].Price / float64(days)
+				}
 			}
 			for _, r := range w.Regions {
 				cr.People = append(cr.People, r.Population())
-				cr.Utility = append(cr.Utility, r.Utility())
+			}
+			for _, l := range w.Links {
+				a, b := min(l.A, l.B), max(l.A, l.B)
+				cr.Trade = append(cr.Trade, [3]float64{float64(a), float64(b), value[[2]int{a, b}]})
 			}
 		})
 	}
