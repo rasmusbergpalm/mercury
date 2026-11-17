@@ -63,5 +63,12 @@ out["routes"] = {"busy": [[round(r["Landed"], 3), round(r["Dest"], 3)] for r in 
                  "everyDays": rt["everyDays"],
                  "converging": [{"good": c["Route"]["Good"], "from": c["Route"]["From"], "to": c["Route"]["To"],
                                  "ratio": [round(a / b, 4) for a, b in zip(c["Path"]["Dest"], c["Path"]["Landed"])]} for c in rt["converging"]]}
+# the iceberg comparison: both models' sweeps, and each good's travel at x1
+ice = json.load(open(f"{S}/iceberg/iceberg.json"))
+out["iceberg"] = {"melt": ice["melt"],
+                  "runs": [{k: r[k] for k in ("Model", "Cost", "Living", "GDPHead", "TransportJobs", "PriceGap", "TradeShare")} for r in ice["runs"]],
+                  "goods": {str(m): [{"good": g["Good"], "vpb": round(g["ValuePerBulk"], 3), "hops": round(g["HopsPerUnit"], 4), "made": round(g["Made"], 2)}
+                                     for g in next(r for r in ice["runs"] if r["Model"] == m and r["Cost"] == 1)["Goods"] if g["Made"] > 0.5 and g["HopsPerUnit"] > 0]
+                            for m in (0, 1)}}
 json.dump(out, open(f"{S}/explainer-data.json", "w"), separators=(",", ":"))
 print(f"{len(json.dumps(out))} bytes of data; goods {goods}")

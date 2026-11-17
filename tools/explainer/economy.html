@@ -2,92 +2,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IM+Fell+English+SC&display=swap">
 <style>
-/* Layout: one reading column of ledger text, with wider engraved "plates"
-   for the maps and charts, in the game's own Victorian atlas palette. */
-:root {
-  --bg: #e9dcbd; --paper: #f4ead2; --surface: #fbf5e4; --ink: #2b2118; --muted: #6b5a44;
-  --rule: #8c7350; --border: #c4ab7f; --accent: #8b2e1f; --brass: #a87b2c; --good: #3d6b2a;
-  --sea: #9fc2c9; --hex: rgba(70, 50, 25, 0.35);
-  --s1: #8b2e1f; --s2: #2f5d7c; --s3: #a87b2c; --s4: #4f6b3a; --s5: #6b4a7a; --s6: #9b6a3c;
-  --t-plains: #e3d59b; --t-forest: #b9c28c; --t-hills: #d6bd8c; --t-mountains: #c9bdab; --t-tropical: #bcd194;
-  --serif: "EB Garamond", Garamond, "Iowan Old Style", Georgia, serif;
-  --display: "IM Fell English SC", "EB Garamond", Georgia, serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #17120d; --paper: #211b15; --surface: #2a221a; --ink: #ecdfc4; --muted: #a8977a;
-    --rule: #7a6446; --border: #4d3f2e; --accent: #d9805f; --brass: #c9a45a; --good: #8fbf6a;
-    --sea: #22383d; --hex: rgba(0, 0, 0, 0.5);
-    --s1: #e08a6a; --s2: #7fb2d3; --s3: #d8b25e; --s4: #9cc27a; --s5: #c39bd4; --s6: #d9a46a;
-    --t-plains: #5c5434; --t-forest: #3e4a2f; --t-hills: #5b4b34; --t-mountains: #514b44; --t-tropical: #3d5234;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #17120d; --paper: #211b15; --surface: #2a221a; --ink: #ecdfc4; --muted: #a8977a;
-  --rule: #7a6446; --border: #4d3f2e; --accent: #d9805f; --brass: #c9a45a; --good: #8fbf6a;
-  --sea: #22383d; --hex: rgba(0, 0, 0, 0.5);
-  --s1: #e08a6a; --s2: #7fb2d3; --s3: #d8b25e; --s4: #9cc27a; --s5: #c39bd4; --s6: #d9a46a;
-  --t-plains: #5c5434; --t-forest: #3e4a2f; --t-hills: #5b4b34; --t-mountains: #514b44; --t-tropical: #3d5234;
-  color-scheme: dark;
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 19px/1.55 var(--serif);
-  font-variant-numeric: lining-nums tabular-nums; }
-.page { max-width: 1060px; margin: 0 auto; padding-block: 40px 64px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.col { max-width: 680px; margin: 0 auto; }
-header.title { text-align: center; padding-block: 8px 28px; border-bottom: 3px double var(--rule); margin-bottom: 36px; }
-.kicker a.back { color: inherit; }
-.kicker { font-family: var(--display); letter-spacing: .14em; color: var(--brass); font-size: 15px; margin: 0; }
-h1 { font-family: var(--display); font-weight: 400; font-size: clamp(40px, 7vw, 68px); line-height: 1.02; margin: 10px 0 14px; text-wrap: balance; }
-.lede { font-size: 21px; font-style: italic; color: var(--muted); max-width: 640px; margin: 0 auto; text-wrap: balance; }
-h2 { font-family: var(--display); font-weight: 400; font-size: 32px; line-height: 1.1; margin: 0 0 6px; text-wrap: balance; }
-h2 .no { color: var(--brass); margin-right: 10px; }
-section { margin-top: 56px; }
-section > .col > p:first-of-type::first-letter { }
-p { margin: 0 0 14px; }
-.eq { font-style: italic; text-align: center; font-size: 21px; margin: 18px 0; padding: 10px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); overflow-x: auto; }
-.eq sup { font-size: 13px; }
-.aside { font-size: 16px; color: var(--muted); }
-.figure { margin: 26px 0 30px; background: var(--paper); border: 1px solid var(--border); box-shadow: 0 0 0 4px var(--paper), 0 0 0 5px var(--rule); padding: 18px 18px 14px; }
-.figure .head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 10px; }
-.plate { font-family: var(--display); letter-spacing: .08em; font-size: 15px; color: var(--brass); }
-.figure h3 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0; flex: 1 1 260px; min-width: 0; }
-.figure .cap { font-size: 16px; color: var(--muted); margin: 10px 0 0; max-width: 760px; }
-.controls { display: flex; flex-wrap: wrap; gap: 6px; }
-.controls button { font: 15px var(--serif); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; padding: 4px 11px; min-height: 34px; cursor: pointer; }
-.controls button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
-.controls button:focus-visible, select:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
-select { font: 16px var(--serif); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; padding: 4px 8px; min-height: 34px; }
-.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
-@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
-.grid2 > * { min-width: 0; }
-.chart { width: 100%; height: auto; display: block; overflow: visible; }
-.chart text { font-family: var(--serif); fill: var(--muted); font-size: 13px; }
-.chart .title { fill: var(--ink); font-size: 15px; }
-.chart .grid { stroke: var(--border); stroke-width: 1; }
-.chart .axis { stroke: var(--rule); stroke-width: 1; }
-.mapwrap { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px; align-items: start; }
-@media (max-width: 760px) { .mapwrap { grid-template-columns: 1fr; } body { font-size: 18px; } }
-.inspector { font-size: 16px; border-left: 3px double var(--rule); padding-left: 14px; min-width: 0; }
-.inspector h4 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0 0 2px; }
-.inspector table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 15px; }
-.inspector td { padding: 3px 0; border-bottom: 1px dotted var(--border); }
-.inspector td.n { text-align: right; white-space: nowrap; }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 15px; color: var(--muted); margin-top: 8px; }
-.legend i { display: inline-block; width: 14px; height: 10px; margin-right: 6px; vertical-align: middle; border: 1px solid var(--hex); }
-.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 22px 0; }
-.fact { border-top: 3px double var(--rule); padding-top: 8px; }
-.fact b { display: block; font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 1; color: var(--accent); }
-.fact span { font-size: 15px; color: var(--muted); }
-footer { margin-top: 64px; border-top: 3px double var(--rule); padding-top: 18px; font-size: 16px; color: var(--muted); }
-@media (prefers-reduced-motion: no-preference) { .hexes polygon { transition: fill .25s; } }
-</style>
+__STYLE__</style>
 
 <div class="page">
 <header class="title">
-  <p class="kicker"><a href="./" class="back">Mercury</a> · A ledger of the simulation</p>
+  <p class="kicker"><a href="./" class="back">Mercury</a> · A ledger of the simulation · <a href="transport.html" class="back">Carriage or Ice</a></p>
   <h1>The Mercury Economy</h1>
   <p class="lede">How thirty-six tiles of farms, mills and merchants feed, clothe and move their people, with no state to steer them, and what happens when moving goods gets cheaper.</p>
 </header>
@@ -243,119 +162,14 @@ footer { margin-top: 64px; border-top: 3px double var(--rule); padding-top: 18px
 </section>
 
 <footer class="col">
-<p><b>How these numbers were made.</b> The game's classic map (36 tiles) with no nations: no state, taxes, armies, roads or new technology, so firms keep their 1820 methods. Every run lasts five years with migration, investment and population growth switched on, and starts from the same state. Without nations nothing in the economy is drawn at random, so a run is exactly repeatable. The transport sweep is the engine's <code>TestTransportSweep</code>; the tiles, the strike and the recipes come from <code>TestExplainerData</code>; <code>tools/explainer/build.sh</code> rebuilds this page from both.</p>
+<p><b>How these numbers were made.</b> The game's classic map (36 tiles) with no nations: no state, taxes, armies, roads or new technology, so firms keep their 1820 methods. Every run lasts five years with migration, investment and population growth switched on, and starts from the same state. Without nations nothing in the economy is drawn at random, so a run is exactly repeatable. The transport sweep is the engine's <code>TestTransportSweep</code>; the tiles, the strike, the routes and the recipes come from <code>TestExplainerData</code>. <code>tools/explainer/build.sh</code> rebuilds this page from both.</p>
+<p>The experiments behind section III, and a comparison with the iceberg model most economics uses, are written up in <a href="transport.html">Carriage or Ice</a>.</p>
 </footer>
 </div>
 
 <script id="data" type="application/json">__DATA__</script>
 <script>
-const D = JSON.parse(document.getElementById("data").textContent);
-const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const NS = "http://www.w3.org/2000/svg";
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const fmt = (v, d = 1) => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(d));
-const tiles = D.map.tiles;
-const byId = Object.fromEntries(tiles.map((t) => [t.id, t]));
-const tileData = Object.fromEntries(D.tiles.map((t) => [t.id, t]));
-const SERIES = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6"];
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-
-// ---- hex maps -------------------------------------------------------------
-// the classic map is 6x6, odd rows shifted half a hex right
-const R = 30, W = Math.sqrt(3) * R;
-function hexXY(t) { return [W * (t.col + 0.5 + 0.5 * (t.row % 2)) + 6, R * (1 + 1.5 * t.row) + 6]; }
-function hexPts(x, y, r = R) { return [...Array(6)].map((_, i) => { const a = Math.PI / 180 * (60 * i - 30); return `${(x + r * Math.cos(a)).toFixed(1)},${(y + r * Math.sin(a)).toFixed(1)}`; }).join(" "); }
-function hexMap(svg, { fill, label = (t) => t.name, arrows = [], selected = null, onPick = null }) {
-  const w = W * 6.5 + 12, h = R * (2 + 1.5 * 5) + 12;
-  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  let s = `<rect x="0" y="0" width="${w}" height="${h}" fill="${css("--sea")}"/>`;
-  s += `<defs><marker id="ah-${svg.id}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${css("--ink")}"/></marker></defs><g class="hexes">`;
-  for (const t of tiles) {
-    const [x, y] = hexXY(t);
-    s += `<polygon data-id="${t.id}" points="${hexPts(x, y)}" fill="${fill(t)}" stroke="${t.id === selected ? css("--accent") : css("--hex")}" stroke-width="${t.id === selected ? 3 : 1}" ${onPick ? 'style="cursor:pointer" tabindex="0" role="button" aria-label="' + esc(t.name) + '"' : ""}/>`;
-  }
-  s += "</g>";
-  for (const [a, b, q] of arrows) {
-    const [x1, y1] = hexXY(byId[a]), [x2, y2] = hexXY(byId[b]);
-    const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), sh = 0.28 * R;
-    const sw = q.w;
-    s += `<line x1="${(x1 + dx / L * sh).toFixed(1)}" y1="${(y1 + dy / L * sh).toFixed(1)}" x2="${(x2 - dx / L * sh).toFixed(1)}" y2="${(y2 - dy / L * sh).toFixed(1)}" stroke="${css("--ink")}" stroke-opacity=".75" stroke-width="${sw.toFixed(2)}" marker-end="url(#ah-${svg.id})" stroke-linecap="round"/>`;
-  }
-  for (const t of tiles) {
-    const [x, y] = hexXY(t), l = label(t);
-    if (l) s += `<text x="${x}" y="${y + 4}" text-anchor="middle" style="font-size:9.5px;fill:${css("--ink")};pointer-events:none">${esc(l)}</text>`;
-  }
-  svg.innerHTML = s;
-  if (onPick) svg.querySelectorAll("polygon").forEach((p) => {
-    p.addEventListener("click", () => onPick(+p.dataset.id));
-    p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(+p.dataset.id); } });
-  });
-}
-// a single warm ramp, light to dark (or the reverse in the dark theme)
-function ramp(t) {
-  t = Math.max(0, Math.min(1, t));
-  const dark = matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light" || document.documentElement.dataset.theme === "dark";
-  const stops = dark ? [[58, 46, 34], [120, 84, 40], [190, 130, 60], [235, 190, 110]] : [[246, 236, 208], [228, 196, 128], [190, 120, 60], [125, 42, 23]];
-  const x = t * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(x)), f = x - i;
-  const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
-  return `rgb(${c.join(",")})`;
-}
-function diverge(v, maxAbs) {
-  const t = Math.max(-1, Math.min(1, v / maxAbs));
-  const base = css("--paper");
-  const col = t >= 0 ? css("--brass") : css("--accent");
-  return mix(base, col, Math.abs(t));
-}
-function mix(a, b, t) {
-  const p = (c) => { const d = document.createElement("div"); d.style.color = c; document.body.appendChild(d); const v = getComputedStyle(d).color.match(/\d+/g).map(Number); d.remove(); return v; };
-  const x = p(a), y = p(b);
-  return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(",")})`;
-}
-
-// ---- charts -----------------------------------------------------------------
-// lineChart draws series of [x, y] points with a log or linear x axis.
-function lineChart(svg, { series, xLog = false, xTicks, xLabel, yLabel, yFmt = (v) => fmt(v), title = "", marks = [], w = 520, h = 300, yMin, yMax, points = [] }) {
-  const m = { l: 54, r: 14, t: title ? 30 : 12, b: 44 };
-  const xs = series.flatMap((s) => s.pts.map((p) => p[0])).concat(points.map((p) => p.x));
-  const ys = series.flatMap((s) => s.pts.map((p) => p[1])).concat(points.map((p) => p.y));
-  const fx = xLog ? Math.log10 : (v) => v;
-  let x0 = Math.min(...xs.map(fx)), x1 = Math.max(...xs.map(fx));
-  let y0 = yMin ?? Math.min(...ys), y1 = yMax ?? Math.max(...ys);
-  const pad = (y1 - y0) * 0.06 || 1; if (yMin === undefined) y0 -= pad; if (yMax === undefined) y1 += pad;
-  const X = (v) => m.l + (fx(v) - x0) / (x1 - x0) * (w - m.l - m.r);
-  const Y = (v) => h - m.b - (v - y0) / (y1 - y0) * (h - m.t - m.b);
-  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  let s = "";
-  if (title) s += `<text class="title" x="${m.l}" y="18">${esc(title)}</text>`;
-  const yt = niceTicks(y0, y1, 5);
-  for (const v of yt) s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${yFmt(v)}</text>`;
-  for (const v of xTicks) { const x = X(v); if (x < m.l - 1 || x > w - m.r + 1) continue; s += `<line class="axis" x1="${x}" x2="${x}" y1="${h - m.b}" y2="${h - m.b + 4}"/><text x="${x}" y="${h - m.b + 18}" text-anchor="middle">${v}</text>`; }
-  s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${h - m.b}" y2="${h - m.b}"/>`;
-  if (xLabel) s += `<text x="${(m.l + w - m.r) / 2}" y="${h - 6}" text-anchor="middle">${esc(xLabel)}</text>`;
-  if (yLabel) s += `<text x="12" y="${(m.t + h - m.b) / 2}" text-anchor="middle" transform="rotate(-90 12 ${(m.t + h - m.b) / 2})">${esc(yLabel)}</text>`;
-  for (const mk of marks) { const x = X(mk.x); s += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${h - m.b}" stroke="${css("--muted")}" stroke-dasharray="4 4"/>${mk.label ? `<text x="${x + 5}" y="${m.t + 12}">${esc(mk.label)}</text>` : ""}`; }
-  // lines are clipped to the plot (a series may run off a fixed scale)
-  const clip = `clip-${svg.id || Math.random().toString(36).slice(2)}`;
-  s += `<clipPath id="${clip}"><rect x="${m.l}" y="${m.t}" width="${w - m.l - m.r}" height="${h - m.t - m.b}"/></clipPath><g clip-path="url(#${clip})">`;
-  for (const se of series) {
-    const d = se.pts.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
-    s += `<path d="${d}" fill="none" stroke="${css(se.color)}" stroke-width="${se.width || 2.4}" ${se.dash ? `stroke-dasharray="${se.dash}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
-  }
-  s += "</g>";
-  for (const se of series) {
-    if (se.end) { const p = se.pts[se.pts.length - 1]; s += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="3.5" fill="${css(se.color)}"/><text x="${X(p[0]) - 6}" y="${Y(p[1]) - 8}" text-anchor="end" style="fill:${css(se.color)}" ${se.below ? `dy="26"` : ""}>${esc(se.end)}</text>`; }
-  }
-  for (const p of points) s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="4.5" fill="${css(p.color)}" stroke="${css("--paper")}" stroke-width="1.5"/>${p.label ? `<text x="${X(p.x) - 8}" y="${Y(p.y) + (p.below ? 18 : -9)}" text-anchor="end">${esc(p.label)}</text>` : ""}`;
-  svg.innerHTML = s;
-}
-function niceTicks(a, b, n) {
-  const span = b - a, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
-  const step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((k) => span / k <= n) || 10 * mag;
-  const out = []; for (let v = Math.ceil(a / step) * step; v <= b + 1e-9; v += step) out.push(+v.toFixed(10));
-  return out;
-}
-function legend(el, items) { el.innerHTML = items.map(([c, l, dash]) => `<span><i style="background:${dash ? "transparent" : css(c)};border-color:${css(c)};${dash ? "border-style:dashed" : ""}"></i>${esc(l)}</span>`).join(""); }
-
+__COMMON__
 // ---- Plate I: the world ------------------------------------------------------
 let picked = 14;
 function inspect(id) {

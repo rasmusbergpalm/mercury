@@ -1,0 +1,194 @@
+<title>Carriage or Ice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IM+Fell+English+SC&display=swap">
+<style>
+__STYLE__
+/* the paper's own: an abstract box, numbered sections, references */
+.abstract { border-top: 3px double var(--rule); border-bottom: 3px double var(--rule); padding: 14px 0; margin: 8px 0 30px; font-size: 18px; }
+.abstract b { font-family: var(--display); font-weight: 400; letter-spacing: .06em; color: var(--brass); }
+.refs { font-size: 16px; padding-left: 1.2em; }
+.refs li { margin-bottom: 6px; }
+.byline { color: var(--muted); font-size: 16px; margin-top: 10px; }
+code { font-size: 15px; }
+pre { font-size: 14px; background: var(--paper); border: 1px solid var(--border); padding: 10px 12px; overflow-x: auto; }
+</style>
+
+<div class="page">
+<header class="title">
+  <p class="kicker"><a href="./" class="back">Mercury</a> · A working paper · <a href="economy.html" class="back">The Mercury Economy</a></p>
+  <h1>Carriage or Ice</h1>
+  <p class="lede">Transport as a good made by people, in a simple spatial economy with firms, markets, merchants and migration</p>
+  <p class="byline">From the Mercury simulation. Every figure is computed by the engine on this server's build.</p>
+</header>
+
+<div class="col">
+<div class="abstract"><b>Abstract.</b> Most models of trade treat the cost of moving goods as melting ice: a share of every shipment vanishes on the way. We build a deliberately simple but broad spatial economy, with labour, firms, markets, merchants, investment, population growth and migration, in which transport is instead a good, produced by firms from labour and paid for per unit carried. Across a wide range of transport costs the economy behaves as historical intuition suggests: cheaper carriage raises living standards and output per head and integrates prices. When we replace carriage with ice calibrated to the same cost at normal levels, the two models agree near that point but diverge away from it. Ice compounds over distance and drives the economy to autarky far sooner, it removes the workers who haul goods, and it cannot produce the Alchian–Allen effect, which the explicit model shows clearly: goods worth much for their bulk travel several times further.</div>
+
+<h2><span class="no">1.</span>Introduction</h2>
+<p>Since Samuelson (1954), the standard way to put transport costs into an economic model has been the iceberg: to deliver one unit, ship more than one, and let the rest melt. It became the workhorse of the new economic geography (Krugman, 1991) and of today's quantitative spatial models (Allen and Arkolakis, 2014; Redding and Rossi-Hansberg, 2017). Its appeal is that transport needs no sector of its own, no workers and no price.</p>
+<p>The alternative tradition treats transport as an explicit cost per unit shipped between markets. Samuelson (1952) and Takayama and Judge (1964) found the resulting spatial price equilibrium by linear and quadratic programming, but with supply and demand curves given from outside: there are no firms, wages or people behind them. More recent work makes transport a market in its own right, as Brancaccio, Kalouptsidi and Papageorgiou (2020) do for ocean shipping, or models the routes goods take (Allen and Arkolakis, 2022), each in depth and in its own setting.</p>
+<p>This paper goes the other way. Mercury is a simple model but a broad one: a map of tiles, each with people who work, own firms, spend and move; firms that hire labour and buy inputs; a market for every good in every tile; merchants who ship between neighbours; and transport as a good made by transport firms. Nothing is solved for. The economy is stepped day by day, and prices, wages, investment, trade and population settle where they settle. We ask three questions. What is transport worth? Does it matter that carriage is made by people rather than lost like ice? And does the explicit model produce the Alchian–Allen effect, which the iceberg cannot?</p>
+
+<h2><span class="no">2.</span>The model</h2>
+<p>The <a href="economy.html">companion page</a> walks through the economy with interactive maps. In brief, on the classic map of 36 hexagonal tiles, with nations, states and new technology switched off:</p>
+<p><b>People</b> in each tile work for its firms, own them, and spend their income on needs in three tiers: basic needs, comforts and luxuries. How well they meet them is their living standard (utility per person). Population grows with how well basic needs are met, and people migrate along each link between neighbours toward the tile that lives better, a share of the gap each day, divided by one plus the cost of the hop.</p>
+<p><b>Firms</b> produce with a Cobb–Douglas function, output = TFP × levels<sup>1−s</sup> × Π input<sub>i</sub><sup>a<sub>i</sub></sup> with Σa<sub>i</sub> = s &lt; 1, where levels are their buildings. Land-bound firms (farms, mines, forests, fisheries) have a productivity that depends on the tile's terrain. Owners add a level when it pays.</p>
+<p><b>Markets</b> exist for every good in every tile. Each day the price moves toward clearing supply and demand.</p>
+<p><b>Merchants</b> run a route for each good between each pair of neighbouring tiles. To carry one unit a distance d they buy τ = c × d × bulk units of <em>transport</em> in the origin's market, where c is the transport cost the experiments vary. Perishables lose a share on the way. A route expands while its margin is positive:</p>
+<p class="eq">margin = p<sub>destination</sub> × arriving − p<sub>origin</sub> − τ × p<sub>transport</sub></p>
+<p>Goods cross the map by being sold on from tile to tile. <b>Transport</b> is made by transport firms, chiefly from labour, so its price depends on the wages of the people who haul. In equilibrium a route in use has a margin of zero: the destination price equals the origin price plus carriage. The companion page shows this holds for the 868 routes in use in the base run.</p>
+
+<h2><span class="no">3.</span>What transport is worth</h2>
+<p>We run the map for five years at each of 25 transport costs, from a twentieth of normal to 128 times normal, and at autarky, where no route ever pays.</p>
+<div class="facts" id="facts"></div>
+</div>
+<div class="figure">
+  <div class="head"><span class="plate">Figure 1</span><h3>Five years at each transport cost</h3></div>
+  <div class="grid2" id="sweep-charts"></div>
+  <p class="cap">The horizontal axis is the transport cost on a log scale, as a multiple of normal (1). The dot on the far right of each panel is autarky, where no route pays. Output per head is net output at one set of prices for every run (those at normal costs), with transport counted as an input to trade (solid) and as output (dashed).</p>
+</div>
+<div class="col">
+<p>Every measure of well-being falls smoothly as carriage gets dearer, because each tile must make more of its own goods, including those its land is bad at. The share of workers who haul goods first rises with the cost, since each shipment takes more hauling, then falls as trade shrinks. The price gap between a good's dearest and cheapest tile widens, until near autarky it narrows again: the measure covers only goods still sold in two tiles or more, and at prohibitive costs those are the goods every tile makes for itself.</p>
+
+<h2><span class="no">4.</span>Carriage or ice</h2>
+<p>We now run the same economy with ice in place of carriage. Merchants buy no transport; instead a share 1 − exp(−w × c × d) of every shipment melts, the same for every good, as in the iceberg model. We set the melt rate w so that at normal costs trade loses as much of its value per hop to melting as the explicit model spends on carriage: <span id="ice-melt"></span> of the value per hop. Both models are then run across the same costs.</p>
+</div>
+<div class="figure">
+  <div class="head"><span class="plate">Figure 2</span><h3>Carriage and ice, across transport costs</h3></div>
+  <div class="grid2" id="ice-charts"></div>
+  <div class="legend" id="legend-ice"></div>
+  <p class="cap">Both models run five years at each cost, on the same map. The ice model is calibrated to the explicit one at normal costs (×1). Output per head is net of what trade uses up: the transport bought in the explicit model, the goods melted in the ice model. The grey dot on the right is autarky.</p>
+</div>
+<div class="col">
+<p>Near the calibration point the models agree, by construction. Away from it they diverge, for three reasons.</p>
+<p><b>Ice compounds; carriage adds.</b> Over n hops, carriage adds n times the cost of carrying a unit one hop, while ice multiplies the price by exp(w × c × n). When transport gets dearer, the ice economy's prices fly apart and its trade dies far sooner: at 32 times normal it trades nothing at all, while the explicit economy still trades a few percent of its output and lives noticeably better.</p>
+<p><b>Carriage is made by people.</b> At normal costs about one worker in ten hauls goods in the explicit model, and the price of carriage reflects their wages. The ice model has no such workers, so cheaper transport frees no one for other work and dearer transport draws no one in. A railway that cuts the cost of carriage several times over releases workers in the explicit model and only reduces melting in the ice one.</p>
+<p><b>A cost per unit favours goods worth much for their bulk.</b> Carrying a chest of tea costs as much as a chest of potatoes, but the tea is worth far more, so carriage is a small share of its price. Alchian and Allen (1964) noted that per-unit transport costs make the dear varieties of a good travel further than the cheap ones: "the good apples are shipped out", a prediction Hummels and Skiba (2004) confirmed in trade data. Ice takes the same share of every good's value and cannot produce it. Figure 3 measures it.</p>
+</div>
+<div class="figure">
+  <div class="head"><span class="plate">Figure 3</span><h3>How far each good travels, by what it is worth for its bulk</h3></div>
+  <svg class="chart" id="chart-aa" role="img" aria-label="Hops travelled per unit made against value per unit of bulk, for both models"></svg>
+  <div class="legend" id="legend-aa"></div>
+  <p class="cap" id="cap-aa"></p>
+</div>
+<div class="col">
+<h2><span class="no">5.</span>Discussion</h2>
+<p>The iceberg is a fair shortcut for small changes around a given level of transport costs. It misleads about large changes, such as the railways that cut overland carriage several times over in the nineteenth century (Donaldson, 2018); about what gets traded and how far; and about the labour that transport itself employs. An explicit transport sector costs little in a simulation, and in our experiments it gets all three right.</p>
+<p>The model's strength is breadth rather than depth: labour, firms, investment, prices, trade, population growth and migration interact in one economy, each in a simple form. Most of the literature studies one or two of these channels in depth, with the rest held fixed. A broad, simple model can show how the channels act on each other, such as transport cost moving workers between hauling and making things, or migration responding to the living standards that trade makes possible, where a specialised model must assume them away.</p>
+<p><b>Limitations.</b> Mercury is a simulation stepped day by day, not an equilibrium we can prove exists or is unique; we rely on the runs being stable and repeatable. Parameters such as productivities, the migration rate and how much stock merchants hold are set by hand to give historically plausible behaviour, not estimated. The experiments use one map of 36 tiles and runs of five years. Natural next steps are to repeat them on generated maps of several sizes and on the 2,105-tile world map; to follow a falling transport cost over time, as railways spread; and to compare welfare against a calibrated quantitative spatial model.</p>
+
+<h2><span class="no">6.</span>Methods</h2>
+<p>All runs use the game's classic map with no nations: no state, taxes, armies, roads or new technology, so firms keep their 1820 methods. Migration, investment and population growth are on. Without nations nothing in the economy is drawn at random, so every run is exactly repeatable. Measures are averages over the fifth year (prices and price gaps over its last 30 days). Output is net of intermediate inputs and of what trade uses up, valued at the explicit model's prices at normal costs. Hops travelled per unit made count every route a good is shipped on (each resale is a hop), divided by the good's production. The figures come from three tests in the engine:</p>
+<pre>TRANSPORT_SWEEP_OUT=out/sweep go test ./engine -run TestTransportSweep
+ICEBERG_OUT=out/iceberg go test ./engine -run TestIcebergComparison
+sh tools/explainer/build.sh   # rebuilds both pages from fresh runs</pre>
+
+<h2><span class="no">7.</span>References</h2>
+<ol class="refs">
+<li>Alchian, A. A. and Allen, W. R. (1964). <em>University Economics</em>. Wadsworth.</li>
+<li>Allen, T. and Arkolakis, C. (2014). Trade and the topography of the spatial economy. <em>Quarterly Journal of Economics</em> 129(3).</li>
+<li>Allen, T. and Arkolakis, C. (2022). The welfare effects of transportation infrastructure improvements. <em>Review of Economic Studies</em> 89(6).</li>
+<li>Brancaccio, G., Kalouptsidi, M. and Papageorgiou, T. (2020). Geography, transportation, and endogenous trade costs. <em>Econometrica</em> 88(2).</li>
+<li>Donaldson, D. (2018). Railroads of the Raj: estimating the impact of transportation infrastructure. <em>American Economic Review</em> 108(4–5).</li>
+<li>Hummels, D. and Skiba, A. (2004). Shipping the good apples out? An empirical confirmation of the Alchian–Allen conjecture. <em>Journal of Political Economy</em> 112(6).</li>
+<li>Krugman, P. (1991). Increasing returns and economic geography. <em>Journal of Political Economy</em> 99(3).</li>
+<li>Redding, S. J. and Rossi-Hansberg, E. (2017). Quantitative spatial economics. <em>Annual Review of Economics</em> 9.</li>
+<li>Samuelson, P. A. (1952). Spatial price equilibrium and linear programming. <em>American Economic Review</em> 42(3).</li>
+<li>Samuelson, P. A. (1954). The transfer problem and transport costs, II: analysis of effects of trade impediments. <em>Economic Journal</em> 64(254).</li>
+<li>Takayama, T. and Judge, G. G. (1964). Spatial equilibrium and quadratic programming. <em>Journal of Farm Economics</em> 46(1).</li>
+</ol>
+</div>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+__COMMON__
+// ---- Plate VII: the transport sweep ---------------------------------------------------
+function drawSweep() {
+  const rows = D.sweep.filter((r) => r.cost < 1e5), aut = D.sweep.find((r) => r.cost >= 1e5);
+  const AX = 250; // where autarky is drawn on the log axis
+  const ticks = [0.05, 0.1, 0.5, 1, 5, 10, 50, 100];
+  const panel = (key, title, color, yFmt, extra) => {
+    const svg = document.createElementNS(NS, "svg"); svg.setAttribute("class", "chart"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", title);
+    const series = [{ pts: rows.map((r) => [r.cost, r[key]]), color }].concat(extra ? [extra] : []);
+    lineChart(svg, { series, xLog: true, xTicks: ticks, xLabel: "transport cost (× normal)", yFmt, title, w: 480, h: 280, marks: [{ x: 1, label: "normal" }],
+      points: [{ x: AX, y: aut[key], color, label: "autarky", below: key === "transportJobs" }] });
+    return svg;
+  };
+  const box = document.getElementById("sweep-charts"); box.innerHTML = "";
+  box.append(
+    panel("living", "Living standard (utility per person)", "--s1", (v) => v.toFixed(1)),
+    panel("gdpHead", "Output per head, a day", "--s2", (v) => v.toFixed(0), { pts: rows.map((r) => [r.cost, r.gdpHeadWithTransport]), color: "--s2", dash: "5 4", width: 1.6 }),
+    panel("priceGap", "Price gap: dearest tile ÷ cheapest − 1", "--s3", (v) => `${(100 * v).toFixed(0)}%`),
+    panel("transportJobs", "Share of workers in transport", "--s4", (v) => `${(100 * v).toFixed(0)}%`));
+  const near = D.sweep[0], one = D.sweep.find((r) => r.cost === 1);
+  document.getElementById("facts").innerHTML = [
+    [`+${Math.round(100 * (near.living / aut.living - 1))}%`, "living standard, autarky to nearly free transport"],
+    [`×${(near.gdpHead / aut.gdpHead).toFixed(1)}`, "output per head, the same comparison"],
+    [`+${Math.round(100 * (one.living / aut.living - 1))}%`, "living standard at normal costs over autarky"],
+    [`${Math.round(100 * one.transportJobs)}%`, "of workers haul goods at normal costs"],
+  ].map(([b, s]) => `<div class="fact"><b>${b}</b><span>${s}</span></div>`).join("");
+}
+
+// ---- Plates XI and XII: carriage against ice ---------------------------------------------
+function drawIceberg() {
+  const I = D.iceberg, AX = 250;
+  document.getElementById("ice-melt").textContent = `${Math.round(100 * I.melt)}%`;
+  const runs = (m) => I.runs.filter((r) => r.Model === m && r.Cost < 1e5).sort((a, b) => a.Cost - b.Cost);
+  const aut = (m) => I.runs.find((r) => r.Model === m && r.Cost >= 1e5);
+  const ticks = [0.1, 1, 10, 100];
+  const panel = (key, title, yFmt, logY) => {
+    const svg = document.createElementNS(NS, "svg"); svg.setAttribute("class", "chart"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", title);
+    const f = logY ? (v) => Math.log10(Math.max(v, 1e-3)) : (v) => v;
+    lineChart(svg, { series: [0, 1].map((m) => ({ pts: runs(m).map((r) => [r.Cost, f(r[key])]), color: m ? "--s2" : "--s1", dash: m ? "6 4" : "" })),
+      xLog: true, xTicks: ticks, xLabel: "transport cost (× normal)", yFmt: logY ? (v) => `${Math.round(100 * Math.pow(10, v)).toLocaleString("en")}%` : yFmt, title, w: 480, h: 280,
+      marks: [{ x: 1, label: "calibrated" }], points: [{ x: AX, y: f(aut(0)[key]), color: "--muted", label: "autarky" }] });
+    return svg;
+  };
+  const box = document.getElementById("ice-charts"); box.innerHTML = "";
+  box.append(
+    panel("Living", "Living standard", (v) => v.toFixed(1)),
+    panel("TradeShare", "Share of output traded", (v) => `${Math.round(100 * v)}%`),
+    panel("PriceGap", "Price gap, log scale", null, true),
+    panel("TransportJobs", "Share of workers in transport", (v) => `${Math.round(100 * v)}%`));
+  legend(document.getElementById("legend-ice"), [["--s1", "carriage: transport made by workers, paid per unit"], ["--s2", "ice: a share of each shipment melts", true]]);
+  // the Alchian-Allen plate
+  const svg = document.getElementById("chart-aa");
+  const pts = (m) => I.goods[m].map((g) => [g.vpb, g.hops, g.good]);
+  const all = pts(0).concat(pts(1));
+  const xlo = Math.pow(10, Math.floor(Math.log10(Math.min(...all.map((p) => p[0]))))), xhi = Math.pow(10, Math.ceil(Math.log10(Math.max(...all.map((p) => p[0])))));
+  const ylo = Math.pow(10, Math.floor(Math.log10(Math.min(...all.map((p) => p[1]))))), yhi = Math.pow(10, Math.ceil(Math.log10(Math.max(...all.map((p) => p[1])))));
+  const w = 760, h = 420, m = { l: 60, r: 18, t: 16, b: 46 };
+  const X = (v) => m.l + Math.log10(v / xlo) / Math.log10(xhi / xlo) * (w - m.l - m.r);
+  const Y = (v) => h - m.b - Math.log10(v / ylo) / Math.log10(yhi / ylo) * (h - m.t - m.b);
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  let s = "";
+  for (let v = ylo; v <= yhi * 1.001; v *= 10) s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${+v.toPrecision(2)}</text>`;
+  for (let v = xlo; v <= xhi * 1.001; v *= 10) s += `<line class="axis" x1="${X(v)}" x2="${X(v)}" y1="${h - m.b}" y2="${h - m.b + 4}"/><text x="${X(v)}" y="${h - m.b + 18}" text-anchor="middle">${+v.toPrecision(2)}</text>`;
+  s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${h - m.b}" y2="${h - m.b}"/>`;
+  s += `<text x="${(m.l + w - m.r) / 2}" y="${h - 6}" text-anchor="middle">value per unit of bulk (price ÷ bulk)</text>`;
+  s += `<text x="14" y="${(m.t + h - m.b) / 2}" text-anchor="middle" transform="rotate(-90 14 ${(m.t + h - m.b) / 2})">hops travelled per unit made</text>`;
+  const fit = (P) => { const xs = P.map((p) => Math.log10(p[0])), ys = P.map((p) => Math.log10(p[1])), n = xs.length, mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+    const sxy = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0), sxx = xs.reduce((a, x) => a + (x - mx) ** 2, 0), syy = ys.reduce((a, y) => a + (y - my) ** 2, 0);
+    return { b: sxy / sxx, a: my - sxy / sxx * mx, r: sxy / Math.sqrt(sxx * syy) }; };
+  const fits = [0, 1].map((k) => fit(pts(k)));
+  [0, 1].forEach((k) => {
+    const f = fits[k], col = css(k ? "--s2" : "--s1");
+    const x0 = Math.log10(Math.min(...pts(k).map((p) => p[0]))), x1 = Math.log10(Math.max(...pts(k).map((p) => p[0])));
+    s += `<line x1="${X(10 ** x0)}" y1="${Y(10 ** (f.a + f.b * x0))}" x2="${X(10 ** x1)}" y2="${Y(10 ** (f.a + f.b * x1))}" stroke="${col}" stroke-width="2" ${k ? 'stroke-dasharray="6 4"' : ""}/>`;
+    for (const [x, y, g] of pts(k)) {
+      s += k ? `<rect x="${X(x) - 3.5}" y="${Y(y) - 3.5}" width="7" height="7" fill="none" stroke="${col}" stroke-width="1.5"/>` : `<circle cx="${X(x)}" cy="${Y(y)}" r="4" fill="${col}"/>`;
+      if (!k && ["tea", "silk", "porcelain", "clay", "potatoes", "coal", "wine", "iron ore"].includes(g)) s += `<text x="${X(x) + 7}" y="${Y(y) + 4}" style="fill:${css("--ink")}">${esc(g)}</text>`;
+    }
+  });
+  svg.innerHTML = s;
+  legend(document.getElementById("legend-aa"), [["--s1", `carriage: slope ${fits[0].b.toFixed(2)}, correlation ${fits[0].r.toFixed(2)}`], ["--s2", `ice: slope ${fits[1].b.toFixed(2)}, correlation ${fits[1].r.toFixed(2)}`, true]]);
+  document.getElementById("cap-aa").textContent = `Each mark is one good at normal costs (both axes on log scales): how many hops a unit travels on average, counting every time it is sold on, against what it is worth for its bulk. With carriage, the goods worth most for their bulk (tea, silk, porcelain) travel furthest and the bulky cheap ones (clay, potatoes, ore) hardly leave home. With ice there is no such pattern, as the iceberg model implies. Goods made in only tiny amounts are left out.`;
+}
+
+
+function drawAll() { drawSweep(); drawIceberg(); }
+drawAll();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+</script>
