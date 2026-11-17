@@ -1,0 +1,560 @@
+<title>The Mercury Economy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IM+Fell+English+SC&display=swap">
+<style>
+/* Layout: one reading column of ledger text, with wider engraved "plates"
+   for the maps and charts, in the game's own Victorian atlas palette. */
+:root {
+  --bg: #e9dcbd; --paper: #f4ead2; --surface: #fbf5e4; --ink: #2b2118; --muted: #6b5a44;
+  --rule: #8c7350; --border: #c4ab7f; --accent: #8b2e1f; --brass: #a87b2c; --good: #3d6b2a;
+  --sea: #9fc2c9; --hex: rgba(70, 50, 25, 0.35);
+  --s1: #8b2e1f; --s2: #2f5d7c; --s3: #a87b2c; --s4: #4f6b3a; --s5: #6b4a7a; --s6: #9b6a3c;
+  --t-plains: #e3d59b; --t-forest: #b9c28c; --t-hills: #d6bd8c; --t-mountains: #c9bdab; --t-tropical: #bcd194;
+  --serif: "EB Garamond", Garamond, "Iowan Old Style", Georgia, serif;
+  --display: "IM Fell English SC", "EB Garamond", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17120d; --paper: #211b15; --surface: #2a221a; --ink: #ecdfc4; --muted: #a8977a;
+    --rule: #7a6446; --border: #4d3f2e; --accent: #d9805f; --brass: #c9a45a; --good: #8fbf6a;
+    --sea: #22383d; --hex: rgba(0, 0, 0, 0.5);
+    --s1: #e08a6a; --s2: #7fb2d3; --s3: #d8b25e; --s4: #9cc27a; --s5: #c39bd4; --s6: #d9a46a;
+    --t-plains: #5c5434; --t-forest: #3e4a2f; --t-hills: #5b4b34; --t-mountains: #514b44; --t-tropical: #3d5234;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17120d; --paper: #211b15; --surface: #2a221a; --ink: #ecdfc4; --muted: #a8977a;
+  --rule: #7a6446; --border: #4d3f2e; --accent: #d9805f; --brass: #c9a45a; --good: #8fbf6a;
+  --sea: #22383d; --hex: rgba(0, 0, 0, 0.5);
+  --s1: #e08a6a; --s2: #7fb2d3; --s3: #d8b25e; --s4: #9cc27a; --s5: #c39bd4; --s6: #d9a46a;
+  --t-plains: #5c5434; --t-forest: #3e4a2f; --t-hills: #5b4b34; --t-mountains: #514b44; --t-tropical: #3d5234;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 19px/1.55 var(--serif);
+  font-variant-numeric: lining-nums tabular-nums; }
+.page { max-width: 1060px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.col { max-width: 680px; margin: 0 auto; }
+header.title { text-align: center; padding-block: 8px 28px; border-bottom: 3px double var(--rule); margin-bottom: 36px; }
+.kicker a.back { color: inherit; }
+.kicker { font-family: var(--display); letter-spacing: .14em; color: var(--brass); font-size: 15px; margin: 0; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(40px, 7vw, 68px); line-height: 1.02; margin: 10px 0 14px; text-wrap: balance; }
+.lede { font-size: 21px; font-style: italic; color: var(--muted); max-width: 640px; margin: 0 auto; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 32px; line-height: 1.1; margin: 0 0 6px; text-wrap: balance; }
+h2 .no { color: var(--brass); margin-right: 10px; }
+section { margin-top: 56px; }
+section > .col > p:first-of-type::first-letter { }
+p { margin: 0 0 14px; }
+.eq { font-style: italic; text-align: center; font-size: 21px; margin: 18px 0; padding: 10px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); overflow-x: auto; }
+.eq sup { font-size: 13px; }
+.aside { font-size: 16px; color: var(--muted); }
+.figure { margin: 26px 0 30px; background: var(--paper); border: 1px solid var(--border); box-shadow: 0 0 0 4px var(--paper), 0 0 0 5px var(--rule); padding: 18px 18px 14px; }
+.figure .head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 10px; }
+.plate { font-family: var(--display); letter-spacing: .08em; font-size: 15px; color: var(--brass); }
+.figure h3 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0; flex: 1 1 260px; min-width: 0; }
+.figure .cap { font-size: 16px; color: var(--muted); margin: 10px 0 0; max-width: 760px; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px; }
+.controls button { font: 15px var(--serif); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; padding: 4px 11px; min-height: 34px; cursor: pointer; }
+.controls button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.controls button:focus-visible, select:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+select { font: 16px var(--serif); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; padding: 4px 8px; min-height: 34px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+.grid2 > * { min-width: 0; }
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { font-family: var(--serif); fill: var(--muted); font-size: 13px; }
+.chart .title { fill: var(--ink); font-size: 15px; }
+.chart .grid { stroke: var(--border); stroke-width: 1; }
+.chart .axis { stroke: var(--rule); stroke-width: 1; }
+.mapwrap { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 760px) { .mapwrap { grid-template-columns: 1fr; } body { font-size: 18px; } }
+.inspector { font-size: 16px; border-left: 3px double var(--rule); padding-left: 14px; min-width: 0; }
+.inspector h4 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0 0 2px; }
+.inspector table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 15px; }
+.inspector td { padding: 3px 0; border-bottom: 1px dotted var(--border); }
+.inspector td.n { text-align: right; white-space: nowrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 15px; color: var(--muted); margin-top: 8px; }
+.legend i { display: inline-block; width: 14px; height: 10px; margin-right: 6px; vertical-align: middle; border: 1px solid var(--hex); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 22px 0; }
+.fact { border-top: 3px double var(--rule); padding-top: 8px; }
+.fact b { display: block; font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 1; color: var(--accent); }
+.fact span { font-size: 15px; color: var(--muted); }
+footer { margin-top: 64px; border-top: 3px double var(--rule); padding-top: 18px; font-size: 16px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .hexes polygon { transition: fill .25s; } }
+</style>
+
+<div class="page">
+<header class="title">
+  <p class="kicker"><a href="./" class="back">Mercury</a> · A ledger of the simulation</p>
+  <h1>The Mercury Economy</h1>
+  <p class="lede">How thirty-six tiles of farms, mills and merchants feed, clothe and move their people, with no state to steer them, and what happens when moving goods gets cheaper.</p>
+</header>
+
+<div class="col">
+<p>Mercury is a game about the nineteenth century, but underneath the nations, armies and treaties sits an economy that runs on its own. This page takes the nations away and looks at that economy alone: no taxes, no tariffs, no roads built by a state, no new inventions. What is left is land, people, firms, markets and merchants, on the game's classic map of thirty-six hexagonal tiles.</p>
+<p>Every number and chart below comes from running that map in the game's own engine. Click a tile on the map to see what its people do for a living after five years.</p>
+</div>
+
+<div class="figure" id="fig-world">
+  <div class="head"><span class="plate">Plate I</span><h3>The world: terrain, and what each tile does</h3></div>
+  <div class="mapwrap">
+    <div><svg class="chart" id="map-world" role="img" aria-label="Hex map of the 36 tiles coloured by terrain"></svg>
+      <div class="legend" id="legend-terrain"></div></div>
+    <div class="inspector" id="inspector" aria-live="polite"></div>
+  </div>
+  <p class="cap">Each hexagon is a tile, with its own people, firms and market. Tiles on the edge or next to the sea are coastal: they can fish, and ships carry goods past them cheaply.</p>
+</div>
+
+<section id="firms">
+<div class="col">
+<h2><span class="no">I.</span>Firms make things</h2>
+<p>Every tile has a set of firms: farms, mines and forests that only work where the land allows, and mills, smithies, tailors and breweries that can work anywhere. A firm hires labour from the tile's people, buys its inputs in the tile's market, and sells what it makes there. Its output follows a Cobb–Douglas production function:</p>
+<p class="eq">output = TFP × levels<sup>1−s</sup> × labour<sup>a</sup> × input₁<sup>b</sup> × input₂<sup>c</sup> …, with a + b + c + … = s &lt; 1</p>
+<p><em>Levels</em> are the firm's buildings, its capital. Owners add a level when the firm earns more than a level costs, and the exponents add up to less than one. So each extra worker in a given building adds less than the one before. Plate II shows this diminishing return for a single level, holding the other inputs at one unit each.</p>
+<p>A firm can make its good in several ways, called methods. The first is the one available in 1820; later ones come with technology. In the full game nations research those technologies; here the methods are shown only to compare them. A later method is more productive (higher TFP) and often needs fewer hands (a lower labour exponent), but needs machinery or fuel the old way didn't.</p>
+</div>
+
+<div class="figure">
+  <div class="head"><span class="plate">Plate II</span><h3>One level of a firm: output as workers are added</h3>
+    <div class="controls" id="firm-pick" role="group" aria-label="Choose a firm"></div></div>
+  <svg class="chart" id="chart-firm" role="img" aria-label="Output per level against labour per level, one curve per method"></svg>
+  <div class="legend" id="legend-firm"></div>
+  <p class="cap" id="cap-firm"></p>
+</div>
+
+<div class="col">
+<p>Land matters too. A farm on rich plains is half again as productive as the recipe says, and one in the tropics only six tenths. Mines need hills and mountains, and fishing needs the coast. Plate III gives these site multipliers for the land-bound firms that drive the map's trade.</p>
+</div>
+
+<div class="figure">
+  <div class="head"><span class="plate">Plate III</span><h3>The same firm on different land</h3></div>
+  <svg class="chart" id="chart-sites" role="img" aria-label="Site productivity multipliers by terrain"></svg>
+  <p class="cap">Each bar is the multiplier on a firm's productivity on that terrain (1 = the recipe as written). A missing bar means the firm can't work there at all.</p>
+</div>
+
+<div class="col">
+<p>Put together, land, people and prices decide what each tile does and how well work pays there. Plate IV maps the value a worker adds in a day (what the tile's firms sell, less what they buy, per worker) after five years.</p>
+</div>
+
+<div class="figure">
+  <div class="head"><span class="plate">Plate IV</span><h3>Value added per worker, after five years</h3></div>
+  <div class="mapwrap">
+    <svg class="chart" id="map-va" role="img" aria-label="Map of value added per worker"></svg>
+    <div class="inspector" id="va-note"></div>
+  </div>
+  <p class="cap">Darker tiles add more value per worker. The ranking reflects both the land's yields and the prices the tile's goods fetch.</p>
+</div>
+</section>
+
+<section id="markets">
+<div class="col">
+<h2><span class="no">II.</span>Markets set prices; merchants move goods</h2>
+<p>Each tile has a market for every good. The price rises when buyers want more than sellers offer and falls when there is too much. Nobody sets prices; they move a little each day toward the level where supply and demand meet.</p>
+<p>Between neighbouring tiles run merchants. A merchant buys a good where it is cheap and ships it to a neighbour where it is dear, if the price gap pays for the journey. Shipping uses up <em>transport</em>, a good of its own: carters, horses, boats and later railways, made by transport firms from labour. Each unit carried needs transport in proportion to the distance and the good's bulk, and perishables lose part of themselves on the way. Merchants trade only with neighbours; a good crosses the map by being sold on from tile to tile.</p>
+</div>
+
+<div class="figure">
+  <div class="head"><span class="plate">Plate V</span><h3>The price of <span id="good-name">a good</span>, and where it flows</h3>
+    <div class="controls" id="good-pick" role="group" aria-label="Choose a good"></div></div>
+  <div class="mapwrap">
+    <svg class="chart" id="map-price" role="img" aria-label="Price map with trade flows"></svg>
+    <div class="inspector" id="price-note"></div>
+  </div>
+  <p class="cap">Colour is the price, averaged over the last 30 days of a five-year run at normal transport costs. Arrows are the merchants' shipments, thicker for more. Goods flow downhill in price, from where they are made to where they are dear.</p>
+</div>
+
+<div class="col">
+<p>The merchants' trade pins prices to each other. Call a good's <em>landed cost</em> on a route the price it is bought for at the origin plus the transport a unit needs, allowing for what spoils on the way. If the destination pays more than that, the route makes money and the merchants ship more. Extra supply then pushes the destination's price down, and extra buying pushes the origin's up, until the gap is gone. If the destination pays less, nobody ships. So once markets settle, a good's price in a tile that imports it equals its neighbour's price plus the cost of carriage, and no tile's price can stay above that for long.</p>
+</div>
+
+<div class="figure">
+  <div class="head"><span class="plate">Plate VI</span><h3>Prices settle at the neighbour's price plus carriage</h3></div>
+  <div class="grid2">
+    <svg class="chart" id="chart-landed" role="img" aria-label="Destination price against landed cost for every trade route"></svg>
+    <svg class="chart" id="chart-converge" role="img" aria-label="Destination price over landed cost on the busiest routes in the first year"></svg>
+  </div>
+  <div class="legend" id="legend-landed"></div>
+  <p class="cap" id="cap-landed"></p>
+</div>
+</section>
+
+<section id="transport">
+<div class="col">
+<h2><span class="no">III.</span>What transport is worth</h2>
+<p>Transport cost is one number in the game that scales every hop. To see what it does, the same map was run for five years at 25 costs: from nearly free (a twentieth of the normal cost) to 128 times normal, and finally to autarky, where no route ever pays and every tile lives on what it makes itself.</p>
+<div class="facts" id="facts"></div>
+<p>As transport gets dearer every measure of well-being falls smoothly (Plate VII). Living standards drop because each tile must make more of its own goods, including the ones its land is bad at, and people pay more for imports. Output per head falls even faster. The economy loses gains from specialisation, and more of its work goes into hauling goods.</p>
+</div>
+
+<div class="figure">
+  <div class="head"><span class="plate">Plate VII</span><h3>Five years at each transport cost</h3></div>
+  <div class="grid2" id="sweep-charts"></div>
+  <p class="cap">The horizontal axis is the transport cost on a log scale, as a multiple of the game's normal cost (1). The dot on the far right of each panel is autarky. Output per head is net output valued at one set of prices for every run (those at normal costs), so the runs compare like for like. It is shown with transport counted as an input to trade (solid) and as output in its own right (dashed).</p>
+</div>
+
+<div class="col">
+<p>Two of the panels have a hump. The share of workers in transport first rises with its cost, since each shipment takes more hauling, then falls when trade itself shrinks. The price gap between a good's dearest and cheapest tile widens as transport gets dearer, as you'd expect, but it narrows again near autarky. That is a quirk of the measure: it only covers goods still sold in two tiles or more, and at prohibitive costs the only such goods are those every tile makes for itself, so their prices are close.</p>
+</div>
+</section>
+
+<section id="people">
+<div class="col">
+<h2><span class="no">IV.</span>People grow, and move to where life is better</h2>
+<p>Each tile's people work for its firms, own them, and spend their income on needs in three tiers: basic needs (food and clothing), then comforts, then luxuries. How well they meet those needs is their <em>living standard</em>, the game's utility per person.</p>
+<p>Population grows when people eat well. The growth rate rises in a straight line with how far basic needs are met, and is capped at a famine's decline and a boom's growth. Schooling lowers it, because educated families have fewer children; this page's world has no schools, so that term is zero here.</p>
+</div>
+
+<div class="figure">
+  <div class="head"><span class="plate">Plate VIII</span><h3>Population growth by how well people eat</h3></div>
+  <svg class="chart" id="chart-growth" role="img" aria-label="Population growth rate against basic needs met"></svg>
+  <p class="cap" id="cap-growth"></p>
+</div>
+
+<div class="col">
+<p>People also move. Every day, along each link between neighbouring tiles, a small share of the worse-off tile's workers moves to the better-off one:</p>
+<p class="eq">share moving a day = <span id="mig-rate"></span> × gap ÷ (1 + cost of the hop)</p>
+<p>The gap is how much better the destination lives, as a share of the origin's living standard, counted up to 30%. Cheap hops along the coast carry more people than hard ones overland, and a tile never empties below <span id="mig-min"></span> workers.</p>
+<p>To watch migration at work, one inland tile's firms were made half again as productive after the first year, as if coal or gold had been struck there. A twin run without the strike is the control. Plate IX compares the two.</p>
+</div>
+
+<div class="figure">
+  <div class="head"><span class="plate">Plate IX</span><h3>A strike in <span id="shock-name"></span>: who moves, and how far</h3></div>
+  <div class="grid2">
+    <svg class="chart" id="chart-shock-people" role="img" aria-label="Population change against the control by distance from the strike"></svg>
+    <svg class="chart" id="chart-shock-util" role="img" aria-label="Living standard in the struck tile and its neighbours"></svg>
+  </div>
+  <p class="cap">Left: people gained or lost compared with the control run, summed by distance from the strike. Right: the living standard in the struck tile, in the control run, and in its neighbours. The dashed line marks the strike.</p>
+</div>
+
+<div class="col">
+<p>The strike lifts living standards in the tile at once, and people start coming within weeks. They come first from the next tiles, which lose people almost as fast as the struck tile gains them, and then from two hops out. Tiles further away barely notice. Migration is slow on purpose: a gap of a fifth in living standards moves several percent of a tile's people a year, roughly the pace of the great migrations of the century. Four years on, the struck tile still lives clearly better than it did, and still draws people.</p>
+</div>
+
+<div class="figure">
+  <div class="head"><span class="plate">Plate X</span><h3>Four years after the strike: people gained or lost</h3></div>
+  <div class="mapwrap">
+    <svg class="chart" id="map-shock" role="img" aria-label="Map of population change after the strike"></svg>
+    <div class="inspector" id="shock-note"></div>
+  </div>
+  <p class="cap">Brass tiles gained people compared with the control run; red tiles lost them. The ring of losers around the strike shows that people move one hop at a time.</p>
+</div>
+</section>
+
+<footer class="col">
+<p><b>How these numbers were made.</b> The game's classic map (36 tiles) with no nations: no state, taxes, armies, roads or new technology, so firms keep their 1820 methods. Every run lasts five years with migration, investment and population growth switched on, and starts from the same state. Without nations nothing in the economy is drawn at random, so a run is exactly repeatable. The transport sweep is the engine's <code>TestTransportSweep</code>; the tiles, the strike and the recipes come from <code>TestExplainerData</code>; <code>tools/explainer/build.sh</code> rebuilds this page from both.</p>
+</footer>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+const D = JSON.parse(document.getElementById("data").textContent);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const NS = "http://www.w3.org/2000/svg";
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (v, d = 1) => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(d));
+const tiles = D.map.tiles;
+const byId = Object.fromEntries(tiles.map((t) => [t.id, t]));
+const tileData = Object.fromEntries(D.tiles.map((t) => [t.id, t]));
+const SERIES = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6"];
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// ---- hex maps -------------------------------------------------------------
+// the classic map is 6x6, odd rows shifted half a hex right
+const R = 30, W = Math.sqrt(3) * R;
+function hexXY(t) { return [W * (t.col + 0.5 + 0.5 * (t.row % 2)) + 6, R * (1 + 1.5 * t.row) + 6]; }
+function hexPts(x, y, r = R) { return [...Array(6)].map((_, i) => { const a = Math.PI / 180 * (60 * i - 30); return `${(x + r * Math.cos(a)).toFixed(1)},${(y + r * Math.sin(a)).toFixed(1)}`; }).join(" "); }
+function hexMap(svg, { fill, label = (t) => t.name, arrows = [], selected = null, onPick = null }) {
+  const w = W * 6.5 + 12, h = R * (2 + 1.5 * 5) + 12;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  let s = `<rect x="0" y="0" width="${w}" height="${h}" fill="${css("--sea")}"/>`;
+  s += `<defs><marker id="ah-${svg.id}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${css("--ink")}"/></marker></defs><g class="hexes">`;
+  for (const t of tiles) {
+    const [x, y] = hexXY(t);
+    s += `<polygon data-id="${t.id}" points="${hexPts(x, y)}" fill="${fill(t)}" stroke="${t.id === selected ? css("--accent") : css("--hex")}" stroke-width="${t.id === selected ? 3 : 1}" ${onPick ? 'style="cursor:pointer" tabindex="0" role="button" aria-label="' + esc(t.name) + '"' : ""}/>`;
+  }
+  s += "</g>";
+  for (const [a, b, q] of arrows) {
+    const [x1, y1] = hexXY(byId[a]), [x2, y2] = hexXY(byId[b]);
+    const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), sh = 0.28 * R;
+    const sw = q.w;
+    s += `<line x1="${(x1 + dx / L * sh).toFixed(1)}" y1="${(y1 + dy / L * sh).toFixed(1)}" x2="${(x2 - dx / L * sh).toFixed(1)}" y2="${(y2 - dy / L * sh).toFixed(1)}" stroke="${css("--ink")}" stroke-opacity=".75" stroke-width="${sw.toFixed(2)}" marker-end="url(#ah-${svg.id})" stroke-linecap="round"/>`;
+  }
+  for (const t of tiles) {
+    const [x, y] = hexXY(t), l = label(t);
+    if (l) s += `<text x="${x}" y="${y + 4}" text-anchor="middle" style="font-size:9.5px;fill:${css("--ink")};pointer-events:none">${esc(l)}</text>`;
+  }
+  svg.innerHTML = s;
+  if (onPick) svg.querySelectorAll("polygon").forEach((p) => {
+    p.addEventListener("click", () => onPick(+p.dataset.id));
+    p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(+p.dataset.id); } });
+  });
+}
+// a single warm ramp, light to dark (or the reverse in the dark theme)
+function ramp(t) {
+  t = Math.max(0, Math.min(1, t));
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light" || document.documentElement.dataset.theme === "dark";
+  const stops = dark ? [[58, 46, 34], [120, 84, 40], [190, 130, 60], [235, 190, 110]] : [[246, 236, 208], [228, 196, 128], [190, 120, 60], [125, 42, 23]];
+  const x = t * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(x)), f = x - i;
+  const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
+  return `rgb(${c.join(",")})`;
+}
+function diverge(v, maxAbs) {
+  const t = Math.max(-1, Math.min(1, v / maxAbs));
+  const base = css("--paper");
+  const col = t >= 0 ? css("--brass") : css("--accent");
+  return mix(base, col, Math.abs(t));
+}
+function mix(a, b, t) {
+  const p = (c) => { const d = document.createElement("div"); d.style.color = c; document.body.appendChild(d); const v = getComputedStyle(d).color.match(/\d+/g).map(Number); d.remove(); return v; };
+  const x = p(a), y = p(b);
+  return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(",")})`;
+}
+
+// ---- charts -----------------------------------------------------------------
+// lineChart draws series of [x, y] points with a log or linear x axis.
+function lineChart(svg, { series, xLog = false, xTicks, xLabel, yLabel, yFmt = (v) => fmt(v), title = "", marks = [], w = 520, h = 300, yMin, yMax, points = [] }) {
+  const m = { l: 54, r: 14, t: title ? 30 : 12, b: 44 };
+  const xs = series.flatMap((s) => s.pts.map((p) => p[0])).concat(points.map((p) => p.x));
+  const ys = series.flatMap((s) => s.pts.map((p) => p[1])).concat(points.map((p) => p.y));
+  const fx = xLog ? Math.log10 : (v) => v;
+  let x0 = Math.min(...xs.map(fx)), x1 = Math.max(...xs.map(fx));
+  let y0 = yMin ?? Math.min(...ys), y1 = yMax ?? Math.max(...ys);
+  const pad = (y1 - y0) * 0.06 || 1; if (yMin === undefined) y0 -= pad; if (yMax === undefined) y1 += pad;
+  const X = (v) => m.l + (fx(v) - x0) / (x1 - x0) * (w - m.l - m.r);
+  const Y = (v) => h - m.b - (v - y0) / (y1 - y0) * (h - m.t - m.b);
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  let s = "";
+  if (title) s += `<text class="title" x="${m.l}" y="18">${esc(title)}</text>`;
+  const yt = niceTicks(y0, y1, 5);
+  for (const v of yt) s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${yFmt(v)}</text>`;
+  for (const v of xTicks) { const x = X(v); if (x < m.l - 1 || x > w - m.r + 1) continue; s += `<line class="axis" x1="${x}" x2="${x}" y1="${h - m.b}" y2="${h - m.b + 4}"/><text x="${x}" y="${h - m.b + 18}" text-anchor="middle">${v}</text>`; }
+  s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${h - m.b}" y2="${h - m.b}"/>`;
+  if (xLabel) s += `<text x="${(m.l + w - m.r) / 2}" y="${h - 6}" text-anchor="middle">${esc(xLabel)}</text>`;
+  if (yLabel) s += `<text x="12" y="${(m.t + h - m.b) / 2}" text-anchor="middle" transform="rotate(-90 12 ${(m.t + h - m.b) / 2})">${esc(yLabel)}</text>`;
+  for (const mk of marks) { const x = X(mk.x); s += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${h - m.b}" stroke="${css("--muted")}" stroke-dasharray="4 4"/>${mk.label ? `<text x="${x + 5}" y="${m.t + 12}">${esc(mk.label)}</text>` : ""}`; }
+  // lines are clipped to the plot (a series may run off a fixed scale)
+  const clip = `clip-${svg.id || Math.random().toString(36).slice(2)}`;
+  s += `<clipPath id="${clip}"><rect x="${m.l}" y="${m.t}" width="${w - m.l - m.r}" height="${h - m.t - m.b}"/></clipPath><g clip-path="url(#${clip})">`;
+  for (const se of series) {
+    const d = se.pts.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
+    s += `<path d="${d}" fill="none" stroke="${css(se.color)}" stroke-width="${se.width || 2.4}" ${se.dash ? `stroke-dasharray="${se.dash}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+  s += "</g>";
+  for (const se of series) {
+    if (se.end) { const p = se.pts[se.pts.length - 1]; s += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="3.5" fill="${css(se.color)}"/><text x="${X(p[0]) - 6}" y="${Y(p[1]) - 8}" text-anchor="end" style="fill:${css(se.color)}" ${se.below ? `dy="26"` : ""}>${esc(se.end)}</text>`; }
+  }
+  for (const p of points) s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="4.5" fill="${css(p.color)}" stroke="${css("--paper")}" stroke-width="1.5"/>${p.label ? `<text x="${X(p.x) - 8}" y="${Y(p.y) + (p.below ? 18 : -9)}" text-anchor="end">${esc(p.label)}</text>` : ""}`;
+  svg.innerHTML = s;
+}
+function niceTicks(a, b, n) {
+  const span = b - a, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((k) => span / k <= n) || 10 * mag;
+  const out = []; for (let v = Math.ceil(a / step) * step; v <= b + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+function legend(el, items) { el.innerHTML = items.map(([c, l, dash]) => `<span><i style="background:${dash ? "transparent" : css(c)};border-color:${css(c)};${dash ? "border-style:dashed" : ""}"></i>${esc(l)}</span>`).join(""); }
+
+// ---- Plate I: the world ------------------------------------------------------
+let picked = 14;
+function inspect(id) {
+  picked = id;
+  const t = byId[id], d = tileData[id];
+  const rows = d.firms.slice(0, 6).map((f) => `<tr><td>${esc(f.name)}<br><span class="aside">${esc(f.good)}</span></td><td class="n">${fmt(f.labor)} workers</td></tr>`).join("");
+  document.getElementById("inspector").innerHTML = `<h4>${esc(t.name)}</h4>
+    <div class="aside">${cap(t.terrain)}${t.coastal ? ", on the coast" : ", inland"}</div>
+    <table><tr><td>People</td><td class="n">${fmt(d.people, 0)}</td></tr>
+    <tr><td>Wage, a day</td><td class="n">${fmt(d.wage, 2)}</td></tr>
+    <tr><td>Living standard</td><td class="n">${fmt(d.utility, 2)}</td></tr>
+    <tr><td>Population growth</td><td class="n">${(100 * d.growth).toFixed(2)}% a year</td></tr></table>
+    <table><tr><td colspan="2" class="aside">Its biggest employers</td></tr>${rows}</table>`;
+  drawWorld();
+}
+function drawWorld() {
+  hexMap(document.getElementById("map-world"), { fill: (t) => css("--t-" + t.terrain), selected: picked, onPick: inspect });
+  const terr = [...new Set(tiles.map((t) => t.terrain))];
+  legend(document.getElementById("legend-terrain"), terr.map((t) => ["--t-" + t, cap(t)]));
+}
+
+// ---- Plate II: a firm's production function -----------------------------------
+const firmNames = D.firms.map((f) => f.Name);
+let firmPick = "Farm";
+function drawFirm() {
+  const f = D.firms.find((x) => x.Name === firmPick);
+  const pts = (m) => { const a = (m.Factors.find((x) => x.Kind === "labour") || { Exp: 0 }).Exp; return [...Array(41)].map((_, i) => { const l = i / 10; return [l, m.TFP * Math.pow(l, a)]; }); };
+  const series = f.Methods.map((m, i) => ({ pts: pts(m), color: SERIES[i], end: i === 0 ? "1820" : "" }));
+  lineChart(document.getElementById("chart-firm"), { series, xTicks: [0, 1, 2, 3, 4], xLabel: "workers per level", yLabel: `output per level (${f.Good})`, w: 700, h: 320, yMin: 0 });
+  legend(document.getElementById("legend-firm"), f.Methods.map((m, i) => [SERIES[i], `${m.Name}${m.Requires ? ` (with ${m.Requires})` : " (1820)"}: TFP ${m.TFP}, labour exponent ${(m.Factors.find((x) => x.Kind === "labour") || { Exp: 0 }).Exp}`]));
+  const first = f.Methods[0], last = f.Methods[f.Methods.length - 1];
+  const inputs = (m) => m.Factors.filter((x) => x.Kind !== "labour").map((x) => `${x.Kind} (${x.Exp})`).join(", ") || "nothing but labour";
+  document.getElementById("cap-firm").textContent = `The other inputs are held at one unit per level. The ${first.Name.toLowerCase()} of 1820 needs ${inputs(first)}; the ${last.Name.toLowerCase()} needs ${inputs(last)}. Each curve flattens as workers are added: that is the diminishing return. A higher curve with a lower exponent makes more with fewer hands.`;
+  document.querySelectorAll("#firm-pick button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.f === firmPick));
+}
+document.getElementById("firm-pick").innerHTML = firmNames.map((n) => `<button data-f="${esc(n)}">${esc(n)}</button>`).join("");
+document.querySelectorAll("#firm-pick button").forEach((b) => b.addEventListener("click", () => { firmPick = b.dataset.f; drawFirm(); }));
+
+// ---- Plate III: site multipliers ------------------------------------------------
+function drawSites() {
+  const svg = document.getElementById("chart-sites");
+  const land = D.firms.filter((f) => Object.keys(f.Sites).length);
+  const terr = ["plains", "forest", "hills", "mountains", "tropical"];
+  const w = 760, rowH = 34, m = { l: 112, r: 20, t: 28, b: 30 }, h = m.t + land.length * rowH + m.b;
+  const maxV = 1.8, gw = (w - m.l - m.r) / terr.length;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  let s = "";
+  terr.forEach((t, j) => { s += `<text class="title" x="${m.l + gw * j + gw / 2}" y="18" text-anchor="middle">${cap(t)}</text>`; });
+  land.forEach((f, i) => {
+    const y = m.t + i * rowH;
+    s += `<text x="${m.l - 10}" y="${y + rowH / 2 + 4}" text-anchor="end" style="fill:${css("--ink")}">${esc(f.Name)}</text>`;
+    s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${y + rowH}" y2="${y + rowH}"/>`;
+    terr.forEach((t, j) => {
+      const v = f.Sites[t], x0 = m.l + gw * j + 6, bw = gw - 16;
+      s += `<line class="axis" x1="${x0 + bw / maxV}" x2="${x0 + bw / maxV}" y1="${y + 5}" y2="${y + rowH - 5}" stroke-dasharray="2 2"/>`;
+      if (v) s += `<rect x="${x0}" y="${y + 8}" width="${(bw * v / maxV).toFixed(1)}" height="${rowH - 16}" fill="${css("--t-" + t)}" stroke="${css("--rule")}"/><text x="${x0 + bw * v / maxV + 4}" y="${y + rowH / 2 + 4}" style="fill:${css("--ink")}">×${v}</text>`;
+    });
+  });
+  s += `<text x="${m.l}" y="${h - 8}">The dotted line in each column is ×1, the recipe as written.</text>`;
+  svg.innerHTML = s;
+}
+
+// ---- Plate IV: value added per worker -----------------------------------------
+function drawVA() {
+  const va = {};
+  for (const d of D.tiles) { const L = d.firms.reduce((a, f) => a + f.labor, 0), V = d.firms.reduce((a, f) => a + f.va, 0); va[d.id] = L > 0 ? V / L : 0; }
+  const vals = Object.values(va), lo = Math.min(...vals), hi = Math.max(...vals);
+  hexMap(document.getElementById("map-va"), { fill: (t) => ramp((va[t.id] - lo) / (hi - lo)), label: (t) => fmt(va[t.id], 1) });
+  const ranked = tiles.slice().sort((a, b) => va[b.id] - va[a.id]);
+  const top = ranked.slice(0, 3), bottom = ranked.slice(-3).reverse();
+  const line = (t) => `<tr><td>${esc(t.name)} <span class="aside">(${t.terrain}${t.coastal ? ", coast" : ""})</span></td><td class="n">${fmt(va[t.id], 2)}</td></tr>`;
+  document.getElementById("va-note").innerHTML = `<h4>Where work pays</h4><div class="aside">Value added per worker a day</div>
+    <table><tr><td colspan="2" class="aside">Highest</td></tr>${top.map(line).join("")}<tr><td colspan="2" class="aside">Lowest</td></tr>${bottom.map(line).join("")}</table>`;
+}
+
+// ---- Plate V: prices and flows ----------------------------------------------------
+let goodPick = D.map.goods.includes("grain") ? "grain" : D.map.goods[0];
+function drawPrice() {
+  const g = goodPick, pr = D.map.prices[g], fl = D.map.flows[g] || [];
+  const vals = Object.values(pr), lo = Math.min(...vals), hi = Math.max(...vals);
+  const qmax = Math.max(...fl.map((f) => f[2]), 1e-9);
+  hexMap(document.getElementById("map-price"), {
+    fill: (t) => (pr[t.id] === undefined ? css("--surface") : ramp(Math.log(pr[t.id] / lo) / Math.log(hi / lo || 2))),
+    label: (t) => (pr[t.id] === undefined ? "" : fmt(pr[t.id], 1)),
+    arrows: fl.filter((f) => f[2] > qmax * 0.04).map(([a, b, q]) => [a, b, { w: 0.8 + 5 * Math.sqrt(q / qmax) }]),
+  });
+  document.getElementById("good-name").textContent = g;
+  const makers = Object.entries(D.map.made[g] || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => byId[t].name);
+  const shipped = fl.reduce((a, f) => a + f[2], 0);
+  document.getElementById("price-note").innerHTML = `<h4>${cap(g)}</h4><table>
+    <tr><td>Cheapest tile</td><td class="n">${fmt(lo, 2)}</td></tr><tr><td>Dearest tile</td><td class="n">${fmt(hi, 2)}</td></tr>
+    <tr><td>Dearest ÷ cheapest</td><td class="n">×${(hi / lo).toFixed(2)}</td></tr>
+    <tr><td>Routes in use</td><td class="n">${fl.length}</td></tr><tr><td>Shipped a day</td><td class="n">${fmt(shipped, 2)}</td></tr></table>
+    <p class="aside" style="margin-top:10px">Made mostly in ${makers.map(esc).join(", ")}. Tiles left blank have no market for it.</p>`;
+  document.querySelectorAll("#good-pick button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.g === goodPick));
+}
+document.getElementById("good-pick").innerHTML = D.map.goods.map((g) => `<button data-g="${esc(g)}">${esc(g)}</button>`).join("");
+document.querySelectorAll("#good-pick button").forEach((b) => b.addEventListener("click", () => { goodPick = b.dataset.g; drawPrice(); }));
+
+// ---- Plate VII: the transport sweep ---------------------------------------------------
+function drawSweep() {
+  const rows = D.sweep.filter((r) => r.cost < 1e5), aut = D.sweep.find((r) => r.cost >= 1e5);
+  const AX = 250; // where autarky is drawn on the log axis
+  const ticks = [0.05, 0.1, 0.5, 1, 5, 10, 50, 100];
+  const panel = (key, title, color, yFmt, extra) => {
+    const svg = document.createElementNS(NS, "svg"); svg.setAttribute("class", "chart"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", title);
+    const series = [{ pts: rows.map((r) => [r.cost, r[key]]), color }].concat(extra ? [extra] : []);
+    lineChart(svg, { series, xLog: true, xTicks: ticks, xLabel: "transport cost (× normal)", yFmt, title, w: 480, h: 280, marks: [{ x: 1, label: "normal" }],
+      points: [{ x: AX, y: aut[key], color, label: "autarky", below: key === "transportJobs" }] });
+    return svg;
+  };
+  const box = document.getElementById("sweep-charts"); box.innerHTML = "";
+  box.append(
+    panel("living", "Living standard (utility per person)", "--s1", (v) => v.toFixed(1)),
+    panel("gdpHead", "Output per head, a day", "--s2", (v) => v.toFixed(0), { pts: rows.map((r) => [r.cost, r.gdpHeadWithTransport]), color: "--s2", dash: "5 4", width: 1.6 }),
+    panel("priceGap", "Price gap: dearest tile ÷ cheapest − 1", "--s3", (v) => `${(100 * v).toFixed(0)}%`),
+    panel("transportJobs", "Share of workers in transport", "--s4", (v) => `${(100 * v).toFixed(0)}%`));
+  const near = D.sweep[0], one = D.sweep.find((r) => r.cost === 1);
+  document.getElementById("facts").innerHTML = [
+    [`+${Math.round(100 * (near.living / aut.living - 1))}%`, "living standard, autarky to nearly free transport"],
+    [`×${(near.gdpHead / aut.gdpHead).toFixed(1)}`, "output per head, the same comparison"],
+    [`+${Math.round(100 * (one.living / aut.living - 1))}%`, "living standard at normal costs over autarky"],
+    [`${Math.round(100 * one.transportJobs)}%`, "of workers haul goods at normal costs"],
+  ].map(([b, s]) => `<div class="fact"><b>${b}</b><span>${s}</span></div>`).join("");
+}
+
+// ---- Plate VIII: growth --------------------------------------------------------------
+function drawGrowth() {
+  const g = D.growth, f = (b) => Math.max(g.min, Math.min(g.max, g.slope * (b - g.neutral)));
+  const pts = [...Array(101)].map((_, i) => [i / 100, 100 * f(i / 100)]);
+  lineChart(document.getElementById("chart-growth"), { series: [{ pts, color: "--s4" }], xTicks: [0, 0.25, 0.5, 0.75, 1], xLabel: "basic needs met (0 = nothing, 1 = plenty)",
+    yFmt: (v) => `${v.toFixed(1)}%`, yLabel: "growth a year", w: 700, h: 280, marks: [{ x: g.neutral, label: "no growth" }] });
+  const met = D.tiles.map((t) => t.growth);
+  document.getElementById("cap-growth").textContent = `Growth = ${g.slope} × (basic needs met − ${g.neutral}), between ${(100 * g.min).toFixed(0)}% and +${(100 * g.max).toFixed(0)}% a year. After five years the map's tiles grow between ${(100 * Math.min(...met)).toFixed(2)}% and ${(100 * Math.max(...met)).toFixed(2)}% a year.`;
+}
+
+// ---- Plates VIII and IX: the strike --------------------------------------------------
+function drawShock() {
+  const S = D.shock, t = byId[S.tile], months = S.months, sm = S.shockMonth;
+  document.getElementById("shock-name").textContent = t.name;
+  const names = { 0: `${t.name} itself`, 1: "one hop away", 2: "two hops", 3: "three hops", 4: "four hops", 5: "five hops" };
+  const rings = Object.keys(S.rings).filter((k) => +k <= 3);
+  lineChart(document.getElementById("chart-shock-people"), {
+    series: rings.map((k, i) => ({ pts: months.map((m, j) => [m / 12, S.rings[k][j]]), color: SERIES[i], end: names[k] })),
+    xTicks: [0, 1, 2, 3, 4, 5], xLabel: "years", yLabel: "people vs control", yFmt: (v) => v.toFixed(0), marks: [{ x: sm / 12, label: "strike" }], w: 520, h: 320 });
+  lineChart(document.getElementById("chart-shock-util"), {
+    // (from the second month: the first sample is taken before the markets have opened)
+    series: [{ pts: months.slice(1).map((m, j) => [m / 12, S.utilShock[j + 1]]), color: "--s1", end: t.name },
+      { pts: months.slice(1).map((m, j) => [m / 12, S.utilControl[j + 1]]), color: "--muted", dash: "5 4", end: "control", below: true },
+      { pts: months.slice(1).map((m, j) => [m / 12, S.utilNeighbours[j + 1]]), color: "--s2", end: "neighbours" }],
+    xTicks: [0, 1, 2, 3, 4, 5], xLabel: "years", yLabel: "living standard", yFmt: (v) => v.toFixed(1), marks: [{ x: sm / 12 }], w: 520, h: 320 });
+  const maxAbs = Math.max(...S.final.map(Math.abs));
+  hexMap(document.getElementById("map-shock"), { fill: (x) => diverge(S.final[x.id], maxAbs), label: (x) => (Math.abs(S.final[x.id]) >= 0.5 ? (S.final[x.id] > 0 ? "+" : "") + fmt(S.final[x.id], 0) : ""), selected: S.tile });
+  const gained = S.final[S.tile], lostNext = rings.length > 1 ? -S.rings[1][S.rings[1].length - 1] : 0;
+  document.getElementById("shock-note").innerHTML = `<h4>${esc(t.name)}</h4><div class="aside">${cap(t.terrain)}, inland, outlined</div><table>
+    <tr><td>People gained by ${esc(t.name)}</td><td class="n">+${fmt(gained, 0)}</td></tr>
+    <tr><td>Lost by its ${S.ringSize["1"]} neighbours</td><td class="n">−${fmt(lostNext, 0)}</td></tr>
+    <tr><td>Lost two hops out</td><td class="n">−${fmt(-S.rings["2"][S.rings["2"].length - 1], 0)}</td></tr>
+    <tr><td>Its people then and now</td><td class="n">${fmt(S.peopleTile[sm], 0)} → ${fmt(S.peopleTile[S.peopleTile.length - 1], 0)}</td></tr></table>`;
+  document.getElementById("mig-rate").textContent = D.migration.rate;
+  document.getElementById("mig-min").textContent = D.migration.minPopulation;
+}
+
+// ---- Plate VI: prices along the routes ------------------------------------------------
+function drawLanded() {
+  const R0 = D.routes, svg = document.getElementById("chart-landed");
+  const all = R0.busy.concat(R0.idle).flat().filter((v) => v > 0);
+  const lo = Math.pow(10, Math.floor(Math.log10(Math.min(...all)))), hi = Math.pow(10, Math.ceil(Math.log10(Math.max(...all))));
+  const w = 480, h = 360, m = { l: 54, r: 14, t: 30, b: 44 };
+  const X = (v) => m.l + Math.log10(v / lo) / Math.log10(hi / lo) * (w - m.l - m.r);
+  const Y = (v) => h - m.b - Math.log10(v / lo) / Math.log10(hi / lo) * (h - m.t - m.b);
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  let s = `<text class="title" x="${m.l}" y="18">Every route at the end of the run</text>`;
+  for (let v = lo; v <= hi * 1.001; v *= 10) {
+    s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`;
+    s += `<line class="axis" x1="${X(v)}" x2="${X(v)}" y1="${h - m.b}" y2="${h - m.b + 4}"/><text x="${X(v)}" y="${h - m.b + 18}" text-anchor="middle">${v}</text>`;
+  }
+  s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${h - m.b}" y2="${h - m.b}"/>`;
+  s += `<text x="${(m.l + w - m.r) / 2}" y="${h - 6}" text-anchor="middle">landed cost: origin price + carriage</text>`;
+  s += `<text x="12" y="${(m.t + h - m.b) / 2}" text-anchor="middle" transform="rotate(-90 12 ${(m.t + h - m.b) / 2})">price at the destination</text>`;
+  for (const [x, y] of R0.idle) s += `<circle cx="${X(x).toFixed(1)}" cy="${Y(y).toFixed(1)}" r="2" fill="${css("--muted")}" fill-opacity=".35"/>`;
+  for (const [x, y] of R0.busy) s += `<circle cx="${X(x).toFixed(1)}" cy="${Y(y).toFixed(1)}" r="2.3" fill="${css("--s1")}" fill-opacity=".7"/>`;
+  s += `<line x1="${X(lo)}" y1="${Y(lo)}" x2="${X(hi)}" y2="${Y(hi)}" stroke="${css("--ink")}" stroke-dasharray="5 4"/><text x="${X(hi) - 4}" y="${Y(hi) + 16}" text-anchor="end" style="fill:${css("--ink")}">equal</text>`;
+  svg.innerHTML = s;
+  const c = R0.converging, ev = R0.everyDays, from = Math.round(15 / ev); // (from day 15: the first days' markets are still filling)
+  lineChart(document.getElementById("chart-converge"), {
+    series: c.map((r, i) => ({ pts: r.ratio.slice(from).map((v, j) => [(j + from) * ev / 30, v]), color: SERIES[i + 1], width: 2 })),
+    xTicks: [1, 3, 6, 9], xLabel: "months from the start", yFmt: (v) => v.toFixed(2), title: "The busiest routes in their first year", w: 480, h: 360, yMin: 0.8, yMax: 1.6,
+    marks: [] });
+  legend(document.getElementById("legend-landed"), [["--s1", `routes in use (${R0.busy.length})`], ["--muted", `idle routes (a sample of ${R0.idle.length})`]]
+    .concat(c.map((r, i) => [SERIES[i + 1], `${r.good}, ${byId[r.from].name} → ${byId[r.to].name}: destination price ÷ landed cost`])));
+  const ratios = R0.busy.map(([x, y]) => y / x).sort((a, b) => a - b);
+  const within = ratios.filter((r) => Math.abs(r - 1) < 0.05).length / ratios.length;
+  document.getElementById("cap-landed").textContent = `Left: each dot is one good on one route, both axes on a log scale. The ${R0.busy.length} routes in use lie on the dashed line, where the destination price equals the landed cost (${Math.round(100 * within)}% within 5% of it). The idle routes lie below it: their destination pays less than carriage would cost, so nobody ships. Right: on the three busiest routes the destination price starts far above the landed cost while the markets fill, and closes on it within a few months.`;
+}
+
+function drawAll() { drawWorld(); drawFirm(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawSweep(); drawGrowth(); drawShock(); }
+inspect(picked);
+drawAll();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+</script>

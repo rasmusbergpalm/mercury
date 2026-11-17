@@ -144,7 +144,9 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		}
 		groups[m.Base] = append(groups[m.Base], m.Firm)
 	}
-	machinery := []string{"tools", "steam engines", "explosives", "fertilizer", "electricity", "coal", "iron", "vehicles", "oil"}
+	// the prices the production methods are designed at (tools/method_design.py)
+	machinery := []string{"tools", "steam engines", "explosives", "fertilizer", "electricity", "coal", "iron", "vehicles", "oil",
+		"grain", "wood", "clay"}
 	cols := []string{"year", "pop", "gdp", "gdpHead", "living", "nominal", "invest", "investPriv", "KY", "ret", "laborShare",
 		"primary", "industry", "service", "levels", "techs", "tax", "bigShare", "smallest",
 		"traded", "transportJobs", "priceSpread", "infra"}
@@ -156,6 +158,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 	for _, g := range machinery {
 		cols = append(cols, "price "+g)
 	}
+	cols = append(cols, "wage")
 	fmt.Fprintln(out, strings.Join(cols, ","))
 
 	days := int(TicksPerYear)
@@ -284,6 +287,14 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			}
 			row = append(row, f4(p))
 		}
+		wl, l := 0.0, 0.0 // the wage, averaged over the workers
+		for _, r := range w.Regions {
+			for _, f := range r.Firms {
+				wl += f.Labor * r.Wage
+				l += f.Labor
+			}
+		}
+		row = append(row, f4(wl/math.Max(l, 1e-12)))
 		fmt.Fprintln(out, strings.Join(row, ","))
 		ni, wages, constr, constrPriv, profit, shipped = 0, 0, 0, 0, 0, 0
 		made = map[string]float64{}

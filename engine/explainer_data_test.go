@@ -52,11 +52,60 @@ func TestExplainerData(t *testing.T) {
 	}
 	days := int(TicksPerYear)
 
-	// ---- the base run: what each tile makes after five years
+	// ---- the base run: what each tile makes after five years, and how
+	// prices settle along the trade routes: a route ships while the good
+	// sells at its destination for more than it costs landed there (the
+	// origin's price, plus the transport a unit needs at the origin's price
+	// of transport, over the share that arrives unspoiled)
 	w := world()
+	landed := func(t *Trader) float64 {
+		return (t.Origin.Markets[t.Good].Price + t.Tau*t.Origin.Markets[Transport].Price) / t.Arriving
+	}
+	const early = 360 // days of each route's prices kept, to show them converge
+	type pricePath struct{ Dest, Landed []float64 }
+	paths := make([]pricePath, len(w.Traders))
+	type routeRow struct {
+		Good                          string
+		From, To                      int
+		Origin, Dest, Landed, Shipped float64
+	}
+	routes := make([]routeRow, len(w.Traders))
 	for d := 0; d < 5*days; d++ {
 		w.Step()
+		if d < early && d%3 == 0 {
+			for i, t := range w.Traders {
+				paths[i].Dest = append(paths[i].Dest, t.Dest.Markets[t.Good].Price)
+				paths[i].Landed = append(paths[i].Landed, landed(t))
+			}
+		}
+		if d >= 5*days-30 { // the last month's averages
+			for i, t := range w.Traders {
+				r := &routes[i]
+				r.Good, r.From, r.To = Goods[t.Good].Name, t.Origin.ID, t.Dest.ID
+				r.Origin += t.Origin.Markets[t.Good].Price / 30
+				r.Dest += t.Dest.Markets[t.Good].Price / 30
+				r.Landed += landed(t) / 30
+				r.Shipped += t.Shipped / 30
+			}
+		}
 	}
+	// the busiest routes' first year
+	order := make([]int, len(routes))
+	for i := range order {
+		order[i] = i
+	}
+	sort.Slice(order, func(a, b int) bool {
+		return routes[order[a]].Shipped*routes[order[a]].Dest > routes[order[b]].Shipped*routes[order[b]].Dest
+	})
+	type converging struct {
+		Route routeRow
+		Path  pricePath
+	}
+	var conv []converging
+	for _, i := range order[:3] {
+		conv = append(conv, converging{routes[i], paths[i]})
+	}
+	write("routes.json", map[string]any{"routes": routes, "converging": conv, "everyDays": 3})
 	type firmRow struct {
 		Name, Method, Good, Sector string
 		Labor, Output, Levels      float64
