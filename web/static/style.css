@@ -242,3 +242,7 @@ tr.branch th { text-align: left; text-transform: capitalize; color: var(--text);
   background: var(--surface); color: var(--text); border: 1px solid var(--rule); border-radius: 6px;
   box-shadow: var(--shadow), 0 6px 18px rgba(0,0,0,.25); padding: 10px 12px; font-size: 14px; line-height: 1.4; }
 .info-pop[hidden] { display: none; }
+
+/* the lobby's link to the economy explainer */
+.bar a.explainer { color: inherit; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.bar a.explainer:hover { color: var(--leather-text); }
