@@ -47,7 +47,7 @@ out["shock"] = {"tile": sh["tile"], "shockMonth": sh["shockMonth"], "months": mo
                 "peopleTile": [round(x, 1) for x in s["People"][sh["tile"]]], "peopleTileControl": [round(x, 1) for x in c["People"][sh["tile"]]]}
 # production functions
 rc = json.load(open(f"{S}/data/recipes.json"))
-keep = ["Farm", "Iron mine", "Coal mine", "Forestry", "Mill", "Smelter", "Tailor", "Transport", "Toolmaker", "Brewery"]
+keep = ["Farm", "Potato farm", "Iron mine", "Coal mine", "Forestry", "Mill", "Smelter", "Tailor", "Transport", "Toolmaker", "Brewery"]
 out["firms"] = [f for f in rc["firms"] if f["Name"] in keep]
 out["growth"] = rc["growth"]
 out["migration"] = rc["migration"]
@@ -83,5 +83,18 @@ def even(run):
             "prices": [round(r["Prices"][t][m] / avg("Prices", m), 4) for m in range(n)],
             "people": [round(r["People"][t][m], 1) for m in range(n)]}
 out["even"] = {"move": even("shocked"), "stay": even("shockedStill"), "control": even("control")}
+# trade across transport costs: wages and specialisation, and each tile's farm share
+tr = json.load(open(f"{S}/data/trade.json"))["runs"]
+out["trade"] = [{"cost": r["Cost"], "migration": r["Migration"], "wageSpread": round(r["WageSpread"], 4),
+                 "spec": round(r["Specialisation"], 4), "farm": [round(x, 4) for x in r["FarmShare"]]} for r in tr]
+# Engel's law: each tile's share of spending on basic needs against its income a head
+en = json.load(open(f"{S}/data/engel.json"))
+out["engel"] = [{"tile": int(r["Day"]), "basic": round(r["BasicShare"], 4), "income": round(r["IncomeHead"], 3)} for r in en["tiles"]]
+# the Dutch disease: the boom tile's workers by sector, the last two years averaged
+bo = json.load(open(f"{S}/data/boom.json"))
+def last2(r):
+    return {k: round(sum(r[k][-24:]) / len(r[k][-24:]), 2) for k in ("Primary", "Industry", "Service", "Coal", "Wage")}
+out["boom"] = {"tile": bo["boom"]["Tile"], "boom": last2(bo["boom"]), "control": last2(bo["control"]),
+               "before": {k: round(sum(bo["boom"][k][:12]) / 12, 2) for k in ("Primary", "Industry", "Service", "Coal", "Wage")}}
 json.dump(out, open(f"{S}/explainer-data.json", "w"), separators=(",", ":"))
 print(f"{len(json.dumps(out))} bytes of data; goods {goods}")

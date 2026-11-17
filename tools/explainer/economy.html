@@ -17,7 +17,7 @@ __STYLE__</style>
 </div>
 
 <div class="figure" id="fig-world">
-  <div class="head"><span class="plate">Plate I</span><h3>The world: terrain, and what each tile does</h3></div>
+  <div class="head"><span class="plate"></span><h3>The world: terrain, and what each tile does</h3></div>
   <div class="mapwrap">
     <div><svg class="chart" id="map-world" role="img" aria-label="Hex map of the 36 tiles coloured by terrain"></svg>
       <div class="legend" id="legend-terrain"></div></div>
@@ -31,12 +31,12 @@ __STYLE__</style>
 <h2><span class="no">I.</span>Firms make things</h2>
 <p>Every tile has a set of firms: farms, mines and forests that only work where the land allows, and mills, smithies, tailors and breweries that can work anywhere. A firm hires labour from the tile's people, buys its inputs in the tile's market, and sells what it makes there. Its output follows a Cobb–Douglas production function:</p>
 <p class="eq">output = TFP × levels<sup>1−s</sup> × labour<sup>a</sup> × input₁<sup>b</sup> × input₂<sup>c</sup> …, with a + b + c + … = s &lt; 1</p>
-<p><em>Levels</em> are the firm's buildings, its capital. Owners add a level when the firm earns more than a level costs, and the exponents add up to less than one. So each extra worker in a given building adds less than the one before. Plate II shows this diminishing return for a single level, holding the other inputs at one unit each.</p>
+<p><em>Levels</em> are the firm's buildings, its capital. Owners add a level when the firm earns more than a level costs, and the exponents add up to less than one. So each extra worker in a given building adds less than the one before. <span class="ref" data-fig="firm"></span> shows this diminishing return for a single level, holding the other inputs at one unit each.</p>
 <p>A firm can make its good in several ways, called methods. The first is the one available in 1820; later ones come with technology. In the full game nations research those technologies; here the methods are shown only to compare them. A later method is more productive (higher TFP) and often needs fewer hands (a lower labour exponent), but needs machinery or fuel the old way didn't.</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate II</span><h3>One level of a firm: output as workers are added</h3>
+<div class="figure" id="fig-firm">
+  <div class="head"><span class="plate"></span><h3>One level of a firm: output as workers are added</h3>
     <div class="controls" id="firm-pick" role="group" aria-label="Choose a firm"></div></div>
   <svg class="chart" id="chart-firm" role="img" aria-label="Output per level against labour per level, one curve per method"></svg>
   <div class="legend" id="legend-firm"></div>
@@ -44,21 +44,21 @@ __STYLE__</style>
 </div>
 
 <div class="col">
-<p>Land matters too. A farm on rich plains is half again as productive as the recipe says, and one in the tropics only six tenths. Mines need hills and mountains, and fishing needs the coast. Plate III gives these site multipliers for the land-bound firms that drive the map's trade.</p>
+<p>Land matters too. A farm on rich plains is half again as productive as the recipe says, and one in the tropics only six tenths. Mines need hills and mountains, and fishing needs the coast. <span class="ref" data-fig="sites"></span> gives these site multipliers for the land-bound firms that drive the map's trade.</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate III</span><h3>The same firm on different land</h3></div>
+<div class="figure" id="fig-sites">
+  <div class="head"><span class="plate"></span><h3>The same firm on different land</h3></div>
   <svg class="chart" id="chart-sites" role="img" aria-label="Site productivity multipliers by terrain"></svg>
   <p class="cap">Each bar is the multiplier on a firm's productivity on that terrain (1 = the recipe as written). A missing bar means the firm can't work there at all.</p>
 </div>
 
 <div class="col">
-<p>Put together, land, people and prices decide what each tile does and how well work pays there. Plate IV maps the value a worker adds in a day (what the tile's firms sell, less what they buy, per worker).</p>
+<p>Put together, land, people and prices decide what each tile does and how well work pays there. <span class="ref" data-fig="va"></span> maps the value a worker adds in a day (what the tile's firms sell, less what they buy, per worker).</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate IV</span><h3>Value added per worker</h3></div>
+<div class="figure" id="fig-va">
+  <div class="head"><span class="plate"></span><h3>Value added per worker</h3></div>
   <div class="mapwrap">
     <svg class="chart" id="map-va" role="img" aria-label="Map of value added per worker"></svg>
     <div class="inspector" id="va-note"></div>
@@ -74,8 +74,8 @@ __STYLE__</style>
 <p>Between neighbouring tiles run merchants. A merchant buys a good where it is cheap and ships it to a neighbour where it is dear, if the price gap pays for the journey. Shipping uses up <em>transport</em>, a good of its own: carters, horses, boats and later railways, made by transport firms from labour. Each unit carried needs transport in proportion to the distance and the good's bulk, and perishables lose part of themselves on the way. Merchants trade only with neighbours; a good crosses the map by being sold on from tile to tile.</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate V</span><h3>The price of <span id="good-name">a good</span>, and where it flows</h3>
+<div class="figure" id="fig-price">
+  <div class="head"><span class="plate"></span><h3>The price of <span id="good-name">a good</span>, and where it flows</h3>
     <div class="controls" id="good-pick" role="group" aria-label="Choose a good"></div></div>
   <div class="mapwrap">
     <svg class="chart" id="map-price" role="img" aria-label="Price map with trade flows"></svg>
@@ -88,8 +88,8 @@ __STYLE__</style>
 <p>The merchants' trade pins prices to each other. Call a good's <em>landed cost</em> on a route the price it is bought for at the origin plus the transport a unit needs, allowing for what spoils on the way. If the destination pays more than that, the route makes money and the merchants ship more. Extra supply then pushes the destination's price down, and extra buying pushes the origin's up, until the gap is gone. If the destination pays less, nobody ships. So once markets settle, a good's price in a tile that imports it equals its neighbour's price plus the cost of carriage, and no tile's price can stay above that for long.</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate VI</span><h3>Prices settle at the neighbour's price plus carriage</h3></div>
+<div class="figure" id="fig-landed">
+  <div class="head"><span class="plate"></span><h3>Prices settle at the neighbour's price plus carriage</h3></div>
   <div class="grid2">
     <svg class="chart" id="chart-landed" role="img" aria-label="Destination price against landed cost for every trade route"></svg>
     <svg class="chart" id="chart-converge" role="img" aria-label="Destination price over landed cost on the busiest routes in the first year"></svg>
@@ -100,11 +100,11 @@ __STYLE__</style>
 
 <div class="col">
 <p>Carriage is paid per unit carried, in proportion to the distance and the good's bulk, not to its value. Carrying a chest of tea costs as much as a chest of potatoes, but the tea is worth far more, so the same carriage is a small share of its price. Alchian and Allen pointed out the consequence in 1964: per-unit transport costs make goods worth much for their bulk travel further than cheap, bulky ones. Hummels and Skiba confirmed it in trade data forty years later, under the title "Shipping the good apples out".</p>
-<p>Plate VII tests it, with spoilage switched off so that only carriage decides how far a good goes. Each dot is a good: how many hops a unit travels on average, counting every time it is sold on, against its value per unit of bulk. Then the bulk of potatoes, coal and tea is changed, one good at a time, and the arrows show where each moves. Make potatoes four times less bulky, as if they were dried or the carts got bigger, and they move up and to the right: they travel five times as far.</p>
+<p><span class="ref" data-fig="aa"></span> tests it, with spoilage switched off so that only carriage decides how far a good goes. Each dot is a good: how many hops a unit travels on average, counting every time it is sold on, against its value per unit of bulk. Then the bulk of potatoes, coal and tea is changed, one good at a time, and the arrows show where each moves. Make potatoes four times less bulky, as if they were dried or the carts got bigger, and they move up and to the right: they travel five times as far.</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate VII</span><h3>Goods worth much for their bulk travel further</h3></div>
+<div class="figure" id="fig-aa">
+  <div class="head"><span class="plate"></span><h3>Goods worth much for their bulk travel further</h3></div>
   <svg class="chart" id="chart-aa" role="img" aria-label="Hops travelled per unit made against value per unit of bulk, with arrows for goods whose bulk was changed"></svg>
   <div class="legend" id="legend-aa"></div>
   <p class="cap" id="cap-aa"></p>
@@ -116,17 +116,39 @@ __STYLE__</style>
 <h2><span class="no">III.</span>What transport is worth</h2>
 <p>Transport cost is one number in the game that scales every hop. To see what it does, the same map was run for fifteen years at each of 25 costs, and the last year measured: from nearly free (a twentieth of the normal cost) to 128 times normal, and finally to autarky, where no route ever pays and every tile lives on what it makes itself.</p>
 <div class="facts" id="facts"></div>
-<p>As transport gets dearer every measure of well-being falls smoothly (Plate VIII). Living standards drop because each tile must make more of its own goods, including the ones its land is bad at, and people pay more for imports. Output per head falls even faster. The economy loses gains from specialisation, and more of its work goes into hauling goods.</p>
+<p>As transport gets dearer every measure of well-being falls smoothly (<span class="ref" data-fig="sweep"></span>). Living standards drop because each tile must make more of its own goods, including the ones its land is bad at, and people pay more for imports. Output per head falls even faster. The economy loses gains from specialisation, and more of its work goes into hauling goods.</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate VIII</span><h3>The settled economy at each transport cost</h3></div>
+<div class="figure" id="fig-sweep">
+  <div class="head"><span class="plate"></span><h3>The settled economy at each transport cost</h3></div>
   <div class="grid2" id="sweep-charts"></div>
   <p class="cap">The horizontal axis is the transport cost on a log scale, as a multiple of the game's normal cost (1). The dot on the far right of each panel is autarky. Output per head is net output valued at one set of prices for every run (those at normal costs), so the runs compare like for like. It is shown with transport counted as an input to trade (solid) and as output in its own right (dashed).</p>
 </div>
 
 <div class="col">
 <p>Two of the panels have a hump. The share of workers in transport first rises with its cost, since each shipment takes more hauling, then falls when trade itself shrinks. The price gap between a good's dearest and cheapest tile widens as transport gets dearer, as you'd expect, but it narrows again near autarky. That is a quirk of the measure: it only covers goods still sold in two tiles or more, and at prohibitive costs the only such goods are those every tile makes for itself, so their prices are close.</p>
+<p>Trade also moves the price of labour. Heckscher and Ohlin's theory, as Samuelson sharpened it in 1948, says that trade in goods alone tends to equalise what factors of production earn: a tile with plenty of labour exports goods that take a lot of labour, which raises its wages, and imports the rest. Wages can converge even if no one moves. To test it, the map was run at each transport cost twice, once with people free to move and once with nobody moving, and the spread of wages between tiles measured.</p>
+</div>
+
+<div class="figure" id="fig-fpe">
+  <div class="head"><span class="plate"></span><h3>Trade in goods evens out wages</h3></div>
+  <svg class="chart" id="chart-fpe" role="img" aria-label="Spread of wages between tiles against transport cost, with and without migration"></svg>
+  <div class="legend" id="legend-fpe"></div>
+  <p class="cap" id="cap-fpe"></p>
+</div>
+
+<div class="col">
+<p>Cheap carriage also lets each tile do what it is relatively best at, which is Ricardo's comparative advantage. A plains tile need not grow the best wheat in the world to farm; it only needs farming to be what it does best compared with its neighbours. When carriage is dear, every tile must feed itself, so each grows grain and potatoes on whatever land it has. When carriage is cheap, the farming moves to the good farmland and the rest of the map buys its food. The right-hand chart shows each tile's share of workers on farms against how good its land is for farming, at nearly free carriage and at prohibitive carriage. The left-hand chart sums it up with Krugman's index of specialisation: how different each tile's mix of trades is from the map's as a whole.</p>
+</div>
+
+<div class="figure" id="fig-spec">
+  <div class="head"><span class="plate"></span><h3>Cheap carriage, specialised tiles</h3></div>
+  <div class="grid2">
+    <svg class="chart" id="chart-spec" role="img" aria-label="Specialisation index against transport cost"></svg>
+    <svg class="chart" id="chart-farm" role="img" aria-label="Each tile's share of workers on farms against how good its land is for farming"></svg>
+  </div>
+  <div class="legend" id="legend-spec"></div>
+  <p class="cap" id="cap-spec"></p>
 </div>
 </section>
 
@@ -134,11 +156,11 @@ __STYLE__</style>
 <div class="col">
 <h2><span class="no">IV.</span>People choose, and move to where life is better</h2>
 <p>Each tile's people work for its firms, own them, and spend their income on needs in three tiers: basic needs (food, clothing and heat), then comforts, then luxuries. How well they meet those needs is their <em>living standard</em>, the game's utility per person. Within a need, goods substitute for each other: bread and potatoes both meet the need for staples, meat and fish for protein, wood and coal for heat. People spend each day to get the most out of their income at today's prices. (In the game populations also grow when people eat well; on this page that is switched off, so that the experiments compare like with like.)</p>
-<p>So when one good gets dear, people buy its substitute. To see it, a blight was let loose on the map's potatoes: every potato farm makes half what it did, as in the potato blight of the 1840s. Plate IX compares it with a run without the blight.</p>
+<p>So when one good gets dear, people buy its substitute. To see it, a blight was let loose on the map's potatoes: every potato farm makes half what it did, as in the potato blight of the 1840s. <span class="ref" data-fig="blight"></span> compares it with a run without the blight.</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate IX</span><h3>A potato blight: people turn to bread</h3></div>
+<div class="figure" id="fig-blight">
+  <div class="head"><span class="plate"></span><h3>A potato blight: people turn to bread</h3></div>
   <div class="grid2">
     <svg class="chart" id="chart-blight-price" role="img" aria-label="Prices of potatoes and bread, with and without the blight"></svg>
     <svg class="chart" id="chart-blight-eat" role="img" aria-label="Potatoes and bread eaten per person, with and without the blight"></svg>
@@ -148,14 +170,24 @@ __STYLE__</style>
 </div>
 
 <div class="col">
+<p>What people buy also changes with what they earn. In 1857 Ernst Engel found that the poorer a Belgian family, the larger the share of its budget went on food. Mercury's people behave the same way: a basic need is satisfied quickly, so as income grows a smaller share of it goes on bread, clothes and fuel, and more on comforts and luxuries. <span class="ref" data-fig="engel"></span> compares the map's tiles.</p>
+</div>
+
+<div class="figure" id="fig-engel">
+  <div class="head"><span class="plate"></span><h3>Engel's law: the richer, the smaller the share spent on basics</h3></div>
+  <svg class="chart" id="chart-engel" role="img" aria-label="Share of spending on basic needs against income a head, one dot per tile"></svg>
+  <p class="cap" id="cap-engel"></p>
+</div>
+
+<div class="col">
 <p>People also move. Every day, along each link between neighbouring tiles, a small share of the worse-off tile's workers moves to the better-off one:</p>
 <p class="eq">share moving a day = <span id="mig-rate"></span> × gap ÷ (1 + cost of the hop)</p>
 <p>The gap is how much better the destination lives, as a share of the origin's living standard, counted up to 30%. Cheap hops along the coast carry more people than hard ones overland, and a tile never empties below <span id="mig-min"></span> workers.</p>
-<p>To watch migration at work, one inland tile's firms were made half again as productive, as if coal or gold had been struck there. A twin run without the strike is the control. Plate X compares the two.</p>
+<p>To watch migration at work, one inland tile's firms were made half again as productive, as if coal or gold had been struck there. A twin run without the strike is the control. <span class="ref" data-fig="strike"></span> compares the two.</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate X</span><h3>A strike in <span id="shock-name"></span>: who moves, and how far</h3></div>
+<div class="figure" id="fig-strike">
+  <div class="head"><span class="plate"></span><h3>A strike in <span id="shock-name"></span>: who moves, and how far</h3></div>
   <div class="grid2">
     <svg class="chart" id="chart-shock-people" role="img" aria-label="Population change against the control by distance from the strike"></svg>
     <svg class="chart" id="chart-shock-util" role="img" aria-label="Living standard in the struck tile and its neighbours"></svg>
@@ -167,8 +199,8 @@ __STYLE__</style>
 <p>The strike lifts living standards in the tile at once, and people start coming within weeks. They come first from the next tiles, which lose people almost as fast as the struck tile gains them, and then from two hops out. Tiles further away barely notice. Migration is slow on purpose: a gap of a fifth in living standards moves several percent of a tile's people a year, roughly the pace of the great migrations of the century.</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate XI</span><h3>Four years after the strike: people gained or lost</h3></div>
+<div class="figure" id="fig-strikemap">
+  <div class="head"><span class="plate"></span><h3>Four years after the strike: people gained or lost</h3></div>
   <div class="mapwrap">
     <svg class="chart" id="map-shock" role="img" aria-label="Map of population change after the strike"></svg>
     <div class="inspector" id="shock-note"></div>
@@ -177,14 +209,26 @@ __STYLE__</style>
 </div>
 
 <div class="col">
-<p>Migration is what evens out living standards between places, and it works through the markets. The newcomers compete for jobs, so the struck tile's wages stop rising as fast as its output. They also need food, clothing and heat, so local demand rises, and with it the prices of what they buy. Higher prices and the extra mouths eat into the strike's gains until the gap with the neighbours is no longer worth the move. Plate XII runs the strike twice more to show it: once as above, and once with nobody allowed to move, so that only trade can spread the strike's gains.</p>
+<p>Migration is what evens out living standards between places, and it works through the markets. The newcomers compete for jobs, so the struck tile's wages stop rising as fast as its output. They also need food, clothing and heat, so local demand rises, and with it the prices of what they buy. Higher prices and the extra mouths eat into the strike's gains until the gap with the neighbours is no longer worth the move. <span class="ref" data-fig="even"></span> runs the strike twice more to show it: once as above, and once with nobody allowed to move, so that only trade can spread the strike's gains.</p>
 </div>
 
-<div class="figure">
-  <div class="head"><span class="plate">Plate XII</span><h3>How migration evens out living standards</h3></div>
+<div class="figure" id="fig-even">
+  <div class="head"><span class="plate"></span><h3>How migration evens out living standards</h3></div>
   <div class="grid2" id="even-charts"></div>
   <div class="legend" id="legend-even"></div>
   <p class="cap" id="cap-even"></p>
+</div>
+
+<div class="col">
+<p>A boom in one trade can shrink the others. When the Netherlands found natural gas in the 1960s its manufacturing declined, and economists named the effect the Dutch disease. Corden and Neary (1982) explained it in two parts. The booming trade draws workers away from the others and bids up wages. Then the extra income is spent, partly on things that can't be imported, such as local services, which draw more workers still. Manufacturing, whose goods could as well come from elsewhere, is squeezed between the two.</p>
+<p>To test it, the tile with the most coal miners found its coal three times as easy to dig. <span class="ref" data-fig="dutch"></span> compares its workers by trade with a run without the boom.</p>
+</div>
+
+<div class="figure" id="fig-dutch">
+  <div class="head"><span class="plate"></span><h3>A coal boom in <span id="boom-name"></span>: the Dutch disease</h3></div>
+  <svg class="chart" id="chart-dutch" role="img" aria-label="Workers by trade in the boom tile, before the boom, without it and with it"></svg>
+  <div class="legend" id="legend-dutch"></div>
+  <p class="cap" id="cap-dutch"></p>
 </div>
 </section>
 
@@ -196,7 +240,7 @@ __STYLE__</style>
 <script id="data" type="application/json">__DATA__</script>
 <script>
 __COMMON__
-// ---- Plate I: the world ------------------------------------------------------
+// ---- the world plate: the world ------------------------------------------------------
 let picked = 14;
 function inspect(id) {
   picked = id;
@@ -216,7 +260,7 @@ function drawWorld() {
   legend(document.getElementById("legend-terrain"), terr.map((t) => ["--t-" + t, cap(t)]));
 }
 
-// ---- Plate II: a firm's production function -----------------------------------
+// ---- the firm plate: a firm's production function -----------------------------------
 const firmNames = D.firms.map((f) => f.Name);
 let firmPick = "Farm";
 function drawFirm() {
@@ -233,7 +277,7 @@ function drawFirm() {
 document.getElementById("firm-pick").innerHTML = firmNames.map((n) => `<button data-f="${esc(n)}">${esc(n)}</button>`).join("");
 document.querySelectorAll("#firm-pick button").forEach((b) => b.addEventListener("click", () => { firmPick = b.dataset.f; drawFirm(); }));
 
-// ---- Plate III: site multipliers ------------------------------------------------
+// ---- the sites plate: site multipliers ------------------------------------------------
 function drawSites() {
   const svg = document.getElementById("chart-sites");
   const land = D.firms.filter((f) => Object.keys(f.Sites).length);
@@ -257,7 +301,7 @@ function drawSites() {
   svg.innerHTML = s;
 }
 
-// ---- Plate IV: value added per worker -----------------------------------------
+// ---- the va plate: value added per worker -----------------------------------------
 function drawVA() {
   const va = {};
   for (const d of D.tiles) { const L = d.firms.reduce((a, f) => a + f.labor, 0), V = d.firms.reduce((a, f) => a + f.va, 0); va[d.id] = L > 0 ? V / L : 0; }
@@ -270,7 +314,7 @@ function drawVA() {
     <table><tr><td colspan="2" class="aside">Highest</td></tr>${top.map(line).join("")}<tr><td colspan="2" class="aside">Lowest</td></tr>${bottom.map(line).join("")}</table>`;
 }
 
-// ---- Plate V: prices and flows ----------------------------------------------------
+// ---- the price plate: prices and flows ----------------------------------------------------
 let goodPick = D.map.goods.includes("grain") ? "grain" : D.map.goods[0];
 function drawPrice() {
   const g = goodPick, pr = D.map.prices[g], fl = D.map.flows[g] || [];
@@ -294,7 +338,7 @@ function drawPrice() {
 document.getElementById("good-pick").innerHTML = D.map.goods.map((g) => `<button data-g="${esc(g)}">${esc(g)}</button>`).join("");
 document.querySelectorAll("#good-pick button").forEach((b) => b.addEventListener("click", () => { goodPick = b.dataset.g; drawPrice(); }));
 
-// ---- Plate VIII: the transport sweep ---------------------------------------------------
+// ---- the sweep plate: the transport sweep ---------------------------------------------------
 function drawSweep() {
   const rows = D.sweep.filter((r) => r.cost < 1e5), aut = D.sweep.find((r) => r.cost >= 1e5);
   const AX = 250; // where autarky is drawn on the log axis
@@ -321,7 +365,7 @@ function drawSweep() {
   ].map(([b, s]) => `<div class="fact"><b>${b}</b><span>${s}</span></div>`).join("");
 }
 
-// ---- Plates VIII and IX: the strike --------------------------------------------------
+// ---- the strike plates: who moves, and how far ------------------------------------
 function drawShock() {
   const S = D.shock, t = byId[S.tile], months = S.months, sm = S.shockMonth;
   document.getElementById("shock-name").textContent = t.name;
@@ -348,7 +392,7 @@ function drawShock() {
   document.getElementById("mig-min").textContent = D.migration.minPopulation;
 }
 
-// ---- Plate VI: prices along the routes ------------------------------------------------
+// ---- the landed plate: prices along the routes ------------------------------------------------
 function drawLanded() {
   const R0 = D.routes, svg = document.getElementById("chart-landed");
   const all = R0.busy.concat(R0.idle).flat().filter((v) => v > 0);
@@ -381,7 +425,7 @@ function drawLanded() {
   document.getElementById("cap-landed").textContent = `Left: each dot is one good on one route, both axes on a log scale. The ${R0.busy.length} routes in use lie on the dashed line, where the destination price equals the landed cost (${Math.round(100 * within)}% within 5% of it). The idle routes lie below it: their destination pays less than carriage would cost, so nobody ships. Right: on the three busiest routes the destination price starts far above the landed cost while the markets fill, and closes on it within a few months.`;
 }
 
-// ---- Plate VII: the Alchian-Allen effect ---------------------------------------------------
+// ---- the aa plate: the Alchian-Allen effect ---------------------------------------------------
 function drawAA() {
   const A = D.aa, svg = document.getElementById("chart-aa");
   const all = A.base.concat(...Object.values(A.moves));
@@ -423,7 +467,7 @@ function drawAA() {
   document.getElementById("cap-aa").textContent = `Spoilage is off. Across the ${n} goods made in any quantity, value per unit of bulk and distance travelled go together (correlation ${r.toFixed(2)} on the log scales). Potatoes go from ${pb.hops.toFixed(3)} hops a unit at their usual bulk of ${pb.bulk} to ${pot[0].hops.toFixed(3)} at a bulk of ${pot[0].bulk}. Tea already travels about as far as goods do here, so making it lighter still adds little.`;
 }
 
-// ---- Plate IX: substitution -------------------------------------------------------------
+// ---- the blight plate: substitution -------------------------------------------------------------
 function drawBlight() {
   const B = D.blight, b = B.runs.blight, c = B.runs.control;
   const t = (k, r) => r.day.map((d, i) => [d / 365, r[k][i]]);
@@ -440,7 +484,7 @@ function drawBlight() {
   document.getElementById("cap-blight").textContent = `Averages over the map. By the end potatoes cost ${rise("potatoPrice")}% more than without the blight, and bread ${rise("breadPrice")}% more, as people bid for it instead. People eat ${-rise("potatoesEaten")}% fewer potatoes and ${rise("breadEaten")}% more bread. The two are close substitutes (an elasticity of substitution of ${B.sigma} within staples), so a moderate rise in the price of potatoes moves much of the eating to bread.`;
 }
 
-// ---- Plate XII: migration evens out living standards -----------------------------------
+// ---- the even plate: migration evens out living standards -----------------------------------
 function drawEven() {
   const E = D.even, sm = D.shock.shockMonth, months = D.shock.months;
   const pts = (arr) => arr.map((v, i) => [months[i] / 12, v]);
@@ -462,7 +506,105 @@ function drawEven() {
   document.getElementById("cap-even").textContent = `The dashed line marks the strike. With people free to move, the struck tile's lead in living standards falls to about ${Math.round(100 * L(E.move.gap))}% over the last six months and is still shrinking, as its population grows from ${E.move.people[sm].toFixed(0)} to ${E.move.people[E.move.people.length - 1].toFixed(0)}. Its cost of living rises to about ${pct(100 * (L(E.move.prices) - 1))} over its neighbours', as the newcomers' demand bids up local prices. When nobody may move, its lead stays at about ${Math.round(100 * L(E.stay.gap))}%: trade spreads some of the gains, but goods alone can't even out what the land and its firms produce. (A tile's wage here is pay per worker in its firms; living standards also count what its people own.)`;
 }
 
-function drawAll() { drawWorld(); drawFirm(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawBlight(); drawShock(); drawEven(); }
+// ---- factor-price equalisation ------------------------------------------------------------
+function drawFPE() {
+  const T = D.trade.filter((r) => r.cost < 1e5);
+  const runs = (mig) => T.filter((r) => r.migration === mig).sort((a, b) => a.cost - b.cost);
+  lineChart(document.getElementById("chart-fpe"), {
+    series: [{ pts: runs(false).map((r) => [r.cost, 100 * r.wageSpread]), color: "--s1" }, { pts: runs(true).map((r) => [r.cost, 100 * r.wageSpread]), color: "--s2", dash: "6 4" }],
+    xLog: true, xTicks: [0.1, 1, 10, 100], xLabel: "transport cost (× normal)", yLabel: "spread of wages between tiles", yFmt: (v) => `${v.toFixed(0)}%`, yMin: 0,
+    marks: [{ x: 1, label: "normal" }], w: 760, h: 320 });
+  legend(document.getElementById("legend-fpe"), [["--s1", "nobody moves: only goods are traded"], ["--s2", "people free to move as well", true]]);
+  const at = (c, mig) => T.find((r) => r.cost === c && r.migration === mig).wageSpread;
+  document.getElementById("cap-fpe").textContent = `The spread is the coefficient of variation of wages across tiles, weighted by people, in the fifteenth year at each cost. With nobody moving it falls from ${Math.round(100 * at(64, false))}% when carriage is 64 times dearer than normal to ${Math.round(100 * at(1, false))}% at normal costs and ${Math.round(100 * at(1 / 16, false))}% when it is nearly free. Letting people move as well hardly changes it: in this economy trade in goods does nearly all the evening out. Autarky is left out: with no trade, nothing ties one tile's prices to another's, so comparing their money wages means nothing.`;
+}
+
+// ---- comparative advantage and specialisation -------------------------------------------
+function drawSpec() {
+  const T = D.trade.filter((r) => !r.migration).sort((a, b) => a.cost - b.cost), aut = T.find((r) => r.cost >= 1e5), runs = T.filter((r) => r.cost < 1e5);
+  lineChart(document.getElementById("chart-spec"), { title: "How specialised tiles are (Krugman's index)", series: [{ pts: runs.map((r) => [r.cost, r.spec]), color: "--s1" }],
+    xLog: true, xTicks: [0.1, 1, 10, 100], xLabel: "transport cost (× normal)", yFmt: (v) => v.toFixed(2), marks: [{ x: 1, label: "normal" }],
+    points: [{ x: 250, y: aut.spec, color: "--muted", label: "autarky" }], w: 480, h: 320 });
+  // farmland: the better of the farm's and the potato farm's productivity on each tile's terrain
+  const farm = D.firms.find((f) => f.Name === "Farm"), pot = D.firms.find((f) => f.Name === "Potato farm");
+  const quality = (t) => Math.max(farm.Sites[t.terrain] || 0, pot.Sites[t.terrain] || 0);
+  const cheap = runs[0], dear = runs[runs.length - 1];
+  const svg = document.getElementById("chart-farm"), w = 480, h = 320, m = { l: 54, r: 14, t: 30, b: 44 };
+  const qs = tiles.map(quality), q1 = Math.max(...qs) + 0.15;
+  const ymax = Math.max(...cheap.farm, ...dear.farm) * 1.1;
+  const X = (v) => m.l + v / q1 * (w - m.l - m.r), Y = (v) => h - m.b - v / ymax * (h - m.t - m.b);
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  let s = `<text class="title" x="${m.l}" y="18">Each tile's share of workers on farms</text>`;
+  for (const v of niceTicks(0, ymax, 4)) s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${Math.round(100 * v)}%</text>`;
+  for (const v of [...new Set(qs)].sort()) s += `<line class="axis" x1="${X(v)}" x2="${X(v)}" y1="${h - m.b}" y2="${h - m.b + 4}"/><text x="${X(v)}" y="${h - m.b + 18}" text-anchor="middle">${v}</text>`;
+  s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${h - m.b}" y2="${h - m.b}"/><text x="${(m.l + w - m.r) / 2}" y="${h - 6}" text-anchor="middle">how good the land is for farming (productivity ×)</text>`;
+  tiles.forEach((t, i) => {
+    const jit = ((i * 37) % 11 - 5) / 5 * 0.035; // spread the tiles of one terrain apart
+    s += `<circle cx="${X(qs[i] + jit - 0.05)}" cy="${Y(dear.farm[i])}" r="3.5" fill="${css("--s2")}" fill-opacity=".8"/>`;
+    s += `<circle cx="${X(qs[i] + jit + 0.05)}" cy="${Y(cheap.farm[i])}" r="3.5" fill="${css("--s1")}" fill-opacity=".85"/>`;
+  });
+  svg.innerHTML = s;
+  legend(document.getElementById("legend-spec"), [["--s1", `nearly free carriage (×${cheap.cost})`], ["--s2", `prohibitive carriage (×${dear.cost})`]]);
+  const top = (r) => Math.max(...r.farm);
+  document.getElementById("cap-spec").textContent = `Nobody moves in these runs, so the change is all trade. Left: the index falls from ${cheap.spec.toFixed(2)} with nearly free carriage to about ${Math.min(...runs.map((r) => r.spec)).toFixed(2)} as carriage gets dear, then rises a little near autarky. It never reaches zero, because land alone forces some specialisation: only the coast can fish and only hills and mountains can mine; near autarky each tile falls back on what its own land can do. Right: with nearly free carriage the best farmland puts up to ${Math.round(100 * top(cheap))}% of its workers on farms and poor land almost none; with prohibitive carriage farming spreads to every tile that can farm at all, and the best farmland employs no more than ${Math.round(100 * top(dear))}%.`;
+}
+
+// ---- Engel's law ----------------------------------------------------------------------------
+function drawEngel() {
+  const E = D.engel, svg = document.getElementById("chart-engel");
+  const xs = E.map((r) => r.income), ys = E.map((r) => 100 * r.basic);
+  const x0 = Math.floor(Math.min(...xs)), x1 = Math.ceil(Math.max(...xs)), y0 = Math.floor(Math.min(...ys) / 5) * 5, y1 = Math.ceil(Math.max(...ys) / 5) * 5;
+  const w = 760, h = 340, m = { l: 54, r: 18, t: 14, b: 44 };
+  const X = (v) => m.l + (v - x0) / (x1 - x0) * (w - m.l - m.r), Y = (v) => h - m.b - (v - y0) / (y1 - y0) * (h - m.t - m.b);
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  let s = "";
+  for (const v of niceTicks(y0, y1, 5)) s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${v}%</text>`;
+  for (const v of niceTicks(x0, x1, 6)) s += `<line class="axis" x1="${X(v)}" x2="${X(v)}" y1="${h - m.b}" y2="${h - m.b + 4}"/><text x="${X(v)}" y="${h - m.b + 18}" text-anchor="middle">${v}</text>`;
+  s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${h - m.b}" y2="${h - m.b}"/><text x="${(m.l + w - m.r) / 2}" y="${h - 6}" text-anchor="middle">income a head, a day</text>`;
+  s += `<text x="14" y="${(m.t + h - m.b) / 2}" text-anchor="middle" transform="rotate(-90 14 ${(m.t + h - m.b) / 2})">share spent on basic needs</text>`;
+  const n = xs.length, mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+  const b = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0) / xs.reduce((a, x) => a + (x - mx) ** 2, 0);
+  s += `<line x1="${X(x0)}" y1="${Y(my + b * (x0 - mx))}" x2="${X(x1)}" y2="${Y(my + b * (x1 - mx))}" stroke="${css("--muted")}" stroke-dasharray="5 4"/>`;
+  E.forEach((r, i) => { s += `<circle cx="${X(xs[i])}" cy="${Y(ys[i])}" r="4.5" fill="${css("--s1")}" fill-opacity=".8"><title>${esc(byId[r.tile].name)}</title></circle>`; });
+  svg.innerHTML = s;
+  const lo = E.reduce((a, r) => (r.income < a.income ? r : a)), hi = E.reduce((a, r) => (r.income > a.income ? r : a));
+  document.getElementById("cap-engel").textContent = `One dot per tile, once the map has settled. ${byId[lo.tile].name}, the poorest, earns ${lo.income.toFixed(1)} a head and spends ${Math.round(100 * lo.basic)}% of it on basic needs; ${byId[hi.tile].name}, the richest, earns ${hi.income.toFixed(1)} and spends ${Math.round(100 * hi.basic)}%. The dashed line is the trend: each extra unit of income a day lowers the share by about ${Math.abs(b).toFixed(1)} points.`;
+}
+
+// ---- the Dutch disease ------------------------------------------------------------------------
+function drawDutch() {
+  const B = D.boom, svg = document.getElementById("chart-dutch");
+  document.getElementById("boom-name").textContent = byId[B.tile].name;
+  const cats = [["Coal miners", (r) => r.Coal], ["Other land work", (r) => r.Primary - r.Coal], ["Manufacturing", (r) => r.Industry], ["Services", (r) => r.Service]];
+  const runs = [["before the boom", B.before, "--muted"], ["without the boom", B.control, "--s2"], ["with the boom", B.boom, "--s1"]];
+  const w = 760, h = 320, m = { l: 54, r: 14, t: 14, b: 40 };
+  const vmax = Math.max(...cats.flatMap(([, f]) => runs.map(([, r]) => f(r)))) * 1.1;
+  const gw = (w - m.l - m.r) / cats.length, bw = gw / (runs.length + 1.2);
+  const Y = (v) => h - m.b - v / vmax * (h - m.t - m.b);
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  let s = "";
+  for (const v of niceTicks(0, vmax, 5)) s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`;
+  cats.forEach(([name, f], i) => {
+    runs.forEach(([, r, col], j) => {
+      const x = m.l + gw * i + bw * (0.6 + j), v = f(r);
+      s += `<rect x="${x}" y="${Y(v)}" width="${bw - 3}" height="${Y(0) - Y(v)}" fill="${css(col)}"/>`;
+    });
+    s += `<text x="${m.l + gw * i + gw / 2}" y="${h - m.b + 18}" text-anchor="middle" style="fill:${css("--ink")}">${name}</text>`;
+  });
+  s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${Y(0)}" y2="${Y(0)}"/><text x="14" y="${(m.t + h - m.b) / 2}" text-anchor="middle" transform="rotate(-90 14 ${(m.t + h - m.b) / 2})">workers</text>`;
+  svg.innerHTML = s;
+  legend(document.getElementById("legend-dutch"), runs.map(([l, , c]) => [c, l]));
+  const ch = (f) => Math.round(100 * (f(B.boom) / f(B.control) - 1));
+  const way = (f, up, down) => { const c = ch(f); return c >= 0 ? `${up} by ${c}%` : `${down} by ${-c}%`; };
+  document.getElementById("cap-dutch").textContent = `Workers in the boom tile: the year before the boom, and the last two years of the runs with and without it, averaged. Nobody moves once the map has settled, so the boom must find its workers in the tile itself, as in Corden and Neary's model. With the boom the tile has ${ch((r) => r.Coal)}% more coal miners and pays ${ch((r) => r.Wage)}% higher wages. Its other land work ${way((r) => r.Primary - r.Coal, "grows", "shrinks")}, its services, which can't be imported, ${way((r) => r.Service, "grow", "shrink")}, and its manufacturing ${way((r) => r.Industry, "grows", "shrinks")}. (Services include building, which comes and goes in waves, so they swing more than the rest.)`;
+}
+
+// plates are numbered in the order they appear, and the text's references follow
+const roman = (n) => [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]].reduce((out, [v, r]) => { while (n >= v) { out += r; n -= v; } return out; }, "");
+document.querySelectorAll(".figure").forEach((f, i) => { const p = f.querySelector(".plate"); if (p) p.textContent = `Plate ${roman(i + 1)}`; });
+document.querySelectorAll(".ref").forEach((r) => { const f = document.getElementById(`fig-${r.dataset.fig}`); r.textContent = f ? f.querySelector(".plate").textContent : "a plate below"; });
+
+function drawAll() { drawWorld(); drawFirm(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawDutch(); }
 inspect(picked);
 drawAll();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);

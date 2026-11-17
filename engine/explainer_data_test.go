@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -112,8 +113,38 @@ func TestExplainerData(t *testing.T) {
 			Origin, Dest, Landed, Shipped float64
 		}
 		routes := make([]routeRow, len(w.Traders))
+		// Engel's law: the share of spending that goes on basic needs, against
+		// income a head, for the map month by month as it settles and grows
+		// richer, and for each tile at the end
+		basicShare := func(r *Region) (basic, all, income float64) {
+			prices := make([]float64, NumGoods)
+			for g, m := range r.Markets {
+				prices[g] = m.Price
+			}
+			ts := r.TierSpend(prices)
+			for k, v := range ts {
+				all += v
+				if Tier(k) == Basic {
+					basic += v
+				}
+			}
+			for _, p := range r.Pops {
+				income += p.Income
+			}
+			return
+		}
+		type engelRow struct{ Day, BasicShare, IncomeHead float64 }
+		var engelMap, engelTiles []engelRow
 		for d := 0; d < end; d++ {
 			w.Step()
+			if d%30 == 29 {
+				b, a, inc, people := 0.0, 0.0, 0.0, 0.0
+				for _, r := range w.Regions {
+					rb, ra, ri := basicShare(r)
+					b, a, inc, people = b+rb, a+ra, inc+ri, people+r.Population()
+				}
+				engelMap = append(engelMap, engelRow{float64(d), b / a, inc / people})
+			}
 			if d < early && d%3 == 0 {
 				for i, t := range w.Traders {
 					paths[i].Dest = append(paths[i].Dest, t.Dest.Markets[t.Good].Price)
@@ -147,6 +178,11 @@ func TestExplainerData(t *testing.T) {
 			conv = append(conv, converging{routes[i], paths[i]})
 		}
 		write("routes.json", map[string]any{"routes": routes, "converging": conv, "everyDays": 3})
+		for _, r := range w.Regions {
+			b, a, inc := basicShare(r)
+			engelTiles = append(engelTiles, engelRow{float64(r.ID), b / a, inc / r.Population()})
+		}
+		write("engel.json", map[string]any{"map": engelMap, "tiles": engelTiles})
 		type firmRow struct {
 			Name, Method, Good, Sector string
 			Labor, Output, Levels      float64
@@ -275,8 +311,177 @@ func TestExplainerData(t *testing.T) {
 	}
 	var blighted, unblighted map[string][]float64
 
+	// ---- trade, wages and specialisation across transport costs: the map
+	// settles at each cost, with people free to move or not, and the last
+	// year is measured: how far apart wages are between tiles (factor-price
+	// equalisation: trade in goods alone pulls them together), and how
+	// specialised tiles are (Krugman's index on workers: half the sum over
+	// trades of the gap between a tile's share of its workers in a trade and
+	// the map's; on workers, since at high costs prices differ so much
+	// between tiles that output values can't be compared),
+	// and each tile's share of workers on farms (comparative advantage: with
+	// cheap carriage, farming moves to the land best at it)
+	type tradeRun struct {
+		Cost           float64
+		Migration      bool
+		WageSpread     float64   // the people-weighted coefficient of variation of wages across tiles
+		Specialisation float64   // Krugman's index on workers, averaged over tiles weighted by workers
+		FarmShare      []float64 // per tile: share of its workers on farms (grain and potatoes)
+	}
+	tradeCosts := []float64{}
+	for k := -4; k <= 7; k++ {
+		tradeCosts = append(tradeCosts, math.Pow(2, float64(k)))
+	}
+	tradeCosts = append(tradeCosts, 1e6)
+	tradeRuns := make([]tradeRun, 2*len(tradeCosts))
+	var tradeJobs []func()
+	for i, c := range tradeCosts {
+		for k, mig := range []bool{false, true} {
+			out := &tradeRuns[2*i+k]
+			c, mig := c, mig
+			tradeJobs = append(tradeJobs, func() {
+				spec := DefaultGame
+				spec.TransportCost = c
+				w, err := baseGameWorld(spec)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				w.Migration, w.Investment, w.Demography = true, true, false
+				out.Cost, out.Migration, out.FarmShare = c, mig, make([]float64, len(w.Regions))
+				samples := 0.0
+				for d := 0; d < settle; d++ {
+					if d == settle/3 {
+						w.Migration = mig // (people sort themselves out first, then stay or not)
+					}
+					w.Step()
+					if d < settle-days || d%30 != 0 {
+						continue
+					}
+					samples++
+					wsum, wsq, people := 0.0, 0.0, 0.0
+					mapOut := map[string]float64{}
+					tileOut := make([]map[string]float64, len(w.Regions))
+					for i, r := range w.Regions {
+						p := r.Population()
+						wsum += r.Wage * p
+						wsq += r.Wage * r.Wage * p
+						people += p
+						tileOut[i] = map[string]float64{}
+						lab, farm := 0.0, 0.0
+						for _, f := range r.Firms {
+							tileOut[i][f.Name] += f.Labor
+							mapOut[f.Name] += f.Labor
+							lab += f.Labor
+							if f.Name == "Farm" || f.Name == "Potato farm" {
+								farm += f.Labor
+							}
+						}
+						out.FarmShare[i] += farm / math.Max(lab, 1e-9)
+					}
+					mean := wsum / people
+					out.WageSpread += math.Sqrt(math.Max(0, wsq/people-mean*mean)) / mean
+					total := 0.0
+					for _, v := range mapOut {
+						total += v
+					}
+					ksi, weight := 0.0, 0.0
+					for i := range w.Regions {
+						tt := 0.0
+						for _, v := range tileOut[i] {
+							tt += v
+						}
+						if tt <= 0 {
+							continue
+						}
+						k := 0.0
+						for g := range mapOut {
+							k += math.Abs(tileOut[i][g]/tt - mapOut[g]/total)
+						}
+						ksi += k / 2 * tt
+						weight += tt
+					}
+					out.Specialisation += ksi / weight
+				}
+				out.WageSpread /= samples
+				out.Specialisation /= samples
+				for i := range out.FarmShare {
+					out.FarmShare[i] /= samples
+				}
+			})
+		}
+	}
+
+	// ---- the Dutch disease: a resource boom. The tile with the most coal
+	// miners finds coal three times as easy to dig: the mines draw workers
+	// and bid up wages, and the tile's other trades shrink, against a run
+	// without the boom. Nobody moves once the map has settled.
+	type sectorSeries struct {
+		Tile                                   int
+		Months                                 []int
+		Primary, Industry, Service, Coal, Wage []float64 // the boom tile's workers by sector, its coal miners, its wage
+	}
+	boom := func(on bool, out *sectorSeries) func() {
+		return func() {
+			w := world()
+			tile := -1
+			for d := 0; d < end; d++ {
+				if d == settle { // the same tile in both runs: they are identical until the boom
+					// a fixed workforce, as in Corden and Neary's model: nobody moves
+					// in to man the boom, so it must draw its workers from the tile's
+					// other trades
+					w.Migration = false
+					most := 0.0
+					for _, r := range w.Regions {
+						for _, f := range r.Firms {
+							if f.Name == "Coal mine" && f.Labor > most {
+								most, tile = f.Labor, r.ID
+							}
+						}
+					}
+					out.Tile = tile
+				}
+				if d == shockDay {
+					if on {
+						for _, f := range w.Regions[tile].Firms {
+							if f.Name == "Coal mine" {
+								for _, m := range f.Methods {
+									m.TFP *= 3
+								}
+							}
+						}
+					}
+				}
+				w.Step()
+				if d < settle || (d-settle)%30 != 0 {
+					continue
+				}
+				r := w.Regions[tile]
+				var sec [3]float64
+				coal := 0.0
+				for _, f := range r.Firms {
+					sec[f.Sector] += f.Labor
+					if f.Name == "Coal mine" {
+						coal += f.Labor
+					}
+				}
+				wage := r.Wage
+				out.Months = append(out.Months, (d-settle)/30)
+				out.Industry = append(out.Industry, sec[Industry])
+				out.Primary = append(out.Primary, sec[Primary])
+				out.Service = append(out.Service, sec[Service])
+				out.Coal = append(out.Coal, coal)
+				out.Wage = append(out.Wage, wage)
+			}
+		}
+	}
+	var boomed, unboomed sectorSeries
+
 	parallel(base, strike(true, true, &shocked), strike(false, true, &control), strike(true, false, &shockedStill),
-		strike(false, false, &controlStill), blight(true, &blighted), blight(false, &unblighted))
+		strike(false, false, &controlStill), blight(true, &blighted), blight(false, &unblighted), boom(true, &boomed), boom(false, &unboomed))
+	parallel(tradeJobs...)
+	write("trade.json", map[string]any{"runs": tradeRuns})
+	write("boom.json", map[string]any{"shockMonth": days / 30, "boom": boomed, "control": unboomed})
 
 	hops := func() []int { // hops from the struck tile
 		w := world()
