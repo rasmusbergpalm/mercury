@@ -152,15 +152,16 @@ __STYLE__</style>
 </div>
 
 <div class="col">
-<p>The transport cost need not be the same everywhere. A canal, a turnpike or a railway makes carriage cheap along one line, and towns grew up along them: the Erie Canal made New York the largest city in America, and the railways drew people into the towns on their lines and out of those they passed by. To test it, the coast's cheap shipping was taken away so that every hop costs the same, and then a route was laid diagonally across the map, from the top-left corner to the bottom-right, on which a hop costs a tenth of the usual. <span class="ref" data-fig="corridor"></span> shows where the trade goes before and after, and where the people go.</p>
+<p>The transport cost need not be the same everywhere. A canal, a turnpike or a railway makes carriage cheap along one line, and towns grew up along them: the Erie Canal made New York the largest city in America, and the railways drew people into the towns on their lines and out of those they passed by. To test it, the coast's cheap shipping was taken away so that every hop costs the same, and then a route was laid diagonally across the map, from the top-left corner to the bottom-right, on which a hop costs a tenth of the usual. <span class="ref" data-fig="corridor"></span> shows the trade and the people before and after.</p>
 </div>
 
 <div class="figure" id="fig-corridor">
-  <div class="head"><span class="plate"></span><h3>A cheap route across the map</h3></div>
-  <div class="grid3">
-    <div><h4>Trade on the map as it is</h4><svg class="chart" id="map-corr-coast" role="img" aria-label="Map of the trade over each link on the map as it is, with its cheap coast"></svg></div>
-    <div><h4>Trade with the route</h4><svg class="chart" id="map-corr-trade" role="img" aria-label="Map of the trade over each link with the coast's cheap shipping taken away and the route laid"></svg></div>
-    <div><h4>People gained or lost</h4><svg class="chart" id="map-corr-people" role="img" aria-label="Map of the people each tile gained or lost with the route"></svg></div>
+  <div class="head"><span class="plate"></span><h3>Transport costs set the trade routes, and people follow the trade</h3></div>
+  <div class="grid2">
+    <div><h4>Before: cheap coasts. Trade</h4><svg class="chart" id="map-corr-coast" role="img" aria-label="Map of the trade over each link with cheap shipping along the coasts"></svg></div>
+    <div><h4>After: only the route cheap. Trade</h4><svg class="chart" id="map-corr-trade" role="img" aria-label="Map of the trade over each link with only the route cheap"></svg></div>
+    <div><h4>Before: people</h4><svg class="chart" id="map-corr-people0" role="img" aria-label="Map of each tile's people with cheap shipping along the coasts"></svg></div>
+    <div><h4>After: people</h4><svg class="chart" id="map-corr-people1" role="img" aria-label="Map of each tile's people with only the route cheap"></svg></div>
   </div>
   <p class="cap" id="cap-corridor"></p>
 </div>
@@ -512,21 +513,22 @@ function drawBlight() {
 
 // ---- the corridor plate: a cheap route across the map ------------------------------------------
 function drawCorridor() {
-  const C = D.corridor;
-  const pct = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(0) + "%";
+  const C = D.corridor, P0 = C.people.coast, P1 = C.people.route;
   // trade: each link's width is proportional to the value it carries, on one scale in both maps
   const top = Math.max(...C.trade.coast.map((e) => e[2]), ...C.trade.route.map((e) => e[2]));
   const edges = (k) => C.trade[k].filter((e) => e[2] > 0.01 * top).map(([a, b, v]) => [a, b, 0.6 + 13 * v / top]);
   hexMap(document.getElementById("map-corr-coast"), { fill: () => css("--paper"), label: () => "", edges: edges("coast") });
   hexMap(document.getElementById("map-corr-trade"), { fill: () => css("--paper"), label: () => "", edges: edges("route") });
-  // people as a change on the tile's people without the route: tiles differ several times over in size
-  const gain = C.people.map((v, i) => 100 * v / C.peopleBase[i]), maxP = Math.max(...gain.map(Math.abs));
-  hexMap(document.getElementById("map-corr-people"), { fill: (t) => diverge(gain[t.id], maxP, 0.5), label: (t) => pct(gain[t.id]), path: C.route });
+  // people: one scale for both maps
+  const most = Math.max(...P0, ...P1);
+  hexMap(document.getElementById("map-corr-people0"), { fill: (t) => ramp(Math.sqrt(P0[t.id] / most)), label: (t) => fmt(P0[t.id], 0) });
+  hexMap(document.getElementById("map-corr-people1"), { fill: (t) => ramp(Math.sqrt(P1[t.id] / most)), label: (t) => fmt(P1[t.id], 0), path: C.route });
   const sum = (k) => C.trade[k].reduce((x, e) => x + e[2], 0), on = new Set(C.route);
   const onRoute = (k) => C.trade[k].filter(([a, b]) => on.has(a) && on.has(b) && Math.abs(C.route.indexOf(a) - C.route.indexOf(b)) === 1).reduce((x, e) => x + e[2], 0);
-  const mean = (a, f) => { const v = a.filter((_, i) => f(i)); return v.reduce((x, y) => x + y, 0) / v.length; };
-  const peopleOn = mean(C.people, (i) => on.has(i)) / mean(C.peopleBase, (i) => on.has(i)) * 100;
-  document.getElementById("cap-corridor").textContent = `Left and middle: each line joins two neighbouring tiles, as thick as the value of the goods they trade both ways (on one scale in both maps). On the map as it is, trade follows the coasts, where shipping is cheap. With the route instead, ${Math.round(100 * onRoute("route") / sum("route"))}% of the map's trade (by value) runs along its ${C.route.length - 1} links, and the map trades ${Math.round(100 * (sum("route") / sum("coast") - 1))}% more in all. Right: each tile's people with the route, against the same map with neither the route nor the cheap coast; the dashed line is the route. Blue is a gain and red a loss, as a percentage of the tile. On average the tiles on the route end with ${peopleOn.toFixed(0)}% more people.`;
+  const tot = (P, f) => P.filter((_, i) => f(i)).reduce((x, y) => x + y, 0);
+  const coastal = new Set(tiles.filter((t) => t.coastal).map((t) => t.id));
+  const share = (P, f) => Math.round(100 * tot(P, f) / tot(P, () => true));
+  document.getElementById("cap-corridor").textContent = `Top: each line joins two neighbouring tiles, as thick as the value of the goods they trade both ways, on one scale in both maps. Bottom: each tile's people, darker for more, on one scale in both maps; the dashed line is the route. Before, trade runs round the coasts, where shipping is cheap, and ${share(P0, (i) => coastal.has(i))}% of the people live on the coast. After, ${Math.round(100 * onRoute("route") / sum("route"))}% of the map's trade (by value) runs along the route's ${C.route.length - 1} links, and the share of the people living on the route's ${C.route.length} tiles goes from ${share(P0, (i) => on.has(i))}% to ${share(P1, (i) => on.has(i))}%, while the coast's goes to ${share(P1, (i) => coastal.has(i))}%.`;
 }
 
 // ---- the even plate: migration evens out living standards -----------------------------------

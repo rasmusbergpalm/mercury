@@ -45,7 +45,7 @@ import (
 //
 //   - corridor.json: a cheap route across the map (the coast's cheap
 //     shipping taken away): each tile's people and each link's trade, on
-//     the map as it is, without its cheap coast, and with the route;
+//     the map as it is and with the route instead of the cheap coast;
 //
 //   - recipes.json: the production functions and the growth and migration
 //     constants.
@@ -534,9 +534,9 @@ func TestExplainerData(t *testing.T) {
 	// ---- a corridor: a road (or canal, or railway) across the map. The
 	// coast's cheap shipping is taken away, so every hop costs the same,
 	// and the hops along a diagonal route from corner to corner cost a
-	// tenth. Three runs, people free to move: the map as it is ("coast"),
-	// the map without its cheap coast ("flat"), and the flat map with the
-	// route ("route"). Each tile's people, and the value of the trade over
+	// tenth. Two runs, people free to move: the map as it is, with its
+	// cheap coast ("coast"), and with the route instead ("route"). Each
+	// tile's people, and the value of the trade over
 	// each link (both ways, at the prices it sells for) over the last year.
 	route := explainerDiagonal(world())
 	type corridorRun struct {
@@ -544,17 +544,14 @@ func TestExplainerData(t *testing.T) {
 		People []float64
 		Trade  [][3]float64 // a, b, value a day
 	}
-	corridorRuns := []corridorRun{{Name: "coast"}, {Name: "flat"}, {Name: "route"}}
+	corridorRuns := []corridorRun{{Name: "coast"}, {Name: "route"}}
 	var corridorJobs []func()
 	for k := range corridorRuns {
 		k := k
 		corridorJobs = append(corridorJobs, func() {
 			cr := &corridorRuns[k]
 			w := world()
-			switch cr.Name {
-			case "flat":
-				explainerCorridor(w, nil)
-			case "route":
+			if cr.Name == "route" {
 				explainerCorridor(w, route)
 			}
 			value := map[[2]int]float64{}

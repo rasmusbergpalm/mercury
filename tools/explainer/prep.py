@@ -96,13 +96,12 @@ bo = json.load(open(f"{S}/data/boom.json"))["runs"]
 for r in bo:
     r["CoalAll"], r["OtherService"] = r["Coal"] + r["Haul"], r["Service"] - r["Haul"]
 out["boom"] = [{k: (round(v, 3) if isinstance(v, float) else v) for k, v in r.items()} for r in bo]
-# a corridor across the map: the trade over each link on the map as it is and with the route, and
-# each tile's people with the route against the flat map without it
+# a corridor across the map: the trade over each link and each tile's people, on the map as it is
+# (cheap coasts) and with the route instead
 co = json.load(open(f"{S}/data/corridor.json"))
 run = {r["Name"]: r for r in co["runs"]}
 out["corridor"] = {"route": co["route"],
                    "trade": {k: [[int(a), int(b), round(v, 2)] for a, b, v in run[k]["Trade"]] for k in run},
-                   "people": [round(x - y, 2) for x, y in zip(run["route"]["People"], run["flat"]["People"])],
-                   "peopleBase": [round(x, 1) for x in run["flat"]["People"]]}
+                   "people": {k: [round(x, 1) for x in run[k]["People"]] for k in run}}
 json.dump(out, open(f"{S}/explainer-data.json", "w"), separators=(",", ":"))
 print(f"{len(json.dumps(out))} bytes of data; goods {goods}")
