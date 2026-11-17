@@ -60,6 +60,10 @@ select { font: 16px var(--serif); color: var(--ink); background: var(--surface);
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
 @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
 .grid2 > * { min-width: 0; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 18px; }
+@media (max-width: 760px) { .grid3 { grid-template-columns: 1fr; } }
+.grid3 > * { min-width: 0; }
+.grid3 h4, .grid2 h4 { margin: 0 0 6px; font-size: 15px; }
 .chart { width: 100%; height: auto; display: block; overflow: visible; }
 .chart text { font-family: var(--serif); fill: var(--muted); font-size: 13px; }
 .chart .title { fill: var(--ink); font-size: 15px; }

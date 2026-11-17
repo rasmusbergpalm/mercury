@@ -150,6 +150,24 @@ __STYLE__</style>
   <div class="legend" id="legend-spec"></div>
   <p class="cap" id="cap-spec"></p>
 </div>
+
+<div class="col">
+<p>The transport cost need not be the same everywhere. A canal, a turnpike or a railway makes carriage cheap along one line, and towns grew up along them: the Erie Canal made New York the largest city in America, and the railways drew people into the towns on their lines and out of those they passed by. To test it, the coast's cheap shipping was taken away so that every hop costs the same, and then a route was laid diagonally across the map, from the top-left corner to the bottom-right, on which a hop costs a tenth of the usual. The map was settled with and without the route, once with people free to move and once with nobody moving, and <span class="ref" data-fig="corridor"></span> compares each tile at the end.</p>
+</div>
+
+<div class="figure" id="fig-corridor">
+  <div class="head"><span class="plate"></span><h3>A cheap route across the map</h3></div>
+  <div class="grid3">
+    <div><h4>People gained or lost</h4><svg class="chart" id="map-corr-people" role="img" aria-label="Map of the people each tile gained or lost with the route, people free to move"></svg></div>
+    <div><h4>Living standard, people free to move</h4><svg class="chart" id="map-corr-util" role="img" aria-label="Map of the change in living standard with the route, people free to move"></svg></div>
+    <div><h4>Living standard, nobody moving</h4><svg class="chart" id="map-corr-still" role="img" aria-label="Map of the change in living standard with the route, nobody moving"></svg></div>
+  </div>
+  <p class="cap" id="cap-corridor"></p>
+</div>
+
+<div class="col">
+<p>With nobody moving, the gains stay where the route is: the tiles on it trade more cheaply, so they buy for less and sell for more, and their people live better, while the rest of the map hardly changes. With people free to move, the gains turn into people. Workers move to the route until living there is no better than living off it, so the route's tiles fill up and the tiles away from it empty a little, and the living standard rises nearly evenly across the map. This is the spatial equilibrium of urban economics (Rosen 1979, Roback 1982): where people can move, an advantage of place shows up in how many live there, not in how well they live.</p>
+</div>
 </section>
 
 <section id="people">
@@ -492,6 +510,20 @@ function drawBlight() {
   document.getElementById("cap-blight").textContent = `Averages over the map. By the end potatoes cost ${rise("potatoPrice")}% more than without the blight, and bread ${rise("breadPrice")}% more, as people bid for it instead. People eat ${-rise("potatoesEaten")}% fewer potatoes and ${rise("breadEaten")}% more bread. The two are close substitutes (an elasticity of substitution of ${B.sigma} within staples), so a moderate rise in the price of potatoes moves much of the eating to bread.`;
 }
 
+// ---- the corridor plate: a cheap route across the map ------------------------------------------
+function drawCorridor() {
+  const C = D.corridor, on = new Set(C.route);
+  const pct = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(0) + "%";
+  const maxU = Math.max(...C.util.map(Math.abs), ...C.utilStill.map(Math.abs)), maxP = Math.max(...C.people.map(Math.abs));
+  hexMap(document.getElementById("map-corr-people"), { fill: (t) => diverge(C.people[t.id], maxP), label: (t) => (C.people[t.id] >= 0 ? "+" : "−") + fmt(Math.abs(C.people[t.id]), 0), path: C.route });
+  hexMap(document.getElementById("map-corr-util"), { fill: (t) => diverge(C.util[t.id], maxU), label: (t) => pct(C.util[t.id]), path: C.route });
+  hexMap(document.getElementById("map-corr-still"), { fill: (t) => diverge(C.utilStill[t.id], maxU), label: (t) => pct(C.utilStill[t.id]), path: C.route });
+  const mean = (a, f) => { const v = a.filter((_, i) => f(i)); return v.reduce((x, y) => x + y, 0) / v.length; };
+  const onR = (i) => on.has(i), off = (i) => !on.has(i);
+  const peopleOn = mean(C.people, onR) / mean(C.peopleBase, onR) * 100;
+  document.getElementById("cap-corridor").textContent = `Each map compares a tile at the end of the run with the route against the same tile without it; the dashed line is the route. Brass is a gain and red a loss, on the same scale in the two maps of living standards. With people free to move, the tiles on the route gain ${peopleOn.toFixed(0)}% more people on average, the living standard rises by ${mean(C.util, onR).toFixed(1)}% on the route and by ${mean(C.util, off).toFixed(1)}% off it. With nobody moving it rises by ${mean(C.utilStill, onR).toFixed(1)}% on the route and by ${mean(C.utilStill, off).toFixed(1)}% off it.`;
+}
+
 // ---- the even plate: migration evens out living standards -----------------------------------
 function drawEven() {
   const E = D.even, sm = D.shock.shockMonth, months = D.shock.months;
@@ -603,7 +635,7 @@ const roman = (n) => [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]].reduc
 document.querySelectorAll(".figure").forEach((f, i) => { const p = f.querySelector(".plate"); if (p) p.textContent = `Plate ${roman(i + 1)}`; });
 document.querySelectorAll(".ref").forEach((r) => { const f = document.getElementById(`fig-${r.dataset.fig}`); r.textContent = f ? f.querySelector(".plate").textContent : "a plate below"; });
 
-function drawAll() { drawWorld(); drawFirm(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawDutch(); }
+function drawAll() { drawWorld(); drawFirm(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawDutch(); drawCorridor(); }
 inspect(picked);
 drawAll();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);

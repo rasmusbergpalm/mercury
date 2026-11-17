@@ -43,6 +43,10 @@ import (
 //   - boom.json: the Dutch disease: a coal boom of 1 to 10 times in one
 //     tile, with and without migration: its workers by trade and its wage;
 //
+//   - corridor.json: a cheap route across the map (the coast's cheap
+//     shipping taken away): each tile's people and living standard with
+//     and without the route, with and without migration;
+//
 //   - recipes.json: the production functions and the growth and migration
 //     constants.
 //
@@ -418,13 +422,15 @@ func TestExplainerData(t *testing.T) {
 	// ---- the Dutch disease, dose and response: the tile with the most coal
 	// miners finds its coal 1 to 10 times as easy to dig, with people free
 	// to move and with nobody moving after the map has settled (a fixed
-	// workforce, as in Corden and Neary's model). The boom tile's workers by
+	// workforce, as in Corden and Neary's model). Its coal is as much cheaper
+	// to carry to its neighbours. The boom tile's workers by
 	// trade, its people and its wage, averaged over the last two years.
 	type boomRun struct {
 		Boom                                     float64
 		Migration                                bool
 		Tile                                     int
 		Coal, OtherLand, Industry, Service, Wage float64
+		Haul                                     float64 // carters hauling the tile's coal away (counted in Service too)
 		People                                   float64
 	}
 	boomDoses := []float64{1, 2, 3, 4, 6, 8, 10}
@@ -460,6 +466,18 @@ func TestExplainerData(t *testing.T) {
 								}
 							}
 						}
+						// ... and its coal is as much cheaper to carry away:
+						// a boom in a small country's export comes with the
+						// ships and railways to carry it (Norway's oil came
+						// with its pipelines), and a tile's carters can't
+						// haul ten times the coal without them. The coal it
+						// sends to its neighbours takes 1/k the transport.
+						for _, tr := range w.Traders {
+							if os.Getenv("EXPLAINER_LIGHT") != "" && tr.Good == G("coal") && tr.Origin.ID == tile {
+								tr.TransportCost /= k
+								tr.SetDistance(tr.Distance)
+							}
+						}
 					}
 					w.Step()
 					if d < end-2*days {
@@ -478,6 +496,24 @@ func TestExplainerData(t *testing.T) {
 							out.Service += f.Labor
 						}
 					}
+					// the carters hauling coal: the tile's transport
+					// workers, in the share of its transport its coal
+					// exports use
+					haul, made, carters := 0.0, 0.0, 0.0
+					for _, tr := range w.Traders {
+						if tr.Good == G("coal") && tr.Origin.ID == tile {
+							haul += tr.Shipped * tr.Tau
+						}
+					}
+					for _, f := range r.Firms {
+						if f.Output == Transport {
+							made += f.LastOutput
+							carters += f.Labor
+						}
+					}
+					if made > 0 {
+						out.Haul += carters * math.Min(1, haul/made)
+					}
 					out.Wage += r.Wage
 					out.People += r.Population()
 					samples++
@@ -486,6 +522,7 @@ func TestExplainerData(t *testing.T) {
 				out.OtherLand /= samples
 				out.Industry /= samples
 				out.Service /= samples
+				out.Haul /= samples
 				out.Wage /= samples
 				out.People /= samples
 			})
@@ -494,7 +531,41 @@ func TestExplainerData(t *testing.T) {
 
 	parallel(base, strike(true, true, &shocked), strike(false, true, &control), strike(true, false, &shockedStill),
 		strike(false, false, &controlStill), blight(true, &blighted), blight(false, &unblighted))
-	parallel(append(tradeJobs, boomJobs...)...)
+	// ---- a corridor: a road (or canal, or railway) across the map. The
+	// coast's cheap shipping is taken away, so every hop costs the same,
+	// and the hops along a diagonal route from corner to corner cost a
+	// tenth. The map settles with and without the route, with people free
+	// to move and with nobody moving.
+	route := explainerDiagonal(world())
+	type corridorRun struct {
+		Corridor, Migration bool
+		People, Utility     []float64
+	}
+	corridorRuns := make([]corridorRun, 4)
+	var corridorJobs []func()
+	for k := range corridorRuns {
+		k := k
+		corridorJobs = append(corridorJobs, func() {
+			cr := &corridorRuns[k]
+			cr.Corridor, cr.Migration = k%2 == 1, k < 2
+			var rt []int
+			if cr.Corridor {
+				rt = route
+			}
+			w := world()
+			w.Migration = cr.Migration
+			explainerCorridor(w, rt)
+			for d := 0; d < end; d++ {
+				w.Step()
+			}
+			for _, r := range w.Regions {
+				cr.People = append(cr.People, r.Population())
+				cr.Utility = append(cr.Utility, r.Utility())
+			}
+		})
+	}
+	parallel(append(append(tradeJobs, boomJobs...), corridorJobs...)...)
+	write("corridor.json", map[string]any{"route": route, "runs": corridorRuns})
 	write("trade.json", map[string]any{"runs": tradeRuns})
 	write("boom.json", map[string]any{"runs": boomRuns})
 
@@ -675,3 +746,67 @@ const (
 	explainerSettle = 15
 	explainerYears  = 5
 )
+
+// explainerCorridor takes the coast's cheap shipping away, so that every
+// hop costs 1, and makes the hops along route (a list of neighbouring
+// tiles) cost a tenth.
+func explainerCorridor(w *World, route []int) {
+	for _, r := range w.Regions {
+		r.Coastal = false
+	}
+	on := map[[2]int]bool{}
+	for i := 0; i+1 < len(route); i++ {
+		on[[2]int{route[i], route[i+1]}], on[[2]int{route[i+1], route[i]}] = true, true
+	}
+	hop := func(a, b int) float64 {
+		if on[[2]int{a, b}] {
+			return 0.1
+		}
+		return 1
+	}
+	w.paths = nil
+	for i, l := range w.Links {
+		w.Links[i].Hop = hop(l.A, l.B)
+	}
+	for _, tr := range w.Traders {
+		tr.SetDistance(hop(tr.Origin.ID, tr.Dest.ID))
+	}
+}
+
+// explainerDiagonal is a route from the map's top-left corner to its
+// bottom-right: each step goes to the neighbour nearest the far corner,
+// and of those, to the one nearest the straight line between the corners.
+func explainerDiagonal(w *World) []int {
+	cube := func(r *Region) [3]int { x := r.Col - (r.Row-(r.Row&1))/2; z := r.Row; return [3]int{x, -x - z, z} }
+	dist := func(a, b *Region) int {
+		ca, cb := cube(a), cube(b)
+		m := 0
+		for i := 0; i < 3; i++ {
+			m = max(m, ca[i]-cb[i], cb[i]-ca[i])
+		}
+		return m
+	}
+	start, goal := w.Regions[0], w.Regions[len(w.Regions)-1]
+	px := func(r *Region) (float64, float64) {
+		return float64(r.Col) + 0.5*float64(r.Row&1), 0.866 * float64(r.Row)
+	}
+	off := func(r *Region) float64 {
+		x0, y0 := px(start)
+		x1, y1 := px(goal)
+		x, y := px(r)
+		return math.Abs((y1-y0)*x-(x1-x0)*y+x1*y0-y1*x0) / math.Hypot(y1-y0, x1-x0)
+	}
+	path := []int{start.ID}
+	for cur := start; cur != goal; {
+		var best *Region
+		for _, nb := range w.adj[cur.ID] {
+			r := w.Regions[nb[0]]
+			if best == nil || dist(r, goal) < dist(best, goal) || (dist(r, goal) == dist(best, goal) && off(r) < off(best)) {
+				best = r
+			}
+		}
+		cur = best
+		path = append(path, cur.ID)
+	}
+	return path
+}
