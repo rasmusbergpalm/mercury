@@ -63,12 +63,25 @@ out["routes"] = {"busy": [[round(r["Landed"], 3), round(r["Dest"], 3)] for r in 
                  "everyDays": rt["everyDays"],
                  "converging": [{"good": c["Route"]["Good"], "from": c["Route"]["From"], "to": c["Route"]["To"],
                                  "ratio": [round(a / b, 4) for a, b in zip(c["Path"]["Dest"], c["Path"]["Landed"])]} for c in rt["converging"]]}
-# the iceberg comparison: both models' sweeps, and each good's travel at x1
-ice = json.load(open(f"{S}/iceberg/iceberg.json"))
-out["iceberg"] = {"melt": ice["melt"],
-                  "runs": [{k: r[k] for k in ("Model", "Cost", "Living", "GDPHead", "TransportJobs", "PriceGap", "TradeShare")} for r in ice["runs"]],
-                  "goods": {str(m): [{"good": g["Good"], "vpb": round(g["ValuePerBulk"], 3), "hops": round(g["HopsPerUnit"], 4), "made": round(g["Made"], 2)}
-                                     for g in next(r for r in ice["runs"] if r["Model"] == m and r["Cost"] == 1)["Goods"] if g["Made"] > 0.5 and g["HopsPerUnit"] > 0]
-                            for m in (0, 1)}}
+# the Alchian-Allen runs: every good's place, and the goods moved by their bulk
+aa = json.load(open(f"{S}/data/aa.json"))
+pt = lambda g: {"good": g["Good"], "bulk": g["Bulk"], "vpb": round(g["Price"] / g["Bulk"], 3), "hops": round(g["HopsPerUnit"], 4)}
+out["aa"] = {"base": [pt(g) for g in aa["base"]], "moves": {k: [pt(g) for g in v] for k, v in aa["moves"].items()}}
+# substitution: the potato blight
+bl = json.load(open(f"{S}/data/blight.json"))
+out["blight"] = {"day": bl["blightDay"], "sigma": bl["sigma"],
+                 "runs": {k: {kk: [round(x, 4) for x in vv] for kk, vv in v.items()} for k, v in (("blight", bl["blight"]), ("control", bl["control"]))}}
+# evening out: the struck tile against its neighbours, with and without migration
+def even(run):
+    r = sh[run]
+    nb = [i for i, x in enumerate(sh["hops"]) if x == 1]
+    t = sh["tile"]
+    avg = lambda key, m: sum(r[key][i][m] for i in nb) / len(nb)
+    n = len(r["Months"])
+    return {"gap": [round(r["Utility"][t][m] / avg("Utility", m) - 1, 4) for m in range(n)],
+            "wage": [round(r["Wage"][t][m] / avg("Wage", m), 4) for m in range(n)],
+            "prices": [round(r["Prices"][t][m] / avg("Prices", m), 4) for m in range(n)],
+            "people": [round(r["People"][t][m], 1) for m in range(n)]}
+out["even"] = {"move": even("shocked"), "stay": even("shockedStill"), "control": even("control")}
 json.dump(out, open(f"{S}/explainer-data.json", "w"), separators=(",", ":"))
 print(f"{len(json.dumps(out))} bytes of data; goods {goods}")

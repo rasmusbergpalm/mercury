@@ -33,7 +33,7 @@ func TestTransportSweep(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	const years = 5
+	const years = explainerSettle // settled: the last of fifteen years is measured
 	costs := []float64{}
 	for k := -9; k <= 14; k++ { // x0.044 to x128 in steps of a square root of two, through x1
 		costs = append(costs, math.Pow(2, float64(k)/2))
@@ -65,7 +65,7 @@ func TestTransportSweep(t *testing.T) {
 					t.Error(err)
 					return
 				}
-				w.Migration, w.Investment, w.Demography = true, true, true
+				w.Migration, w.Investment, w.Demography = true, true, false // (no population growth: like with like)
 				r := &result{net: make([]float64, NumGoods), used: make([]float64, NumGoods), prices: make([]float64, NumGoods)}
 				days := int(TicksPerYear)
 				last := (years - 1) * days
