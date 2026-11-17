@@ -92,6 +92,9 @@ en = json.load(open(f"{S}/data/engel.json"))
 out["engel"] = [{"tile": int(r["Day"]), "basic": round(r["BasicShare"], 4), "income": round(r["IncomeHead"], 3)} for r in en["tiles"]]
 # the Dutch disease: the boom tile at each dose of coal, with and without migration
 bo = json.load(open(f"{S}/data/boom.json"))["runs"]
+# (the carters hauling the tile's coal away count as coal work, not services)
+for r in bo:
+    r["CoalAll"], r["OtherService"] = r["Coal"] + r["Haul"], r["Service"] - r["Haul"]
 out["boom"] = [{k: (round(v, 3) if isinstance(v, float) else v) for k, v in r.items()} for r in bo]
 # a corridor across the map: each tile's people and living standard with the route against without
 co = json.load(open(f"{S}/data/corridor.json"))

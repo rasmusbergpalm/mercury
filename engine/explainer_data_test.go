@@ -473,7 +473,7 @@ func TestExplainerData(t *testing.T) {
 						// haul ten times the coal without them. The coal it
 						// sends to its neighbours takes 1/k the transport.
 						for _, tr := range w.Traders {
-							if os.Getenv("EXPLAINER_LIGHT") != "" && tr.Good == G("coal") && tr.Origin.ID == tile {
+							if tr.Good == G("coal") && tr.Origin.ID == tile {
 								tr.TransportCost /= k
 								tr.SetDistance(tr.Distance)
 							}
