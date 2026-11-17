@@ -14,15 +14,17 @@ import (
 //
 //   - tiles.json: each tile after five years: terrain, people, wage,
 //     living standard, and its workers and output per firm;
+//
 //   - shock.json: the migration experiment: after a year one tile's firms
 //     become half again as productive (a strike of coal or gold); each tile's
 //     people and living standard by month, with a twin run without the
 //     shock to compare;
+//
 //   - recipes.json: the production functions (each firm's methods, their
 //     productivity and factor exponents) and the growth and migration
 //     constants.
 //
-//	EXPLAINER_OUT=/tmp/explainer go test ./engine -run TestExplainerData -timeout 30m
+//     EXPLAINER_OUT=/tmp/explainer go test ./engine -run TestExplainerData -timeout 30m
 func TestExplainerData(t *testing.T) {
 	dir := os.Getenv("EXPLAINER_OUT")
 	if dir == "" {
