@@ -4,10 +4,15 @@
 # transport sweep and the explainer's experiments (TestExplainerData).
 #
 #   sh tools/explainer/build.sh
+#   sh tools/explainer/build.sh DIR   # re-wrap the page from DIR's runs (printed by a full build)
 set -e
-out=$(mktemp -d)
-TRANSPORT_SWEEP_OUT=$out/sweep go test ./engine -run TestTransportSweep -timeout 60m
-EXPLAINER_OUT=$out/data go test ./engine -run TestExplainerData -timeout 30m
+if [ -n "$1" ]; then
+  out=$1
+else
+  out=$(mktemp -d)
+  TRANSPORT_SWEEP_OUT=$out/sweep go test ./engine -run TestTransportSweep -timeout 60m
+  EXPLAINER_OUT=$out/data go test ./engine -run TestExplainerData -timeout 30m
+fi
 python3 tools/explainer/prep.py "$out"
 python3 - "$out" <<'PY'
 import sys
@@ -24,4 +29,4 @@ for name in ("economy",):
             + "\n</body>\n</html>\n")
     open(f"web/static/{name}.html", "w", encoding="utf-8").write(html)
 PY
-echo "wrote web/static/economy.html"
+echo "wrote web/static/economy.html from the runs in $out"

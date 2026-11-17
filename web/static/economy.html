@@ -316,7 +316,7 @@ footer { margin-top: 64px; border-top: 3px double var(--rule); padding-top: 18px
     <svg class="chart" id="map-shock" role="img" aria-label="Map of population change after the strike"></svg>
     <div class="inspector" id="shock-note"></div>
   </div>
-  <p class="cap">Brass tiles gained people compared with the control run; red tiles lost them. The ring of losers around the strike shows that people move one hop at a time.</p>
+  <p class="cap">Blue tiles gained people compared with the control run; red tiles lost them. The ring of losers around the strike shows that people move one hop at a time.</p>
 </div>
 
 <div class="col">
@@ -385,7 +385,7 @@ function hexMap(svg, { fill, label = (t) => t.name, arrows = [], selected = null
   }
   s += "</g>";
   // a route, drawn through the centres of its tiles
-  if (path) s += `<polyline points="${path.map((id) => hexXY(byId[id]).join(",")).join(" ")}" fill="none" stroke="${css("--ink")}" stroke-opacity=".55" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>`;
+  if (path) s += `<polyline points="${path.map((id) => hexXY(byId[id]).join(",")).join(" ")}" fill="none" stroke="${css("--ink")}" stroke-opacity=".4" stroke-width="2.5" stroke-dasharray="7 5" stroke-linecap="round"/>`;
   for (const [a, b, q] of arrows) {
     const [x1, y1] = hexXY(byId[a]), [x2, y2] = hexXY(byId[b]);
     const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), sh = 0.28 * R;
@@ -411,11 +411,13 @@ function ramp(t) {
   const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
   return `rgb(${c.join(",")})`;
 }
-function diverge(v, maxAbs) {
+// a diverging scale: blue for a gain, red for a loss, paper for none.
+// gamma below 1 lifts small changes out of the paper colour
+function diverge(v, maxAbs, gamma = 1) {
   const t = Math.max(-1, Math.min(1, v / maxAbs));
   const base = css("--paper");
-  const col = t >= 0 ? css("--brass") : css("--accent");
-  return mix(base, col, Math.abs(t));
+  const col = t >= 0 ? css("--s2") : css("--accent");
+  return mix(base, col, 0.85 * Math.abs(t) ** gamma);
 }
 function mix(a, b, t) {
   const p = (c) => { const d = document.createElement("div"); d.style.color = c; document.body.appendChild(d); const v = getComputedStyle(d).color.match(/\d+/g).map(Number); d.remove(); return v; };
@@ -716,14 +718,16 @@ function drawBlight() {
 function drawCorridor() {
   const C = D.corridor, on = new Set(C.route);
   const pct = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(0) + "%";
-  const maxU = Math.max(...C.util.map(Math.abs), ...C.utilStill.map(Math.abs)), maxP = Math.max(...C.people.map(Math.abs));
-  hexMap(document.getElementById("map-corr-people"), { fill: (t) => diverge(C.people[t.id], maxP), label: (t) => (C.people[t.id] >= 0 ? "+" : "−") + fmt(Math.abs(C.people[t.id]), 0), path: C.route });
-  hexMap(document.getElementById("map-corr-util"), { fill: (t) => diverge(C.util[t.id], maxU), label: (t) => pct(C.util[t.id]), path: C.route });
-  hexMap(document.getElementById("map-corr-still"), { fill: (t) => diverge(C.utilStill[t.id], maxU), label: (t) => pct(C.utilStill[t.id]), path: C.route });
+  // people as a change on the tile's people without the route: tiles differ several times over in size
+  const gain = C.people.map((v, i) => 100 * v / C.peopleBase[i]);
+  const maxU = Math.max(...C.util.map(Math.abs), ...C.utilStill.map(Math.abs)), maxP = Math.max(...gain.map(Math.abs));
+  hexMap(document.getElementById("map-corr-people"), { fill: (t) => diverge(gain[t.id], maxP, 0.5), label: (t) => pct(gain[t.id]), path: C.route });
+  hexMap(document.getElementById("map-corr-util"), { fill: (t) => diverge(C.util[t.id], maxU, 0.6), label: (t) => pct(C.util[t.id]), path: C.route });
+  hexMap(document.getElementById("map-corr-still"), { fill: (t) => diverge(C.utilStill[t.id], maxU, 0.6), label: (t) => pct(C.utilStill[t.id]), path: C.route });
   const mean = (a, f) => { const v = a.filter((_, i) => f(i)); return v.reduce((x, y) => x + y, 0) / v.length; };
   const onR = (i) => on.has(i), off = (i) => !on.has(i);
   const peopleOn = mean(C.people, onR) / mean(C.peopleBase, onR) * 100;
-  document.getElementById("cap-corridor").textContent = `Each map compares a tile at the end of the run with the route against the same tile without it; the dashed line is the route. Brass is a gain and red a loss, on the same scale in the two maps of living standards. With people free to move, the tiles on the route gain ${peopleOn.toFixed(0)}% more people on average, the living standard rises by ${mean(C.util, onR).toFixed(1)}% on the route and by ${mean(C.util, off).toFixed(1)}% off it. With nobody moving it rises by ${mean(C.utilStill, onR).toFixed(1)}% on the route and by ${mean(C.utilStill, off).toFixed(1)}% off it.`;
+  document.getElementById("cap-corridor").textContent = `Each map compares a tile at the end of the run with the route against the same tile without it; the dashed line is the route. Blue is a gain and red a loss, as a percentage of the tile without the route, on the same scale in the two maps of living standards. With people free to move, the tiles on the route gain ${peopleOn.toFixed(0)}% more people on average, the living standard rises by ${mean(C.util, onR).toFixed(1)}% on the route and by ${mean(C.util, off).toFixed(1)}% off it. With nobody moving it rises by ${mean(C.utilStill, onR).toFixed(1)}% on the route and by ${mean(C.utilStill, off).toFixed(1)}% off it.`;
 }
 
 // ---- the even plate: migration evens out living standards -----------------------------------

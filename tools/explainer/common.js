@@ -25,7 +25,7 @@ function hexMap(svg, { fill, label = (t) => t.name, arrows = [], selected = null
   }
   s += "</g>";
   // a route, drawn through the centres of its tiles
-  if (path) s += `<polyline points="${path.map((id) => hexXY(byId[id]).join(",")).join(" ")}" fill="none" stroke="${css("--ink")}" stroke-opacity=".55" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>`;
+  if (path) s += `<polyline points="${path.map((id) => hexXY(byId[id]).join(",")).join(" ")}" fill="none" stroke="${css("--ink")}" stroke-opacity=".4" stroke-width="2.5" stroke-dasharray="7 5" stroke-linecap="round"/>`;
   for (const [a, b, q] of arrows) {
     const [x1, y1] = hexXY(byId[a]), [x2, y2] = hexXY(byId[b]);
     const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), sh = 0.28 * R;
@@ -51,11 +51,13 @@ function ramp(t) {
   const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
   return `rgb(${c.join(",")})`;
 }
-function diverge(v, maxAbs) {
+// a diverging scale: blue for a gain, red for a loss, paper for none.
+// gamma below 1 lifts small changes out of the paper colour
+function diverge(v, maxAbs, gamma = 1) {
   const t = Math.max(-1, Math.min(1, v / maxAbs));
   const base = css("--paper");
-  const col = t >= 0 ? css("--brass") : css("--accent");
-  return mix(base, col, Math.abs(t));
+  const col = t >= 0 ? css("--s2") : css("--accent");
+  return mix(base, col, 0.85 * Math.abs(t) ** gamma);
 }
 function mix(a, b, t) {
   const p = (c) => { const d = document.createElement("div"); d.style.color = c; document.body.appendChild(d); const v = getComputedStyle(d).color.match(/\d+/g).map(Number); d.remove(); return v; };
