@@ -40,6 +40,9 @@ import (
 //     hops travelled per unit made against its value per unit of bulk; and
 //     potatoes, coal and tea again at other bulks, to see each move;
 //
+//   - boom.json: the Dutch disease: a coal boom of 1 to 10 times in one
+//     tile, with and without migration: its workers by trade and its wage;
+//
 //   - recipes.json: the production functions and the growth and migration
 //     constants.
 //
@@ -412,76 +415,88 @@ func TestExplainerData(t *testing.T) {
 		}
 	}
 
-	// ---- the Dutch disease: a resource boom. The tile with the most coal
-	// miners finds coal three times as easy to dig: the mines draw workers
-	// and bid up wages, and the tile's other trades shrink, against a run
-	// without the boom. Nobody moves once the map has settled.
-	type sectorSeries struct {
-		Tile                                   int
-		Months                                 []int
-		Primary, Industry, Service, Coal, Wage []float64 // the boom tile's workers by sector, its coal miners, its wage
+	// ---- the Dutch disease, dose and response: the tile with the most coal
+	// miners finds its coal 1 to 10 times as easy to dig, with people free
+	// to move and with nobody moving after the map has settled (a fixed
+	// workforce, as in Corden and Neary's model). The boom tile's workers by
+	// trade, its people and its wage, averaged over the last two years.
+	type boomRun struct {
+		Boom                                     float64
+		Migration                                bool
+		Tile                                     int
+		Coal, OtherLand, Industry, Service, Wage float64
+		People                                   float64
 	}
-	boom := func(on bool, out *sectorSeries) func() {
-		return func() {
-			w := world()
-			tile := -1
-			for d := 0; d < end; d++ {
-				if d == settle { // the same tile in both runs: they are identical until the boom
-					// a fixed workforce, as in Corden and Neary's model: nobody moves
-					// in to man the boom, so it must draw its workers from the tile's
-					// other trades
-					w.Migration = false
-					most := 0.0
-					for _, r := range w.Regions {
-						for _, f := range r.Firms {
-							if f.Name == "Coal mine" && f.Labor > most {
-								most, tile = f.Labor, r.ID
+	boomDoses := []float64{1, 2, 3, 4, 6, 8, 10}
+	boomRuns := make([]boomRun, 2*len(boomDoses))
+	var boomJobs []func()
+	for i, k := range boomDoses {
+		for j, mig := range []bool{false, true} {
+			out := &boomRuns[2*i+j]
+			k, mig := k, mig
+			boomJobs = append(boomJobs, func() {
+				w := world()
+				tile := -1
+				out.Boom, out.Migration = k, mig
+				samples := 0.0
+				for d := 0; d < end; d++ {
+					if d == settle { // the same tile in every run: they are identical until now
+						w.Migration = mig
+						most := 0.0
+						for _, r := range w.Regions {
+							for _, f := range r.Firms {
+								if f.Name == "Coal mine" && f.Labor > most {
+									most, tile = f.Labor, r.ID
+								}
 							}
 						}
+						out.Tile = tile
 					}
-					out.Tile = tile
-				}
-				if d == shockDay {
-					if on {
+					if d == shockDay {
 						for _, f := range w.Regions[tile].Firms {
 							if f.Name == "Coal mine" {
 								for _, m := range f.Methods {
-									m.TFP *= 3
+									m.TFP *= k
 								}
 							}
 						}
 					}
-				}
-				w.Step()
-				if d < settle || (d-settle)%30 != 0 {
-					continue
-				}
-				r := w.Regions[tile]
-				var sec [3]float64
-				coal := 0.0
-				for _, f := range r.Firms {
-					sec[f.Sector] += f.Labor
-					if f.Name == "Coal mine" {
-						coal += f.Labor
+					w.Step()
+					if d < end-2*days {
+						continue
 					}
+					r := w.Regions[tile]
+					for _, f := range r.Firms {
+						switch {
+						case f.Name == "Coal mine":
+							out.Coal += f.Labor
+						case f.Sector == Primary:
+							out.OtherLand += f.Labor
+						case f.Sector == Industry:
+							out.Industry += f.Labor
+						case f.Sector == Service:
+							out.Service += f.Labor
+						}
+					}
+					out.Wage += r.Wage
+					out.People += r.Population()
+					samples++
 				}
-				wage := r.Wage
-				out.Months = append(out.Months, (d-settle)/30)
-				out.Industry = append(out.Industry, sec[Industry])
-				out.Primary = append(out.Primary, sec[Primary])
-				out.Service = append(out.Service, sec[Service])
-				out.Coal = append(out.Coal, coal)
-				out.Wage = append(out.Wage, wage)
-			}
+				out.Coal /= samples
+				out.OtherLand /= samples
+				out.Industry /= samples
+				out.Service /= samples
+				out.Wage /= samples
+				out.People /= samples
+			})
 		}
 	}
-	var boomed, unboomed sectorSeries
 
 	parallel(base, strike(true, true, &shocked), strike(false, true, &control), strike(true, false, &shockedStill),
-		strike(false, false, &controlStill), blight(true, &blighted), blight(false, &unblighted), boom(true, &boomed), boom(false, &unboomed))
-	parallel(tradeJobs...)
+		strike(false, false, &controlStill), blight(true, &blighted), blight(false, &unblighted))
+	parallel(append(tradeJobs, boomJobs...)...)
 	write("trade.json", map[string]any{"runs": tradeRuns})
-	write("boom.json", map[string]any{"shockMonth": days / 30, "boom": boomed, "control": unboomed})
+	write("boom.json", map[string]any{"runs": boomRuns})
 
 	hops := func() []int { // hops from the struck tile
 		w := world()

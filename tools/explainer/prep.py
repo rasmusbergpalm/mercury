@@ -90,11 +90,8 @@ out["trade"] = [{"cost": r["Cost"], "migration": r["Migration"], "wageSpread": r
 # Engel's law: each tile's share of spending on basic needs against its income a head
 en = json.load(open(f"{S}/data/engel.json"))
 out["engel"] = [{"tile": int(r["Day"]), "basic": round(r["BasicShare"], 4), "income": round(r["IncomeHead"], 3)} for r in en["tiles"]]
-# the Dutch disease: the boom tile's workers by sector, the last two years averaged
-bo = json.load(open(f"{S}/data/boom.json"))
-def last2(r):
-    return {k: round(sum(r[k][-24:]) / len(r[k][-24:]), 2) for k in ("Primary", "Industry", "Service", "Coal", "Wage")}
-out["boom"] = {"tile": bo["boom"]["Tile"], "boom": last2(bo["boom"]), "control": last2(bo["control"]),
-               "before": {k: round(sum(bo["boom"][k][:12]) / 12, 2) for k in ("Primary", "Industry", "Service", "Coal", "Wage")}}
+# the Dutch disease: the boom tile at each dose of coal, with and without migration
+bo = json.load(open(f"{S}/data/boom.json"))["runs"]
+out["boom"] = [{k: (round(v, 3) if isinstance(v, float) else v) for k, v in r.items()} for r in bo]
 json.dump(out, open(f"{S}/explainer-data.json", "w"), separators=(",", ":"))
 print(f"{len(json.dumps(out))} bytes of data; goods {goods}")

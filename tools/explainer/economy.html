@@ -221,14 +221,22 @@ __STYLE__</style>
 
 <div class="col">
 <p>A boom in one trade can shrink the others. When the Netherlands found natural gas in the 1960s its manufacturing declined, and economists named the effect the Dutch disease. Corden and Neary (1982) explained it in two parts. The booming trade draws workers away from the others and bids up wages. Then the extra income is spent, partly on things that can't be imported, such as local services, which draw more workers still. Manufacturing, whose goods could as well come from elsewhere, is squeezed between the two.</p>
-<p>To test it, the tile with the most coal miners found its coal three times as easy to dig. <span class="ref" data-fig="dutch"></span> compares its workers by trade with a run without the boom.</p>
+<p>To test it, the tile with the most coal miners finds its coal easier to dig, by a dose from 2 to 10 times, and each dose is run twice: once with nobody moving after the map has settled, as in Corden and Neary's model where a country's workforce is fixed, and once with people free to move. <span class="ref" data-fig="dutch"></span> shows how the tile's trades respond to the size of the boom. Services are left out: they include the carters who haul the tile's coal away, so they boom with the exports rather than with local spending.</p>
 </div>
 
 <div class="figure" id="fig-dutch">
   <div class="head"><span class="plate"></span><h3>A coal boom in <span id="boom-name"></span>: the Dutch disease</h3></div>
-  <svg class="chart" id="chart-dutch" role="img" aria-label="Workers by trade in the boom tile, before the boom, without it and with it"></svg>
+  <div class="grid2">
+    <svg class="chart" id="chart-dutch-still" role="img" aria-label="Change in the boom tile's workers by trade and wage against the size of the boom, nobody moving"></svg>
+    <svg class="chart" id="chart-dutch-move" role="img" aria-label="Change in the boom tile's workers by trade and wage against the size of the boom, people free to move"></svg>
+  </div>
   <div class="legend" id="legend-dutch"></div>
   <p class="cap" id="cap-dutch"></p>
+</div>
+
+<div class="col">
+<p>The coal miners themselves first grow with the boom and then shrink. The mine can't spread beyond its seams, and once coal is many times easier to dig it takes fewer hands to dig what the tile can sell. The tile's income keeps rising all the same, and so does its wage.</p>
+<p><b>A note on currencies.</b> The Dutch disease is usually told through the exchange rate: gas exports bring in foreign money, the guilder rises, and Dutch factories find their goods dear abroad and imports cheap at home. Mercury's tiles have no currencies of their own, yet the disease appears. That is because the exchange rate is only one way it shows. In Corden and Neary's model, which has no money at all, the disease is a rise in the <em>real</em> exchange rate: the price of what a place can't trade, above all its labour, rises against the price of what it can. With a currency of its own, a country's money appreciates. Without one, as for a region inside a currency union (Western Australia in a mining boom, Aberdeen in the North Sea oil years), the same real appreciation has to come through local wages and prices instead. That is the wage line in the plate. Manufacturers in the boom tile pay more for labour while their goods sell at prices set by trade with the neighbours, so they lose ground to imports, as the Dutch did. A nominal exchange rate would only do the same thing faster.</p>
 </div>
 </section>
 
@@ -571,32 +579,23 @@ function drawEngel() {
   document.getElementById("cap-engel").textContent = `One dot per tile, once the map has settled. ${byId[lo.tile].name}, the poorest, earns ${lo.income.toFixed(1)} a head and spends ${Math.round(100 * lo.basic)}% of it on basic needs; ${byId[hi.tile].name}, the richest, earns ${hi.income.toFixed(1)} and spends ${Math.round(100 * hi.basic)}%. The dashed line is the trend: each extra unit of income a day lowers the share by about ${Math.abs(b).toFixed(1)} points.`;
 }
 
-// ---- the Dutch disease ------------------------------------------------------------------------
+// ---- the Dutch disease: dose and response ------------------------------------------------------
 function drawDutch() {
-  const B = D.boom, svg = document.getElementById("chart-dutch");
-  document.getElementById("boom-name").textContent = byId[B.tile].name;
-  const cats = [["Coal miners", (r) => r.Coal], ["Other land work", (r) => r.Primary - r.Coal], ["Manufacturing", (r) => r.Industry], ["Services", (r) => r.Service]];
-  const runs = [["before the boom", B.before, "--muted"], ["without the boom", B.control, "--s2"], ["with the boom", B.boom, "--s1"]];
-  const w = 760, h = 320, m = { l: 54, r: 14, t: 14, b: 40 };
-  const vmax = Math.max(...cats.flatMap(([, f]) => runs.map(([, r]) => f(r)))) * 1.1;
-  const gw = (w - m.l - m.r) / cats.length, bw = gw / (runs.length + 1.2);
-  const Y = (v) => h - m.b - v / vmax * (h - m.t - m.b);
-  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  let s = "";
-  for (const v of niceTicks(0, vmax, 5)) s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`;
-  cats.forEach(([name, f], i) => {
-    runs.forEach(([, r, col], j) => {
-      const x = m.l + gw * i + bw * (0.6 + j), v = f(r);
-      s += `<rect x="${x}" y="${Y(v)}" width="${bw - 3}" height="${Y(0) - Y(v)}" fill="${css(col)}"/>`;
-    });
-    s += `<text x="${m.l + gw * i + gw / 2}" y="${h - m.b + 18}" text-anchor="middle" style="fill:${css("--ink")}">${name}</text>`;
-  });
-  s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${Y(0)}" y2="${Y(0)}"/><text x="14" y="${(m.t + h - m.b) / 2}" text-anchor="middle" transform="rotate(-90 14 ${(m.t + h - m.b) / 2})">workers</text>`;
-  svg.innerHTML = s;
-  legend(document.getElementById("legend-dutch"), runs.map(([l, , c]) => [c, l]));
-  const ch = (f) => Math.round(100 * (f(B.boom) / f(B.control) - 1));
-  const way = (f, up, down) => { const c = ch(f); return c >= 0 ? `${up} by ${c}%` : `${down} by ${-c}%`; };
-  document.getElementById("cap-dutch").textContent = `Workers in the boom tile: the year before the boom, and the last two years of the runs with and without it, averaged. Nobody moves once the map has settled, so the boom must find its workers in the tile itself, as in Corden and Neary's model. With the boom the tile has ${ch((r) => r.Coal)}% more coal miners and pays ${ch((r) => r.Wage)}% higher wages. Its other land work ${way((r) => r.Primary - r.Coal, "grows", "shrinks")}, its services, which can't be imported, ${way((r) => r.Service, "grow", "shrink")}, and its manufacturing ${way((r) => r.Industry, "grows", "shrinks")}. (Services include building, which comes and goes in waves, so they swing more than the rest.)`;
+  const B = D.boom;
+  document.getElementById("boom-name").textContent = byId[B[0].Tile].name;
+  const runs = (mig) => B.filter((r) => r.Migration === mig).sort((a, b) => a.Boom - b.Boom);
+  const lines = [["Coal", "coal miners", "--s3"], ["OtherLand", "other land work", "--s4"], ["Industry", "manufacturing", "--s1"], ["Wage", "wage", "--s2"]];
+  const panel = (id, mig, title) => {
+    const R = runs(mig), base = R.find((r) => r.Boom === 1);
+    lineChart(document.getElementById(id), { title, series: lines.map(([k, , c]) => ({ pts: R.map((r) => [r.Boom, 100 * (r[k] / base[k] - 1)]), color: c, dash: k === "Wage" ? "6 4" : "" })),
+      xTicks: [1, 2, 4, 6, 8, 10], xLabel: "coal boom (× how easy coal is to dig)", yFmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`, w: 480, h: 320, marks: [] });
+  };
+  panel("chart-dutch-still", false, "Nobody moves");
+  panel("chart-dutch-move", true, "People free to move");
+  legend(document.getElementById("legend-dutch"), lines.map(([, l, c]) => [c, l, l === "wage"]));
+  const at = (mig, k) => runs(mig).find((r) => r.Boom === k), ch = (mig, key) => Math.round(100 * (at(mig, 10)[key] / at(mig, 1)[key] - 1));
+  const sign = (v) => `${v >= 0 ? "+" : ""}${v}%`;
+  document.getElementById("cap-dutch").textContent = `Each point is a run: the boom tile's workers and wage averaged over its last two years, as a change from the run without a boom. With nobody moving, a tenfold boom changes its coal miners by ${sign(ch(false, "Coal"))}, its wage by ${sign(ch(false, "Wage"))}, its other land work by ${sign(ch(false, "OtherLand"))} and its manufacturing by ${sign(ch(false, "Industry"))}: the bigger the boom, the more it squeezes the tile's other trades. With people free to move, newcomers man much of the boom (the tile ends with ${sign(Math.round(100 * (at(true, 10).People / at(true, 1).People - 1)))} people), so the squeeze is softer: manufacturing ${sign(ch(true, "Industry"))}, other land work ${sign(ch(true, "OtherLand"))}.`;
 }
 
 // plates are numbered in the order they appear, and the text's references follow
