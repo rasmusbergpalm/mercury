@@ -90,7 +90,7 @@ out["trade"] = [{"cost": r["Cost"], "migration": r["Migration"], "wageSpread": r
 # Engel's law: each tile's share of spending on basic needs against its income a head
 en = json.load(open(f"{S}/data/engel.json"))
 out["engel"] = [{"tile": int(r["Day"]), "basic": round(r["BasicShare"], 4), "income": round(r["IncomeHead"], 3)} for r in en["tiles"]]
-# the Dutch disease: the boom tile at each dose of coal, with and without migration
+# a coal boom: the boom tile at each dose of coal, with and without migration
 bo = json.load(open(f"{S}/data/boom.json"))["runs"]
 # (the carters hauling the tile's coal away count as coal work, not services)
 for r in bo:

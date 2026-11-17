@@ -40,7 +40,7 @@ import (
 //     hops travelled per unit made against its value per unit of bulk; and
 //     potatoes, coal and tea again at other bulks, to see each move;
 //
-//   - boom.json: the Dutch disease: a coal boom of 1 to 10 times in one
+//   - boom.json: a coal boom of 1 to 10 times in one
 //     tile, with and without migration: its workers by trade and its wage;
 //
 //   - corridor.json: a cheap route across the map (the coast's cheap
@@ -419,10 +419,10 @@ func TestExplainerData(t *testing.T) {
 		}
 	}
 
-	// ---- the Dutch disease, dose and response: the tile with the most coal
+	// ---- a coal boom, dose and response: the tile with the most coal
 	// miners finds its coal 1 to 10 times as easy to dig, with people free
 	// to move and with nobody moving after the map has settled (a fixed
-	// workforce, as in Corden and Neary's model). Its coal is as much cheaper
+	// workforce). Its coal is as much cheaper
 	// to carry to its neighbours. The boom tile's workers by
 	// trade, its people and its wage, averaged over the last two years.
 	type boomRun struct {
