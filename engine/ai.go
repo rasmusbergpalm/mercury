@@ -509,16 +509,33 @@ func (w *World) aiPlan(n *Nation, armies []*Army, targets []expansionTarget) {
 			free = append(free, a)
 		}
 	}
+	// each army's best move is kept from round to round: an order only
+	// takes its destination off the others' hands, so only those whose best
+	// was that tile weigh again (a big nation has dozens of armies, and
+	// weighing every one each round over every tile was most of a day's work
+	// on a world map)
+	kept := map[*Army]aiOption{}
 	for len(free) > 0 {
 		best, pick := aiOption{-1, math.Inf(-1)}, -1
 		for i, a := range free {
-			if o := w.aiBest(n, a, targets, ctx); pick < 0 || o.value > best.value {
+			o, ok := kept[a]
+			if !ok {
+				o = w.aiBest(n, a, targets, ctx)
+				kept[a] = o
+			}
+			if pick < 0 || o.value > best.value {
 				best, pick = o, i
 			}
 		}
 		a := free[pick]
 		free = append(free[:pick:pick], free[pick+1:]...)
+		delete(kept, a)
 		w.aiOrder(n, a, best)
+		for b, o := range kept {
+			if o.dest == best.dest {
+				delete(kept, b)
+			}
+		}
 	}
 }
 
@@ -568,10 +585,13 @@ type aiContext struct {
 	besieging  []bool // each enemy army holding a siege
 	defendOnly map[*Army]bool
 	filling    map[*Army]bool // filling up at home: only keeping out of reach
+	scopes     map[*Army]*aiScope
+	days       map[*Army][]float64 // each army's march days to every tile
 }
 
 func (w *World) newAIContext(n *Nation) *aiContext {
-	ctx := &aiContext{defendOnly: map[*Army]bool{}, filling: map[*Army]bool{}}
+	ctx := &aiContext{defendOnly: map[*Army]bool{}, filling: map[*Army]bool{},
+		scopes: map[*Army]*aiScope{}, days: map[*Army][]float64{}}
 	for _, e := range w.Armies {
 		if e.Nation != n && n.AtWar[e.Nation.ID] && !e.Retreating && e.canOccupy() {
 			ctx.enemies = append(ctx.enemies, e)
@@ -599,8 +619,11 @@ func (c *aiContext) relief(r int, within float64) float64 {
 // one of its nation's tiles an enemy army stands on, or marching on an enemy
 // or free tile (fighting the army there, if any, and occupying it).
 func (w *World) aiBest(n *Nation, a *Army, targets []expansionTarget, ctx *aiContext) aiOption {
-	s := w.newAIScope(n, a)
-	days := w.aiMarchDays(n, a)
+	s, days := ctx.scopes[a], ctx.days[a]
+	if s == nil { // (weighed once a plan: the map doesn't change meanwhile)
+		s, days = w.newAIScope(n, a), w.aiMarchDays(n, a)
+		ctx.scopes[a], ctx.days[a] = s, days
+	}
 	going := aiGoing(a)
 	rate := func(gain, days float64) float64 { return gain / (days + aiSettle) }
 	// the chance of winning a fight in tile r against an enemy of the given

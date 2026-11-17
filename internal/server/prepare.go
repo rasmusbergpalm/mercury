@@ -53,24 +53,29 @@ func (s *Server) PrepareGame(name string, transportCost float64, turnDays int, m
 		}
 		return g.ID, nil
 	}
-	var size *engine.MapSize
-	for i := range engine.MapSizes {
-		if engine.MapSizes[i].Name == m.Size {
-			size = &engine.MapSizes[i]
+	var spec engine.GameSpec
+	var err error
+	if m.Size == "world" { // the world in 1820, with its nations
+		spec = engine.WorldGame()
+	} else {
+		var size *engine.MapSize
+		for i := range engine.MapSizes {
+			if engine.MapSizes[i].Name == m.Size {
+				size = &engine.MapSizes[i]
+			}
 		}
-	}
-	if size == nil {
-		return "", fmt.Errorf("no map size %q", m.Size)
-	}
-	if m.Nations == 0 {
-		m.Nations = size.Nations
-	}
-	if m.Seed == 0 {
-		m.Seed = time.Now().UnixNano()
-	}
-	spec, err := engine.GenerateGame(engine.MapOptions{Rows: size.Rows, Cols: size.Cols, Nations: m.Nations, Seed: m.Seed})
-	if err != nil {
-		return "", err
+		if size == nil {
+			return "", fmt.Errorf("no map size %q", m.Size)
+		}
+		if m.Nations == 0 {
+			m.Nations = size.Nations
+		}
+		if m.Seed == 0 {
+			m.Seed = time.Now().UnixNano()
+		}
+		if spec, err = engine.GenerateGame(engine.MapOptions{Rows: size.Rows, Cols: size.Cols, Nations: m.Nations, Seed: m.Seed}); err != nil {
+			return "", err
+		}
 	}
 	if m.Divided {
 		if spec, err = engine.DivideLand(spec); err != nil {
@@ -82,7 +87,7 @@ func (s *Server) PrepareGame(name string, transportCost float64, turnDays int, m
 	for _, row := range spec.Map {
 		tiles += len(row) - strings.Count(row, string(rune(engine.Sea)))
 	}
-	p := &preparing{id: randomHex(4), name: name, created: time.Now(), mapName: size.Name, tiles: tiles,
+	p := &preparing{id: randomHex(4), name: name, created: time.Now(), mapName: m.Size, tiles: tiles,
 		nations: spec.Nations, turnDays: turnDays, total: engine.PrepareDays(tiles)}
 	s.mu.Lock()
 	busy := 0

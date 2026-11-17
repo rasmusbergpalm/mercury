@@ -28,6 +28,9 @@ var nameEndings = map[byte][]string{
 	'H': {"don", "low", "crest", "ridge", "bury", "combe", "wold", "cliffe"},
 	'M': {"berg", "peak", "fell", "crag", "stein", "mont", "horn", "scar"},
 	'T': {"ora", "ana", "ica", "ara", "ilo", "enza", "ama", "ita"},
+	'S': {"stan", "ovka", "insk", "dale", "mead", "plain"},
+	'D': {"sand", "oasis", "abad", "dune", "wadi", "ghar"},
+	'U': {"vik", "nes", "fjell", "moor", "tun", "skar"},
 	0:   {"mouth", "haven", "port", "sea", "strand", "wick", "ness", "bay"},
 }
 

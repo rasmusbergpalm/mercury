@@ -183,8 +183,10 @@ $("new-game").addEventListener("submit", async (ev) => {
     await refreshLobby();
   } catch (e) { showError("lobby-err", e); }
 });
-$("new-map").addEventListener("change", () => { $("new-nations").disabled = $("new-map").value === "classic"; });
-$("new-nations").disabled = $("new-map").value === "classic";
+// the classic map and the world come with their nations
+const fixedNations = () => ["classic", "world"].includes($("new-map").value);
+$("new-map").addEventListener("change", () => { $("new-nations").disabled = fixedNations(); });
+$("new-nations").disabled = fixedNations();
 
 $("import").addEventListener("change", async (ev) => {
   const file = ev.target.files[0];
@@ -525,8 +527,10 @@ function shield(color, px = 30) {
 const canvas = $("map");
 const ctx = canvas.getContext("2d");
 const TERRAIN = {
-  light: { plains: "#e3d59b", forest: "#b9c28c", hills: "#d6bd8c", mountains: "#c9bdab", tropical: "#bcd194" },
-  dark: { plains: "#5c5434", forest: "#3e4a2f", hills: "#5b4b34", mountains: "#514b44", tropical: "#3d5234" },
+  light: { plains: "#e3d59b", forest: "#b9c28c", hills: "#d6bd8c", mountains: "#c9bdab", tropical: "#bcd194",
+    steppe: "#cdd093", desert: "#f5ebd3", tundra: "#dde2e0" },
+  dark: { plains: "#5c5434", forest: "#3e4a2f", hills: "#5b4b34", mountains: "#514b44", tropical: "#3d5234",
+    steppe: "#4f5532", desert: "#71684f", tundra: "#4d5452" },
 };
 const OCEAN = { light: "#9fc2c9", dark: "#22383d" };
 const TIER_COLORS = () => [series(1), series(2), series(0)]; // basic, intermediate, luxury
@@ -732,6 +736,17 @@ function terrainGlyphs(g, r, x, y, ink) {
           g.quadraticCurveTo(px + u * (0.2 + dx * 0.6), py - u * 1.3, px + u * (0.2 + dx), py - u * 0.4); g.stroke();
         }
         break;
+      case "steppe": // sparse, short grass
+        g.moveTo(px - u * 0.4, py); g.lineTo(px - u * 0.55, py - u * 0.6);
+        g.moveTo(px + u * 0.4, py); g.lineTo(px + u * 0.55, py - u * 0.6);
+        g.stroke(); break;
+      case "desert": // a dune's crest and its shadow
+        g.moveTo(px - u * 1.1, py + u * 0.3); g.quadraticCurveTo(px - u * 0.2, py - u * 0.7, px + u * 1.1, py + u * 0.3); g.stroke();
+        g.beginPath(); g.moveTo(px - u * 0.1, py - u * 0.15); g.lineTo(px + u * 0.4, py + u * 0.25); g.stroke(); break;
+      case "tundra": // low scrub and frost
+        g.moveTo(px - u * 0.8, py); g.lineTo(px + u * 0.8, py); g.stroke();
+        g.beginPath(); g.arc(px - u * 0.2, py - u * 0.45, u * 0.18, 0, 2 * Math.PI);
+        g.fillStyle = dark ? "#cfd6d4" : "#ffffff"; g.fill(); break;
       case "ocean": // waves
         g.strokeStyle = dark ? "rgba(150,200,210,0.7)" : "rgba(40,90,110,0.6)";
         g.moveTo(px - u, py); g.quadraticCurveTo(px - u * 0.5, py - u * 0.6, px, py); g.quadraticCurveTo(px + u * 0.5, py - u * 0.6, px + u, py);
@@ -1019,7 +1034,10 @@ function drawArmies() {
       ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = Math.max(1, size * 0.025);
       ctx.beginPath(); ctx.moveTo(bx - w * 0.55, by - h * 0.6); ctx.lineTo(bx + w * 0.55, by + h * 0.55);
       ctx.moveTo(bx + w * 0.55, by - h * 0.6); ctx.lineTo(bx - w * 0.55, by + h * 0.55); ctx.stroke();
-      // strength, and a health bar: strength against the army at full size and supply
+      // strength, and a health bar: strength against the army at full size and
+      // supply (left off when the hexes are too small to carry them: a world
+      // seen whole would be all labels)
+      if (size < 18) return;
       const health = Math.max(0, Math.min(1, a.strength / Math.max(a.full_strength, 1e-9)));
       const bw = w * 2.3, bh = Math.max(3.5, size * 0.065), bxl = bx - bw / 2, byt = by + h * 1.3;
       ctx.fillStyle = "rgba(20,14,8,0.75)"; roundRect(bxl - 1, byt - 1, bw + 2, bh + 2, 2); ctx.fill();
@@ -1205,7 +1223,7 @@ function drawLegend(sc) {
   } else if (kind === "infra") {
     el.innerHTML = world.infra_levels.map((l) => `<span>${esc(l.name)} ×${l.move_mult}</span>`).join(" · ") + `<span>roads and railways shown along the links</span>`;
   } else if (kind === "terrain") {
-    el.innerHTML = world.terrains.map((t) => `<span>${sw(pal[t.name])}${t.name}</span>`).join("") + `<span>${sw(OCEAN[dark ? "dark" : "light"])}ocean: tiles beside it are coastal (fishing, cheap shipping, ports)</span>` + marks;
+    el.innerHTML = world.terrains.filter((t) => world.regions.some((r) => r.terrain === t.name)).map((t) => `<span>${sw(pal[t.name])}${t.name}</span>`).join("") + `<span>${sw(OCEAN[dark ? "dark" : "light"])}ocean: tiles beside it are coastal (fishing, cheap shipping, ports)</span>` + marks;
   } else {
     el.innerHTML = `<span>${esc(overlayLabel())}</span><span>${fmtOverlay(sc.lo)}</span><span class="ramp" style="background:linear-gradient(90deg,${RAMP.join(",")})"></span><span>${fmtOverlay(sc.hi)}</span>`;
   }

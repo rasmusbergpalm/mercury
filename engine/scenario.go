@@ -209,6 +209,9 @@ var GameRawRecipes = []Recipe{
 var GameTerrainRaw = map[string][]Bonus{
 	"tropical": {{"Oil well", 1.5}},
 	"plains":   {{"Oil well", 0.7}},
+	"desert":   {{"Oil well", 1.5}},
+	"steppe":   {{"Oil well", 0.7}},
+	"tundra":   {{"Oil well", 0.5}},
 }
 
 // FirmTech maps a firm to the tech that enables it (from Tech.EnableFirms).
@@ -252,6 +255,17 @@ var Terrains = []Terrain{
 	{"mountains", 'M', 1.0, []Bonus{{"Coal mine", 1.5}, {"Iron mine", 1.5}, {"Sheep farm", 0.8}}},
 	{"tropical", 'T', 1.0, []Bonus{{"Cotton plantation", 1.5}, {"Sugar plantation", 1.5},
 		{"Tea plantation", 1.5}, {"Silk farm", 1.2}, {"Farm", 0.6}, {"Iron mine", 0.25}}},
+	// the dry grasslands (the Great Plains, the Pontic and Kazakh steppe, the
+	// Sahel, Patagonia): herds above all, and grain where the rain allows
+	{"steppe", 'S', 1.0, []Bonus{{"Ranch", 1.6}, {"Sheep farm", 1.4}, {"Farm", 1.0},
+		{"Potato farm", 0.5}, {"Clay pit", 0.8}, {"Iron mine", 0.25}}},
+	// desert: nomads' herds, oases' grain, clay; little else (until oil)
+	{"desert", 'D', 1.0, []Bonus{{"Ranch", 0.3}, {"Sheep farm", 0.4}, {"Farm", 0.2},
+		{"Clay pit", 0.6}, {"Iron mine", 0.25}}},
+	// tundra beyond the tree line: reindeer herds, scrub timber, and the ores
+	// and coal of the northern shields
+	{"tundra", 'U', 1.0, []Bonus{{"Ranch", 0.2}, {"Forestry", 0.3}, {"Iron mine", 0.4},
+		{"Coal mine", 0.6}}},
 }
 
 // The ocean surrounds the map. A tile on the map's edge is coastal whatever

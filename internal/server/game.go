@@ -192,6 +192,9 @@ func (g *Game) summary() GameSummary {
 
 // mapName is the size of a generated map with these dimensions.
 func mapName(rows, cols int) string {
+	if rows == len(engine.WorldMap) && cols == len(engine.WorldMap[0]) {
+		return "world"
+	}
 	for _, m := range engine.MapSizes {
 		if m.Rows == rows && m.Cols == cols {
 			return m.Name
