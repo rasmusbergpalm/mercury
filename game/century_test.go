@@ -168,7 +168,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		building := map[*Firm][2]float64{} // private expansions under way: what they had, and need
 		for _, r := range w.Regions {
 			for _, f := range r.Firms {
-				if e := f.Expansion; e != nil && !e.Public {
+				if e := f.Expansion; e != nil && !e.External {
 					building[f] = [2]float64{e.Delivered, e.Cost()}
 				}
 			}
@@ -185,7 +185,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 					}
 					constrPriv += math.Max(0, got) * m.Price
 				}
-				if !f.State {
+				if !f.Managed {
 					profit += f.TickRevenue - f.TickCost
 				}
 				wages += f.Labor * r.Wage
@@ -210,7 +210,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		small := math.Inf(1)
 		for _, r := range w.Regions {
 			for _, f := range r.Firms {
-				if !f.State {
+				if !f.Managed {
 					k += float64(f.Levels) * LevelCost * r.Markets[Construction].Price
 					levels += float64(f.Levels)
 				}

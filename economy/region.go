@@ -16,10 +16,6 @@ type Region struct {
 	Wage      float64
 	WageSpeed float64
 
-	// Gov is the government the tile answers to, or nil for free land: it
-	// taxes incomes, buys goods, levies duties and sets the policies the
-	// economy asks it about (see Government).
-	Gov      Government
 	BaseMove float64  // terrain's movement cost
 	RoadMult float64  // what roads and railways do to moving over land (1: none)
 	Real     GDPChain // real GDP, linked monthly
@@ -30,17 +26,22 @@ type Region struct {
 
 	UtilityEMA float64 // smoothed utility per person; migration follows it
 
-	// PublicBid is what the government buys here today, by good (paid
-	// from the Ledger); PublicGot is what it got.
-	PublicBid, PublicGot []float64
+	// The levers (see levers.go), and the accounts.
+	TaxFn        func(amount float64) float64 // the tax withheld from an income (nil: none)
+	Withheld     float64                      // taxes withheld, until someone takes them
+	Duties       float64                      // import duties collected here, until someone takes them
+	Buyers       []*Buyer                     // outside buyers in its markets
+	PaybackMult  float64                      // scales the payback owners ask of a new level (1: as is)
+	GrowthBonus  float64                      // added to its people's growth a year
+	CoastMult    float64                      // scales the cost of passing it by sea (1: CoastMove)
+	SpoilageMult float64                      // scales the spoilage of goods shipped from it (1: as is)
 
 	House    *TradingHouse // the tile's merchants
 	outbound [][]*Trader   // routes buying here, by good (transport: all of them)
 	bidders  [][]*Trader   // those of them that may bid today (see listBidders)
 	inbound  [][]*Trader   // traders selling here, by good
 
-	Ledger   Ledger    // what it owes its government from today's parallel work
-	soldHere []*Trader // routes that sold here today: their houses are owed (see SettleLedgers)
+	soldHere []*Trader // routes that sold here today: their houses are owed (see settleHouses)
 
 	prices, demandBuf []float64 // scratch
 	// firms by the goods they may buy and the good they make (built once)
@@ -53,8 +54,7 @@ type Region struct {
 func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash float64) *Region {
 	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1, BaseMove: 1, RoadMult: 1,
 		outbound: make([][]*Trader, NumGoods), inbound: make([][]*Trader, NumGoods), bidders: make([][]*Trader, NumGoods),
-		prices: make([]float64, NumGoods), PublicBid: make([]float64, NumGoods),
-		PublicGot: make([]float64, NumGoods), Healthy: 1}
+		prices: make([]float64, NumGoods), Healthy: 1, PaybackMult: 1, CoastMult: 1, SpoilageMult: 1}
 	for i := 0; i < nPops; i++ {
 		r.Pops = append(r.Pops, NewPop(popSize, popCash))
 		r.popDemand = append(r.popDemand, make([]float64, NumGoods))
@@ -157,12 +157,10 @@ const refitDecideDays = 365.0
 func (r *Region) planInvestment(seed int64) {
 	price := r.Markets[Construction].Price
 	payback := float64(investPayback)
-	if r.Gov != nil {
-		payback *= r.Gov.PaybackMult()
-	}
+	payback *= r.PaybackMult
 	for i, f := range r.Firms {
 		f.upkeepWant = 0
-		if f.State || f.Levels < 1 {
+		if f.Managed || f.Levels < 1 {
 			continue
 		}
 		perLevel := f.ProfitEMA / float64(f.Levels)
@@ -205,7 +203,7 @@ func (r *Region) planInvestment(seed int64) {
 			upkeep = depreciation * float64(f.Levels) * LevelCost / TicksPerYear
 		}
 		want := upkeep
-		if e := f.Expansion; e != nil && !e.Public {
+		if e := f.Expansion; e != nil && !e.External {
 			gain := perLevel
 			if e.Refit { // what it still adds at today's prices
 				gain = f.LevelProfit(e.Method, r.prices, r.Wage) - f.LevelProfit(e.From, r.prices, r.Wage)
@@ -233,7 +231,7 @@ func (r *Region) settleFirms() {
 	for _, f := range r.Firms {
 		f.Age++
 		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.TickRevenue-f.TickCost)
-		if !f.State && f.Levels > 1 { // wear, less today's upkeep (made good at the market)
+		if !f.Managed && f.Levels > 1 { // wear, less today's upkeep (made good at the market)
 			f.Wear += depreciation * float64(f.Levels) / TicksPerYear
 			if f.Wear >= 1 {
 				f.dropLevel(r)
@@ -250,11 +248,11 @@ func (r *Region) settleFirms() {
 			if c := f.landCap(); c > 0 && f.Levels > c {
 				f.dropLevel(r) // on full land the new method takes over the old one's
 			}
-			if f.State {
+			if f.Managed {
 				f.Funded++ // a new state level is funded once built
 			}
 		}
-		if f.State {
+		if f.Managed {
 			continue // the government decides about its state firms
 		}
 		if f.ProfitEMA < 0 && f.Levels > 1 {
@@ -333,7 +331,7 @@ const (
 	popAgent agentKind = iota
 	firmAgent
 	traderAgent
-	govAgent
+	buyerAgent
 	investAgent
 )
 
@@ -444,9 +442,11 @@ func (r *Region) GoodsMarkets() {
 				}
 			}
 		}
-		if r.Gov != nil && r.PublicBid[g] > 0 { // paid from the ledger, settled with the government later
-			bids = append(bids, Order{&r.Ledger.Paid, r.PublicBid[g]})
-			bidRefs = append(bidRefs, agentRef{govAgent, 0})
+		for i, b := range r.Buyers {
+			if b.Bid[g] > 0 {
+				bids = append(bids, Order{&b.Account, b.Bid[g]})
+				bidRefs = append(bidRefs, agentRef{buyerAgent, i})
+			}
 		}
 		for _, i := range r.firmsMaking[g] {
 			if f := r.Firms[i]; f.Inventory > 0 {
@@ -479,14 +479,14 @@ func (r *Region) GoodsMarkets() {
 				t := r.bidders[g][ref.idx]
 				t.Receive(gid, got)
 				t.House.Spent += got * price
-			case govAgent:
-				r.PublicGot[g] = got
+			case buyerAgent:
+				r.Buyers[ref.idx].Got[g] = got
 			case investAgent: // upkeep first, then the expansion
 				f := r.Firms[ref.idx]
 				upkeep := math.Min(got, f.upkeepWant)
 				f.Wear = math.Max(0, f.Wear-upkeep/LevelCost)
 				f.TickCost += upkeep * price
-				if e := f.Expansion; e != nil && !e.Public {
+				if e := f.Expansion; e != nil && !e.External {
 					e.Delivered += got - upkeep
 				}
 			}
@@ -504,7 +504,7 @@ func (r *Region) GoodsMarkets() {
 					duty := sold * price * rate
 					t.proceeds -= duty
 					t.duty += duty
-					r.Ledger.Tariffs += duty
+					r.Duties += duty
 				}
 			}
 		}
@@ -554,7 +554,7 @@ func (r *Region) capUnsuppliedPrices() {
 // Produce decays unsold stock, then lets every firm produce.
 func (r *Region) Produce() {
 	for _, f := range r.Firms {
-		if f.State {
+		if f.Managed {
 			continue // state firms produce for their government
 		}
 		f.Inventory *= 1 - Goods[f.Output].Spoilage
@@ -678,9 +678,7 @@ func (r *Region) BasicNeedsMet() float64 {
 // GrowthRate is the tile's population growth per year at current consumption.
 func (r *Region) GrowthRate() float64 {
 	g := PopGrowthSlope*(r.BasicNeedsMet()-PopGrowthNeutral) + r.HealthGrowth()
-	if r.Gov != nil {
-		g += r.Gov.GrowthBonus()
-	}
+	g += r.GrowthBonus
 	return math.Max(PopGrowthMin, math.Min(PopGrowthMax, g)-SchooledBirths*r.Educated)
 }
 
@@ -702,9 +700,7 @@ func (r *Region) MoveCost() float64 {
 		return land
 	}
 	sea := CoastMove
-	if r.Gov != nil {
-		sea *= r.Gov.CoastMult()
-	}
+	sea *= r.CoastMult
 	return math.Min(sea, land)
 }
 

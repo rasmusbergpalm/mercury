@@ -259,7 +259,7 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 			levels += float64(f.Levels)
 			finite(r.Name+" "+f.Name+" cash", f.Cash, -1e-6)
 			finite(r.Name+" "+f.Name+" stock", f.Inventory, -1e-9)
-			if !f.State {
+			if !f.Managed {
 				h.output[i][j] += f.LastOutput
 				if f.LastOutput > 0 {
 					h.making[i][j]++
@@ -467,7 +467,7 @@ func (h *healthWatch) checks(l healthLimits) []healthCheck {
 	piled, piledName, held, heldName := 0.0, "", 0.0, ""
 	for i, r := range w.Regions {
 		for j, f := range r.Firms {
-			if f.State {
+			if f.Managed {
 				continue
 			}
 			// a day's output while it was making anything (a method that came

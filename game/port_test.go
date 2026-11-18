@@ -74,7 +74,7 @@ func TestRemovePort(t *testing.T) {
 	}
 	land := 0
 	for _, x := range w.Traders {
-		if !x.Sea {
+		if !x.FixedDistance {
 			land++
 		}
 	}
@@ -90,13 +90,13 @@ func TestRemovePort(t *testing.T) {
 		t.Errorf("%d routes after the removal, want %d", len(w.Traders), want)
 	}
 	for _, x := range w.Traders {
-		if x.Origin == gone.Region && x.Sea || x.Dest == gone.Region && x.Sea {
+		if x.Origin == gone.Region && x.FixedDistance || x.Dest == gone.Region && x.FixedDistance {
 			t.Fatal("a sea route of the removed port is left")
 		}
 	}
 	for _, r := range w.Regions {
 		for _, x := range r.House.Routes {
-			if x.Sea && (x.Origin == gone.Region || x.Dest == gone.Region) {
+			if x.FixedDistance && (x.Origin == gone.Region || x.Dest == gone.Region) {
 				t.Fatal("a house still funds a route of the removed port")
 			}
 		}

@@ -47,30 +47,38 @@ type Region struct {
 	Loyalties []float64
 	Battle    int // days the current battle on the tile has lasted (0: none)
 
-	claims    []claim   // what the nation buys here this tick
-	exportsTo []float64 // value shipped to each other nation today (see trackTrade)
+	claims    []claim        // what the nation buys here this tick
+	buyer     *economy.Buyer // the nation, buying in the tile's markets
+	exportsTo []float64      // value shipped to each other nation today (see trackTrade)
 }
 
-// wrap makes a game of an economy: a game tile for each of its tiles, and
-// the game's hooks in its day.
+// wrap makes a game of an economy: a game tile for each of its tiles, with
+// a buyer in its markets for whoever owns it.
 func wrap(e *economy.World) *World {
 	w := &World{World: e}
 	for _, r := range e.Regions {
-		w.Regions = append(w.Regions, &Region{Region: r, w: w, Collect: 1})
+		g := &Region{Region: r, w: w, Collect: 1, buyer: economy.NewBuyer()}
+		r.Buyers = append(r.Buyers, g.buyer)
+		w.Regions = append(w.Regions, g)
 	}
-	e.Hooks = w
 	return w
 }
 
-// setNation hands the tile to a nation (nil: free land), which governs its
-// economy.
+// setNation hands the tile to a nation (nil: free land), which taxes its
+// people's incomes.
 func (r *Region) setNation(n *Nation) {
 	r.Nation = n
 	if n == nil {
-		r.Gov = nil
+		r.TaxFn = nil
 	} else {
-		r.Gov = r
+		r.TaxFn = r.incomeTax
 	}
+}
+
+// incomeTax is what the tile's administration collects of an income, from
+// people who pay.
+func (r *Region) incomeTax(amount float64) float64 {
+	return amount * r.Nation.TaxRate * r.Collect * r.AllegianceMult()
 }
 
 // setInfra sets the tile's infrastructure level, and what it does to moving
@@ -80,47 +88,95 @@ func (r *Region) setInfra(level int) {
 	r.RoadMult = InfraLevels[level].MoveMult
 }
 
-// The tile's owner governs its economy (economy.Government).
-
-func (r *Region) IncomeTax(amount float64) float64 {
-	return amount * r.Nation.TaxRate * r.Collect * r.AllegianceMult() // what its administration collects, from people who pay
+// Step plays a day: the economy's, with the nations' part in it. The
+// computer plays first; the nations then set the economy's levers (their
+// technology, tariffs and policies), buy in the markets once merchants
+// have planned, take their taxes and duties when the markets and the
+// firms are done, and settle their treasuries, services and wars.
+func (w *World) Step() {
+	w.runAI()
+	w.setLevers()
+	e := w.World
+	e.BeginDay()
+	e.PlanTrade()
+	w.planDay()
+	e.Markets()
+	w.collect()
+	e.Ship()
+	w.afterShipping()
+	e.Produce()
+	w.collect()
+	w.settleDay()
+	w.setPolicies() // (what techs learned today do to today's growth)
+	e.EndDay()
+	if w.Spec != nil && w.Tick%HistoryEvery == 0 {
+		w.record()
+	}
 }
 
-// Duty is the nation's tariff on goods from outside it; none from its own
-// tiles, and an embargo on trade with its enemies.
-func (r *Region) Duty(from *economy.Region, g GoodID) (float64, bool) {
-	on, dn := r.w.Regions[from.ID].Nation, r.Nation
-	if dn == on {
+// setLevers sets the economy's levers from the nations: the technologies
+// known, each route's tariff and embargo, and each tile's policies.
+func (w *World) setLevers() {
+	if w.Known == nil {
+		w.Known = map[string]bool{}
+	}
+	for i := range Techs {
+		known := false
+		for _, n := range w.Nations {
+			if n.Known[i] {
+				known = true
+				break
+			}
+		}
+		w.Known[Techs[i].Name] = known
+	}
+	for _, t := range w.Traders {
+		t.Tariff, t.Closed = w.duty(t)
+	}
+	w.setPolicies()
+}
+
+// duty is the tariff on a route, set by the nation it enters: none from its
+// own tiles, and an embargo on trade with its enemies.
+func (w *World) duty(t *Trader) (float64, bool) {
+	on, dn := w.Regions[t.Origin.ID].Nation, w.Regions[t.Dest.ID].Nation
+	if dn == nil || dn == on {
 		return 0, false
 	}
 	if on != nil && on.closedTo(dn) {
 		return 0, true // embargoed, at war, or allied against: no trade with the enemy
 	}
-	return dn.Tariff[g], false
+	return dn.Tariff[t.Good], false
 }
 
-func (r *Region) PaybackMult() float64  { return r.Nation.paybackMult() }
-func (r *Region) GrowthBonus() float64  { return r.Nation.popGrowthBonus() }
-func (r *Region) CoastMult() float64    { return r.Nation.coastMult() }
-func (r *Region) SpoilageMult() float64 { return r.Nation.spoilageMult() }
-
-// Settle pays the tile's ledger into its nation's treasury.
-func (r *Region) Settle(l economy.Ledger) {
-	n := r.Nation
-	n.Treasury += l.Tax + l.Paid + l.Tariffs
-	n.Revenue += l.Tax
-	n.Spending -= l.Paid
-	n.TariffRevenue += l.Tariffs
+// setPolicies sets what each tile's owner's technology does to its economy:
+// the payback owners ask, its people's growth, and the cost and losses of
+// shipping.
+func (w *World) setPolicies() {
+	type policy struct{ payback, growth, coast, spoilage float64 }
+	of := make([]policy, len(w.Nations))
+	for i, n := range w.Nations {
+		of[i] = policy{n.paybackMult(), n.popGrowthBonus(), n.coastMult(), n.spoilageMult()}
+	}
+	for _, r := range w.Regions {
+		p := policy{1, 0, 1, 1}
+		if r.Nation != nil {
+			p = of[r.Nation.ID]
+		}
+		r.PaybackMult, r.GrowthBonus, r.CoastMult, r.SpoilageMult = p.payback, p.growth, p.coast, p.spoilage
+	}
 }
 
-// The game's part in each day (economy.Hooks).
-
-func (w *World) BeginDay() { w.runAI() }
-
-func (w *World) Plan() {
+// planDay: the universities' scholars, and the nations' purchases.
+func (w *World) planDay() {
 	for _, r := range w.Regions {
 		if r.Urban {
 			r.scholars()
+		}
+		if r.Nation == nil {
+			for g := range r.buyer.Bid {
+				r.buyer.Bid[g] = 0
+			}
 		}
 	}
 	for _, n := range w.Nations {
@@ -128,14 +184,31 @@ func (w *World) Plan() {
 	}
 }
 
-func (w *World) Shipped() {
+// collect pays each tile's taxes, duties and the nation's purchases there
+// into its nation's treasury.
+func (w *World) collect() {
+	for _, r := range w.Regions {
+		if n := r.Nation; n != nil {
+			n.Treasury += r.Withheld + r.buyer.Account + r.Duties
+			n.Revenue += r.Withheld
+			n.Spending -= r.buyer.Account
+			n.TariffRevenue += r.Duties
+		}
+		r.Withheld, r.buyer.Account, r.Duties = 0, 0, 0
+	}
+}
+
+// afterShipping notes the trade between nations.
+func (w *World) afterShipping() {
 	for _, r := range w.Regions {
 		r.sumExports(len(w.Nations))
 	}
 	w.trackTrade()
 }
 
-func (w *World) Settle() {
+// settleDay settles the nations' day: their treasuries, research and
+// projects, their services, new ports, and their armies.
+func (w *World) settleDay() {
 	changed := false
 	for _, n := range w.Nations {
 		changed = n.settle(w) || changed
@@ -150,23 +223,6 @@ func (w *World) Settle() {
 	if len(w.Nations) > 0 {
 		w.armies()
 	}
-}
-
-func (w *World) EndDay() {
-	if w.Spec != nil {
-		if w.Tick%HistoryEvery == 0 {
-			w.record()
-		}
-	}
-}
-
-func (w *World) Knows(tech string) bool {
-	for _, n := range w.Nations {
-		if n.Has(tech) {
-			return true
-		}
-	}
-	return false
 }
 
 // Money is all cash in the world, the treasuries' with the rest; it is
@@ -198,9 +254,10 @@ func (r *Region) sumExports(nations int) {
 
 func (w *World) refreshAllHops() {
 	w.paths = nil
+	w.setPolicies()
 	w.World.RefreshHops()
 	for _, t := range w.Traders {
-		if t.Sea {
+		if t.FixedDistance {
 			t.SetDistance(w.seaHop(t.Origin, t.Dest))
 		}
 	}
@@ -209,6 +266,7 @@ func (w *World) refreshAllHops() {
 // refreshHops recomputes the hop cost of every link and route touching r.
 func (w *World) refreshHops(r *Region) {
 	w.paths = nil
+	w.setPolicies()
 	w.World.RefreshHopsAt(r.Region)
 }
 
@@ -287,7 +345,7 @@ func (w *World) Expand(region, firm int) error {
 	if best < 0 {
 		return ErrFirmMax
 	}
-	f.Expansion = &Expansion{Public: true, Method: best}
+	f.Expansion = &Expansion{External: true, Method: best}
 	return nil
 }
 
@@ -322,7 +380,7 @@ func (w *World) Refit(region, firm, method int) error {
 	if from < 0 {
 		return ErrNoRefit
 	}
-	f.Expansion = &Expansion{Public: true, Refit: true, Method: method, From: from}
+	f.Expansion = &Expansion{External: true, Refit: true, Method: method, From: from}
 	return nil
 }
 
@@ -381,7 +439,7 @@ func (w *World) RemovePort(region int) error {
 		return ErrNoPort
 	}
 	r.Port = false
-	gone := func(t *Trader) bool { return t.Sea && (t.Origin == r.Region || t.Dest == r.Region) }
+	gone := func(t *Trader) bool { return t.FixedDistance && (t.Origin == r.Region || t.Dest == r.Region) }
 	// every port had routes to and from this one
 	w.World.RemoveTraders(gone, func(x *economy.Region) bool { return w.Regions[x.ID].Port || x == r.Region })
 	for i, id := range w.Ports {
@@ -458,7 +516,7 @@ func (w *World) openPort(r *Region) {
 			for _, g := range FullTradable {
 				a := NewTrader(g, r.Region, p.Region, hop, w.Spec.TransportCost)
 				b := NewTrader(g, p.Region, r.Region, hop, w.Spec.TransportCost)
-				a.Sea, b.Sea = true, true // the houses fund them from their purse
+				a.FixedDistance, b.FixedDistance = true, true // the houses fund them from their purse
 				added = append(added, a, b)
 			}
 		}
@@ -504,7 +562,7 @@ func (w *World) transfer(r *Region, n *Nation) {
 		for _, m := range f.Methods {
 			m.TFP = m.BaseTFP
 		}
-		if f.Expansion != nil && f.Expansion.Public {
+		if f.Expansion != nil && f.Expansion.External {
 			f.Expansion = nil
 		}
 	}
@@ -555,9 +613,9 @@ func (w *World) landNeighbours(r *Region, f func(nb *Region) bool) {
 // settleTaxes pays the nation the taxes in its tiles' ledgers.
 func (n *Nation) settleTaxes() {
 	for _, r := range n.Regions {
-		n.Treasury += r.Ledger.Tax
-		n.Revenue += r.Ledger.Tax
-		r.Ledger.Tax = 0
+		n.Treasury += r.Withheld
+		n.Revenue += r.Withheld
+		r.Withheld = 0
 	}
 }
 
@@ -575,7 +633,7 @@ func (r *Region) UpdateAgglomeration() {
 // the schooled.
 func (r *Region) scholars() {
 	for _, f := range r.Firms {
-		if f.State && Public(f.Public) == University {
+		if f.Managed && isService(f, University) {
 			f.EduMult = scienceUnschooled + scienceEducation*r.Educated
 		}
 	}

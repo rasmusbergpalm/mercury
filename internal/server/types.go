@@ -520,7 +520,7 @@ func worldState(w *game.World, flows bool) State {
 	}
 	for _, t := range w.Traders {
 		if (flows || len(w.Regions) <= FlowsAlways) && t.Shipped > minFlow {
-			st.Flows = append(st.Flows, Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped, t.Sea})
+			st.Flows = append(st.Flows, Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped, t.FixedDistance})
 		}
 	}
 	trade := w.Trade()
@@ -610,16 +610,16 @@ func regionDetail(w *game.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, game.FirmBonuses(f, r.Nation), 0, 0, 0, nil}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.Managed, game.FirmBonuses(f, r.Nation), 0, 0, 0, nil}
 		fs.Wanted = f.PlanLabor
-		if !f.State && !f.AtCap() {
+		if !f.Managed && !f.AtCap() {
 			fs.LevelGain = f.LastOutput * r.Markets[f.Output].Price * (f.NextLevelMult() - 1)
 		}
 		if f.Labor > 1e-9 {
 			fs.PerWorker = f.ValueAdded(r.Markets[f.Output].Price)/f.Labor - r.Wage
 		}
 		if e := f.Expansion; e != nil {
-			fs.Expansion = &Expansion{Delivered: e.Delivered, Public: e.Public, Cost: e.Cost(), Method: f.Methods[e.Method].Name}
+			fs.Expansion = &Expansion{Delivered: e.Delivered, Public: e.External, Cost: e.Cost(), Method: f.Methods[e.Method].Name}
 			if e.Refit {
 				fs.Expansion.Refit = f.Methods[e.From].Name
 			}
@@ -647,7 +647,7 @@ func regionDetail(w *game.World, i int) RegionDetail {
 		if t.Shipped <= minFlow {
 			continue
 		}
-		f := Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped, t.Sea}
+		f := Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped, t.FixedDistance}
 		if t.Origin == r.Region {
 			d.Exports = append(d.Exports, f)
 		}

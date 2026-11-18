@@ -98,7 +98,7 @@ func TestIncomeIsTaxed(t *testing.T) {
 	p := r.Pops[0]
 	cash, treasury := p.Cash, r.Nation.Treasury
 	r.PayIncome(p, 100)
-	w.SettleLedgers() // taxes reach the treasury when the day's ledgers are settled
+	w.collect() // taxes reach the treasury when the day's ledgers are settled
 	if math.Abs(p.Cash-cash-80) > 1e-9 || math.Abs(r.Nation.Treasury-treasury-20) > 1e-9 {
 		t.Errorf("pop got %v, treasury got %v; want 80 and 20", p.Cash-cash, r.Nation.Treasury-treasury)
 	}

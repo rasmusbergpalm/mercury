@@ -479,7 +479,7 @@ func (n *Nation) plan(w *World) {
 			}
 		}
 		for _, f := range r.Firms {
-			if e := f.Expansion; e != nil && e.Public {
+			if e := f.Expansion; e != nil && e.External {
 				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(rate, e.Cost()-e.Delivered)})
 			}
 		}
@@ -511,13 +511,13 @@ func (n *Nation) plan(w *World) {
 	}
 	n.staffServices(n.payScale)
 	for _, r := range n.Regions {
-		for g := range r.PublicBid {
-			r.PublicBid[g], r.PublicGot[g] = 0, 0
+		for g := range r.buyer.Bid {
+			r.buyer.Bid[g], r.buyer.Got[g] = 0, 0
 		}
 		for i := range r.claims {
 			c := &r.claims[i]
 			c.qty *= n.payScale
-			r.PublicBid[c.good] += c.qty
+			r.buyer.Bid[c.good] += c.qty
 		}
 	}
 }
@@ -587,8 +587,8 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 		upkeep := 0.0
 		for _, c := range r.claims {
 			got := 0.0
-			if bid := r.PublicBid[c.good]; bid > 0 {
-				got = c.qty * r.PublicGot[c.good] / bid
+			if bid := r.buyer.Bid[c.good]; bid > 0 {
+				got = c.qty * r.buyer.Got[c.good] / bid
 			}
 			n.SpentOn[spendingOf(c.kind)] += got * w.TradePrices[r.ID][c.good]
 			switch c.kind {

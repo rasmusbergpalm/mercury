@@ -27,35 +27,18 @@ func Example() {
 	// tile 55: bread £32.38, 138 people
 }
 
-// flatTax is the simplest government: it takes a share of every income
-// and keeps it.
-type flatTax struct {
-	rate, treasury float64
-}
-
-func (g *flatTax) IncomeTax(amount float64) float64 { return g.rate * amount }
-func (g *flatTax) Duty(from *economy.Region, good economy.GoodID) (float64, bool) {
-	return 0, false
-}
-func (g *flatTax) PaybackMult() float64    { return 1 }
-func (g *flatTax) GrowthBonus() float64    { return 0 }
-func (g *flatTax) CoastMult() float64      { return 1 }
-func (g *flatTax) SpoilageMult() float64   { return 1 }
-func (g *flatTax) Settle(l economy.Ledger) { g.treasury += l.Tax + l.Paid + l.Tariffs }
-
-// A government taxing one tile's incomes at 20%: what it has collected
-// after a year.
-func ExampleGovernment() {
+// A 20% tax on one tile's incomes: what it has withheld after a year.
+func Example_tax() {
 	w, err := economy.BuildWorld(1, economy.DefaultMap)
 	if err != nil {
 		panic(err)
 	}
-	g := &flatTax{rate: 0.2}
-	w.Regions[14].Gov = g
+	r := w.Regions[14]
+	r.TaxFn = func(amount float64) float64 { return 0.2 * amount }
 	for day := 0; day < economy.TicksPerYear; day++ {
 		w.Step()
 	}
-	fmt.Printf("collected £%.0f\n", g.treasury)
+	fmt.Printf("withheld £%.0f\n", r.Withheld)
 	// Output:
-	// collected £40970
+	// withheld £40970
 }

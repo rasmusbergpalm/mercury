@@ -984,7 +984,7 @@ func (w *World) roomToBuild(n *Nation) bool {
 			under++
 		}
 		for _, f := range r.Firms {
-			if e := f.Expansion; e != nil && e.Public {
+			if e := f.Expansion; e != nil && e.External {
 				under++
 			}
 		}
@@ -1013,14 +1013,14 @@ func (w *World) aiServices(n *Nation, war, funding, universities bool) {
 	if funding {
 		for _, r := range n.Regions {
 			for _, f := range r.Firms {
-				if !f.State {
+				if !f.Managed {
 					continue
 				}
 				funded := f.Levels
-				if Public(f.Public) == University && (short || war) {
+				if isService(f, University) && (short || war) {
 					funded = (f.Levels + 1) / 2
 				}
-				w.SetServiceFunding(r.ID, Public(f.Public), funded)
+				w.SetServiceFunding(r.ID, serviceKind(f), funded)
 			}
 		}
 	}
@@ -1122,7 +1122,7 @@ func (w *World) aiExpandFirm(n *Nation) {
 	}
 	for _, r := range n.Regions {
 		for _, f := range r.Firms {
-			if f.Expansion != nil && f.Expansion.Public && !f.State {
+			if f.Expansion != nil && f.Expansion.External && !f.Managed {
 				return
 			}
 		}
@@ -1131,7 +1131,7 @@ func (w *World) aiExpandFirm(n *Nation) {
 	best := 0.0
 	for _, r := range n.Regions {
 		for i, f := range r.Firms {
-			if f.Expansion != nil || f.State || !f.Enabled || f.AtCap() {
+			if f.Expansion != nil || f.Managed || !f.Enabled || f.AtCap() {
 				continue
 			}
 			if f.Levels == 0 {

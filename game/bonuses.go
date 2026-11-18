@@ -39,13 +39,13 @@ func FirmBonuses(f *Firm, n *Nation) []Modifier {
 	if f.Agglom != 1 {
 		out = append(out, Modifier{"Tile size", f.Agglom, "industry and services gain from the people around them", false})
 	}
-	if f.Loyal < 1 {
-		out = append(out, Modifier{"Allegiance", f.Loyal, "the tile's people don't yet stand by their new rulers", false})
+	if f.Mult < 1 {
+		out = append(out, Modifier{"Allegiance", f.Mult, "the tile's people don't yet stand by their new rulers", false})
 	}
 	if f.EduMult != 1 {
 		out = append(out, Modifier{"Schooling", f.EduMult, "the tile's educated share", false})
 	}
-	if !f.State && f.Levels > 0 {
+	if !f.Managed && f.Levels > 0 {
 		m := f.NextLevelMult()
 		note := fmt.Sprintf("%d levels; one more would make every worker and input %.0f%% more productive", f.Levels, 100*(m-1))
 		if f.AtCap() {

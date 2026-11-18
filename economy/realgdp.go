@@ -49,7 +49,7 @@ func (r *Region) accumulateGDP() {
 		c.AccNet, c.AccValue, c.AccVolume = make([]float64, NumGoods+1), make([]float64, NumGoods+1), make([]float64, NumGoods+1)
 	}
 	for _, f := range r.Firms {
-		if f.State {
+		if f.Managed {
 			c.AccNet[publicSlot] += f.Labor
 			c.AccValue[publicSlot] += f.Labor * r.Wage
 			c.AccVolume[publicSlot] += f.Labor

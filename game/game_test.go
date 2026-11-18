@@ -38,7 +38,7 @@ func TestTariffAppliesOnlyToImports(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tr := range w.Traders {
-		rate, blocked := tr.Border()
+		rate, blocked := w.duty(tr)
 		into := w.Regions[tr.Dest.ID].Nation == v && w.Regions[tr.Origin.ID].Nation != v
 		if blocked || (into && rate != 0.5) || (!into && rate != 0) {
 			t.Fatalf("%s: tariff %v blocked %v", tr.Name(), rate, blocked)
@@ -106,7 +106,7 @@ func TestEmbargoStopsCrossBorderTrade(t *testing.T) {
 		w.Step()
 	}
 	for _, tr := range tradersBetween(w, a, b) {
-		if _, blocked := tr.Border(); !blocked {
+		if _, blocked := w.duty(tr); !blocked {
 			t.Errorf("%s not blocked", tr.Name())
 		}
 	}
@@ -297,7 +297,7 @@ func TestProfitableFirmsInvest(t *testing.T) {
 	grew := 0
 	for _, r := range w.Regions {
 		for _, f := range r.Firms {
-			if f.State {
+			if f.Managed {
 				continue // public services are the state's to build
 			}
 			if (f.MaxLevels > 0 && f.Levels > f.MaxLevels) || (f.Levels < 1 && f.Enabled) { // a method not yet known has none

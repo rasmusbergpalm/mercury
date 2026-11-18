@@ -317,7 +317,7 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 	want := portHandling + seaPerHex*4*th.coastMult()
 	sea := 0
 	for _, tr := range w.Traders {
-		if !tr.Sea {
+		if !tr.FixedDistance {
 			continue
 		}
 		sea++
@@ -336,7 +336,7 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 	for i := 0; i < 300; i++ {
 		w.Step()
 		for _, tr := range w.Traders {
-			if tr.Sea {
+			if tr.FixedDistance {
 				shipped += tr.Shipped
 			}
 		}
@@ -352,7 +352,7 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 	w.GrantTech(th.ID, "Locomotives")
 	w.GrantTech(th.ID, "Steamships")
 	for _, tr := range w.Traders {
-		if tr.Sea && tr.Distance >= want {
+		if tr.FixedDistance && tr.Distance >= want {
 			t.Fatalf("sea hop %v after Steamships, was %v", tr.Distance, want)
 		}
 	}

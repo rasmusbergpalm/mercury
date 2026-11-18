@@ -782,7 +782,7 @@ func TestArmiesBidHardForScarceSupplies(t *testing.T) {
 	}
 	home.Markets[art].Supply = 0.1
 	m.plan(w)
-	bid := home.PublicBid[art]
+	bid := home.buyer.Bid[art]
 	if limit := stateBuyMargin*0.1 + stateBuyFloor; bid <= limit {
 		t.Errorf("artillery bid %v, no more than construction's limit %v", bid, limit)
 	}

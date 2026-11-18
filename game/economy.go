@@ -26,7 +26,6 @@ type (
 	Tier      = economy.Tier
 	Composite = economy.Composite
 	Link      = economy.Link
-	Ledger    = economy.Ledger
 )
 
 const (

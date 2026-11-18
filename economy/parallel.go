@@ -8,9 +8,10 @@ import (
 // Parallel days: the tiles' own work (firms planning, the labour and goods
 // markets, merchants planning and shipping, production, dividends) runs on
 // every core at once. Each tile touches only its own state while it does;
-// what it owes others (taxes and purchases against its government,
-// merchants' sales on behalf of another tile's trading house) is written
-// into ledgers that are settled one by one, in a fixed order, afterwards.
+// what it owes others (merchants' sales on behalf of another tile's
+// trading house) is written into ledgers that are settled one by one, in a
+// fixed order, afterwards; what it collects in taxes and duties stays in
+// its own accounts.
 // So a day's result doesn't depend on how the work was shared out, and the
 // simulation stays deterministic.
 
@@ -53,15 +54,9 @@ func (w *World) eachRegion(f func(r *Region)) {
 	wg.Wait()
 }
 
-// SettleLedgers pays every tile's ledger to its government, and every
-// route's sales and duties to its trading house, in tile and route order.
-func (w *World) SettleLedgers() {
-	for _, r := range w.Regions {
-		if r.Gov != nil {
-			r.Gov.Settle(r.Ledger)
-		}
-		r.Ledger = Ledger{}
-	}
+// settleHouses pays every route's sales and duties to its trading house,
+// in tile and route order.
+func (w *World) settleHouses() {
 	for _, r := range w.Regions {
 		for _, t := range r.soldHere {
 			t.House.Cash += t.proceeds

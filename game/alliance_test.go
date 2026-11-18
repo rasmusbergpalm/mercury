@@ -91,8 +91,8 @@ func TestAllegianceGrowsAfterConquest(t *testing.T) {
 	}
 	capBefore := w.MobilizationCap(v)
 	w.transfer(home, v)
-	if home.Allegiance() != 0 || math.Abs(home.Firms[0].Loyal-0.5) > 1e-12 {
-		t.Errorf("conquered: allegiance %v, firms at %v", home.Allegiance(), home.Firms[0].Loyal)
+	if home.Allegiance() != 0 || math.Abs(home.Firms[0].Mult-0.5) > 1e-12 {
+		t.Errorf("conquered: allegiance %v, firms at %v", home.Allegiance(), home.Firms[0].Mult)
 	}
 	if got := w.MobilizationCap(v); math.Abs(got-capBefore) > 1e-9 {
 		t.Errorf("conquered people count for the cap: %v -> %v", capBefore, got)
@@ -105,8 +105,8 @@ func TestAllegianceGrowsAfterConquest(t *testing.T) {
 		}
 	}
 	w.transfer(free, m)
-	if math.Abs(free.Allegiance()-freeLandAllegiance) > 1e-12 || free.Firms[0].Loyal != 1 {
-		t.Errorf("settled free land: allegiance %v (want %v), firms at %v (want 1)", free.Allegiance(), freeLandAllegiance, free.Firms[0].Loyal)
+	if math.Abs(free.Allegiance()-freeLandAllegiance) > 1e-12 || free.Firms[0].Mult != 1 {
+		t.Errorf("settled free land: allegiance %v (want %v), firms at %v (want 1)", free.Allegiance(), freeLandAllegiance, free.Firms[0].Mult)
 	}
 	for i := 0; i < int(allegianceYears*TicksPerYear); i++ {
 		w.serviceEffects()
@@ -192,17 +192,17 @@ func TestAlliesEmbargoTheirFoe(t *testing.T) {
 	if there == nil || back == nil {
 		t.Fatal("set-up: no trade route between Montara and Thalassa")
 	}
-	if _, blocked := there.Border(); blocked {
+	if _, blocked := w.duty(there); blocked {
 		t.Fatal("trade blocked before any alliance")
 	}
 	m.Coalition = th.ID + 1
 	for _, tr := range []*Trader{there, back} {
-		if _, blocked := tr.Border(); !blocked {
+		if _, blocked := w.duty(tr); !blocked {
 			t.Errorf("%s: trade with the nation Montara is allied against", tr.Name())
 		}
 	}
 	m.Coalition = 0
-	if _, blocked := there.Border(); blocked {
+	if _, blocked := w.duty(there); blocked {
 		t.Error("trade still blocked after the alliance broke up")
 	}
 }

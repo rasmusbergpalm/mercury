@@ -131,13 +131,14 @@ type Firm struct {
 	Inventory  float64   // stock of own output, for sale
 	Inputs     []float64 // goods bought this tick, indexed by good
 	Labor      float64   // labor employed this tick
-	// State firms (public services) are run by the tile's government: it
-	// funds Funded of their levels, staffs them and takes their output.
-	State   bool
+	// Managed firms are run for someone outside the economy (a
+	// government's schools, say): they don't seek profit or invest; their
+	// runner funds Funded of their levels, staffs them and takes their
+	// output.
+	Managed bool
 	Funded  int
-	Public  int     // which public service a state firm provides (the government layer's numbering)
 	EduMult float64 // productivity from the tile's schooling (industry and services)
-	Loyal   float64 // productivity from the tile's allegiance to its owner (1: loyal)
+	Mult    float64 // productivity from outside the economy (1: none)
 	// Site and SiteMult: where a land-bound producer's productivity comes
 	// from (its terrain, or the coast) and how much it multiplies it.
 	Site       string
@@ -169,7 +170,7 @@ type Firm struct {
 // (the building stays; the machinery is new), at refitShare of the cost.
 type Expansion struct {
 	Delivered float64 // construction units delivered so far
-	Public    bool    // paid for by the government (else by the firm's owners)
+	External  bool    // paid for from outside (else by the firm's owners)
 	Method    int     `json:",omitempty"`
 	Refit     bool    `json:",omitempty"`
 	From      int     `json:",omitempty"`
@@ -261,7 +262,7 @@ func (f *Firm) effectiveTFP(i int) float64 {
 	if m.powLevels != l || m.levelsPow == 0 {
 		m.powLevels, m.levelsPow = l, math.Pow(float64(l), 1-m.exponentSum())
 	}
-	return m.TFP * m.levelsPow * f.Agglom * f.EduMult * f.Loyal
+	return m.TFP * m.levelsPow * f.Agglom * f.EduMult * f.Mult
 }
 
 // main is the method that runs most of the firm's levels (its first, at
@@ -343,7 +344,7 @@ func (f *Firm) WorstMethod(prices []float64, wage float64) (int, float64) {
 func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash float64) *Firm {
 	return &Firm{Name: name, Output: output, Cash: cash,
 		Methods: []*Method{newMethod(name, tfp, factors)},
-		Levels:  1, Enabled: true, Agglom: 1, EduMult: 1, Loyal: 1,
+		Levels:  1, Enabled: true, Agglom: 1, EduMult: 1, Mult: 1,
 		CashBuffer: 20, Inputs: make([]float64, NumGoods),
 		PlanQty: make([]float64, NumGoods), PlanHas: make([]bool, NumGoods)}
 }
@@ -373,7 +374,7 @@ func (f *Firm) unitCost(fc Factor, prices []float64, wage float64) float64 {
 func (f *Firm) LevelProfit(i int, prices []float64, wage float64) float64 {
 	m := f.Methods[i]
 	p := prices[f.Output]
-	k, s := m.TFP*f.Agglom*f.EduMult*f.Loyal, 0.0
+	k, s := m.TFP*f.Agglom*f.EduMult*f.Mult, 0.0
 	for _, fc := range m.Factors {
 		k *= math.Pow(fc.Exp*p/f.unitCost(fc, prices, wage), fc.Exp)
 		s += fc.Exp
@@ -400,7 +401,7 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 			m.planQty[g] = 0
 		}
 	}
-	if !f.Enabled || f.State { // the government staffs its state firms itself
+	if !f.Enabled || f.Managed { // their runner staffs managed firms
 		return
 	}
 	p := prices[f.Output]

@@ -91,7 +91,7 @@ func TestWarStopsTrade(t *testing.T) {
 	a, b := regionByName(w, "00"), regionByName(w, "01")
 	w.DeclareWar(0, 1)
 	for _, tr := range tradersBetween(w, a, b) {
-		if _, blocked := tr.Border(); !blocked {
+		if _, blocked := w.duty(tr); !blocked {
 			t.Errorf("%s trades across the front", tr.Name())
 		}
 	}
@@ -158,7 +158,7 @@ func TestEducationMattersMostToScience(t *testing.T) {
 		r.UpdateAgglomeration()
 		for _, f := range r.Firms {
 			switch {
-			case f.State && Public(f.Public) == University:
+			case f.Managed && isService(f, University):
 				uni = f.EduMult
 			case f.Sector == Industry:
 				mill = f.EduMult

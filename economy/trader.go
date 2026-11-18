@@ -154,14 +154,16 @@ type Trader struct {
 	StockDest   float64       // arrived, for sale in dest
 	House       *TradingHouse // the origin's, which funds the route
 	// sold in the destination today, and import duties paid there: owed to
-	// the house, which belongs to another tile (see SettleLedgers)
+	// the house, which belongs to another tile (see settleHouses)
 	proceeds, duty float64
 	slot           int // its place in its house's routes
 
 	Origin, Dest  *Region
 	TransportCost float64 // multiplier on every hop
-	Sea           bool    // a sea route between two ports
+	FixedDistance bool    // its distance is its own, not the land hops' (a sea route between ports)
 	Distance      float64
+	Tariff        float64 // import duty, a share of the price, paid where it sells (into the destination's Duties)
+	Closed        bool    // embargoed: it may not trade
 	Arriving      float64
 	Speed         float64
 	Damping       float64
@@ -199,19 +201,14 @@ func (t *Trader) SetDistance(d float64) {
 	t.Distance = d
 	t.Tau = t.TransportCost * d * Goods[t.Good].Bulk
 	spoil := t.spoilage
-	if g := t.Origin.Gov; g != nil {
-		spoil *= g.SpoilageMult()
-	}
+	spoil *= t.Origin.SpoilageMult
 	t.Arriving = math.Pow(1-spoil, d)
 }
 
 // border returns the import tariff the route pays and whether an embargo
-// closes it: the destination's government decides (Government.Duty).
+// closes it.
 func (t *Trader) Border() (tariff float64, blocked bool) {
-	if t.Dest.Gov == nil {
-		return 0, false
-	}
-	return t.Dest.Gov.Duty(t.Origin, t.Good)
+	return t.Tariff, t.Closed
 }
 
 // Name is "good:origin->dest".

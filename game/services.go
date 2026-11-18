@@ -111,7 +111,7 @@ func newServiceFirm(s Public) *Firm {
 	if s == University {
 		f = NewFirm("University", Research, 1, []Factor{Labor(0.6)}, 0)
 	}
-	f.State, f.Public, f.Sector = true, int(s), Service
+	f.Managed, f.Sector = true, Service
 	f.Levels, f.Funded, f.MaxLevels, f.Cash = services[s].Start, services[s].Start, serviceMaxLevels, 0
 	return f
 }
@@ -119,7 +119,7 @@ func newServiceFirm(s Public) *Firm {
 // Service is the tile's service of a kind, or nil.
 func (r *Region) Service(s Public) *Firm {
 	for _, f := range r.Firms {
-		if f.State && Public(f.Public) == s {
+		if f.Managed && isService(f, s) {
 			return f
 		}
 	}
@@ -134,7 +134,7 @@ func research(f *Firm) float64 {
 	if f.Funded <= 0 || f.Labor <= 0 {
 		return 0
 	}
-	return f.TFP() * f.Agglom * f.EduMult * f.Loyal * math.Pow(float64(f.Funded), 0.4) * math.Pow(f.Labor, 0.6)
+	return f.TFP() * f.Agglom * f.EduMult * f.Mult * math.Pow(float64(f.Funded), 0.4) * math.Pow(f.Labor, 0.6)
 }
 
 // staffMult is how much one of the nation's staff of a service achieves,
@@ -209,7 +209,7 @@ func (n *Nation) serviceBill() float64 {
 	s := 0.0
 	for _, r := range n.Regions {
 		for _, f := range r.Firms {
-			if f.State && f.Enabled {
+			if f.Managed && f.Enabled {
 				s += float64(f.Funded) * ServiceStaff * r.Wage
 			}
 		}
@@ -224,7 +224,7 @@ func (n *Nation) staffServices(scale float64) {
 		// the services may employ at most maxPublicShare of the tile's workers
 		want := 0.0
 		for _, f := range r.Firms {
-			if f.State && f.Enabled {
+			if f.Managed && f.Enabled {
 				want += float64(f.Funded) * ServiceStaff
 			}
 		}
@@ -237,14 +237,14 @@ func (n *Nation) staffServices(scale float64) {
 			local *= ref / r.Wage
 		}
 		for _, f := range r.Firms {
-			if !f.State || !f.Enabled || f.Funded <= 0 {
+			if !f.Managed || !f.Enabled || f.Funded <= 0 {
 				continue
 			}
 			f.PlanLabor = float64(f.Funded) * ServiceStaff * local
 			pay := f.PlanLabor * r.Wage
 			n.Treasury -= pay
 			f.Cash += pay
-			n.SpentOn[services[f.Public].Spending] += pay
+			n.SpentOn[services[serviceKind(f)].Spending] += pay
 		}
 	}
 }
@@ -253,10 +253,10 @@ func (n *Nation) staffServices(scale float64) {
 func (n *Nation) settleServices() {
 	for _, r := range n.Regions {
 		for _, f := range r.Firms {
-			if !f.State {
+			if !f.Managed {
 				continue
 			}
-			if Public(f.Public) == University {
+			if isService(f, University) {
 				f.LastOutput = research(f)
 				n.ResearchPoints += f.LastOutput
 				if n.Copying >= 0 {
@@ -265,7 +265,7 @@ func (n *Nation) settleServices() {
 			}
 			if f.Cash > 0 {
 				n.Treasury += f.Cash
-				n.SpentOn[services[f.Public].Spending] -= f.Cash
+				n.SpentOn[services[serviceKind(f)].Spending] -= f.Cash
 				f.Cash = 0
 			}
 		}
@@ -378,7 +378,7 @@ func (w *World) CloseServiceLevel(region int, s Public) error {
 func (w *World) ExpandService(region int, s Public) error {
 	r := w.Regions[region]
 	for i, f := range r.Firms {
-		if f.State && Public(f.Public) == s {
+		if f.Managed && isService(f, s) {
 			return w.Expand(region, i)
 		}
 	}
@@ -393,3 +393,18 @@ func (w *World) CloseUniversityLevel(region int) error {
 	return w.CloseServiceLevel(region, University)
 }
 func (w *World) ExpandUniversity(region int) error { return w.ExpandService(region, University) }
+
+// serviceKind is which public service a managed firm provides.
+func serviceKind(f *Firm) Public {
+	for s := range services {
+		if services[s].Firm == f.Name {
+			return Public(s)
+		}
+	}
+	panic("not a public service: " + f.Name)
+}
+
+// isService reports whether a firm is the tile's public service s.
+func isService(f *Firm, s Public) bool {
+	return f.Managed && f.Name == services[s].Firm
+}

@@ -79,6 +79,6 @@ func (r *Region) WorkMult() float64 {
 func (r *Region) applyAllegiance() {
 	m := r.WorkMult()
 	for _, f := range r.Firms {
-		f.Loyal = m
+		f.Mult = m
 	}
 }

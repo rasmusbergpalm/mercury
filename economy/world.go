@@ -20,9 +20,9 @@ type World struct {
 	// Seed keys the economy's random draws (owners' resolve to invest), so
 	// that the same seed gives the same history.
 	Seed int64
-	// Hooks, if set, is a layer above the economy (a game's nations) that
-	// acts at fixed points of each day.
-	Hooks Hooks
+	// Known lists the technologies known somewhere in the world: a good
+	// whose firms need one is in play once it is known.
+	Known map[string]bool
 	// TradePrices are the prices trade happened at in the last tick, per region.
 	TradePrices [][]float64
 
@@ -101,13 +101,23 @@ func (w *World) Money() float64 {
 	return s
 }
 
-// Step advances the world one tick. The tiles' own work runs in parallel
-// (see eachRegion); what they owe each other is settled in order after.
+// Step advances the world one day: BeginDay, PlanTrade, Markets, Ship,
+// Produce and EndDay, in turn. A caller that acts within the day (to buy in
+// the markets, or to collect what the day's work owes it) runs the steps
+// itself and acts between them. The tiles' own work runs in parallel (see
+// eachRegion); what they owe each other is settled in order after.
 func (w *World) Step() {
-	h := w.Hooks
-	if h != nil {
-		h.BeginDay()
-	}
+	w.BeginDay()
+	w.PlanTrade()
+	w.Markets()
+	w.Ship()
+	w.Produce()
+	w.EndDay()
+}
+
+// BeginDay opens the day: the goods in play are noted, prices recorded,
+// and firms and owners plan.
+func (w *World) BeginDay() {
 	w.refreshMade()
 	w.eachRegion(func(r *Region) {
 		copy(w.TradePrices[r.ID], r.refreshPrices())
@@ -116,24 +126,34 @@ func (w *World) Step() {
 			r.planInvestment(w.Seed)
 		}
 	})
+}
+
+// PlanTrade has every trading house plan its routes.
+func (w *World) PlanTrade() {
 	w.eachRegion(func(r *Region) { r.House.Plan(w.Tick) })
-	if h != nil {
-		h.Plan()
-	}
+}
+
+// Markets clears the labour market and every goods market in every tile.
+func (w *World) Markets() {
 	w.eachRegion(func(r *Region) {
 		r.LaborMarket()
 		r.GoodsMarkets()
 	})
-	w.SettleLedgers()
+	w.settleHouses()
+}
+
+// Ship sends what the merchants bought on its way.
+func (w *World) Ship() {
 	w.eachRegion(func(r *Region) { r.shipAll() })
-	if h != nil {
-		h.Shipped()
-	}
+}
+
+// Produce has firms produce and pay their owners what they don't need.
+func (w *World) Produce() {
 	w.eachRegion(func(r *Region) {
 		r.Produce()
 		owners := r.owners()
 		for _, f := range r.Firms {
-			if f.State {
+			if f.Managed {
 				continue
 			}
 			// keep cash for what the firm wants to spend, but no more than it
@@ -145,10 +165,12 @@ func (w *World) Step() {
 		h := r.House
 		r.PayDividends(&h.Cash, h.CashBuffer, math.Min(h.DesiredSpend, 2*h.Spent+h.CashBuffer), owners)
 	})
-	w.SettleLedgers()
-	if h != nil {
-		h.Settle()
-	}
+	w.settleHouses()
+}
+
+// EndDay closes the day: owners settle their projects, people move and
+// multiply, and the day advances.
+func (w *World) EndDay() {
 	if w.Investment {
 		w.eachRegion((*Region).settleFirms)
 	}
@@ -164,13 +186,10 @@ func (w *World) Step() {
 			r.accumulateGDP()
 		}
 	})
-	if h != nil {
-		h.EndDay()
-	}
 }
 
 // refreshMade notes which goods are in play: those some firm on the map
-// makes without any technology, or with one that some government knows.
+// makes without any technology, or with one known somewhere (Known).
 // The rest (oil before anyone has Petroleum) are left out of the economy
 // entirely: no market clears for them, no merchant or state buys them, and
 // they have no price.
@@ -190,7 +209,7 @@ func (w *World) refreshMade() {
 				w.made[f.Output] = true
 				continue
 			}
-			if w.Hooks != nil && w.Hooks.Knows(f.Requires) {
+			if w.Known[f.Requires] {
 				w.made[f.Output] = true
 			}
 		}
@@ -314,14 +333,14 @@ func (w *World) Population() float64 {
 
 // RefreshHops recomputes the cost of every hop over land, and the
 // distance of every land route, from the tiles' movement costs (after a
-// road is built, say). Sea routes keep theirs.
+// road is built, say). Routes of a fixed distance (by sea) keep theirs.
 func (w *World) RefreshHops() {
 	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
 	for i, l := range w.Links {
 		w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
 	}
 	for _, t := range w.Traders {
-		if !t.Sea {
+		if !t.FixedDistance {
 			t.SetDistance(hop(t.Origin, t.Dest))
 		}
 	}
@@ -336,7 +355,7 @@ func (w *World) RefreshHopsAt(r *Region) {
 		}
 	}
 	for _, t := range w.Traders {
-		if !t.Sea && (t.Origin == r || t.Dest == r) {
+		if !t.FixedDistance && (t.Origin == r || t.Dest == r) {
 			t.SetDistance(hop(t.Origin, t.Dest))
 		}
 	}
