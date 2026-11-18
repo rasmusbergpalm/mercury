@@ -1,4 +1,4 @@
-package game
+package economy
 
 import (
 	"math"
@@ -39,7 +39,7 @@ type GDPChain struct {
 	AccValue  []float64 `json:",omitempty"` // summed value traded
 	AccVolume []float64 `json:",omitempty"` // summed volume traded
 	Days      int
-	Owner     int // the nation that held the tile at the last link, plus one (0: none)
+	Owner     int // the group (nation) that held the tile at the last link, plus one (0: none)
 }
 
 // accumulateGDP adds today's net output and trade to the month's sums.
@@ -56,7 +56,7 @@ func (r *Region) accumulateGDP() {
 			continue
 		}
 		c.AccNet[f.Output] += f.LastOutput
-		for g, q := range f.used {
+		for g, q := range f.Used {
 			c.AccNet[g] -= q
 		}
 	}
@@ -64,7 +64,7 @@ func (r *Region) accumulateGDP() {
 	// to trade, like a firm's coal, not a product anyone consumes: hauling
 	// adds to GDP only through the goods it brings where they are worth more
 	for _, t := range r.House.today {
-		c.AccNet[Transport] -= t.usedTransport
+		c.AccNet[Transport] -= t.UsedTransport
 	}
 	for g, m := range r.Markets {
 		if v := math.Min(m.Supply, m.Demand); v > 1e-9 {
@@ -152,43 +152,42 @@ func chain(level float64, k gdpLink) float64 {
 	}
 }
 
-// linkNationGDP links each nation's real GDP for the month. Its tiles'
-// values are added up before the index is taken, so each tile weighs by
-// its share of the nation's output: a tile with a little oil at a wild
-// price can't run away with the total. Last month's values come from the
-// tiles the nation held then, this month's from those it holds now, so
-// gaining a tile grows the nation's GDP.
-func (w *World) linkNationGDP() {
+// LinkGDP closes the month in every tile (see GDPChain) and links the real
+// GDP of groups of tiles, such as nations: group(r) is the tile's group
+// plus one (0: none), and levels[k] is group k's real GDP, moved on in
+// place. A group's tiles' values are added up before the index is taken,
+// so each tile weighs by its share of the group's output: a tile with a
+// little oil at a wild price can't run away with the total. Last month's
+// values come from the tiles the group held then, this month's from those
+// it holds now, so gaining a tile grows the group's GDP.
+func (w *World) LinkGDP(group func(r *Region) int, levels []float64) {
 	links := make([]gdpLink, len(w.Regions))
 	for i, r := range w.Regions {
 		r.warm = w.Tick > gdpWarmup
 		links[i] = r.linkGDP()
 	}
-	for _, n := range w.Nations {
+	for n := range levels {
 		var sum gdpLink
 		for i, r := range w.Regions {
 			k := links[i]
-			if r.Real.Owner == n.ID+1 {
+			if r.Real.Owner == n+1 {
 				sum.l0 += k.l0
 				sum.q0 += k.q0
 			}
-			if r.Nation == n {
+			if group(r) == n+1 {
 				sum.l1 += k.l1
 				sum.q1 += k.q1
 				sum.now += k.now
 			}
 		}
 		if w.Tick > gdpWarmup {
-			n.RealGDP = chain(n.RealGDP, sum)
+			levels[n] = chain(levels[n], sum)
 		} else {
-			n.RealGDP = sum.now
+			levels[n] = sum.now
 		}
 	}
 	for _, r := range w.Regions {
-		r.Real.Owner = 0
-		if r.Nation != nil {
-			r.Real.Owner = r.Nation.ID + 1
-		}
+		r.Real.Owner = group(r)
 	}
 }
 
@@ -213,13 +212,13 @@ func value(p, q []float64) float64 {
 	return s
 }
 
-func (c GDPChain) clone() GDPChain {
+func (c GDPChain) Clone() GDPChain {
 	cp := func(x []float64) []float64 { return append([]float64(nil), x...) }
 	return GDPChain{c.Level, cp(c.PrevNet), cp(c.PrevPrice), cp(c.AccNet), cp(c.AccValue), cp(c.AccVolume), c.Days, c.Owner}
 }
 
 // valid says whether a restored chain fits this build's goods.
-func (c GDPChain) valid() bool {
+func (c GDPChain) Valid() bool {
 	for _, x := range [][]float64{c.PrevNet, c.PrevPrice, c.AccNet, c.AccValue, c.AccVolume} {
 		if x != nil && len(x) != NumGoods+1 {
 			return false

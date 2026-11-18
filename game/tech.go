@@ -420,7 +420,7 @@ func (n *Nation) CanBuildPorts() bool {
 // firmEnabled reports whether a firm works for this owner (nil: unowned).
 // applyMethods brings a firm's methods up to its owner's technology (nil:
 // free land, only the methods that need none, at base productivity).
-func (f *Firm) applyMethods(owner *Nation) {
+func applyMethods(f *Firm, owner *Nation) {
 	for _, m := range f.Methods {
 		m.TFP = m.BaseTFP
 		if owner != nil {

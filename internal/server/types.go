@@ -610,7 +610,7 @@ func regionDetail(w *game.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, f.Bonuses(r.Nation), 0, 0, 0, nil}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.State, game.FirmBonuses(f, r.Nation), 0, 0, 0, nil}
 		fs.Wanted = f.PlanLabor
 		if !f.State && !f.AtCap() {
 			fs.LevelGain = f.LastOutput * r.Markets[f.Output].Price * (f.NextLevelMult() - 1)
@@ -648,10 +648,10 @@ func regionDetail(w *game.World, i int) RegionDetail {
 			continue
 		}
 		f := Flow{t.Origin.ID, t.Dest.ID, int(t.Good), t.Shipped, t.Sea}
-		if t.Origin == r {
+		if t.Origin == r.Region {
 			d.Exports = append(d.Exports, f)
 		}
-		if t.Dest == r {
+		if t.Dest == r.Region {
 			d.Imports = append(d.Imports, f)
 		}
 	}

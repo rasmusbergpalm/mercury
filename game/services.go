@@ -63,19 +63,13 @@ const (
 	// every child from 1820 is over half educated by 1850 and nine in ten
 	// by 1900, as the most literate nations of the century were.
 	schoolYears    = 40.0
-	startEducated  = 0.1  // the educated share in 1820
-	educationBonus = 0.15 // industry and services of a fully educated tile: +15%
 	// Scholars come from the schooled: a university in an unschooled tile
 	// finds half as much as the tech costs reckon on, in a fully educated
 	// one one and a half times as much (three times the unschooled).
 	scienceUnschooled = 0.5
 	scienceEducation  = 1.0
-	crowdingFrom      = 150.0     // people from which a tile is crowded
-	crowdingSpan      = 300.0     // ...and fully crowded this many more
 	doctorPerHead     = 1.0 / 400 // health staff a tile needs per person...
 	crowdedDoctors    = 1.0 / 150 // ...and this many more per person when fully crowded
-	healthGrowth      = 0.006     // population growth a year a fully covered tile gains
-	crowdingDeaths    = 0.02      // growth lost a year by a fully crowded, uncovered tile
 	choleraPerYear    = 0.08      // chance of cholera a year in such a tile
 	choleraDeaths     = 0.06      // share of its workers cholera kills
 	serviceMaxLevels  = 12
@@ -117,7 +111,7 @@ func newServiceFirm(s Public) *Firm {
 	if s == University {
 		f = NewFirm("University", Research, 1, []Factor{Labor(0.6)}, 0)
 	}
-	f.State, f.Public, f.Sector = true, s, Service
+	f.State, f.Public, f.Sector = true, int(s), Service
 	f.Levels, f.Funded, f.MaxLevels, f.Cash = services[s].Start, services[s].Start, serviceMaxLevels, 0
 	return f
 }
@@ -125,7 +119,7 @@ func newServiceFirm(s Public) *Firm {
 // Service is the tile's service of a kind, or nil.
 func (r *Region) Service(s Public) *Firm {
 	for _, f := range r.Firms {
-		if f.State && f.Public == s {
+		if f.State && Public(f.Public) == s {
 			return f
 		}
 	}
@@ -136,7 +130,7 @@ func (r *Region) Service(s Public) *Firm {
 func (r *Region) University() *Firm { return r.Service(University) }
 
 // research is what a university produces today with the staff it has.
-func (f *Firm) research() float64 {
+func research(f *Firm) float64 {
 	if f.Funded <= 0 || f.Labor <= 0 {
 		return 0
 	}
@@ -160,11 +154,6 @@ func (n *Nation) staffMult(s Public) float64 {
 		}
 		return 0
 	})
-}
-
-// Crowding is how crowded the tile is, 0 (not at all) to 1.
-func (r *Region) Crowding() float64 {
-	return math.Max(0, math.Min(1, (r.Population()-crowdingFrom)/crowdingSpan))
 }
 
 // ServiceNeed is how many staff the tile's service needs to cover it fully,
@@ -267,8 +256,8 @@ func (n *Nation) settleServices() {
 			if !f.State {
 				continue
 			}
-			if f.Public == University {
-				f.LastOutput = f.research()
+			if Public(f.Public) == University {
+				f.LastOutput = research(f)
 				n.ResearchPoints += f.LastOutput
 				if n.Copying >= 0 {
 					n.CopyPoints += f.LastOutput
@@ -303,7 +292,7 @@ func (w *World) serviceEffects() {
 		if c := r.Crowding(); w.Demography && c > 0 && r.Healthy < 1 {
 			chance := choleraPerYear * c * (1 - r.Healthy) / TicksPerYear
 			if w.chance(r.ID, 7) < chance {
-				dead := math.Min(choleraDeaths*sizeOf(movable(r)), sizeOf(movable(r))-minPopulation)
+				dead := math.Min(choleraDeaths*sizeOf(movable(r.Region)), sizeOf(movable(r.Region))-minPopulation)
 				if dead > 0 {
 					removePeople(r, dead)
 					owner := -1
@@ -329,28 +318,6 @@ func (w *World) chance(region, k int) float64 {
 	x *= 0xFF51AFD7ED558CCD
 	x ^= x >> 33
 	return float64(x>>11) / float64(1<<53)
-}
-
-// crowdingPenalty is the population growth a tile loses a year to crowding
-// that public health doesn't cover.
-func (r *Region) crowdingPenalty() float64 {
-	return crowdingDeaths * r.Crowding() * (1 - r.Healthy)
-}
-
-// healthBonus is the population growth public health adds a year.
-func (r *Region) healthBonus() float64 {
-	return healthGrowth * r.Healthy
-}
-
-// HealthGrowth is what public health, or the lack of it, does to the tile's
-// population growth a year: the bonus of its coverage less what uncovered
-// crowding costs. Negative means the tile needs more public health.
-func (r *Region) HealthGrowth() float64 {
-	g := -r.crowdingPenalty()
-	if r.Urban { // game worlds: public health
-		g += r.healthBonus()
-	}
-	return g
 }
 
 // ServiceStats are a tile's service figures for the day.
@@ -411,7 +378,7 @@ func (w *World) CloseServiceLevel(region int, s Public) error {
 func (w *World) ExpandService(region int, s Public) error {
 	r := w.Regions[region]
 	for i, f := range r.Firms {
-		if f.State && f.Public == s {
+		if f.State && Public(f.Public) == s {
 			return w.Expand(region, i)
 		}
 	}

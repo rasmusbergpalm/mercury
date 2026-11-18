@@ -1,4 +1,4 @@
-package game
+package economy
 
 import "math"
 
@@ -16,38 +16,31 @@ type Region struct {
 	Wage      float64
 	WageSpeed float64
 
-	Nation   *Nation  // owner, or nil
+	// Gov is the government the tile answers to, or nil for free land: it
+	// taxes incomes, buys goods, levies duties and sets the policies the
+	// economy asks it about (see Government).
+	Gov      Government
 	BaseMove float64  // terrain's movement cost
-	Infra    int      // index into InfraLevels
+	RoadMult float64  // what roads and railways do to moving over land (1: none)
 	Real     GDPChain // real GDP, linked monthly
 	warm     bool     // past the real GDP chain's warm-up (set at each link)
-	Port     bool     // has a port: trades by sea with every other port
-	Urban    bool     // industry and services gain from the tile's size (game worlds)
-	Project  *Project // infrastructure under construction, or nil
-	Neglect  float64  // accumulated unmet upkeep
-	Siege    *Siege   // a foreign army working to take the tile, or nil
-	Collect  float64  // share of its taxes the administration collects
-	// Loyalties is how the tile's people's allegiance is split: one share
-	// per nation, and a last one for nobody; they add up to 1 (nil outside
-	// games with nations). See Allegiance.
-	Loyalties []float64
-	Educated  float64 // share of its people who were schooled
-	Healthy   float64 // share of its crowding public health covers
-	Battle    int     // days the current battle on the tile has lasted (0: none)
+	Urban    bool     // industry and services gain from the tile's size
+	Educated float64  // share of its people who were schooled
+	Healthy  float64  // share of its crowding public health covers
 
 	UtilityEMA float64 // smoothed utility per person; migration follows it
 
-	claims               []claim   // what the nation buys here this tick
-	publicBid, publicGot []float64 // by good
+	// PublicBid is what the government buys here today, by good (paid
+	// from the Ledger); PublicGot is what it got.
+	PublicBid, PublicGot []float64
 
 	House    *TradingHouse // the tile's merchants
 	outbound [][]*Trader   // routes buying here, by good (transport: all of them)
 	bidders  [][]*Trader   // those of them that may bid today (see listBidders)
 	inbound  [][]*Trader   // traders selling here, by good
 
-	ledger    ledger    // what it owes its nation from today's parallel work
-	exportsTo []float64 // value shipped to each other nation today (see trackTrade)
-	soldHere  []*Trader // routes that sold here today: their houses are owed (see settleLedgers)
+	Ledger   Ledger    // what it owes its government from today's parallel work
+	soldHere []*Trader // routes that sold here today: their houses are owed (see SettleLedgers)
 
 	prices, demandBuf []float64 // scratch
 	// firms by the goods they may buy and the good they make (built once)
@@ -58,10 +51,10 @@ type Region struct {
 
 // NewRegion makes a region with n identical pops.
 func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash float64) *Region {
-	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1, BaseMove: 1,
+	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1, BaseMove: 1, RoadMult: 1,
 		outbound: make([][]*Trader, NumGoods), inbound: make([][]*Trader, NumGoods), bidders: make([][]*Trader, NumGoods),
-		prices: make([]float64, NumGoods), publicBid: make([]float64, NumGoods),
-		publicGot: make([]float64, NumGoods), Collect: 1, Healthy: 1}
+		prices: make([]float64, NumGoods), PublicBid: make([]float64, NumGoods),
+		PublicGot: make([]float64, NumGoods), Healthy: 1}
 	for i := 0; i < nPops; i++ {
 		r.Pops = append(r.Pops, NewPop(popSize, popCash))
 		r.popDemand = append(r.popDemand, make([]float64, NumGoods))
@@ -109,11 +102,11 @@ func (r *Region) Plan() {
 		p.Income = 0
 	}
 	if r.Urban {
-		r.updateAgglomeration()
+		r.UpdateAgglomeration()
 	}
 	prices := r.refreshPrices()
 	for _, f := range r.Firms {
-		f.tickRevenue, f.tickCost, f.tickInputs, f.investWant = 0, 0, 0, 0
+		f.TickRevenue, f.TickCost, f.tickInputs, f.investWant = 0, 0, 0, 0
 		if len(f.Methods) > 1 {
 			for _, m := range f.Methods {
 				m.checkInputs(r.made)
@@ -164,8 +157,8 @@ const refitDecideDays = 365.0
 func (r *Region) planInvestment(seed int64) {
 	price := r.Markets[Construction].Price
 	payback := float64(investPayback)
-	if r.Nation != nil {
-		payback *= r.Nation.paybackMult()
+	if r.Gov != nil {
+		payback *= r.Gov.PaybackMult()
 	}
 	for i, f := range r.Firms {
 		f.upkeepWant = 0
@@ -176,8 +169,8 @@ func (r *Region) planInvestment(seed int64) {
 		// the method a level would earn most on, and the one whose levels
 		// earn least: refitting one of the second to the first adds the
 		// difference
-		best, bestProfit := f.bestMethod(r.prices, r.Wage)
-		worst, worstProfit := f.worstMethod(r.prices, r.Wage)
+		best, bestProfit := f.BestMethod(r.prices, r.Wage)
+		worst, worstProfit := f.WorstMethod(r.prices, r.Wage)
 		refitGain := 0.0
 		if best >= 0 && worst >= 0 && best != worst {
 			refitGain = bestProfit - worstProfit
@@ -239,7 +232,7 @@ func (r *Region) planInvestment(seed int64) {
 func (r *Region) settleFirms() {
 	for _, f := range r.Firms {
 		f.Age++
-		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.tickRevenue-f.tickCost)
+		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.TickRevenue-f.TickCost)
 		if !f.State && f.Levels > 1 { // wear, less today's upkeep (made good at the market)
 			f.Wear += depreciation * float64(f.Levels) / TicksPerYear
 			if f.Wear >= 1 {
@@ -315,9 +308,9 @@ func (r *Region) LaborMarket() {
 			} else {
 				pop.Jobs = append(pop.Jobs, Job{fi, take})
 			}
-			r.payIncome(pop, take*wage)
+			r.PayIncome(pop, take*wage)
 			f.Cash -= take * wage
-			f.tickCost += take * wage
+			f.TickCost += take * wage
 			need -= take
 			free -= take
 			if free <= 1e-12 {
@@ -331,7 +324,7 @@ func (r *Region) LaborMarket() {
 		}
 	}
 	excess := (totalD - supply) / supply
-	r.Wage = math.Max(minPrice, math.Min(maxPrice, r.Wage*math.Exp(r.WageSpeed*clip(excess)))) // bounded, like prices
+	r.Wage = math.Max(MinPrice, math.Min(MaxPrice, r.Wage*math.Exp(r.WageSpeed*clip(excess)))) // bounded, like prices
 }
 
 type agentKind int
@@ -340,7 +333,7 @@ const (
 	popAgent agentKind = iota
 	firmAgent
 	traderAgent
-	nationAgent
+	govAgent
 	investAgent
 )
 
@@ -451,9 +444,9 @@ func (r *Region) GoodsMarkets() {
 				}
 			}
 		}
-		if r.Nation != nil && r.publicBid[g] > 0 { // paid from the ledger, settled with the nation later
-			bids = append(bids, Order{&r.ledger.paid, r.publicBid[g]})
-			bidRefs = append(bidRefs, agentRef{nationAgent, 0})
+		if r.Gov != nil && r.PublicBid[g] > 0 { // paid from the ledger, settled with the government later
+			bids = append(bids, Order{&r.Ledger.Paid, r.PublicBid[g]})
+			bidRefs = append(bidRefs, agentRef{govAgent, 0})
 		}
 		for _, i := range r.firmsMaking[g] {
 			if f := r.Firms[i]; f.Inventory > 0 {
@@ -480,19 +473,19 @@ func (r *Region) GoodsMarkets() {
 				r.Pops[ref.idx].Consumed[g] = got
 			case firmAgent:
 				r.Firms[ref.idx].Inputs[g] += got
-				r.Firms[ref.idx].tickCost += got * price
+				r.Firms[ref.idx].TickCost += got * price
 				r.Firms[ref.idx].tickInputs += got * price
 			case traderAgent:
 				t := r.bidders[g][ref.idx]
 				t.Receive(gid, got)
 				t.House.Spent += got * price
-			case nationAgent:
-				r.publicGot[g] = got
+			case govAgent:
+				r.PublicGot[g] = got
 			case investAgent: // upkeep first, then the expansion
 				f := r.Firms[ref.idx]
 				upkeep := math.Min(got, f.upkeepWant)
 				f.Wear = math.Max(0, f.Wear-upkeep/LevelCost)
-				f.tickCost += upkeep * price
+				f.TickCost += upkeep * price
 				if e := f.Expansion; e != nil && !e.Public {
 					e.Delivered += got - upkeep
 				}
@@ -502,16 +495,16 @@ func (r *Region) GoodsMarkets() {
 			sold := askFills[i]
 			if ref.kind == firmAgent {
 				r.Firms[ref.idx].Inventory -= sold
-				r.Firms[ref.idx].tickRevenue += sold * price
+				r.Firms[ref.idx].TickRevenue += sold * price
 			} else {
 				t := r.inbound[g][ref.idx]
 				t.StockDest -= sold
 				r.soldHere = append(r.soldHere, t)
-				if rate, _ := t.border(); rate > 0 { // import tariff, paid on sale
+				if rate, _ := t.Border(); rate > 0 { // import tariff, paid on sale
 					duty := sold * price * rate
 					t.proceeds -= duty
 					t.duty += duty
-					r.ledger.tariffs += duty
+					r.Ledger.Tariffs += duty
 				}
 			}
 		}
@@ -519,7 +512,7 @@ func (r *Region) GoodsMarkets() {
 	r.capUnsuppliedPrices()
 }
 
-// unsuppliedPriceCap is how far above the tile's typical price (the median
+// UnsuppliedPriceCap is how far above the tile's typical price (the median
 // price of the goods it has sellers for) a good nobody sells there may climb,
 // and how far below it a good nobody buys there may fall. A shortage still
 // pulls in imports and producers, but a good no one can make yet doesn't
@@ -527,10 +520,10 @@ func (r *Region) GoodsMarkets() {
 // merchants would then take at face value. Likewise a good no one wants for
 // now (war materiel in peacetime) doesn't sink to nothing, and needn't take
 // months to climb back once buyers return.
-const unsuppliedPriceCap = 10.0
+const UnsuppliedPriceCap = 10.0
 
 // capUnsuppliedPrices holds the price of goods with no supply here to at most
-// unsuppliedPriceCap times the tile's typical price, and of goods with no
+// UnsuppliedPriceCap times the tile's typical price, and of goods with no
 // demand to speak of (below the market's MinVolume: merchants keep a
 // trickle of bids open on every route) to at least that fraction of it.
 func (r *Region) capUnsuppliedPrices() {
@@ -544,7 +537,7 @@ func (r *Region) capUnsuppliedPrices() {
 		return
 	}
 	typical := median(sold)
-	high, low := unsuppliedPriceCap*typical, typical/unsuppliedPriceCap
+	high, low := UnsuppliedPriceCap*typical, typical/UnsuppliedPriceCap
 	for g, m := range r.Markets {
 		if r.made != nil && !r.made[g] {
 			continue // not in play: no price to speak of
@@ -610,21 +603,21 @@ func (r *Region) PayDividends(cash *float64, cashBuffer, desiredSpend float64, o
 		if div < 0 {
 			p.Cash += div * (p.Cash / ownCash) // investment is not taxed
 		} else {
-			r.payIncome(p, div*(p.Size/ownSize))
+			r.PayIncome(p, div*(p.Size/ownSize))
 		}
 	}
 }
 
 // Agglomeration: on every tile, industry and services are more productive the
-// more people live there: (people / sizeBonusPop)^sizeBonusExp. Busy tiles pay
+// more people live there: (people / SizeBonusPop)^SizeBonusExp. Busy tiles pay
 // better, draw migrants and grow further, so cities emerge where trade and
 // resources concentrate people; thin tiles stay rural. The pull is mild (a
 // tile twice the size is 9% more productive): at 0.45 (37%) a tile that
 // grew drew people from its neighbours, which made it grow further, and
 // small tiles emptied to the migration floor.
 const (
-	sizeBonusPop = 100.0 // a starting tile's people: bonus 1
-	sizeBonusExp = 0.12
+	SizeBonusPop = 100.0 // a starting tile's people: bonus 1
+	SizeBonusExp = 0.12
 	// a tile is a city when it has this many times the average tile's people
 	CityMult = 2.0
 )
@@ -635,34 +628,31 @@ func (r *Region) SizeBonus() float64 {
 	if !r.Urban {
 		return 1
 	}
-	return math.Pow(math.Max(r.Population(), 1)/sizeBonusPop, sizeBonusExp)
+	return math.Pow(math.Max(r.Population(), 1)/SizeBonusPop, SizeBonusExp)
 }
 
-func (r *Region) updateAgglomeration() {
-	b, e := r.SizeBonus(), 1+educationBonus*r.Educated
+func (r *Region) UpdateAgglomeration() {
+	b, e := r.SizeBonus(), 1+EducationBonus*r.Educated
 	for _, f := range r.Firms {
 		if f.Sector != Primary {
 			f.Agglom, f.EduMult = b, e
-		}
-		if f.State && f.Public == University {
-			f.EduMult = scienceUnschooled + scienceEducation*r.Educated
 		}
 	}
 }
 
 // Population growth per year: well-fed people multiply, hungry ones don't.
-// growth = popGrowthSlope * (basic needs met - popGrowthNeutral) + tech bonus,
-// within [popGrowthMin, popGrowthMax], less schooledBirths times the
+// growth = PopGrowthSlope * (basic needs met - PopGrowthNeutral) + tech bonus,
+// within [PopGrowthMin, PopGrowthMax], less SchooledBirths times the
 // educated share: schooled people have fewer children (the demographic
 // transition: birth rates fell about a third as literacy rose from half to
 // nearly all), so growth falls from about 1.4% a year in 1820 to under 1% as
 // a nation schools everyone.
 const (
-	schooledBirths   = 0.012
-	popGrowthSlope   = 0.035
-	popGrowthNeutral = 0.5
-	popGrowthMin     = -0.03
-	popGrowthMax     = 0.02
+	SchooledBirths   = 0.012
+	PopGrowthSlope   = 0.035
+	PopGrowthNeutral = 0.5
+	PopGrowthMin     = -0.03
+	PopGrowthMax     = 0.02
 )
 
 // BasicNeedsMet is how far the tile's people satisfy their basic needs, on
@@ -687,11 +677,11 @@ func (r *Region) BasicNeedsMet() float64 {
 
 // GrowthRate is the tile's population growth per year at current consumption.
 func (r *Region) GrowthRate() float64 {
-	g := popGrowthSlope*(r.BasicNeedsMet()-popGrowthNeutral) + r.HealthGrowth()
-	if r.Nation != nil {
-		g += r.Nation.popGrowthBonus()
+	g := PopGrowthSlope*(r.BasicNeedsMet()-PopGrowthNeutral) + r.HealthGrowth()
+	if r.Gov != nil {
+		g += r.Gov.GrowthBonus()
 	}
-	return math.Max(popGrowthMin, math.Min(popGrowthMax, g)-schooledBirths*r.Educated)
+	return math.Max(PopGrowthMin, math.Min(PopGrowthMax, g)-SchooledBirths*r.Educated)
 }
 
 // grow applies a day of population growth. Newborns bring no cash.
@@ -707,13 +697,13 @@ func (r *Region) grow() {
 // infrastructure multiplier). Coastal tiles can also be passed by sea, at
 // CoastMove times the owner's shipping technology; the cheaper way counts.
 func (r *Region) MoveCost() float64 {
-	land := r.BaseMove * InfraLevels[r.Infra].MoveMult
+	land := r.BaseMove * r.RoadMult
 	if !r.Coastal {
 		return land
 	}
 	sea := CoastMove
-	if r.Nation != nil {
-		sea *= r.Nation.coastMult()
+	if r.Gov != nil {
+		sea *= r.Gov.CoastMult()
 	}
 	return math.Min(sea, land)
 }
@@ -759,87 +749,6 @@ func (r *Region) TierSpend(prices []float64) [NumTiers]float64 {
 		}
 	}
 	return out
-}
-
-// Allegiance: a tile's people hold a share of loyalty for each nation, and
-// for nobody, adding up to 1. A nation's starting tiles stand wholly by it,
-// free land by nobody. Day by day the shares drift towards whoever owns the
-// tile (a time constant of allegianceYears), so a conquered tile starts out
-// loyal to its old owner, and one lost and retaken soon still mostly stands
-// by the nation that retook it. Its allegiance to its owner is the owner's
-// share plus freeLandAllegiance of nobody's (people who answer to no one are
-// halfway willing); until it is whole the tile pays less tax and gives
-// fewer recruits, and, while people there stand by another nation, produces
-// less (WorkMult).
-const (
-	allegianceYears    = 8.0
-	freeLandAllegiance = 0.4
-)
-
-// allegianceDrift is the share of the other loyalties that moves to the
-// owner each day.
-var allegianceDrift = 1 - math.Exp(-1/(allegianceYears*TicksPerYear))
-
-// initLoyalties gives every tile its starting loyalties: wholly to its
-// owner, or to nobody.
-func (w *World) initLoyalties() {
-	for _, r := range w.Regions {
-		r.Loyalties = make([]float64, len(w.Nations)+1)
-		if r.Nation != nil {
-			r.Loyalties[r.Nation.ID] = 1
-		} else {
-			r.Loyalties[len(w.Nations)] = 1
-		}
-		r.applyAllegiance()
-	}
-}
-
-// driftLoyalties moves a day's share of the tile's loyalties to its owner.
-func (r *Region) driftLoyalties() {
-	if r.Nation == nil || r.Loyalties == nil {
-		return
-	}
-	for i := range r.Loyalties {
-		if i == r.Nation.ID {
-			r.Loyalties[i] += allegianceDrift * (1 - r.Loyalties[i])
-		} else {
-			r.Loyalties[i] *= 1 - allegianceDrift
-		}
-	}
-	r.applyAllegiance()
-}
-
-// Allegiance is how far the tile's people stand by their owner, 0..1 (1 on
-// free land and outside games with nations: nobody to stand by).
-func (r *Region) Allegiance() float64 {
-	if r.Nation == nil || r.Loyalties == nil {
-		return 1
-	}
-	return r.Loyalties[r.Nation.ID] + freeLandAllegiance*r.Loyalties[len(r.Loyalties)-1]
-}
-
-// AllegianceMult is what allegiance does to the tile's taxes: half at none,
-// all of it when loyal.
-func (r *Region) AllegianceMult() float64 { return 0.5 + 0.5*r.Allegiance() }
-
-// WorkMult is what allegiance does to the tile's production: people loyal
-// to another nation work half-heartedly for their new masters (a share s of
-// them costs s/2 of the output); people who answered to nobody work as they
-// did (a free tile taken over doesn't become poorer for it).
-func (r *Region) WorkMult() float64 {
-	if r.Nation == nil || r.Loyalties == nil {
-		return 1
-	}
-	rival := 1 - r.Loyalties[r.Nation.ID] - r.Loyalties[len(r.Loyalties)-1]
-	return 1 - 0.5*math.Max(0, rival)
-}
-
-// applyAllegiance sets the tile's firms' productivity from its allegiance.
-func (r *Region) applyAllegiance() {
-	m := r.WorkMult()
-	for _, f := range r.Firms {
-		f.Loyal = m
-	}
 }
 
 // investResolve is a firm's resolve for its next project: an exponential

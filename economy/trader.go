@@ -1,4 +1,4 @@
-package game
+package economy
 
 import (
 	"math"
@@ -154,7 +154,7 @@ type Trader struct {
 	StockDest   float64       // arrived, for sale in dest
 	House       *TradingHouse // the origin's, which funds the route
 	// sold in the destination today, and import duties paid there: owed to
-	// the house, which belongs to another tile (see settleLedgers)
+	// the house, which belongs to another tile (see SettleLedgers)
 	proceeds, duty float64
 	slot           int // its place in its house's routes
 
@@ -168,7 +168,7 @@ type Trader struct {
 	QMin          float64
 	Bought        float64 // bought this tick
 	TransportQty  float64 // transport units bought this tick
-	usedTransport float64 // transport units used up shipping today (for GDP: trade's input)
+	UsedTransport float64 // transport units used up shipping today (for GDP: trade's input)
 	Shipped       float64 // last tick's shipment (as loaded)
 	Margin        float64
 	RelMargin     float64
@@ -199,23 +199,19 @@ func (t *Trader) SetDistance(d float64) {
 	t.Distance = d
 	t.Tau = t.TransportCost * d * Goods[t.Good].Bulk
 	spoil := t.spoilage
-	if n := t.Origin.Nation; n != nil {
-		spoil *= n.spoilageMult()
+	if g := t.Origin.Gov; g != nil {
+		spoil *= g.SpoilageMult()
 	}
 	t.Arriving = math.Pow(1-spoil, d)
 }
 
-// border returns the import tariff the route pays and whether an embargo
+// Border returns the import tariff the route pays and whether an embargo
 // closes it. Tariffs apply when goods enter a nation from outside it.
-func (t *Trader) border() (tariff float64, blocked bool) {
-	on, dn := t.Origin.Nation, t.Dest.Nation
-	if dn == nil || dn == on {
+func (t *Trader) Border() (tariff float64, blocked bool) {
+	if t.Dest.Gov == nil {
 		return 0, false
 	}
-	if on != nil && on.closedTo(dn) {
-		return 0, true // embargoed, at war, or allied against: no trade with the enemy
-	}
-	return dn.Tariff[t.Good], false
+	return t.Dest.Gov.Duty(t.Origin, t.Good)
 }
 
 // Name is "good:origin->dest".
@@ -230,7 +226,7 @@ func clip(x float64) float64 { return math.Max(-1, math.Min(1, x)) }
 func (t *Trader) Plan() {
 	po, pd := t.Origin.Markets, t.Dest.Markets
 	pOrig, pDest, pT := po[t.Good].Price, pd[t.Good].Price, po[Transport].Price
-	tariff, blocked := t.border()
+	tariff, blocked := t.Border()
 	if m := t.Origin.made; m != nil && !m[t.Good] {
 		blocked = true // nobody can make it yet: there's nothing to deal in
 	}
@@ -298,7 +294,7 @@ func (t *Trader) Receive(good GoodID, qty float64) {
 // (unsold at dest, or stuck at origin) spoils; fresh purchases don't, except
 // for what is lost in transit.
 func (t *Trader) Ship() {
-	t.usedTransport = t.TransportQty
+	t.UsedTransport = t.TransportQty
 	if t.StockDest == 0 && t.StockOrigin == 0 && t.Bought == 0 && t.TransportQty == 0 {
 		t.Shipped = 0 // an idle route (most of them): nothing moves
 		return
@@ -315,3 +311,6 @@ func (t *Trader) Ship() {
 	t.Shipped = n
 	t.TransportQty = 0 // transport is a service: unused capacity is lost
 }
+
+// Today lists the house's routes that trade today (the rest are idle).
+func (h *TradingHouse) Today() []*Trader { return h.today }

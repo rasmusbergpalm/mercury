@@ -213,7 +213,7 @@ func TestExplainerData(t *testing.T) {
 				}
 				main := f.Methods[0]
 				for _, m := range f.Methods {
-					if m.levels > main.levels {
+					if m.Levels > main.Levels {
 						main = m
 					}
 				}
@@ -593,7 +593,7 @@ func TestExplainerData(t *testing.T) {
 		for len(q) > 0 {
 			x := q[0]
 			q = q[1:]
-			for _, nb := range w.adj[x] {
+			for _, nb := range w.World.Adjacent(x) {
 				if dist[nb[0]] < 0 {
 					dist[nb[0]] = dist[x] + 1
 					q = append(q, nb[0])
@@ -673,7 +673,7 @@ func TestExplainerData(t *testing.T) {
 					hops[tr.Good] += tr.Shipped * tr.Distance / TicksPerYear
 				}
 			}
-			for _, g := range GameTradable {
+			for _, g := range FullTradable {
 				if made[g] > 0.5 && r.bulks[g] > 0 {
 					r.out = append(r.out, travel{Goods[g].Name, r.bulks[g], price[g], made[g], hops[g] / made[g]})
 				}
@@ -745,9 +745,9 @@ func TestExplainerData(t *testing.T) {
 	}
 	write("recipes.json", map[string]any{
 		"firms": firms,
-		"growth": map[string]float64{"slope": popGrowthSlope, "neutral": popGrowthNeutral, "min": popGrowthMin, "max": popGrowthMax,
-			"schooled": schooledBirths},
-		"migration": map[string]float64{"rate": migrationRate, "minPopulation": minPopulation},
+		"growth": map[string]float64{"slope": PopGrowthSlope, "neutral": PopGrowthNeutral, "min": PopGrowthMin, "max": PopGrowthMax,
+			"schooled": SchooledBirths},
+		"migration": map[string]float64{"rate": MigrationRate, "minPopulation": minPopulation},
 		"settle":    map[string]int{"years": explainerSettle, "experimentYears": explainerYears},
 	})
 	fmt.Println("wrote", dir)
@@ -812,7 +812,7 @@ func explainerDiagonal(w *World) []int {
 	path := []int{start.ID}
 	for cur := start; cur != goal; {
 		var best *Region
-		for _, nb := range w.adj[cur.ID] {
+		for _, nb := range w.World.Adjacent(cur.ID) {
 			r := w.Regions[nb[0]]
 			if best == nil || dist(r, goal) < dist(best, goal) || (dist(r, goal) == dist(best, goal) && off(r) < off(best)) {
 				best = r

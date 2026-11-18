@@ -13,7 +13,7 @@ func TestTilesHaveOwnerClasses(t *testing.T) {
 		size[p.Class] += p.Size
 	}
 	pop := r.Population()
-	if math.Abs(size[Owners]-ownerPeopleShare*pop) > 1e-9 {
+	if math.Abs(size[Owners]-OwnerPeopleShare*pop) > 1e-9 {
 		t.Errorf("class sizes %v of %v", size, pop)
 	}
 	classic := newTestWorld(t, 1)
@@ -56,7 +56,7 @@ func TestOnlyWorkersAreDraftedAndMove(t *testing.T) {
 	before := owners(r)
 	removePeople(r, 10)
 	addPeople(r, 3)
-	movePeople(r, regionByName(w, "12"), 5)
+	MovePeople(r, regionByName(w, "12"), 5)
 	if math.Abs(owners(r)-before) > 1e-12 {
 		t.Errorf("owners changed from %v to %v", before, owners(r))
 	}

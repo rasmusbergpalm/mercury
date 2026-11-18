@@ -1,4 +1,4 @@
-package game
+package economy
 
 // Job is labor a pop supplies to one firm.
 type Job struct {

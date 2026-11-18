@@ -201,7 +201,7 @@ func (w *World) aiDiplomacy(n *Nation, own float64) {
 
 // aiArmies keeps enough armies to field the soldiers it wants (one army can
 // only be so big), at the best doctrine, and gives idle armies orders: defend
-// invaded tiles, attack the enemy's weakest border tile, or occupy free land.
+// invaded tiles, attack the enemy's weakest Border tile, or occupy free land.
 func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 	war := w.atWar(n)
 	share := aiPeaceMobilize * n.Temper.Militarism
@@ -881,7 +881,7 @@ func (w *World) aiMarchDays(n *Nation, a *Army) []float64 {
 		if !barred[i] || !w.reachable(n, r) {
 			continue
 		}
-		for _, x := range w.adj[i] {
+		for _, x := range w.World.Adjacent(i) {
 			if v := marchDaysPerHop * (dist[x[0]] + w.Links[x[1]].Hop); v < days[i] {
 				days[i] = v
 			}
@@ -1017,10 +1017,10 @@ func (w *World) aiServices(n *Nation, war, funding, universities bool) {
 					continue
 				}
 				funded := f.Levels
-				if f.Public == University && (short || war) {
+				if Public(f.Public) == University && (short || war) {
 					funded = (f.Levels + 1) / 2
 				}
-				w.SetServiceFunding(r.ID, f.Public, funded)
+				w.SetServiceFunding(r.ID, Public(f.Public), funded)
 			}
 		}
 	}

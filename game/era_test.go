@@ -15,12 +15,12 @@ func TestSizeBonusGrowsWithPopulation(t *testing.T) {
 			t.Fatalf("tile %s: urban %v, city %v at the start", x.Name, x.Urban, w.IsCity(x))
 		}
 	}
-	if b := r.SizeBonus(); math.Abs(b-math.Pow(r.Population()/sizeBonusPop, sizeBonusExp)) > 1e-9 {
+	if b := r.SizeBonus(); math.Abs(b-math.Pow(r.Population()/SizeBonusPop, SizeBonusExp)) > 1e-9 {
 		t.Errorf("bonus %v for %v people", b, r.Population())
 	}
 	small := r.SizeBonus()
 	addPeople(r, 600)
-	r.updateAgglomeration()
+	r.UpdateAgglomeration()
 	if big := r.SizeBonus(); big <= small {
 		t.Errorf("bigger tile, bonus %v <= %v", big, small)
 	}
@@ -56,7 +56,7 @@ func TestPopulationFollowsFood(t *testing.T) {
 			}
 		}
 	}
-	if g := r.GrowthRate(); g <= 0 || g > popGrowthMax {
+	if g := r.GrowthRate(); g <= 0 || g > PopGrowthMax {
 		t.Errorf("well-fed tile grows %v a year", g)
 	}
 	w.Migration = false

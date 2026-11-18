@@ -10,7 +10,7 @@ func TestTechTreeIsWellFormed(t *testing.T) {
 	branches := map[string]int{}
 	seen := map[string]bool{}
 	firms := map[string]bool{}
-	for _, rc := range append(append(append(append([]Recipe(nil), RawRecipes...), ProcessingRecipes...), GameRecipes...), GameRawRecipes...) {
+	for _, rc := range append(append(append(append([]Recipe(nil), RawRecipes...), ProcessingRecipes...), FullRecipes...), FullRawRecipes...) {
 		firms[rc.Firm] = true
 	}
 	for k := Public(0); k < NumServices; k++ {
@@ -311,8 +311,8 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 		t.Fatal("a lone port opened routes")
 	}
 	b := buildPortNow(t, w, "50")
-	if got := len(w.Traders) - traders; got != 2*len(GameTradable) {
-		t.Fatalf("second port added %d traders, want %d", got, 2*len(GameTradable))
+	if got := len(w.Traders) - traders; got != 2*len(FullTradable) {
+		t.Fatalf("second port added %d traders, want %d", got, 2*len(FullTradable))
 	}
 	want := portHandling + seaPerHex*4*th.coastMult()
 	sea := 0
@@ -321,14 +321,14 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 			continue
 		}
 		sea++
-		if !((tr.Origin == a && tr.Dest == b) || (tr.Origin == b && tr.Dest == a)) {
+		if !((tr.Origin == a.Region && tr.Dest == b.Region) || (tr.Origin == b.Region && tr.Dest == a.Region)) {
 			t.Fatalf("sea trader on the wrong route: %s", tr.Name())
 		}
 		if math.Abs(tr.Distance-want) > 1e-12 {
 			t.Fatalf("sea hop %v, want %v", tr.Distance, want)
 		}
 	}
-	if sea != 2*len(GameTradable) {
+	if sea != 2*len(FullTradable) {
 		t.Fatalf("%d sea traders", sea)
 	}
 	money := w.Money()
@@ -502,7 +502,7 @@ func TestCatchUpSlot(t *testing.T) {
 	if b.Copying >= 0 && !a.Known[b.Copying] {
 		t.Errorf("Beta catches up on %s, which Alpha doesn't know", Techs[b.Copying].Name)
 	}
-	// an embargo (either way) closes the border to it
+	// an embargo (either way) closes the Border to it
 	b.Known[TechID("Percussion caps")] = true
 	a.Researching, a.Copying = -1, -1
 	a.Embargo[b.ID] = true

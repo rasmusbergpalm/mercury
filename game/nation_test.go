@@ -97,8 +97,8 @@ func TestIncomeIsTaxed(t *testing.T) {
 	r.Nation.TaxRate = 0.2
 	p := r.Pops[0]
 	cash, treasury := p.Cash, r.Nation.Treasury
-	r.payIncome(p, 100)
-	w.settleLedgers() // taxes reach the treasury when the day's ledgers are settled
+	r.PayIncome(p, 100)
+	w.SettleLedgers() // taxes reach the treasury when the day's ledgers are settled
 	if math.Abs(p.Cash-cash-80) > 1e-9 || math.Abs(r.Nation.Treasury-treasury-20) > 1e-9 {
 		t.Errorf("pop got %v, treasury got %v; want 80 and 20", p.Cash-cash, r.Nation.Treasury-treasury)
 	}
@@ -196,7 +196,7 @@ func TestBuildingRoadsLowersHopCosts(t *testing.T) {
 		}
 	}
 	for _, tr := range w.Traders {
-		if tr.Origin == r || tr.Dest == r {
+		if tr.Origin == r.Region || tr.Dest == r.Region {
 			want := tr.TransportCost * (tr.Origin.MoveCost() + tr.Dest.MoveCost()) / 2 * Goods[tr.Good].Bulk
 			if math.Abs(tr.Tau-want) > 1e-12 {
 				t.Errorf("trader %s tau %v, want %v", tr.Name(), tr.Tau, want)

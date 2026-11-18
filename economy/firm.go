@@ -1,7 +1,6 @@
-package game
+package economy
 
 import (
-	"fmt"
 	"math"
 	"strings"
 )
@@ -65,7 +64,7 @@ type Method struct {
 	Cap int
 	// levels it runs; the firm's first method runs the levels the others
 	// don't (see MethodLevels)
-	levels int
+	Levels int
 	Output float64 // what it made today
 
 	planLabor, labor float64   // today's plan, and what it got
@@ -137,7 +136,7 @@ type Firm struct {
 	// Funded of their levels and takes their output; see university.go.
 	State   bool
 	Funded  int
-	Public  Public  // which public service, for state firms
+	Public  int     // which public service a state firm provides (the government layer's numbering)
 	EduMult float64 // productivity from the tile's schooling (industry and services)
 	Loyal   float64 // productivity from the tile's allegiance to its owner (1: loyal)
 	// Site and SiteMult: where a land-bound producer's productivity comes
@@ -159,9 +158,9 @@ type Firm struct {
 	Wear                  float64 // levels worn out and not yet made good by upkeep (see depreciation)
 	Urge                  float64 // the owners' urge to start the next project (see investDecideDays)
 	Projects              int     // projects they have started
-	tickRevenue, tickCost float64
+	TickRevenue, TickCost float64
 	tickInputs            float64   // what the goods it used up cost this tick
-	used                  []float64 // goods it used up producing this tick, by good
+	Used                  []float64 // goods it used up producing this tick, by good
 	investWant            float64   // construction to buy this tick: upkeep, and a private expansion
 	upkeepWant            float64   // ...of which upkeep
 }
@@ -198,11 +197,11 @@ const LevelCost = 1200.0
 // MethodLevels is the levels the firm runs on its i-th method.
 func (f *Firm) MethodLevels(i int) int {
 	if i > 0 {
-		return f.Methods[i].levels
+		return f.Methods[i].Levels
 	}
 	n := f.Levels
 	for _, m := range f.Methods[1:] {
-		n -= m.levels
+		n -= m.Levels
 	}
 	return max(0, n)
 }
@@ -211,7 +210,7 @@ func (f *Firm) MethodLevels(i int) int {
 // away; refit moves one from method from to method to.
 func (f *Firm) addLevel(i int) {
 	if i > 0 {
-		f.Methods[i].levels++
+		f.Methods[i].Levels++
 	}
 	f.Levels++
 }
@@ -220,7 +219,7 @@ func (f *Firm) removeLevel(i int) {
 		return
 	}
 	if i > 0 {
-		f.Methods[i].levels--
+		f.Methods[i].Levels--
 	}
 	f.Levels--
 }
@@ -268,7 +267,7 @@ func (f *Firm) effectiveTFP(i int) float64 {
 
 // main is the method that runs most of the firm's levels (its first, at
 // a tie): what its productivity breakdown describes.
-func (f *Firm) main() int {
+func (f *Firm) Main() int {
 	best := 0
 	for i := range f.Methods {
 		if f.MethodLevels(i) > f.MethodLevels(best) {
@@ -284,7 +283,7 @@ func (f *Firm) dropLevel(r *Region) {
 	if f.Levels <= 0 {
 		return
 	}
-	w, _ := f.worstMethod(r.prices, r.Wage)
+	w, _ := f.WorstMethod(r.prices, r.Wage)
 	if w < 0 {
 		w = 0
 	}
@@ -309,10 +308,10 @@ func (f *Firm) AtCap() bool {
 	return c > 0 && f.Levels >= c
 }
 
-// bestMethod is the working method a level would earn most on at today's
-// prices, of those with room for one more (-1 if none), and worstMethod
+// BestMethod is the working method a level would earn most on at today's
+// prices, of those with room for one more (-1 if none), and WorstMethod
 // the one with levels that earns least (-1 if none).
-func (f *Firm) bestMethod(prices []float64, wage float64) (int, float64) {
+func (f *Firm) BestMethod(prices []float64, wage float64) (int, float64) {
 	best, top := -1, 0.0
 	for i, m := range f.Methods {
 		if !m.Runs() || (f.methodCap(i) > 0 && f.MethodLevels(i) >= f.methodCap(i)) {
@@ -324,7 +323,7 @@ func (f *Firm) bestMethod(prices []float64, wage float64) (int, float64) {
 	}
 	return best, top
 }
-func (f *Firm) worstMethod(prices []float64, wage float64) (int, float64) {
+func (f *Firm) WorstMethod(prices []float64, wage float64) (int, float64) {
 	worst, low := -1, 0.0
 	for i, m := range f.Methods {
 		if f.MethodLevels(i) == 0 {
@@ -543,66 +542,15 @@ func (f *Firm) Produce() float64 {
 		q += x
 	}
 	f.Inventory += q
-	if f.used == nil {
-		f.used = make([]float64, len(f.Inputs))
+	if f.Used == nil {
+		f.Used = make([]float64, len(f.Inputs))
 	}
-	copy(f.used, f.Inputs)
+	copy(f.Used, f.Inputs)
 	for i := range f.Inputs {
 		f.Inputs[i] = 0
 	}
 	f.LastOutput = q
 	return q
-}
-
-// Bonuses explains the firm's productivity factor by factor: its recipe's
-// base, its site (terrain or coast), each technology of its nation, the
-// tile's size (industry and services), its schooling, and the crowding
-// malus: how much less productive it is than it would be with one more
-// building level.
-func (f *Firm) Bonuses(n *Nation) []Modifier {
-	site := 1.0
-	if f.SiteMult > 0 {
-		site = f.SiteMult
-	}
-	mi := f.main()
-	out := []Modifier{{"Base", f.Methods[mi].BaseTFP / site, "the recipe's productivity", false}}
-	if f.SiteMult > 0 {
-		out = append(out, Modifier{cap1(f.Site), f.SiteMult, "how well the site suits it", false})
-	}
-	if n != nil {
-		for i, t := range Techs {
-			if !n.Known[i] {
-				continue
-			}
-			full := techFirmMult(&t, f, f.Methods[mi])
-			if full == 1 {
-				continue
-			}
-			note := "technology"
-			if a := n.Adoption(i); a < 1 {
-				note = fmt.Sprintf("technology, %.0f%% adopted (of ×%.2f)", 100*a, full)
-			}
-			out = append(out, Modifier{t.Name, 1 + (full-1)*n.Adoption(i), note, false})
-		}
-	}
-	if f.Agglom != 1 {
-		out = append(out, Modifier{"Tile size", f.Agglom, "industry and services gain from the people around them", false})
-	}
-	if f.Loyal < 1 {
-		out = append(out, Modifier{"Allegiance", f.Loyal, "the tile's people don't yet stand by their new rulers", false})
-	}
-	if f.EduMult != 1 {
-		out = append(out, Modifier{"Schooling", f.EduMult, "the tile's educated share", false})
-	}
-	if !f.State && f.Levels > 0 {
-		m := f.NextLevelMult()
-		note := fmt.Sprintf("%d levels; one more would make every worker and input %.0f%% more productive", f.Levels, 100*(m-1))
-		if f.AtCap() {
-			note = fmt.Sprintf("%d levels, the most it can have here", f.Levels)
-		}
-		out = append(out, Modifier{"Crowding", 1 / m, note, false})
-	}
-	return out
 }
 
 // NextLevelMult is how much one more building level would multiply the
@@ -611,7 +559,7 @@ func (f *Firm) Bonuses(n *Nation) []Modifier {
 // depends only on the number of levels.
 func (f *Firm) NextLevelMult() float64 {
 	n := float64(max(f.Levels, 1))
-	return math.Pow((n+1)/n, 1-f.Methods[f.main()].exponentSum())
+	return math.Pow((n+1)/n, 1-f.Methods[f.Main()].exponentSum())
 }
 
 func cap1(s string) string {

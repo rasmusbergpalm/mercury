@@ -86,17 +86,17 @@ func TestRemovePort(t *testing.T) {
 		t.Errorf("removed twice: %v", err)
 	}
 	left := len(ports) - 1
-	if want := land + left*(left-1)*len(GameTradable); len(w.Traders) != want {
+	if want := land + left*(left-1)*len(FullTradable); len(w.Traders) != want {
 		t.Errorf("%d routes after the removal, want %d", len(w.Traders), want)
 	}
 	for _, x := range w.Traders {
-		if x.Origin == gone && x.Sea || x.Dest == gone && x.Sea {
+		if x.Origin == gone.Region && x.Sea || x.Dest == gone.Region && x.Sea {
 			t.Fatal("a sea route of the removed port is left")
 		}
 	}
 	for _, r := range w.Regions {
 		for _, x := range r.House.Routes {
-			if x.Sea && (x.Origin == gone || x.Dest == gone) {
+			if x.Sea && (x.Origin == gone.Region || x.Dest == gone.Region) {
 				t.Fatal("a house still funds a route of the removed port")
 			}
 		}

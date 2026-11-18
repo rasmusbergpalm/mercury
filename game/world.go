@@ -1,165 +1,141 @@
 package game
 
-import "math"
+import (
+	"math"
 
-// World is a set of regions linked by traders that pay transport costs, and
-// optionally nations that own the regions.
+	"github.com/rasmusbergpalm/mercury/economy"
+)
+
+// World is a game: the economy (economy.World) of a map whose tiles nations
+// own, tax, defend and fight over.
 type World struct {
-	Rows, Cols int
-	Regions    []*Region
-	Traders    []*Trader
-	Links      []Link
-	Nations    []*Nation
-	Tick       int
-	burning    bool // in the burn-in before a game starts (settle.go)
-	// made is, per good, whether anyone in the world can make it or still
-	// has some to sell; merchants leave the rest alone (refreshMade)
-	made []bool
-	// Game rules, off in the classic world: firms invest in building levels,
-	// people migrate between neighbouring tiles, and populations grow.
-	Investment, Migration, Demography bool
-	// Spec is the scenario a game world was built from (nil for the classic world).
+	*economy.World
+	Regions []*Region // the economy's tiles, with what the game knows of them
+	Nations []*Nation
+	burning bool // in the burn-in before a game starts (settle.go)
+	// Spec is the scenario a game world was built from (nil for a bare map).
 	Spec *GameSpec
 	// Ports lists tiles with ports in the order they opened (which fixes the
 	// order of sea traders).
 	Ports []int
-	// TradePrices are the prices trade happened at in the last tick, per region.
-	TradePrices [][]float64
 
 	Armies     []*Army
 	NextArmyID int
 	Events     []Event
 	History    History // game worlds only
 
-	adj  [][][2]int // per tile: (neighbour, link index)
-	grid []int      // per cell of the map (row*Cols+col): its region, or -1 for sea
 	// shortest paths through any land, by start (see allPaths); cleared
 	// when a hop changes
 	paths map[int]cachedPaths
 }
 
-// Link is a pair of neighbouring regions and the cost of one hop between them:
-// the average of the two tiles' movement costs.
-type Link struct {
-	A, B int
-	Hop  float64
+// Region is a tile of the game: the economy's tile, and who owns it, its
+// roads and port, its loyalties and the war on it.
+type Region struct {
+	*economy.Region
+	w        *World
+	Nation   *Nation  // owner, or nil
+	Infra    int      // index into InfraLevels
+	Port     bool     // has a port: trades by sea with every other port
+	Project  *Project // infrastructure under construction, or nil
+	Neglect  float64  // accumulated unmet upkeep
+	Siege    *Siege   // a foreign army working to take the tile, or nil
+	Collect  float64  // share of its taxes the administration collects
+	// Loyalties is how the tile's people's allegiance is split: one share
+	// per nation, and a last one for nobody; they add up to 1 (nil outside
+	// games with nations). See Allegiance.
+	Loyalties []float64
+	Battle    int // days the current battle on the tile has lasted (0: none)
+
+	claims    []claim   // what the nation buys here this tick
+	exportsTo []float64 // value shipped to each other nation today (see trackTrade)
 }
 
-// Each tile's trading house starts with this much cash per route.
-const houseCashPerRoute = 1.0
-
-// NewWorld wires regions and traders together: every route belongs to the
-// trading house of the tile it leaves from.
-func NewWorld(rows, cols int, regions []*Region, traders []*Trader, links []Link) *World {
-	connect(traders)
-	for _, r := range regions {
-		h := r.House
-		h.Cash = houseCashPerRoute * float64(len(h.Routes))
-		h.CashBuffer = h.Cash
+// wrap makes a game of an economy: a game tile for each of its tiles, and
+// the game's hooks in its day.
+func wrap(e *economy.World) *World {
+	w := &World{World: e}
+	for _, r := range e.Regions {
+		w.Regions = append(w.Regions, &Region{Region: r, w: w, Collect: 1})
 	}
-	w := &World{Rows: rows, Cols: cols, Regions: regions, Traders: traders, Links: links}
-	for _, r := range regions {
-		w.TradePrices = append(w.TradePrices, r.Prices())
-	}
-	w.grid = make([]int, rows*cols)
-	for i := range w.grid {
-		w.grid[i] = -1
-	}
-	for _, r := range regions {
-		w.grid[r.Row*cols+r.Col] = r.ID
-	}
-	w.adj = make([][][2]int, len(regions))
-	for i, l := range links {
-		w.adj[l.A] = append(w.adj[l.A], [2]int{l.B, i})
-		w.adj[l.B] = append(w.adj[l.B], [2]int{l.A, i})
-	}
+	e.Hooks = w
 	return w
 }
 
-// RegionAt is the tile at a map cell, or nil for sea (or off the map).
-func (w *World) RegionAt(row, col int) *Region {
-	if row < 0 || row >= w.Rows || col < 0 || col >= w.Cols {
-		return nil
+// setNation hands the tile to a nation (nil: free land), which governs its
+// economy.
+func (r *Region) setNation(n *Nation) {
+	r.Nation = n
+	if n == nil {
+		r.Gov = nil
+	} else {
+		r.Gov = r
 	}
-	if id := w.grid[row*w.Cols+col]; id >= 0 {
-		return w.Regions[id]
-	}
-	return nil
 }
 
-// landNeighbours calls f for each land tile next to r.
-func (w *World) landNeighbours(r *Region, f func(nb *Region) bool) {
-	for _, x := range w.adj[r.ID] {
-		if !f(w.Regions[x[0]]) {
-			return
+// setInfra sets the tile's infrastructure level, and what it does to moving
+// over land.
+func (r *Region) setInfra(level int) {
+	r.Infra = level
+	r.RoadMult = InfraLevels[level].MoveMult
+}
+
+// The tile's owner governs its economy (economy.Government).
+
+func (r *Region) IncomeTax(amount float64) float64 {
+	return amount * r.Nation.TaxRate * r.Collect * r.AllegianceMult() // what its administration collects, from people who pay
+}
+
+// Duty is the nation's tariff on goods from outside it; none from its own
+// tiles, and an embargo on trade with its enemies.
+func (r *Region) Duty(from *economy.Region, g GoodID) (float64, bool) {
+	on, dn := r.w.Regions[from.ID].Nation, r.Nation
+	if dn == on {
+		return 0, false
+	}
+	if on != nil && on.closedTo(dn) {
+		return 0, true // embargoed, at war, or allied against: no trade with the enemy
+	}
+	return dn.Tariff[g], false
+}
+
+func (r *Region) PaybackMult() float64  { return r.Nation.paybackMult() }
+func (r *Region) GrowthBonus() float64  { return r.Nation.popGrowthBonus() }
+func (r *Region) CoastMult() float64    { return r.Nation.coastMult() }
+func (r *Region) SpoilageMult() float64 { return r.Nation.spoilageMult() }
+
+// Settle pays the tile's ledger into its nation's treasury.
+func (r *Region) Settle(l economy.Ledger) {
+	n := r.Nation
+	n.Treasury += l.Tax + l.Paid + l.Tariffs
+	n.Revenue += l.Tax
+	n.Spending -= l.Paid
+	n.TariffRevenue += l.Tariffs
+}
+
+// The game's part in each day (economy.Hooks).
+
+func (w *World) BeginDay() { w.runAI() }
+
+func (w *World) Plan() {
+	for _, r := range w.Regions {
+		if r.Urban {
+			r.scholars()
 		}
 	}
-}
-
-// Money is all cash in the world; it is conserved.
-func (w *World) Money() float64 {
-	s := 0.0
-	for _, r := range w.Regions {
-		s += r.Money()
-	}
-	for _, r := range w.Regions {
-		s += r.House.Cash
-	}
-	for _, n := range w.Nations {
-		s += n.Treasury
-	}
-	return s
-}
-
-// Soldiers is how many people serve in armies.
-func (w *World) Soldiers() float64 {
-	s := 0.0
-	for _, a := range w.Armies {
-		s += a.Men
-	}
-	return s
-}
-
-// Step advances the world one tick. The tiles' own work runs in parallel
-// (see eachRegion); what they owe each other is settled in order after.
-func (w *World) Step() {
-	w.runAI()
-	w.refreshMade()
-	w.eachRegion(func(r *Region) {
-		copy(w.TradePrices[r.ID], r.refreshPrices())
-		r.Plan()
-		if w.Investment {
-			r.planInvestment(w.seed())
-		}
-	})
-	w.eachRegion(func(r *Region) { r.House.Plan(w.Tick) })
 	for _, n := range w.Nations {
 		n.plan(w)
 	}
-	w.eachRegion(func(r *Region) {
-		r.LaborMarket()
-		r.GoodsMarkets()
-	})
-	w.settleLedgers()
-	w.eachRegion(func(r *Region) { r.shipAll(len(w.Nations)) })
+}
+
+func (w *World) Shipped() {
+	for _, r := range w.Regions {
+		r.sumExports(len(w.Nations))
+	}
 	w.trackTrade()
-	w.eachRegion(func(r *Region) {
-		r.Produce()
-		owners := r.owners()
-		for _, f := range r.Firms {
-			if f.State {
-				continue
-			}
-			// keep cash for what the firm wants to spend, but no more than it
-			// can grow into: twice what it actually spent today
-			r.PayDividends(&f.Cash, f.CashBuffer, math.Min(f.DesiredSpend, 2*f.tickCost+f.CashBuffer), owners)
-		}
-		// like firms: hold what today's plans need, but no more than the
-		// house can grow into (twice what it actually spent today)
-		h := r.House
-		r.PayDividends(&h.Cash, h.CashBuffer, math.Min(h.DesiredSpend, 2*h.Spent+h.CashBuffer), owners)
-	})
-	w.settleLedgers()
+}
+
+func (w *World) Settle() {
 	changed := false
 	for _, n := range w.Nations {
 		changed = n.settle(w) || changed
@@ -174,21 +150,9 @@ func (w *World) Step() {
 	if len(w.Nations) > 0 {
 		w.armies()
 	}
-	if w.Investment {
-		w.eachRegion((*Region).settleFirms)
-	}
-	if w.Migration {
-		w.migrate()
-	}
-	w.Tick++
-	w.eachRegion(func(r *Region) {
-		if w.Demography {
-			r.grow()
-		}
-		if w.Spec != nil {
-			r.accumulateGDP()
-		}
-	})
+}
+
+func (w *World) EndDay() {
 	if w.Spec != nil {
 		if w.Tick%HistoryEvery == 0 {
 			w.record()
@@ -196,44 +160,75 @@ func (w *World) Step() {
 	}
 }
 
-// refreshMade notes which goods are in play: those some firm on the map
-// makes without any technology, or with one that at least one nation knows.
-// The rest (oil before anyone has Petroleum) are left out of the economy
-// entirely: no market clears for them, no merchant or state buys them, and
-// they have no price.
-func (w *World) refreshMade() {
-	if w.made == nil {
-		w.made = make([]bool, NumGoods)
-	}
-	for g := range w.made {
-		w.made[g] = false
-	}
-	for _, r := range w.Regions {
-		for _, f := range r.Firms {
-			if w.made[f.Output] {
-				continue
-			}
-			if f.Requires == "" {
-				w.made[f.Output] = true
-				continue
-			}
-			for _, n := range w.Nations {
-				if n.Has(f.Requires) {
-					w.made[f.Output] = true
-					break
-				}
-			}
+func (w *World) Knows(tech string) bool {
+	for _, n := range w.Nations {
+		if n.Has(tech) {
+			return true
 		}
 	}
-	for _, r := range w.Regions {
-		r.made = w.made
+	return false
+}
+
+// Money is all cash in the world, the treasuries' with the rest; it is
+// conserved.
+func (w *World) Money() float64 {
+	s := w.World.Money()
+	for _, n := range w.Nations {
+		s += n.Treasury
+	}
+	return s
+}
+
+// sumExports sums what the tile shipped today to every other nation (for
+// trackTrade).
+func (r *Region) sumExports(nations int) {
+	if len(r.exportsTo) != nations {
+		r.exportsTo = make([]float64, nations)
+	}
+	for j := range r.exportsTo {
+		r.exportsTo[j] = 0
+	}
+	on := r.Nation
+	for _, t := range r.House.Today() {
+		if dn := r.w.Regions[t.Dest.ID].Nation; on != nil && dn != nil && on != dn && t.Shipped > 0 {
+			r.exportsTo[dn.ID] += t.Shipped * r.Markets[t.Good].Price
+		}
 	}
 }
 
-// Made reports whether good g is in play: some nation can make it.
-func (w *World) Made(g GoodID) bool {
-	return w.made == nil || w.made[g]
+func (w *World) refreshAllHops() {
+	w.paths = nil
+	w.World.RefreshHops()
+	for _, t := range w.Traders {
+		if t.Sea {
+			t.SetDistance(w.seaHop(t.Origin, t.Dest))
+		}
+	}
 }
+
+// refreshHops recomputes the hop cost of every link and route touching r.
+func (w *World) refreshHops(r *Region) {
+	w.paths = nil
+	w.World.RefreshHopsAt(r.Region)
+}
+
+// seed is the game's seed (0 outside game worlds).
+func (w *World) seed() int64 {
+	if w.Spec == nil {
+		return 0
+	}
+	return w.Spec.Seed
+}
+
+// Soldiers is how many people serve in armies.
+func (w *World) Soldiers() float64 {
+	s := 0.0
+	for _, a := range w.Armies {
+		s += a.Men
+	}
+	return s
+}
+
 
 // trackTrade updates each nation's moving average of trade with every other.
 func (w *World) trackTrade() {
@@ -258,23 +253,6 @@ func (w *World) trackTrade() {
 	}
 }
 
-// shipAll sends what each of the tile's routes can ship today and sums
-// what it shipped to every other nation (for trackTrade).
-func (r *Region) shipAll(nations int) {
-	if len(r.exportsTo) != nations {
-		r.exportsTo = make([]float64, nations)
-	}
-	for j := range r.exportsTo {
-		r.exportsTo[j] = 0
-	}
-	on := r.Nation
-	for _, t := range r.House.today { // the rest are idle: they ship nothing
-		t.Ship()
-		if dn := t.Dest.Nation; on != nil && dn != nil && on != dn && t.Shipped > 0 {
-			r.exportsTo[dn.ID] += t.Shipped * r.Markets[t.Good].Price
-		}
-	}
-}
 
 // Build starts the next infrastructure level on a tile, paid for by its nation.
 func (w *World) Build(region int) error {
@@ -307,7 +285,7 @@ func (w *World) Expand(region, firm int) error {
 	case f.AtCap():
 		return ErrFirmMax
 	}
-	best, _ := f.bestMethod(r.Prices(), r.Wage) // a new level runs the method it earns most on
+	best, _ := f.BestMethod(r.Prices(), r.Wage) // a new level runs the method it earns most on
 	if best < 0 {
 		return ErrFirmMax
 	}
@@ -405,33 +383,9 @@ func (w *World) RemovePort(region int) error {
 		return ErrNoPort
 	}
 	r.Port = false
-	gone := func(t *Trader) bool { return t.Sea && (t.Origin == r || t.Dest == r) }
-	keep := func(ts []*Trader) []*Trader {
-		out := ts[:0]
-		for _, t := range ts {
-			if !gone(t) {
-				out = append(out, t)
-			}
-		}
-		return out
-	}
-	w.Traders = keep(w.Traders)
-	for _, x := range w.Regions { // every port had routes to and from this one
-		if !x.Port && x != r {
-			continue
-		}
-		h := x.House
-		h.Routes = keep(h.Routes)
-		for i, t := range h.Routes {
-			t.slot = i
-		}
-		h.busyKnown, h.today = false, h.today[:0]
-		for g := range x.outbound {
-			x.outbound[g] = keep(x.outbound[g])
-			x.inbound[g] = keep(x.inbound[g])
-			x.bidders[g] = x.bidders[g][:0]
-		}
-	}
+	gone := func(t *Trader) bool { return t.Sea && (t.Origin == r.Region || t.Dest == r.Region) }
+	// every port had routes to and from this one
+	w.World.RemoveTraders(gone, func(x *economy.Region) bool { return w.Regions[x.ID].Port || x == r.Region })
 	for i, id := range w.Ports {
 		if id == r.ID {
 			w.Ports = append(w.Ports[:i:i], w.Ports[i+1:]...)
@@ -465,8 +419,9 @@ func HexDistance(r1, c1, r2, c2 int) int {
 	return max(abs(x1-x2), abs(y1-y2), abs(z1-z2))
 }
 
-func (w *World) seaHop(a, b *Region) float64 {
-	mult := func(r *Region) float64 {
+func (w *World) seaHop(a, b *economy.Region) float64 {
+	mult := func(x *economy.Region) float64 {
+		r := w.Regions[x.ID]
 		if r.Nation == nil {
 			return 1
 		}
@@ -501,16 +456,15 @@ func (w *World) openPort(r *Region) {
 		var added []*Trader
 		for _, id := range w.Ports {
 			p := w.Regions[id]
-			hop := w.seaHop(r, p)
-			for _, g := range GameTradable {
-				a := NewTrader(g, r, p, hop, w.Spec.TransportCost)
-				b := NewTrader(g, p, r, hop, w.Spec.TransportCost)
+			hop := w.seaHop(r.Region, p.Region)
+			for _, g := range FullTradable {
+				a := NewTrader(g, r.Region, p.Region, hop, w.Spec.TransportCost)
+				b := NewTrader(g, p.Region, r.Region, hop, w.Spec.TransportCost)
 				a.Sea, b.Sea = true, true // the houses fund them from their purse
 				added = append(added, a, b)
 			}
 		}
-		connect(added)
-		w.Traders = append(w.Traders, added...)
+		w.World.AddTraders(added)
 	}
 	w.Ports = append(w.Ports, r.ID)
 }
@@ -518,10 +472,12 @@ func (w *World) openPort(r *Region) {
 // borders reports whether a tile neighbours one of the nation's tiles.
 func (w *World) borders(n *Nation, r *Region) bool {
 	found := false
-	w.landNeighbours(r, func(nb *Region) bool {
-		found = nb.Nation == n
-		return !found
-	})
+	for _, x := range w.World.Adjacent(r.ID) {
+		if w.Regions[x[0]].Nation == n {
+			found = true
+			break
+		}
+	}
 	return found
 }
 
@@ -555,7 +511,7 @@ func (w *World) transfer(r *Region, n *Nation) {
 		}
 	}
 	// (the new owner's applyTech below sets productivity and which firms work)
-	r.Nation = n
+	r.setNation(n)
 	n.Regions = append(n.Regions, r)
 	r.applyAllegiance() // its people's loyalties stay as they were: to the old owner, or to the new one if it had it before
 	n.applyTech()
@@ -565,105 +521,6 @@ func (w *World) transfer(r *Region, n *Nation) {
 // Annex hands a tile to a nation outright (scenarios, tests).
 func (w *World) Annex(region, nation int) { w.transfer(w.Regions[region], w.Nations[nation]) }
 
-// Migration rules (game worlds only).
-const (
-	// share of a tile's people who move per tick per unit of relative utility
-	// gap: a 10% gap draws about 7% of a tile's people a year (with a hop of
-	// 0). Ten times faster, a building boom on a tile emptied its
-	// neighbours in months, and the people left again when it ended.
-	migrationRate  = 0.002
-	migrationStart = 50 // ticks before anyone moves (utility records need to settle)
-	minPopulation  = 20 // a tile never empties below this
-)
-
-// migrationShare is the share of from's people who move to to in a day,
-// for a relative gap in living standards and the hop between them. A border
-// holds no one back: in the nineteenth century some fifty million Europeans
-// left for the Americas and elsewhere, and millions more crossed into the
-// industrial regions next door (the Irish into Britain, Poles into the
-// Ruhr, Italians into France), going where wages were. So a nation that
-// lives well draws its neighbours' people.
-func migrationShare(from, to *Region, gap, hop float64) float64 {
-	return migrationRate * gap / (1 + hop)
-}
-
-// migrate moves people along each link from the tile with lower (smoothed)
-// utility to the one with higher. Cheaper hops mean more migration. People
-// take their cash with them.
-func (w *World) migrate() {
-	w.eachRegion(func(r *Region) {
-		u := r.Utility()
-		if w.Tick == 0 {
-			r.UtilityEMA = u
-		}
-		r.UtilityEMA = 0.9*r.UtilityEMA + 0.1*u
-	})
-	if w.Tick < migrationStart {
-		return
-	}
-	for _, l := range w.Links {
-		from, to := w.Regions[l.A], w.Regions[l.B]
-		if to.UtilityEMA < from.UtilityEMA {
-			from, to = to, from
-		}
-		if from.UtilityEMA <= 0 {
-			continue
-		}
-		gap := math.Min((to.UtilityEMA-from.UtilityEMA)/from.UtilityEMA, 0.3)
-		pop := from.Population()
-		n := math.Min(migrationShare(from, to, gap, l.Hop)*pop, sizeOf(movable(from))-minPopulation) // never below minPopulation workers
-		if n > 1e-9 {
-			movePeople(from, to, n)
-		}
-	}
-}
-
-// movable are the pops that move, get drafted and come home: the workers
-// (or everyone, where there are no classes).
-func movable(r *Region) []*Pop {
-	if w := r.ClassPops(Workers); len(w) > 0 && len(w) < len(r.Pops) {
-		return w
-	}
-	return r.Pops
-}
-
-func sizeOf(pops []*Pop) float64 {
-	s := 0.0
-	for _, p := range pops {
-		s += p.Size
-	}
-	return s
-}
-
-// movePeople moves n workers (and their share of cash) between tiles,
-// taking from and adding to every worker pop in proportion to its size.
-func movePeople(from, to *Region, n float64) {
-	src, dst := movable(from), movable(to)
-	fromPop, toPop := sizeOf(src), sizeOf(dst)
-	n = math.Min(n, fromPop*0.5)
-	cash := 0.0
-	for _, p := range src {
-		k := n * p.Size / fromPop
-		c := p.Cash * k / p.Size
-		p.Size -= k
-		p.Cash -= c
-		cash += c
-	}
-	for _, p := range dst {
-		share := p.Size / toPop
-		p.Size += n * share
-		p.Cash += cash * share
-	}
-}
-
-// Population is the number of people in the world.
-func (w *World) Population() float64 {
-	s := 0.0
-	for _, r := range w.Regions {
-		s += r.Population()
-	}
-	return s
-}
 
 // CancelBuild abandons a tile's project; what was delivered is lost.
 func (w *World) CancelBuild(region int) error {
@@ -677,40 +534,10 @@ func (w *World) CancelBuild(region int) error {
 
 // SetInfra sets a tile's infrastructure level directly (scenarios, tests).
 func (w *World) SetInfra(region, level int) {
-	w.Regions[region].Infra = level
+	w.Regions[region].setInfra(level)
 	w.refreshHops(w.Regions[region])
 }
 
-func (w *World) refreshAllHops() {
-	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
-	w.paths = nil
-	for i, l := range w.Links {
-		w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
-	}
-	for _, t := range w.Traders {
-		if t.Sea {
-			t.SetDistance(w.seaHop(t.Origin, t.Dest))
-		} else {
-			t.SetDistance(hop(t.Origin, t.Dest))
-		}
-	}
-}
-
-// refreshHops recomputes the hop cost of every link and route touching r.
-func (w *World) refreshHops(r *Region) {
-	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
-	w.paths = nil
-	for i, l := range w.Links {
-		if l.A == r.ID || l.B == r.ID {
-			w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
-		}
-	}
-	for _, t := range w.Traders {
-		if !t.Sea && (t.Origin == r || t.Dest == r) {
-			t.SetDistance(hop(t.Origin, t.Dest))
-		}
-	}
-}
 
 // GrantTech gives a nation a technology outright (scenarios, tests).
 func (w *World) GrantTech(nation int, tech string) {
@@ -720,20 +547,42 @@ func (w *World) GrantTech(nation int, tech string) {
 	w.refreshAllHops()
 }
 
-// IsCity reports whether a tile has grown into a city: it holds at least
-// CityMult times the people of the average tile.
-func (w *World) IsCity(r *Region) bool {
-	pop := 0.0
-	for _, x := range w.Regions {
-		pop += x.Population()
+
+
+// landNeighbours calls f for each land tile next to r, until it returns false.
+func (w *World) landNeighbours(r *Region, f func(nb *Region) bool) {
+	for _, x := range w.World.Adjacent(r.ID) {
+		if !f(w.Regions[x[0]]) {
+			return
+		}
 	}
-	return r.Population() >= CityMult*pop/float64(len(w.Regions))
 }
 
-// seed is the game's seed (0 outside game worlds).
-func (w *World) seed() int64 {
-	if w.Spec == nil {
-		return 0
+// settleTaxes pays the nation the taxes in its tiles' ledgers.
+func (n *Nation) settleTaxes() {
+	for _, r := range n.Regions {
+		n.Treasury += r.Ledger.Tax
+		n.Revenue += r.Ledger.Tax
+		r.Ledger.Tax = 0
 	}
-	return w.Spec.Seed
+}
+
+// IsCity reports whether a tile has grown into a city (see economy.World.IsCity).
+func (w *World) IsCity(r *Region) bool { return w.World.IsCity(r.Region) }
+
+// UpdateAgglomeration sets what the tile's size and schooling do to its
+// firms (see economy.Region.UpdateAgglomeration), and to its university.
+func (r *Region) UpdateAgglomeration() {
+	r.Region.UpdateAgglomeration()
+	r.scholars()
+}
+
+// scholars sets the tile's university's productivity: scholars come from
+// the schooled.
+func (r *Region) scholars() {
+	for _, f := range r.Firms {
+		if f.State && Public(f.Public) == University {
+			f.EduMult = scienceUnschooled + scienceEducation*r.Educated
+		}
+	}
 }

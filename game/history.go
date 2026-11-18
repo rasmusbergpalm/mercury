@@ -1,6 +1,10 @@
 package game
 
-import "math"
+import (
+	"math"
+
+	"github.com/rasmusbergpalm/mercury/economy"
+)
 
 // HistoryEvery is how often (in days) game worlds record their statistics.
 const HistoryEvery = 30
@@ -84,7 +88,7 @@ type TradeStats struct {
 }
 
 // Trade measures today's shipments: what leaves and enters each tile, and
-// what crosses each nation's border.
+// what crosses each nation's Border.
 func (w *World) Trade() TradeStats {
 	s := TradeStats{RegionOut: make([]float64, len(w.Regions)), RegionIn: make([]float64, len(w.Regions))}
 	for range w.Nations {
@@ -98,7 +102,7 @@ func (w *World) Trade() TradeStats {
 		v := t.Shipped * t.Origin.Markets[t.Good].Price
 		s.RegionOut[t.Origin.ID] += v
 		s.RegionIn[t.Dest.ID] += v
-		on, dn := t.Origin.Nation, t.Dest.Nation
+		on, dn := w.Regions[t.Origin.ID].Nation, w.Regions[t.Dest.ID].Nation
 		if on == dn {
 			continue
 		}
@@ -253,5 +257,23 @@ func (w *World) record() {
 		push(&ah.Men, a.Men)
 		push(&ah.Strength, a.Strength())
 		push(&ah.Effectiveness, a.Effectiveness())
+	}
+}
+
+// linkNationGDP links each nation's real GDP for the month (see
+// economy.World.LinkGDP).
+func (w *World) linkNationGDP() {
+	levels := make([]float64, len(w.Nations))
+	for i, n := range w.Nations {
+		levels[i] = n.RealGDP
+	}
+	w.LinkGDP(func(r *economy.Region) int {
+		if n := w.Regions[r.ID].Nation; n != nil {
+			return n.ID + 1
+		}
+		return 0
+	}, levels)
+	for i, n := range w.Nations {
+		n.RealGDP = levels[i]
 	}
 }

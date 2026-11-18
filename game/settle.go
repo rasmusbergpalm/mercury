@@ -184,7 +184,7 @@ func (w *World) settleFrom(b *World) {
 			f.Levels, f.Age, f.Wear, f.Expansion = bf.Levels, bf.Age, bf.Wear, nil
 			f.Urge, f.Projects = bf.Urge, bf.Projects
 			for k, m := range f.Methods {
-				m.levels = bf.Methods[k].levels
+				m.Levels = bf.Methods[k].Levels
 			}
 			if bf.Expansion != nil {
 				e := *bf.Expansion
@@ -192,7 +192,7 @@ func (w *World) settleFrom(b *World) {
 			}
 		}
 		copy(w.TradePrices[i], b.TradePrices[i])
-		r.updateAgglomeration()
+		r.UpdateAgglomeration()
 	}
 	for i, bt := range b.Traders {
 		t := w.Traders[i]
@@ -221,7 +221,7 @@ func (w *World) burnIn(days int, progress func(done int)) {
 	w.Demography, w.burning = false, true
 	real := make([]GDPChain, len(w.Regions))
 	for i, r := range w.Regions {
-		real[i] = r.Real.clone()
+		real[i] = r.Real.Clone()
 	}
 	for d := 0; d < days; d++ {
 		w.Step()

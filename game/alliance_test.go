@@ -25,7 +25,7 @@ func TestAlliancesAgainstADominantNation(t *testing.T) {
 	if err := w.DeclareWar(m.ID, v.ID); !errors.Is(err, ErrAllied) && !errors.Is(err, ErrNotBordered) {
 		t.Errorf("war between allies: %v", err)
 	}
-	// Thalassa attacks Verdania: Montara joins, border or not
+	// Thalassa attacks Verdania: Montara joins, Border or not
 	v.AtWar[th.ID], th.AtWar[v.ID] = true, true
 	w.updateAlliances()
 	if !m.AtWar[th.ID] || !th.AtWar[m.ID] {
@@ -152,7 +152,7 @@ func TestAlliesDontTakeTheSameTile(t *testing.T) {
 	target := regionByName(w, "12")
 	w.Annex(target.ID, th.ID)
 	if !w.borders(m, target) || !w.borders(v, target) {
-		t.Fatal("set-up: tile 12 should border Montara and Verdania")
+		t.Fatal("set-up: tile 12 should Border Montara and Verdania")
 	}
 	army := func(n *Nation) *Army {
 		x, err := w.RaiseArmy(n.ID, n.Regions[0].ID, 0)
@@ -181,7 +181,7 @@ func TestAlliesEmbargoTheirFoe(t *testing.T) {
 	m, th := nationByName(w, "Montara"), nationByName(w, "Thalassa")
 	route := func(from, to *Nation) *Trader {
 		for _, tr := range w.Traders {
-			if tr.Origin.Nation == from && tr.Dest.Nation == to {
+			if w.Regions[tr.Origin.ID].Nation == from && w.Regions[tr.Dest.ID].Nation == to {
 				return tr
 			}
 		}
@@ -192,17 +192,17 @@ func TestAlliesEmbargoTheirFoe(t *testing.T) {
 	if there == nil || back == nil {
 		t.Fatal("set-up: no trade route between Montara and Thalassa")
 	}
-	if _, blocked := there.border(); blocked {
+	if _, blocked := there.Border(); blocked {
 		t.Fatal("trade blocked before any alliance")
 	}
 	m.Coalition = th.ID + 1
 	for _, tr := range []*Trader{there, back} {
-		if _, blocked := tr.border(); !blocked {
+		if _, blocked := tr.Border(); !blocked {
 			t.Errorf("%s: trade with the nation Montara is allied against", tr.Name())
 		}
 	}
 	m.Coalition = 0
-	if _, blocked := there.border(); blocked {
+	if _, blocked := there.Border(); blocked {
 		t.Error("trade still blocked after the alliance broke up")
 	}
 }

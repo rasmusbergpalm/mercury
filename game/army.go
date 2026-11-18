@@ -146,7 +146,7 @@ var (
 	ErrAtWar       = errors.New("already at war")
 	ErrAtPeace     = errors.New("not at war")
 	ErrNotOwnTile  = errors.New("armies are raised and disbanded in the nation's own tiles")
-	ErrNotBordered = errors.New("the nations don't border each other")
+	ErrNotBordered = errors.New("the nations don't Border each other")
 )
 
 // Effectiveness is the army's fighting power per soldier. Doctrines form a
@@ -502,7 +502,7 @@ func (w *World) shortestPaths(from int, ok func(r *Region) bool) ([]float64, []i
 			continue // a stale entry
 		}
 		done[u] = true
-		for _, x := range w.adj[u] {
+		for _, x := range w.World.Adjacent(u) {
 			v, hop := x[0], w.Links[x[1]].Hop
 			if !done[v] && ok(w.Regions[v]) && dist[u]+hop < dist[v] {
 				dist[v], prev[v] = dist[u]+hop, u
@@ -995,7 +995,7 @@ func (w *World) paySoldiers(n *Nation) {
 	n.SpentOn[Defense] += pay
 	for _, r := range n.Regions {
 		for _, p := range r.Pops {
-			r.payIncome(p, pay*p.Size/people)
+			r.PayIncome(p, pay*p.Size/people)
 		}
 	}
 	n.settleTaxes()
@@ -1197,7 +1197,7 @@ func (w *World) recruitAll() {
 			// a tile gives up to recruitRate of its people a day, or faster
 			// where the nation can call up its whole share in its call-up time
 			rate := math.Max(recruitRate, n.Mobilization()/n.CallUpDays())
-			avail[i] = math.Max(0, math.Min(rate*r.Population()*r.Allegiance(), sizeOf(movable(r))-minPopulation))
+			avail[i] = math.Max(0, math.Min(rate*r.Population()*r.Allegiance(), sizeOf(movable(r.Region))-minPopulation))
 			pool += avail[i]
 		}
 		if pool <= 0 {
@@ -1313,7 +1313,7 @@ func (w *World) march(a *Army) {
 }
 
 func (w *World) hopBetween(a, b int) float64 {
-	for _, x := range w.adj[a] {
+	for _, x := range w.World.Adjacent(a) {
 		if x[0] == b {
 			return w.Links[x[1]].Hop
 		}
@@ -1515,7 +1515,7 @@ func siegeLoss(r *Region) float64 {
 // removePeople drafts n people from a tile, taking from every pop in
 // proportion to its size; their cash stays with those who remain.
 func removePeople(r *Region, n float64) {
-	pops := movable(r)
+	pops := movable(r.Region)
 	pop := sizeOf(pops)
 	for _, p := range pops {
 		p.Size -= n * p.Size / pop
@@ -1524,7 +1524,7 @@ func removePeople(r *Region, n float64) {
 
 // addPeople adds n people (with no cash) to a tile.
 func addPeople(r *Region, n float64) {
-	pops := movable(r)
+	pops := movable(r.Region)
 	pop := sizeOf(pops)
 	for _, p := range pops {
 		p.Size += n * p.Size / pop

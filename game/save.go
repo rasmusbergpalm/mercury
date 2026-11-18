@@ -148,7 +148,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 			for i, m := range f.Methods {
 				fs.TFP = append(fs.TFP, m.TFP)
 				if i > 0 {
-					fs.MethodLevels = append(fs.MethodLevels, m.levels)
+					fs.MethodLevels = append(fs.MethodLevels, m.Levels)
 				}
 			}
 			if f.Expansion != nil {
@@ -157,7 +157,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 			}
 			rs.Firms = append(rs.Firms, fs)
 		}
-		rs.Real = r.Real.clone()
+		rs.Real = r.Real.Clone()
 		s.Regions = append(s.Regions, rs)
 	}
 	for _, t := range w.Traders {
@@ -228,15 +228,17 @@ func Restore(s *Snapshot) (*World, error) {
 		if rs.Port && !w.hasPortRoutes(i) {
 			return bad("port in " + r.Name)
 		}
-		r.Wage, r.Neglect, r.UtilityEMA, r.Infra, r.Project, r.Nation = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Infra, rs.Project, nil
+		r.Wage, r.Neglect, r.UtilityEMA, r.Project = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Project
+		r.setInfra(rs.Infra)
+		r.setNation(nil)
 		r.House.Cash, r.Battle = rs.HouseCash, rs.Battle
 		r.Collect, r.Educated, r.Healthy = rs.Collect, rs.Educated, rs.Healthy
 		if len(rs.Loyalties) != len(r.Loyalties) {
 			return bad("allegiance in " + r.Name)
 		}
 		copy(r.Loyalties, rs.Loyalties)
-		r.Real = rs.Real.clone()
-		if !r.Real.valid() {
+		r.Real = rs.Real.Clone()
+		if !r.Real.Valid() {
 			return bad("real GDP in " + r.Name)
 		}
 		if r.Infra < 0 || r.Infra >= len(InfraLevels) || (r.Project != nil && !r.Project.Port && (r.Project.Target <= 0 || r.Project.Target >= len(InfraLevels))) {
@@ -262,7 +264,7 @@ func Restore(s *Snapshot) (*World, error) {
 			for k, m := range f.Methods {
 				m.TFP = fs.TFP[k]
 				if k > 0 {
-					m.levels = fs.MethodLevels[k-1]
+					m.Levels = fs.MethodLevels[k-1]
 				}
 			}
 			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, fs.Expansion
@@ -326,7 +328,7 @@ func Restore(s *Snapshot) (*World, error) {
 				return bad("nation " + n.Name + " tiles")
 			}
 			n.Regions = append(n.Regions, w.Regions[id])
-			w.Regions[id].Nation = n
+			w.Regions[id].setNation(n)
 		}
 	}
 	for i, rs := range s.Regions {
@@ -367,7 +369,7 @@ func Restore(s *Snapshot) (*World, error) {
 		if r.Nation == nil {
 			for _, f := range r.Firms {
 				f.Enabled = firmEnabled(f, nil)
-				f.applyMethods(nil)
+				applyMethods(f, nil)
 			}
 		}
 	}
@@ -382,7 +384,7 @@ func Restore(s *Snapshot) (*World, error) {
 		}
 	}
 	for _, r := range w.Regions {
-		r.updateAgglomeration()
+		r.UpdateAgglomeration()
 	}
 	w.refreshAllHops()
 	return w, nil

@@ -96,12 +96,12 @@ func TestTransportSweep(t *testing.T) {
 					for _, reg := range w.Regions {
 						for _, f := range reg.Firms {
 							r.net[f.Output] += f.LastOutput / TicksPerYear
-							for g, q := range f.used {
+							for g, q := range f.Used {
 								r.net[g] -= q / TicksPerYear
 							}
 						}
-						for _, tr := range reg.House.today {
-							r.used[Transport] += tr.usedTransport / TicksPerYear
+						for _, tr := range reg.House.Today() {
+							r.used[Transport] += tr.UsedTransport / TicksPerYear
 						}
 						people := reg.Population()
 						r.living += reg.Utility() * people / TicksPerYear
@@ -172,7 +172,7 @@ func indexOf(xs []float64, x float64) int {
 // doesn't swamp the rest.
 func priceGap(w *World) float64 {
 	var gaps []float64
-	for _, g := range GameTradable {
+	for _, g := range FullTradable {
 		lo, hi, n := math.Inf(1), 0.0, 0
 		for _, r := range w.Regions {
 			if m := r.Markets[g]; m.Supply > 0 && m.Demand > 0 {

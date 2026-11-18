@@ -1,4 +1,4 @@
-package game
+package economy
 
 import "math"
 
@@ -8,10 +8,10 @@ type Order struct {
 	Qty  float64
 }
 
-// Prices stay within [minPrice, maxPrice].
+// Prices stay within [MinPrice, MaxPrice].
 const (
-	minPrice = 1e-4
-	maxPrice = 1e9
+	MinPrice = 1e-4
+	MaxPrice = 1e9
 )
 
 // Market is a single-good call market in one region: proportional rationing
@@ -74,7 +74,7 @@ func (m *Market) clearInto(bids, asks []Order, bidFills, askFills []float64) ([]
 	excess := (demand - supply) / math.Max(math.Max(supply, demand), m.MinVolume)
 	// a good nobody wants for decades mustn't fall (or rise) out of range
 	if excess != 0 { // (balanced or idle markets keep their price: spare the exp)
-		m.Price = math.Min(maxPrice, math.Max(minPrice, m.Price*math.Exp(m.Speed*excess)))
+		m.Price = math.Min(MaxPrice, math.Max(MinPrice, m.Price*math.Exp(m.Speed*excess)))
 	}
 	// the trend follows the price on days the good trades (a price nobody
 	// pays, at the floor or the ceiling, says nothing about its level); a

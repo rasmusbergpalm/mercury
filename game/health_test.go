@@ -119,7 +119,7 @@ type healthWatch struct {
 	armyDays               float64
 	armySum, armyWorst     float64
 	armyNeeds              map[*Army][]int // the day each good was first needed by an army (-1: not yet)
-	levels                 []float64       // all building levels, per day
+	Levels                 []float64       // all building levels, per day
 }
 
 // newHealthWatch starts watching w. The price baskets are what each tile's
@@ -219,7 +219,7 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 		h.logWage[i] = append(h.logWage[i], math.Log(r.Wage))
 		people := r.Population()
 		h.people[i] = append(h.people[i], people)
-		finite(r.Name+" wage", r.Wage, minPrice)
+		finite(r.Name+" wage", r.Wage, MinPrice)
 		finite(r.Name+" house cash", r.House.Cash, -1e-6)
 		workers, employed := 0.0, 0.0
 		for _, p := range r.Pops {
@@ -241,7 +241,7 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 		utility += r.Utility() * people
 		pop += people
 		for g, m := range r.Markets {
-			finite(r.Name+" "+Goods[g].Name+" price", m.Price, minPrice)
+			finite(r.Name+" "+Goods[g].Name+" price", m.Price, MinPrice)
 			if IsService(GoodID(g)) && g != int(Construction) {
 				continue
 			}
@@ -250,7 +250,7 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 				if math.Abs(math.Log(m.Price/prev[i][g])) >= 0.999*m.Speed {
 					h.fullSpeed++
 				}
-				if m.Price <= 10*minPrice {
+				if m.Price <= 10*MinPrice {
 					h.floorDays++
 				}
 			}
@@ -268,7 +268,7 @@ func (h *healthWatch) record(day int, prev [][]float64, state bool) {
 			}
 		}
 	}
-	h.levels = append(h.levels, levels)
+	h.Levels = append(h.Levels, levels)
 	h.living = append(h.living, utility/pop)
 	h.worldPeople = append(h.worldPeople, pop)
 	money := w.Money()
@@ -496,10 +496,10 @@ func (h *healthWatch) checks(l healthLimits) []healthCheck {
 	}
 	c = append(c, healthCheck{fmt.Sprintf("most stock held beyond %.0f days of output", stockDays), held, 0, shown, heldName})
 	growth := 0.0
-	for t := year; t < len(h.levels); t += 30 {
-		growth = math.Max(growth, h.levels[t]/h.levels[t-year]-1)
+	for t := year; t < len(h.Levels); t += 30 {
+		growth = math.Max(growth, h.Levels[t]/h.Levels[t-year]-1)
 	}
-	add("most building levels grew in a year", growth, l.LevelGrowthYear, true, fmt.Sprintf("%.0f levels to %.0f", h.levels[0], last(h.levels)))
+	add("most building levels grew in a year", growth, l.LevelGrowthYear, true, fmt.Sprintf("%.0f levels to %.0f", h.Levels[0], last(h.Levels)))
 
 	minPeople, lossYear, emptied := math.Inf(1), 0.0, 0
 	for _, s := range h.people {

@@ -56,7 +56,7 @@ func TestSchoolsEducate(t *testing.T) {
 		t.Errorf("three years of schools: educated %v -> %v", e0, r.Educated)
 	}
 	for _, x := range r.Firms {
-		if x.Sector == Industry && math.Abs(x.EduMult-(1+educationBonus*r.Educated)) > 1e-3 { // set the morning before
+		if x.Sector == Industry && math.Abs(x.EduMult-(1+EducationBonus*r.Educated)) > 1e-3 { // set the morning before
 			t.Errorf("%s: schooling bonus %v for educated share %v", x.Name, x.EduMult, r.Educated)
 		}
 	}
@@ -68,8 +68,8 @@ func TestPublicHealthCoversCrowding(t *testing.T) {
 	r := regionByName(w, "11")
 	addPeople(r, 400)
 	w.Step()
-	if r.Crowding() <= 0 || r.crowdingPenalty() <= 0 {
-		t.Fatalf("a tile of %v people: crowding %v, penalty %v", r.Population(), r.Crowding(), r.crowdingPenalty())
+	if r.Crowding() <= 0 || r.CrowdingPenalty() <= 0 {
+		t.Fatalf("a tile of %v people: crowding %v, penalty %v", r.Population(), r.Crowding(), r.CrowdingPenalty())
 	}
 	f := r.Service(Health)
 	f.Levels = serviceMaxLevels
@@ -77,11 +77,11 @@ func TestPublicHealthCoversCrowding(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		w.Step()
 	}
-	if r.Healthy < 0.99 || r.crowdingPenalty() > 1e-9 {
-		t.Errorf("with health staff: covered %v, penalty %v", r.Healthy, r.crowdingPenalty())
+	if r.Healthy < 0.99 || r.CrowdingPenalty() > 1e-9 {
+		t.Errorf("with health staff: covered %v, penalty %v", r.Healthy, r.CrowdingPenalty())
 	}
-	if r.healthBonus() < 0.99*healthGrowth {
-		t.Errorf("a covered tile's growth bonus %v, want %v", r.healthBonus(), healthGrowth)
+	if r.HealthBonus() < 0.99*HealthCover {
+		t.Errorf("a covered tile's growth bonus %v, want %v", r.HealthBonus(), HealthCover)
 	}
 }
 
@@ -91,7 +91,7 @@ func TestWarStopsTrade(t *testing.T) {
 	a, b := regionByName(w, "00"), regionByName(w, "01")
 	w.DeclareWar(0, 1)
 	for _, tr := range tradersBetween(w, a, b) {
-		if _, blocked := tr.border(); !blocked {
+		if _, blocked := tr.Border(); !blocked {
 			t.Errorf("%s trades across the front", tr.Name())
 		}
 	}
@@ -133,7 +133,7 @@ func TestPensions(t *testing.T) {
 // that schools every child from 1820 is over half educated by 1850 (not
 // nine in ten, as it was), and nine in ten only by about 1900.
 func TestEducationSpreadsOverAGeneration(t *testing.T) {
-	e := startEducated
+	e := StartEducated
 	at := map[int]float64{}
 	for d := 1; d <= 80*TicksPerYear; d++ {
 		e = educate(e, 1)
@@ -155,10 +155,10 @@ func TestEducationMattersMostToScience(t *testing.T) {
 	r := w.Regions[0]
 	mults := func(educated float64) (uni, mill float64) {
 		r.Educated = educated
-		r.updateAgglomeration()
+		r.UpdateAgglomeration()
 		for _, f := range r.Firms {
 			switch {
-			case f.State && f.Public == University:
+			case f.State && Public(f.Public) == University:
 				uni = f.EduMult
 			case f.Sector == Industry:
 				mill = f.EduMult
@@ -191,8 +191,8 @@ func TestHealthIsOneGrowthFigure(t *testing.T) {
 		t.Fatalf("crowding %v", r.Crowding())
 	}
 	r.Healthy = 1
-	if g := r.HealthGrowth(); math.Abs(g-healthGrowth) > 1e-12 {
-		t.Errorf("a crowded tile fully covered grows %v a year from health, want %v", g, healthGrowth)
+	if g := r.HealthGrowth(); math.Abs(g-HealthCover) > 1e-12 {
+		t.Errorf("a crowded tile fully covered grows %v a year from health, want %v", g, HealthCover)
 	}
 	r.Healthy = 0
 	if g := r.HealthGrowth(); g >= 0 {

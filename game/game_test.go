@@ -22,7 +22,7 @@ func newNeighbourGame(t *testing.T) *World {
 func tradersBetween(w *World, a, b *Region) []*Trader {
 	var out []*Trader
 	for _, tr := range w.Traders {
-		if (tr.Origin == a && tr.Dest == b) || (tr.Origin == b && tr.Dest == a) {
+		if (tr.Origin == a.Region && tr.Dest == b.Region) || (tr.Origin == b.Region && tr.Dest == a.Region) {
 			out = append(out, tr)
 		}
 	}
@@ -38,8 +38,8 @@ func TestTariffAppliesOnlyToImports(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tr := range w.Traders {
-		rate, blocked := tr.border()
-		into := tr.Dest.Nation == v && tr.Origin.Nation != v
+		rate, blocked := tr.Border()
+		into := w.Regions[tr.Dest.ID].Nation == v && w.Regions[tr.Origin.ID].Nation != v
 		if blocked || (into && rate != 0.5) || (!into && rate != 0) {
 			t.Fatalf("%s: tariff %v blocked %v", tr.Name(), rate, blocked)
 		}
@@ -63,7 +63,7 @@ func TestTariffsRaiseRevenueAndCutImports(t *testing.T) {
 			if i >= 450 {
 				revenue += v.TariffRevenue / 50
 				for _, tr := range w.Traders {
-					if tr.Dest.Nation == v && tr.Origin.Nation != v {
+					if w.Regions[tr.Dest.ID].Nation == v && w.Regions[tr.Origin.ID].Nation != v {
 						volume += tr.Shipped / 50
 					}
 				}
@@ -106,17 +106,17 @@ func TestEmbargoStopsCrossBorderTrade(t *testing.T) {
 		w.Step()
 	}
 	for _, tr := range tradersBetween(w, a, b) {
-		if _, blocked := tr.border(); !blocked {
+		if _, blocked := tr.Border(); !blocked {
 			t.Errorf("%s not blocked", tr.Name())
 		}
 	}
 	if f := flow(); f > 1e-6 {
-		t.Errorf("trade across an embargoed border: %v", f)
+		t.Errorf("trade across an embargoed Border: %v", f)
 	}
 	// trade with unowned tiles goes on
 	open := 0.0
 	for _, tr := range w.Traders {
-		if tr.Origin == a && tr.Dest.Nation == nil {
+		if tr.Origin == a.Region && w.Regions[tr.Dest.ID].Nation == nil {
 			open += tr.Shipped
 		}
 	}
@@ -254,7 +254,7 @@ func TestRefrigerationCutsTransitLoss(t *testing.T) {
 	th := nationByName(w, "Thalassa")
 	var tr *Trader
 	for _, x := range w.Traders {
-		if x.Origin.Nation == th && Goods[x.Good].Name == "fish" {
+		if w.Regions[x.Origin.ID].Nation == th && Goods[x.Good].Name == "fish" {
 			tr = x
 			break
 		}
@@ -360,7 +360,7 @@ func TestMovePeopleConserves(t *testing.T) {
 	a, b := w.Regions[0], w.Regions[1]
 	pop, money := w.Population(), w.Money()
 	cashPerHead := a.Pops[0].Cash / a.Pops[0].Size
-	movePeople(a, b, 10)
+	MovePeople(a, b, 10)
 	if relDiff(w.Population(), pop) > 1e-12 || relDiff(w.Money(), money) > 1e-12 {
 		t.Errorf("moving people changed population or money")
 	}
@@ -386,7 +386,7 @@ func TestPeopleMoveTowardsHigherUtility(t *testing.T) {
 	for _, r := range w.Regions {
 		before[r] = r.Population()
 	}
-	w.migrate()
+	w.Migrate()
 	if target.Population() <= before[target] {
 		t.Errorf("tile with the highest utility did not gain people")
 	}
@@ -439,11 +439,11 @@ func TestEmigrationAsFreeAsMoving(t *testing.T) {
 	w := newNeighbourGame(t)
 	a, b := w.Nations[0].Regions[0], w.Nations[1].Regions[0]
 	const gap, hop = 0.1, 1.0
-	yearly := 1 - math.Pow(1-migrationShare(a, b, gap, hop), TicksPerYear)
+	yearly := 1 - math.Pow(1-MigrationShare(a, b, gap, hop), TicksPerYear)
 	if yearly > 0.06 || yearly < 0.01 {
-		t.Errorf("a 10%% gap draws %.2f%% of a border tile's people a year, want 1-6%%", 100*yearly)
+		t.Errorf("a 10%% gap draws %.2f%% of a Border tile's people a year, want 1-6%%", 100*yearly)
 	}
-	if home := migrationShare(a, a, gap, hop); home != migrationShare(a, b, gap, hop) {
-		t.Errorf("moving within a nation (%v a day) and across a border (%v) differ", home, migrationShare(a, b, gap, hop))
+	if home := MigrationShare(a, a, gap, hop); home != MigrationShare(a, b, gap, hop) {
+		t.Errorf("moving within a nation (%v a day) and across a Border (%v) differ", home, MigrationShare(a, b, gap, hop))
 	}
 }

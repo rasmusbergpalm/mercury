@@ -86,7 +86,7 @@ type Nation struct {
 	MaxBuildRate float64
 
 	Tariff  []float64 // import tariff per good, as a share of the sale price
-	Embargo []bool    // per nation: no trade across the border with it
+	Embargo []bool    // per nation: no trade across the Border with it
 
 	// SpentOn is what the nation spent today on each of the economy
 	// (infrastructure, upkeep, firm expansions), science and the military
@@ -167,7 +167,7 @@ var (
 	ErrBadTariff   = errors.New("tariff must be in [0, 5]")
 	ErrNeedTech    = errors.New("that needs a technology the nation lacks")
 	ErrOwned       = errors.New("tile already belongs to a nation")
-	ErrNotAdjacent = errors.New("tile does not border the nation")
+	ErrNotAdjacent = errors.New("tile does not Border the nation")
 	ErrTreasury    = errors.New("treasury cannot afford it")
 	ErrBadTech     = errors.New("tech unknown, already known, or missing prerequisites")
 	ErrBadPension  = errors.New("the pension level must be between 0 and 4")
@@ -212,7 +212,7 @@ func (n *Nation) SetTariff(good GoodID, rate float64) error {
 		n.Tariff[good] = rate
 		return nil
 	}
-	for _, g := range GameTradable {
+	for _, g := range FullTradable {
 		n.Tariff[g] = rate
 	}
 	return nil
@@ -294,7 +294,7 @@ const (
 func (n *Nation) Discount(i int, nations []*Nation) float64 {
 	trade := 0.0
 	for _, o := range nations {
-		if o != n && o.Known[i] && !n.closedTo(o) { // ideas cross only an open border: the trade of before an embargo carries none
+		if o != n && o.Known[i] && !n.closedTo(o) { // ideas cross only an open Border: the trade of before an embargo carries none
 			trade += n.TradeWith[o.ID]
 		}
 	}
@@ -360,19 +360,6 @@ func (n *Nation) population() float64 {
 		s += r.Population()
 	}
 	return s
-}
-
-// payIncome splits an income payment to a pop into what the pop keeps and the tax.
-func (r *Region) payIncome(p *Pop, amount float64) {
-	if r.Nation == nil {
-		p.Cash += amount
-		p.Income += amount
-		return
-	}
-	tax := amount * r.Nation.TaxRate * r.Collect * r.AllegianceMult() // what its administration collects, from people who pay
-	p.Cash += amount - tax
-	p.Income += amount - tax
-	r.ledger.tax += tax // the nation gets it at settleLedgers
 }
 
 // Building (projects, their materials and state-funded expansions, public
@@ -524,13 +511,13 @@ func (n *Nation) plan(w *World) {
 	}
 	n.staffServices(n.payScale)
 	for _, r := range n.Regions {
-		for g := range r.publicBid {
-			r.publicBid[g], r.publicGot[g] = 0, 0
+		for g := range r.PublicBid {
+			r.PublicBid[g], r.PublicGot[g] = 0, 0
 		}
 		for i := range r.claims {
 			c := &r.claims[i]
 			c.qty *= n.payScale
-			r.publicBid[c.good] += c.qty
+			r.PublicBid[c.good] += c.qty
 		}
 	}
 }
@@ -600,8 +587,8 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 		upkeep := 0.0
 		for _, c := range r.claims {
 			got := 0.0
-			if bid := r.publicBid[c.good]; bid > 0 {
-				got = c.qty * r.publicGot[c.good] / bid
+			if bid := r.PublicBid[c.good]; bid > 0 {
+				got = c.qty * r.PublicGot[c.good] / bid
 			}
 			n.SpentOn[spendingOf(c.kind)] += got * w.TradePrices[r.ID][c.good]
 			switch c.kind {
@@ -628,11 +615,12 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 			r.Port, r.Project = true, nil // the world opens its sea routes
 			w.emit(n.ID, "built", r.ID, "Port finished at tile %s", r.Name)
 		} else if p != nil && p.done() {
-			r.Infra, r.Project, r.Neglect = p.Target, nil, 0
+			r.setInfra(p.Target)
+			r.Project, r.Neglect = nil, 0
 			hopsChanged = true
 			w.emit(n.ID, "built", r.ID, "%s finished at tile %s", InfraLevels[r.Infra].Name, r.Name)
 		} else if r.Infra > 0 && r.Neglect > neglectLimit*need {
-			r.Infra--
+			r.setInfra(r.Infra - 1)
 			r.Neglect = 0
 			hopsChanged = true
 		}
@@ -710,7 +698,7 @@ func (n *Nation) learn(w *World, i int) {
 // in decades. A leader has nothing to copy and gains nothing from it.
 func (n *Nation) pickCopy(w *World) {
 	if i := n.Copying; i >= 0 && n.CanResearch(i) && i != n.Researching && w.knownNearby(n, i) {
-		return // still on it, and the border it comes across is still open
+		return // still on it, and the Border it comes across is still open
 	}
 	n.Copying = -1
 	best := 0.0
@@ -727,7 +715,7 @@ func (n *Nation) pickCopy(w *World) {
 	}
 }
 
-// knownNearby reports whether a neighbour of n knows tech i and the border
+// knownNearby reports whether a neighbour of n knows tech i and the Border
 // between them is open (closedTo): an embargo, either way, stops the
 // engineers, machines and journals a tech crosses with.
 func (w *World) knownNearby(n *Nation, i int) bool {
@@ -795,7 +783,7 @@ func (n *Nation) applyTech() {
 	for _, r := range n.Regions {
 		for _, f := range r.Firms {
 			f.Enabled = firmEnabled(f, n)
-			f.applyMethods(n)
+			applyMethods(f, n)
 		}
 	}
 }

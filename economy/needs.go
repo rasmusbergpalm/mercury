@@ -1,6 +1,9 @@
-package game
+package economy
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 // Pop needs: tiers of need groups; goods within a group substitute.
 //
@@ -48,18 +51,25 @@ func goods(names ...string) []GoodID {
 	return out
 }
 
-// Needs are the need groups every pop has.
-var Needs = []Need{
-	{"staples", Basic, goods("bread", "potatoes"), 5.0, 1.0, 0.025},
-	{"protein", Basic, goods("meat", "fish"), 4.0, 1.0, 0.025},
-	{"clothing", Basic, goods("clothes"), 2.0, 1.0, 0.025},
-	{"heating", Basic, goods("wood", "coal"), 5.0, 1.0, 0.025},
-	{"home", Intermediate, goods("furniture", "ironware"), 0.5, 2.0, 0.015},
-	{"drink", Intermediate, goods("beer", "tea"), 2.0, 2.0, 0.1},
-	{"sweets", Intermediate, goods("sugar"), 2.0, 2.0, 0.1},
-	{"wine", Luxury, goods("wine"), 2.0, 3.0, 0.3},
-	{"finery", Luxury, goods("fine clothes", "porcelain"), 2.0, 3.0, 0.3},
-}
+// Needs are the need groups every pop has (data/needs.json).
+var Needs = func() []Need {
+	var f needsFile
+	loadJSON("needs.json", &f)
+	var out []Need
+	for _, n := range f.Needs {
+		t := Tier(-1)
+		for i, name := range tierNames {
+			if name == n.Tier {
+				t = Tier(i)
+			}
+		}
+		if t < 0 {
+			panic(fmt.Sprintf("data/needs.json: %s: unknown tier %q", n.Name, n.Tier))
+		}
+		out = append(out, Need{n.Name, t, goods(n.Goods...), n.Sigma, n.Weight, n.Requirement})
+	}
+	return out
+}()
 
 // ConsumerGoods lists the goods pops consume, in Needs order.
 var ConsumerGoods = func() []GoodID {

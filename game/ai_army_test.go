@@ -190,7 +190,7 @@ func TestNoTwoNationsOnAFreeTile(t *testing.T) {
 	alpha.AI = true
 	x := freeNeighbour(t, w, alpha.Regions[0])
 	if !w.borders(beta, x) {
-		t.Skip("set-up: the free tile doesn't border Beta")
+		t.Skip("set-up: the free tile doesn't Border Beta")
 	}
 	e := sceneArmy(t, w, beta, beta.Regions[0], 10)
 	if err := w.MoveArmy(e.ID, x.ID); err != nil {

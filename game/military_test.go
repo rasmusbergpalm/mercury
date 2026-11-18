@@ -595,7 +595,7 @@ func TestStandingArmyAndReserves(t *testing.T) {
 	if got, want := a.need[bread], a.Men*Doctrines[a.Doctrine].Needs[bread]; math.Abs(got-want) > 1e-12 {
 		t.Errorf("rations for %v men under arms: %v, want %v", a.Men, got, want)
 	}
-	n.AtWar[1], w.Nations[1].AtWar[0] = true, true // (they share no border)
+	n.AtWar[1], w.Nations[1].AtWar[0] = true, true // (they share no Border)
 	if got := w.UnderArms(a); got != a.Target {
 		t.Errorf("at war under arms %v, want the full %v", got, a.Target)
 	}
@@ -782,7 +782,7 @@ func TestArmiesBidHardForScarceSupplies(t *testing.T) {
 	}
 	home.Markets[art].Supply = 0.1
 	m.plan(w)
-	bid := home.publicBid[art]
+	bid := home.PublicBid[art]
 	if limit := stateBuyMargin*0.1 + stateBuyFloor; bid <= limit {
 		t.Errorf("artillery bid %v, no more than construction's limit %v", bid, limit)
 	}

@@ -1,0 +1,14 @@
+{
+  "about": "What people want: need groups in three tiers (basic, intermediate, luxury). A group's goods substitute for each other with elasticity sigma. Utility per person is the sum over groups of weight * log(1 + Q / requirement), Q being the CES composite of the group's goods: basic needs have small requirements (quickly met), luxuries large ones (never sated).",
+  "needs": [
+    {"name": "staples", "tier": "basic", "goods": ["bread", "potatoes"], "sigma": 5, "weight": 1, "requirement": 0.025},
+    {"name": "protein", "tier": "basic", "goods": ["meat", "fish"], "sigma": 4, "weight": 1, "requirement": 0.025},
+    {"name": "clothing", "tier": "basic", "goods": ["clothes"], "sigma": 2, "weight": 1, "requirement": 0.025},
+    {"name": "heating", "tier": "basic", "goods": ["wood", "coal"], "sigma": 5, "weight": 1, "requirement": 0.025},
+    {"name": "home", "tier": "intermediate", "goods": ["furniture", "ironware"], "sigma": 0.5, "weight": 2, "requirement": 0.015},
+    {"name": "drink", "tier": "intermediate", "goods": ["beer", "tea"], "sigma": 2, "weight": 2, "requirement": 0.1},
+    {"name": "sweets", "tier": "intermediate", "goods": ["sugar"], "sigma": 2, "weight": 2, "requirement": 0.1},
+    {"name": "wine", "tier": "luxury", "goods": ["wine"], "sigma": 2, "weight": 3, "requirement": 0.3},
+    {"name": "finery", "tier": "luxury", "goods": ["fine clothes", "porcelain"], "sigma": 2, "weight": 3, "requirement": 0.3}
+  ]
+}

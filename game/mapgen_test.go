@@ -126,7 +126,7 @@ func TestSeaRoutes(t *testing.T) {
 	}
 	before := len(w.Traders)
 	w.openNewPorts()
-	if sea, want := len(w.Traders)-before, opened*(opened-1)*len(GameTradable); sea != want {
+	if sea, want := len(w.Traders)-before, opened*(opened-1)*len(FullTradable); sea != want {
 		t.Errorf("%d sea routes, want %d", sea, want)
 	}
 }
@@ -145,7 +145,7 @@ func TestParallelStepIsDeterministic(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(w.Regions) < parallelMin {
+		if len(w.Regions) < ParallelMin {
 			t.Fatalf("only %d tiles: the parallel path isn't tested", len(w.Regions))
 		}
 		money := w.Money()
