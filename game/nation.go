@@ -200,6 +200,9 @@ func (n *Nation) SetTaxRate(rate float64) error {
 		return ErrBadTaxRate
 	}
 	n.TaxRate = rate
+	for _, r := range n.Regions {
+		r.setTax()
+	}
 	return nil
 }
 

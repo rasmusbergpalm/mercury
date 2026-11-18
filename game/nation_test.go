@@ -94,7 +94,9 @@ func TestBuildGameRejectsBadSpecs(t *testing.T) {
 func TestIncomeIsTaxed(t *testing.T) {
 	w := newTestGame(t)
 	r := w.Regions[0]
-	r.Nation.TaxRate = 0.2
+	if err := r.Nation.SetTaxRate(0.2); err != nil {
+		t.Fatal(err)
+	}
 	p := r.Pops[0]
 	cash, treasury := p.Cash, r.Nation.Treasury
 	r.PayIncome(p, 100)
