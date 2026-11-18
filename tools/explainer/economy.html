@@ -293,19 +293,9 @@ __STYLE__</style>
 
 <div class="col">
 <p>Every effect points the way Ricardo said. The effects are small because Britain grows most of its own grain: about five sixths of it on the map, close to the share in the 1840s. Historians' estimates of what repeal did to Britain's economy as a whole are modest too. Where the effects are large is in who gets what. The duty moves income from those who eat bread to those who grow grain.</p>
-<p><b>Where the model strains.</b> These two experiments asked things of the engine it wasn't built for, and three things showed.</p>
-<ul>
-<li><b>The money is written in directly.</b> The economy has no way to create money, or to make a transfer from one person to another. The experiments changed people's and firms' cash themselves. The same goes for handing the duty back to Britain's people, without which it would drain out of the economy.</li>
-<li><b>Ownership.</b> A tile's owners own all its firms together, so the landowners who gain from the Corn Laws and the manufacturers who lose are the same people. The plate measures profits by firm instead (the farms' against the rest), which is as far as the model goes. Separating landlords from capitalists would need ownership by firm or by sector.</li>
-<li><b>Land and rent.</b> There is no land as such. A farm on good land can't grow beyond a few levels, so its profits behave like rent. That is enough for Ricardo's argument, but rent isn't a separate income.</li>
-</ul>
-<p>One small thing also showed: every firm keeps a cash buffer of £20 whatever the prices are. A pound figure written into the model, it is the only place where doubling the money isn't exactly neutral, and the effect is too small to see.</p>
 </div>
 </section>
 
-<footer class="col">
-<p><b>How these numbers were made.</b> The classic map (36 tiles) run by the economy engine alone: no state, taxes, armies, roads or new technology, so firms keep their 1820 methods. Population growth is switched off; migration and investment are on. Most runs start from the map settled for fifteen years, as owners build up their firms and people sort themselves between tiles, and then run their experiment for five years. The transport sweep instead measures the fifteenth year at each cost. Nothing in the economy is drawn at random, so a run is exactly repeatable. Each plate is an experiment in the repository's <code>experiments</code> package, which writes its results to <code>experiments/data</code>; <code>go generate -run &lt;name&gt; ./experiments</code> reruns one, and <code>tools/explainer/build.sh</code> rebuilds this page from the results.</p>
-</footer>
 </div>
 
 <script id="data" type="application/json">__DATA__</script>
