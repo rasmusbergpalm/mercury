@@ -27,10 +27,10 @@
 // fixed order afterwards.
 //
 // The calibration (the goods, needs, recipes and terrains of a nineteenth
-// century economy) is data, in the JSON files of data/. BuildWorld makes the
-// classic world (25 goods, one class of people); BuildFullWorld makes the
-// full one (every good and firm, production methods that wait for the
-// technology they need, workers and owners).
+// century economy) is data, in the JSON files of data/. BuildWorld makes
+// the classic world (the core goods and firms, one class of people);
+// BuildFullWorld makes the full one (every good and firm, production
+// methods that wait for the technology they need, workers and owners).
 //
 // A layer above the economy (package game's nations, or a model of policy)
 // plugs in through two interfaces: a tile's Government taxes it, buys in
