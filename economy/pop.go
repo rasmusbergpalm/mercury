@@ -10,7 +10,7 @@ type Job struct {
 type Class int
 
 const (
-	// Workers sell their labor (and fill the armies).
+	// Workers sell their labor.
 	Workers Class = iota
 	// Owners own the land and the means of production: farms, mines, works,
 	// services and trading houses. They live off dividends.

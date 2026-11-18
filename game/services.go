@@ -62,7 +62,7 @@ const (
 	// replace the unschooled: over a working life, so a nation that schools
 	// every child from 1820 is over half educated by 1850 and nine in ten
 	// by 1900, as the most literate nations of the century were.
-	schoolYears    = 40.0
+	schoolYears = 40.0
 	// Scholars come from the schooled: a university in an unschooled tile
 	// finds half as much as the tech costs reckon on, in a fully educated
 	// one one and a half times as much (three times the unschooled).

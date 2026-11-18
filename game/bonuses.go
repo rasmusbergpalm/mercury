@@ -56,7 +56,6 @@ func FirmBonuses(f *Firm, n *Nation) []Modifier {
 	return out
 }
 
-
 func cap1(s string) string {
 	if s == "" {
 		return s

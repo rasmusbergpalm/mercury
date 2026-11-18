@@ -33,14 +33,14 @@ type World struct {
 // roads and port, its loyalties and the war on it.
 type Region struct {
 	*economy.Region
-	w        *World
-	Nation   *Nation  // owner, or nil
-	Infra    int      // index into InfraLevels
-	Port     bool     // has a port: trades by sea with every other port
-	Project  *Project // infrastructure under construction, or nil
-	Neglect  float64  // accumulated unmet upkeep
-	Siege    *Siege   // a foreign army working to take the tile, or nil
-	Collect  float64  // share of its taxes the administration collects
+	w       *World
+	Nation  *Nation  // owner, or nil
+	Infra   int      // index into InfraLevels
+	Port    bool     // has a port: trades by sea with every other port
+	Project *Project // infrastructure under construction, or nil
+	Neglect float64  // accumulated unmet upkeep
+	Siege   *Siege   // a foreign army working to take the tile, or nil
+	Collect float64  // share of its taxes the administration collects
 	// Loyalties is how the tile's people's allegiance is split: one share
 	// per nation, and a last one for nobody; they add up to 1 (nil outside
 	// games with nations). See Allegiance.
@@ -229,7 +229,6 @@ func (w *World) Soldiers() float64 {
 	return s
 }
 
-
 // trackTrade updates each nation's moving average of trade with every other.
 func (w *World) trackTrade() {
 	if len(w.Nations) == 0 {
@@ -252,7 +251,6 @@ func (w *World) trackTrade() {
 		}
 	}
 }
-
 
 // Build starts the next infrastructure level on a tile, paid for by its nation.
 func (w *World) Build(region int) error {
@@ -521,7 +519,6 @@ func (w *World) transfer(r *Region, n *Nation) {
 // Annex hands a tile to a nation outright (scenarios, tests).
 func (w *World) Annex(region, nation int) { w.transfer(w.Regions[region], w.Nations[nation]) }
 
-
 // CancelBuild abandons a tile's project; what was delivered is lost.
 func (w *World) CancelBuild(region int) error {
 	r := w.Regions[region]
@@ -538,7 +535,6 @@ func (w *World) SetInfra(region, level int) {
 	w.refreshHops(w.Regions[region])
 }
 
-
 // GrantTech gives a nation a technology outright (scenarios, tests).
 func (w *World) GrantTech(nation int, tech string) {
 	n := w.Nations[nation]
@@ -546,8 +542,6 @@ func (w *World) GrantTech(nation int, tech string) {
 	n.applyTech()
 	w.refreshAllHops()
 }
-
-
 
 // landNeighbours calls f for each land tile next to r, until it returns false.
 func (w *World) landNeighbours(r *Region, f func(nb *Region) bool) {

@@ -166,7 +166,7 @@ func DivideLand(spec GameSpec) (GameSpec, error) {
 // balance evens out the nations' shares of the land after they have grown:
 // while the biggest holds at least two tiles more than the smallest, a tile
 // passes along the shortest chain of bordering nations from the one to the
-// other (each nation in the chain gives a Border tile to the next), so the
+// other (each nation in the chain gives a border tile to the next), so the
 // big one shrinks by a tile, the small one grows by one and those between
 // keep their size. A nation never gives up its capital (the first tile it
 // started with), nor a tile whose loss would cut its land in two; of the tiles it may give, it gives

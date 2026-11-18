@@ -13,7 +13,7 @@ type World struct {
 	// has some to sell; merchants leave the rest alone (refreshMade)
 	made []bool
 	// Rules, off in the classic world: firms invest in building levels,
-	// people Migrate between neighbouring tiles, and populations grow.
+	// people migrate between neighbouring tiles, and populations grow.
 	Investment, Migration, Demography bool
 	// TrackGDP keeps every tile's real GDP chain (Region.Real).
 	TrackGDP bool
@@ -212,7 +212,7 @@ func (r *Region) shipAll() {
 	}
 }
 
-// Migration rules (game worlds only).
+// Migration rules (when World.Migration is on).
 const (
 	// share of a tile's people who move per tick per unit of relative utility
 	// gap: a 10% gap draws about 7% of a tile's people a year (with a hop of
@@ -224,11 +224,11 @@ const (
 )
 
 // MigrationShare is the share of from's people who move to to in a day,
-// for a relative gap in living standards and the hop between them. A Border
+// for a relative gap in living standards and the hop between them. A border
 // holds no one back: in the nineteenth century some fifty million Europeans
 // left for the Americas and elsewhere, and millions more crossed into the
 // industrial regions next door (the Irish into Britain, Poles into the
-// Ruhr, Italians into France), going where wages were. So a nation that
+// Ruhr, Italians into France), going where wages were. So a country that
 // lives well draws its neighbours' people.
 func MigrationShare(from, to *Region, gap, hop float64) float64 {
 	return MigrationRate * gap / (1 + hop)

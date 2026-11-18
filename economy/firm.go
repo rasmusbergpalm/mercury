@@ -2,7 +2,6 @@ package economy
 
 import (
 	"math"
-	"strings"
 )
 
 // FactorKind says what a production factor is.
@@ -44,7 +43,7 @@ func (s Sector) String() string { return sectorNames[s] }
 
 // Method is one way a firm makes its good: a Cobb-Douglas recipe
 // q = TFP * L^(1-s) * prod f_i^a_i over the L levels the firm runs it on,
-// with sum a_i = s < 1. Every firm has its first method; techs add others
+// with sum a_i = s < 1. Every firm has its first method; technologies add others
 // (MethodRecipes), more productive and needing machinery or fuel the first
 // doesn't. The firm runs each of its levels on one method, and its owners
 // refit a level from one method to another when the difference pays.
@@ -132,8 +131,8 @@ type Firm struct {
 	Inventory  float64   // stock of own output, for sale
 	Inputs     []float64 // goods bought this tick, indexed by good
 	Labor      float64   // labor employed this tick
-	// State firms (universities) are run by the tile's nation: it funds
-	// Funded of their levels and takes their output; see university.go.
+	// State firms (public services) are run by the tile's government: it
+	// funds Funded of their levels, staffs them and takes their output.
 	State   bool
 	Funded  int
 	Public  int     // which public service a state firm provides (the government layer's numbering)
@@ -170,7 +169,7 @@ type Firm struct {
 // (the building stays; the machinery is new), at refitShare of the cost.
 type Expansion struct {
 	Delivered float64 // construction units delivered so far
-	Public    bool    // paid for by the nation (else by the firm's owners)
+	Public    bool    // paid for by the government (else by the firm's owners)
 	Method    int     `json:",omitempty"`
 	Refit     bool    `json:",omitempty"`
 	From      int     `json:",omitempty"`
@@ -401,7 +400,7 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 			m.planQty[g] = 0
 		}
 	}
-	if !f.Enabled || f.State { // the state staffs its universities itself
+	if !f.Enabled || f.State { // the government staffs its state firms itself
 		return
 	}
 	p := prices[f.Output]
@@ -562,12 +561,6 @@ func (f *Firm) NextLevelMult() float64 {
 	return math.Pow((n+1)/n, 1-f.Methods[f.Main()].exponentSum())
 }
 
-func cap1(s string) string {
-	if s == "" {
-		return s
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
-}
 
 // ValueAdded is what the firm added today: its output at the given price,
 // less the goods it used up (wages and profits are the value it added).

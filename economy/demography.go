@@ -12,7 +12,7 @@ const (
 	EducationBonus = 0.15  // industry and services of a fully educated tile: +15%
 	crowdingFrom   = 150.0 // people from which a tile is crowded
 	crowdingSpan   = 300.0 // ...and fully crowded this many more
-	HealthCover   = 0.006 // population growth a year a fully covered tile gains
+	HealthCover    = 0.006 // population growth a year a fully covered tile gains
 	CrowdingDeaths = 0.02  // growth lost a year by a fully crowded, uncovered tile
 )
 

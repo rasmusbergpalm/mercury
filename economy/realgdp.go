@@ -84,7 +84,7 @@ type gdpLink struct {
 
 // linkGDP closes the month: it links the month's average net output to the
 // last month's, starts a new month, and returns the tile's part in the link
-// for its nation's chain.
+// for its group's chain (see LinkGDP).
 func (r *Region) linkGDP() gdpLink {
 	c := &r.Real
 	if c.Days == 0 {

@@ -595,7 +595,7 @@ func TestStandingArmyAndReserves(t *testing.T) {
 	if got, want := a.need[bread], a.Men*Doctrines[a.Doctrine].Needs[bread]; math.Abs(got-want) > 1e-12 {
 		t.Errorf("rations for %v men under arms: %v, want %v", a.Men, got, want)
 	}
-	n.AtWar[1], w.Nations[1].AtWar[0] = true, true // (they share no Border)
+	n.AtWar[1], w.Nations[1].AtWar[0] = true, true // (they share no border)
 	if got := w.UnderArms(a); got != a.Target {
 		t.Errorf("at war under arms %v, want the full %v", got, a.Target)
 	}

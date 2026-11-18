@@ -88,7 +88,7 @@ type TradeStats struct {
 }
 
 // Trade measures today's shipments: what leaves and enters each tile, and
-// what crosses each nation's Border.
+// what crosses each nation's border.
 func (w *World) Trade() TradeStats {
 	s := TradeStats{RegionOut: make([]float64, len(w.Regions)), RegionIn: make([]float64, len(w.Regions))}
 	for range w.Nations {

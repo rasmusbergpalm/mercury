@@ -502,7 +502,7 @@ func TestCatchUpSlot(t *testing.T) {
 	if b.Copying >= 0 && !a.Known[b.Copying] {
 		t.Errorf("Beta catches up on %s, which Alpha doesn't know", Techs[b.Copying].Name)
 	}
-	// an embargo (either way) closes the Border to it
+	// an embargo (either way) closes the border to it
 	b.Known[TechID("Percussion caps")] = true
 	a.Researching, a.Copying = -1, -1
 	a.Embargo[b.ID] = true

@@ -1,8 +1,21 @@
 # Mercury
 
-A deterministic economic simulation (Go engine in `game/`, server in
-`internal/server/`, web client in `web/`) of the nineteenth century: pops,
-firms, markets, trade, migration, nations, techs and wars, from 1820.
+A deterministic economic simulation of the nineteenth century, from 1820,
+and a strategy game on it:
+
+- `economy/`: the economy on its own (pops, firms, markets, merchants and
+  transport, migration, investment, demography, real GDP). Its calibration
+  (goods, needs, recipes, terrains) is JSON in `economy/data/`. It knows
+  nothing of nations: a layer above plugs in through `Government` (per
+  tile) and `Hooks` (per day), in `economy/government.go`.
+- `game/`: the game on the economy: nations, techs, public services,
+  armies, wars, alliances and the computer player.
+- `internal/server/` and `cmd/server/`: the server; `web/`: the web client
+  and the economy page (`web/static/economy.html`, built by
+  `tools/explainer/build.sh`, published to GitHub Pages).
+
+Keep the split: nothing in `economy/` may refer to the game. A game rule
+that changes the economy goes through `Government` or `Hooks`.
 
 ## Changing the economy
 

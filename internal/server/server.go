@@ -862,9 +862,9 @@ func (s *Server) regionCommand(cmd string) gameHandler {
 
 // SaveFile is a saved game.
 type SaveFile struct {
-	Name     string           `json:"name"`
-	TurnDays int              `json:"turn_days"`
-	SavedAt  time.Time        `json:"saved_at"`
+	Name     string         `json:"name"`
+	TurnDays int            `json:"turn_days"`
+	SavedAt  time.Time      `json:"saved_at"`
 	Snapshot *game.Snapshot `json:"snapshot"`
 }
 

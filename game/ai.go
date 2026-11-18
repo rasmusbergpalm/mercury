@@ -201,7 +201,7 @@ func (w *World) aiDiplomacy(n *Nation, own float64) {
 
 // aiArmies keeps enough armies to field the soldiers it wants (one army can
 // only be so big), at the best doctrine, and gives idle armies orders: defend
-// invaded tiles, attack the enemy's weakest Border tile, or occupy free land.
+// invaded tiles, attack the enemy's weakest border tile, or occupy free land.
 func (w *World) aiArmies(n *Nation, targets []expansionTarget) {
 	war := w.atWar(n)
 	share := aiPeaceMobilize * n.Temper.Militarism

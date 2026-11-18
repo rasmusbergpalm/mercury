@@ -146,7 +146,7 @@ var (
 	ErrAtWar       = errors.New("already at war")
 	ErrAtPeace     = errors.New("not at war")
 	ErrNotOwnTile  = errors.New("armies are raised and disbanded in the nation's own tiles")
-	ErrNotBordered = errors.New("the nations don't Border each other")
+	ErrNotBordered = errors.New("the nations don't border each other")
 )
 
 // Effectiveness is the army's fighting power per soldier. Doctrines form a

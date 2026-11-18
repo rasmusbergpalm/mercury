@@ -13,7 +13,7 @@ import "errors"
 // next strongest (or the leader or a member falls). Allies can't make war
 // on each other; when one of them is at war with the nation they're allied
 // against, the others join that war the same day (without needing a
-// Border); and they make peace with it together.
+// border); and they make peace with it together.
 //
 // Potential is judged as it stands at each monthly review: it moves with
 // people, loyalty and techs, not with call-ups, so a neighbour whose

@@ -250,9 +250,9 @@ type ArmyState struct {
 	DailyLoss     float64                  `json:"daily_loss"`    // share of men lost today outside battle
 	Path          []int                    `json:"path"`
 	Retreating    bool                     `json:"retreating"` // falling back after a lost battle
-	Attack        []game.Modifier        `json:"attack"`     // strength per soldier, factor by factor
-	Defense       []game.Modifier        `json:"defense"`    // extra factors when defending at home
-	Attrition     []game.Modifier        `json:"attrition"`  // daily losses
+	Attack        []game.Modifier          `json:"attack"`     // strength per soldier, factor by factor
+	Defense       []game.Modifier          `json:"defense"`    // extra factors when defending at home
+	Attrition     []game.Modifier          `json:"attrition"`  // daily losses
 	Depot         int                      `json:"depot"`      // where supplies are bought (-1: cut off)
 	Transport     float64                  `json:"transport"`  // transport today's supplies needed
 }
@@ -264,21 +264,21 @@ type TurnState struct {
 
 // State is the dynamic state of a game.
 type State struct {
-	Game    string         `json:"game"`
-	Tick    int            `json:"tick"`
-	Date    string         `json:"date"`
-	Turn    *TurnState     `json:"turn"` // null in real-time games
-	Armies  []ArmyState    `json:"armies"`
-	Events  []game.Event `json:"events"` // recent, for the requester
-	Running bool           `json:"running"`
-	Speed   float64        `json:"speed"`
-	You     int            `json:"you"` // the requester's nation, or -1
-	Money   float64        `json:"money"`
-	Regions []RegionState  `json:"regions"`
-	Flows   []Flow         `json:"flows"`
-	Nations []NationState  `json:"nations"`
-	Hops    []float64      `json:"hops"` // aligned with WorldInfo.Links
-	Made    []bool         `json:"made"` // per good: can anyone make it yet (or still sell some)
+	Game    string        `json:"game"`
+	Tick    int           `json:"tick"`
+	Date    string        `json:"date"`
+	Turn    *TurnState    `json:"turn"` // null in real-time games
+	Armies  []ArmyState   `json:"armies"`
+	Events  []game.Event  `json:"events"` // recent, for the requester
+	Running bool          `json:"running"`
+	Speed   float64       `json:"speed"`
+	You     int           `json:"you"` // the requester's nation, or -1
+	Money   float64       `json:"money"`
+	Regions []RegionState `json:"regions"`
+	Flows   []Flow        `json:"flows"`
+	Nations []NationState `json:"nations"`
+	Hops    []float64     `json:"hops"` // aligned with WorldInfo.Links
+	Made    []bool        `json:"made"` // per good: can anyone make it yet (or still sell some)
 }
 
 type PopState struct {
@@ -307,25 +307,25 @@ type MethodState struct {
 }
 
 type FirmState struct {
-	Name      string            `json:"name"`
-	Output    int               `json:"output"`
-	Labor     float64           `json:"labor"`
-	Produced  float64           `json:"produced"`
-	Inventory float64           `json:"inventory"`
-	Cash      float64           `json:"cash"`
-	Levels    int               `json:"levels"`
-	MaxLevels int               `json:"max_levels"`
-	Profit    float64           `json:"profit"`
-	Expansion *Expansion        `json:"expansion"`
-	Enabled   bool              `json:"enabled"`
-	Requires  string            `json:"requires"` // tech that unlocks it, if any
-	Sector    string            `json:"sector"`
-	State     bool              `json:"state"`             // a public service
+	Name      string          `json:"name"`
+	Output    int             `json:"output"`
+	Labor     float64         `json:"labor"`
+	Produced  float64         `json:"produced"`
+	Inventory float64         `json:"inventory"`
+	Cash      float64         `json:"cash"`
+	Levels    int             `json:"levels"`
+	MaxLevels int             `json:"max_levels"`
+	Profit    float64         `json:"profit"`
+	Expansion *Expansion      `json:"expansion"`
+	Enabled   bool            `json:"enabled"`
+	Requires  string          `json:"requires"` // tech that unlocks it, if any
+	Sector    string          `json:"sector"`
+	State     bool            `json:"state"`             // a public service
 	Bonuses   []game.Modifier `json:"bonuses"`           // productivity, factor by factor
-	Wanted    float64           `json:"wanted"`            // workers it wanted (and could pay) today
-	PerWorker float64           `json:"per_worker"`        // profit per worker today: value added per worker less the wage
-	LevelGain float64           `json:"level_gain"`        // extra output value a day one more level would bring, same workers and inputs
-	Methods   []MethodState     `json:"methods,omitempty"` // when it has more than one
+	Wanted    float64         `json:"wanted"`            // workers it wanted (and could pay) today
+	PerWorker float64         `json:"per_worker"`        // profit per worker today: value added per worker less the wage
+	LevelGain float64         `json:"level_gain"`        // extra output value a day one more level would bring, same workers and inputs
+	Methods   []MethodState   `json:"methods,omitempty"` // when it has more than one
 }
 
 type MarketState struct {

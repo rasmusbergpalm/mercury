@@ -116,7 +116,7 @@ func (r *Region) Plan() {
 	}
 }
 
-// Investment rules (game worlds only).
+// Investment rules (when World.Investment is on).
 const (
 	// a new level must repay its cost in ten years of profit: a return of
 	// 10% a year, about what 19th-century firms asked of new works
@@ -137,7 +137,7 @@ const (
 // rather than every owner on the map the same day.
 //
 // The chance is drawn once a project, not once a day: each owner has a
-// resolve for its next project (an exponential draw keyed by the game's
+// resolve for its next project (an exponential draw keyed by the world's
 // seed, the tile, the firm and how many projects it has started), and each
 // day the project pays its urge grows by that day's chance; it starts when
 // the urge reaches the resolve. The odds are a daily draw's, but a change
@@ -251,11 +251,11 @@ func (r *Region) settleFirms() {
 				f.dropLevel(r) // on full land the new method takes over the old one's
 			}
 			if f.State {
-				f.Funded++ // a new university level is funded once built
+				f.Funded++ // a new state level is funded once built
 			}
 		}
 		if f.State {
-			continue // the state decides about its universities
+			continue // the government decides about its state firms
 		}
 		if f.ProfitEMA < 0 && f.Levels > 1 {
 			f.LossTicks++
@@ -555,7 +555,7 @@ func (r *Region) capUnsuppliedPrices() {
 func (r *Region) Produce() {
 	for _, f := range r.Firms {
 		if f.State {
-			continue // universities produce for their nation (settleUniversities)
+			continue // state firms produce for their government
 		}
 		f.Inventory *= 1 - Goods[f.Output].Spoilage
 		f.Produce()
@@ -623,7 +623,7 @@ const (
 )
 
 // SizeBonus is the productivity multiplier the tile's size gives its
-// non-primary firms (1 outside game worlds).
+// non-primary firms (1 unless the tile is Urban).
 func (r *Region) SizeBonus() float64 {
 	if !r.Urban {
 		return 1
@@ -641,12 +641,12 @@ func (r *Region) UpdateAgglomeration() {
 }
 
 // Population growth per year: well-fed people multiply, hungry ones don't.
-// growth = PopGrowthSlope * (basic needs met - PopGrowthNeutral) + tech bonus,
+// growth = PopGrowthSlope * (basic needs met - PopGrowthNeutral) + the government's bonus,
 // within [PopGrowthMin, PopGrowthMax], less SchooledBirths times the
 // educated share: schooled people have fewer children (the demographic
 // transition: birth rates fell about a third as literacy rose from half to
 // nearly all), so growth falls from about 1.4% a year in 1820 to under 1% as
-// a nation schools everyone.
+// a country schools everyone.
 const (
 	SchooledBirths   = 0.012
 	PopGrowthSlope   = 0.035
@@ -695,7 +695,7 @@ func (r *Region) grow() {
 // MoveCost is the cost of moving through the tile. Roads and railways
 // improve movement over land (a land tile's base cost times the
 // infrastructure multiplier). Coastal tiles can also be passed by sea, at
-// CoastMove times the owner's shipping technology; the cheaper way counts.
+// CoastMove times the government's CoastMult; the cheaper way counts.
 func (r *Region) MoveCost() float64 {
 	land := r.BaseMove * r.RoadMult
 	if !r.Coastal {
@@ -752,7 +752,7 @@ func (r *Region) TierSpend(prices []float64) [NumTiers]float64 {
 }
 
 // investResolve is a firm's resolve for its next project: an exponential
-// draw (mean 1), deterministic in the game's seed, the tile, the firm and
+// draw (mean 1), deterministic in the world's seed, the tile, the firm and
 // how many projects the firm has started.
 func investResolve(seed int64, region, firm, projects int) float64 {
 	x := uint64(seed)*0x9E3779B97F4A7C15 ^ uint64(region+1)*0xBF58476D1CE4E5B9 ^ uint64(firm+1)*0x94D049BB133111EB ^ uint64(projects+1)*0xD6E8FEB86659FD93

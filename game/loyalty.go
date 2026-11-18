@@ -82,4 +82,3 @@ func (r *Region) applyAllegiance() {
 		f.Loyal = m
 	}
 }
-

@@ -25,7 +25,7 @@ func TestAlliancesAgainstADominantNation(t *testing.T) {
 	if err := w.DeclareWar(m.ID, v.ID); !errors.Is(err, ErrAllied) && !errors.Is(err, ErrNotBordered) {
 		t.Errorf("war between allies: %v", err)
 	}
-	// Thalassa attacks Verdania: Montara joins, Border or not
+	// Thalassa attacks Verdania: Montara joins, border or not
 	v.AtWar[th.ID], th.AtWar[v.ID] = true, true
 	w.updateAlliances()
 	if !m.AtWar[th.ID] || !th.AtWar[m.ID] {
@@ -152,7 +152,7 @@ func TestAlliesDontTakeTheSameTile(t *testing.T) {
 	target := regionByName(w, "12")
 	w.Annex(target.ID, th.ID)
 	if !w.borders(m, target) || !w.borders(v, target) {
-		t.Fatal("set-up: tile 12 should Border Montara and Verdania")
+		t.Fatal("set-up: tile 12 should border Montara and Verdania")
 	}
 	army := func(n *Nation) *Army {
 		x, err := w.RaiseArmy(n.ID, n.Regions[0].ID, 0)

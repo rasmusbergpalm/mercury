@@ -1,4 +1,4 @@
-"""Sets the productivity (TFP) of every production method (engine.MethodRecipes).
+"""Sets the productivity (TFP) of every production method (the methods in economy/data/recipes.json).
 
 Each firm has its 1820 method and one for each later era: the steam age,
 steel, electricity and chemistry, and the motor age. A method turns labour
@@ -15,7 +15,7 @@ least FLOOR times as productive per level as the one it replaces: motor
 trucks and tractors didn't make haulage or farms less productive, they made
 them more productive with fewer hands.
 
-    python3 tools/method_design.py <all-tech CSV> <century CSV>...   # rewrites the TFPs in game/scenario.go
+    python3 tools/method_design.py <all-tech CSV> <century CSV>...   # rewrites the TFPs in economy/data/recipes.json
 
 (The century CSVs come from CENTURY_OUT=... go test ./game -run TestCentury.)
 """
@@ -104,12 +104,12 @@ def main(alltech, paths):
             print(f"{firm:18s} {name:30s} era {era}  tfp {tfp:5.2f}  (a tenth more profitable: {calc:5.2f})")
             tfps[name] = tfp
             prev_t, prev_f = tfp, f
-    src = open("game/scenario.go", encoding="utf-8").read()
+    path = "economy/data/recipes.json"
+    src = open(path, encoding="utf-8").read()
     for name, tfp in tfps.items():
-        src, n = re.subn(r'(Recipe\{"' + re.escape(name) + r'", "[^"]+", )[0-9.]+', lambda m: m.group(1) + f"{tfp:g}", src)
+        src, n = re.subn(r'(\{"firm": "' + re.escape(name) + r'", "output": "[^"]+", "tfp": )[0-9.]+', lambda m: m.group(1) + f"{tfp:g}", src)
         assert n == 1, name
-    open("game/scenario.go", "w", encoding="utf-8").write(src)
-
+    open(path, "w", encoding="utf-8").write(src)
 
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2:])

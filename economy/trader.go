@@ -42,7 +42,7 @@ const idleEvery = 10
 // idle reports whether a route is doing nothing: not buying (its order at
 // the floor and its margin, when it was last planned, well below paying), nothing bought
 // waiting to ship, nothing unsold at the other end. Only what a save keeps
-// decides it, so a restored game plans the same routes as one that ran on.
+// decides it, so a restored world plans the same routes as one that ran on.
 func (t *Trader) idle() bool {
 	return t.Q <= t.QMin && t.RelMargin <= -idleMargin && t.StockOrigin == 0 && t.StockDest == 0
 }
@@ -205,8 +205,8 @@ func (t *Trader) SetDistance(d float64) {
 	t.Arriving = math.Pow(1-spoil, d)
 }
 
-// Border returns the import tariff the route pays and whether an embargo
-// closes it. Tariffs apply when goods enter a nation from outside it.
+// border returns the import tariff the route pays and whether an embargo
+// closes it: the destination's government decides (Government.Duty).
 func (t *Trader) Border() (tariff float64, blocked bool) {
 	if t.Dest.Gov == nil {
 		return 0, false

@@ -54,10 +54,11 @@ func G(name string) GoodID {
 // Transport is the transport service good.
 var Transport = G("transport")
 
-// Construction is building work; nations buy it to build infrastructure.
+// Construction is building work: owners buy it to build and maintain
+// their works, governments for roads and ports.
 var Construction = G("construction")
 
-// Research is research work; nations buy it to develop technology.
+// Research is research work; a government buys it to develop technology.
 var Research = G("research")
 
 // Electricity is power from a tile's power station.

@@ -86,7 +86,7 @@ type Nation struct {
 	MaxBuildRate float64
 
 	Tariff  []float64 // import tariff per good, as a share of the sale price
-	Embargo []bool    // per nation: no trade across the Border with it
+	Embargo []bool    // per nation: no trade across the border with it
 
 	// SpentOn is what the nation spent today on each of the economy
 	// (infrastructure, upkeep, firm expansions), science and the military
@@ -167,7 +167,7 @@ var (
 	ErrBadTariff   = errors.New("tariff must be in [0, 5]")
 	ErrNeedTech    = errors.New("that needs a technology the nation lacks")
 	ErrOwned       = errors.New("tile already belongs to a nation")
-	ErrNotAdjacent = errors.New("tile does not Border the nation")
+	ErrNotAdjacent = errors.New("tile does not border the nation")
 	ErrTreasury    = errors.New("treasury cannot afford it")
 	ErrBadTech     = errors.New("tech unknown, already known, or missing prerequisites")
 	ErrBadPension  = errors.New("the pension level must be between 0 and 4")
@@ -294,7 +294,7 @@ const (
 func (n *Nation) Discount(i int, nations []*Nation) float64 {
 	trade := 0.0
 	for _, o := range nations {
-		if o != n && o.Known[i] && !n.closedTo(o) { // ideas cross only an open Border: the trade of before an embargo carries none
+		if o != n && o.Known[i] && !n.closedTo(o) { // ideas cross only an open border: the trade of before an embargo carries none
 			trade += n.TradeWith[o.ID]
 		}
 	}
@@ -698,7 +698,7 @@ func (n *Nation) learn(w *World, i int) {
 // in decades. A leader has nothing to copy and gains nothing from it.
 func (n *Nation) pickCopy(w *World) {
 	if i := n.Copying; i >= 0 && n.CanResearch(i) && i != n.Researching && w.knownNearby(n, i) {
-		return // still on it, and the Border it comes across is still open
+		return // still on it, and the border it comes across is still open
 	}
 	n.Copying = -1
 	best := 0.0
@@ -715,7 +715,7 @@ func (n *Nation) pickCopy(w *World) {
 	}
 }
 
-// knownNearby reports whether a neighbour of n knows tech i and the Border
+// knownNearby reports whether a neighbour of n knows tech i and the border
 // between them is open (closedTo): an embargo, either way, stops the
 // engineers, machines and journals a tech crosses with.
 func (w *World) knownNearby(n *Nation, i int) bool {

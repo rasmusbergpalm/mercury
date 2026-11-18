@@ -111,7 +111,7 @@ func TestEmbargoStopsCrossBorderTrade(t *testing.T) {
 		}
 	}
 	if f := flow(); f > 1e-6 {
-		t.Errorf("trade across an embargoed Border: %v", f)
+		t.Errorf("trade across an embargoed border: %v", f)
 	}
 	// trade with unowned tiles goes on
 	open := 0.0
@@ -441,9 +441,9 @@ func TestEmigrationAsFreeAsMoving(t *testing.T) {
 	const gap, hop = 0.1, 1.0
 	yearly := 1 - math.Pow(1-MigrationShare(a, b, gap, hop), TicksPerYear)
 	if yearly > 0.06 || yearly < 0.01 {
-		t.Errorf("a 10%% gap draws %.2f%% of a Border tile's people a year, want 1-6%%", 100*yearly)
+		t.Errorf("a 10%% gap draws %.2f%% of a border tile's people a year, want 1-6%%", 100*yearly)
 	}
 	if home := MigrationShare(a, a, gap, hop); home != MigrationShare(a, b, gap, hop) {
-		t.Errorf("moving within a nation (%v a day) and across a Border (%v) differ", home, MigrationShare(a, b, gap, hop))
+		t.Errorf("moving within a nation (%v a day) and across a border (%v) differ", home, MigrationShare(a, b, gap, hop))
 	}
 }
