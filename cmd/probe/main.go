@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/rasmusbergpalm/mercury/engine"
+	"github.com/rasmusbergpalm/mercury/game"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 	nations := flag.Int("nations", 0, "nations on a generated map (0: the size's default)")
 	seed := flag.Int64("seed", 1, "seed of a generated map and of the computer's choices")
 	flag.Parse()
-	spec := engine.DefaultGame
+	spec := game.DefaultGame
 	if *mapSize != "classic" {
 		var err error
 		if spec, err = generate(*mapSize, *nations, *seed); err != nil {
@@ -28,11 +28,11 @@ func main() {
 	}
 	spec.AI, spec.Seed = true, *seed
 	settling := time.Now()
-	w, err := engine.BuildGame(spec)
+	w, err := game.BuildGame(spec)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%d tiles, settled %d days in %v\n", len(w.Regions), engine.SettleDays(len(w.Regions)), time.Since(settling).Round(time.Millisecond))
+	fmt.Printf("%d tiles, settled %d days in %v\n", len(w.Regions), game.SettleDays(len(w.Regions)), time.Since(settling).Round(time.Millisecond))
 	start := time.Now()
 	for y := 1; y <= *years; y++ {
 		for d := 0; d < 365; d++ {
@@ -62,7 +62,7 @@ func main() {
 		}
 		fmt.Printf("%d pop %.0f (cities %.0f%%, soldiers %.0f) U %.2f labor primary %.0f%% industry %.0f%% service %.0f%%\n",
 			w.Date().Year(), pop+w.Soldiers(), 100*cityPop/pop, w.Soldiers(), u, 100*labor[1]/tot, 100*labor[0]/tot, 100*labor[2]/tot)
-		big := append([]*engine.Region(nil), w.Regions...)
+		big := append([]*game.Region(nil), w.Regions...)
 		sort.Slice(big, func(i, j int) bool { return big[i].Population() > big[j].Population() })
 		fmt.Print("   largest:")
 		for _, r := range big[:6] {
@@ -85,10 +85,10 @@ func main() {
 			arm := ""
 			for _, a := range w.ArmiesOf(n) {
 				sup := ""
-				for g := range engine.Doctrines[a.Doctrine].Needs {
-					sup += fmt.Sprintf(" %s:%.2f", engine.Goods[g].Name, a.Supply[g])
+				for g := range game.Doctrines[a.Doctrine].Needs {
+					sup += fmt.Sprintf(" %s:%.2f", game.Goods[g].Name, a.Supply[g])
 				}
-				arm += fmt.Sprintf(" [%.0f/%.0f %s eff %.2f @%s%s]", a.Men, a.Target, engine.Doctrines[a.Doctrine].Name, a.Effectiveness(), w.Regions[a.Region].Name, sup)
+				arm += fmt.Sprintf(" [%.0f/%.0f %s eff %.2f @%s%s]", a.Men, a.Target, game.Doctrines[a.Doctrine].Name, a.Effectiveness(), w.Regions[a.Region].Name, sup)
 			}
 			fmt.Printf("   %-9s tiles %2d income %6.0f techs %2d res %.0f%s%s\n", n.Name, len(n.Regions), n.IncomeEMA, known, n.ResearchPoints, war, arm)
 		}
@@ -96,19 +96,19 @@ func main() {
 	fmt.Println("events:", len(w.Events), "elapsed", time.Since(start))
 	for _, e := range w.EventsSince(0, -1) {
 		if e.Kind == "war" || e.Kind == "peace" || e.Kind == "eliminated" || e.Kind == "taken" {
-			fmt.Println("  ", engine.Date(e.Tick).Format("2006-01-02"), e.Text)
+			fmt.Println("  ", game.Date(e.Tick).Format("2006-01-02"), e.Text)
 		}
 	}
 }
 
-func generate(size string, nations int, seed int64) (engine.GameSpec, error) {
-	for _, m := range engine.MapSizes {
+func generate(size string, nations int, seed int64) (game.GameSpec, error) {
+	for _, m := range game.MapSizes {
 		if m.Name == size {
 			if nations == 0 {
 				nations = m.Nations
 			}
-			return engine.GenerateGame(engine.MapOptions{Rows: m.Rows, Cols: m.Cols, Nations: nations, Seed: seed})
+			return game.GenerateGame(game.MapOptions{Rows: m.Rows, Cols: m.Cols, Nations: nations, Seed: seed})
 		}
 	}
-	return engine.GameSpec{}, fmt.Errorf("no map size %q", size)
+	return game.GameSpec{}, fmt.Errorf("no map size %q", size)
 }

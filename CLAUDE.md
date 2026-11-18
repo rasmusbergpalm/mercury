@@ -1,6 +1,6 @@
 # Mercury
 
-A deterministic economic simulation (Go engine in `engine/`, server in
+A deterministic economic simulation (Go engine in `game/`, server in
 `internal/server/`, web client in `web/`) of the nineteenth century: pops,
 firms, markets, trade, migration, nations, techs and wars, from 1820.
 
@@ -17,8 +17,8 @@ small bug or tidying code, work in rounds:
    before and after the change:
 
    ```bash
-   CENTURY_OUT=/tmp/base CENTURY_SEEDS=1,2 go test ./engine -run TestCentury -timeout 60m   # on main
-   CENTURY_OUT=/tmp/run CENTURY_SEEDS=1,2 go test ./engine -run TestCentury -timeout 60m    # with the change
+   CENTURY_OUT=/tmp/base CENTURY_SEEDS=1,2 go test ./game -run TestCentury -timeout 60m   # on main
+   CENTURY_OUT=/tmp/run CENTURY_SEEDS=1,2 go test ./game -run TestCentury -timeout 60m    # with the change
    python3 tools/century_plot.py /tmp/run /tmp/base
    ```
 
@@ -45,7 +45,7 @@ small bug or tidying code, work in rounds:
    macro against history and the baseline, each method's share, prices),
    with what changed, what looks right, what doesn't and why, and iterate
    until it looks right.
-6. **Run the health ladder** (`go test ./engine -run TestHealth`, a few
+6. **Run the health ladder** (`go test ./game -run TestHealth`, a few
    minutes; `go test -short ./...` skips it).
 7. **Re-ship the server's starting game.** The server starts from snapshots
    of The Three Crowns and of the settled classic map, so it is ready at
@@ -55,7 +55,7 @@ small bug or tidying code, work in rounds:
 
 ## The health ladder
 
-`engine/health_ladder_test.go` runs worlds of rising complexity and checks
+`game/health_ladder_test.go` runs worlds of rising complexity and checks
 every important number against a bound. The bounds catch accidental damage
 to the economy; they are signals, not laws. When a rung fails, find out
 what moved and why: if a change broke something by accident, fix it; if

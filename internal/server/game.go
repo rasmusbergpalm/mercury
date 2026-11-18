@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rasmusbergpalm/mercury/engine"
+	"github.com/rasmusbergpalm/mercury/game"
 )
 
 // Game is one running world with its players and clock.
@@ -18,7 +18,7 @@ type Game struct {
 	Created time.Time
 
 	mu      sync.Mutex
-	w       *engine.World
+	w       *game.World
 	players map[string]int // token -> nation
 	running bool
 	speed   float64 // days per second while running
@@ -54,7 +54,7 @@ var (
 	ErrRealTime   = errors.New("this game runs in real time")
 )
 
-func newGame(name string, w *engine.World, turnDays int) *Game {
+func newGame(name string, w *game.World, turnDays int) *Game {
 	for _, n := range w.Nations {
 		n.AI = true // the computer runs every nation until a player joins
 	}
@@ -100,7 +100,7 @@ func (g *Game) join(nation int) (string, error) {
 		return "", ErrTaken
 	}
 	if n.Eliminated() {
-		return "", engine.ErrEliminated
+		return "", game.ErrEliminated
 	}
 	token := randomHex(16)
 	g.players[token] = nation
@@ -177,7 +177,7 @@ type NationSummary struct {
 func (g *Game) summary() GameSummary {
 	s := GameSummary{ID: g.ID, Name: g.Name, Tick: g.w.Tick, Running: g.running, Speed: g.speed,
 		Date: g.w.Date().Format("2 January 2006"), Turn: g.turnDays, Map: "classic", Tiles: len(g.w.Regions), created: g.Created}
-	if sp := g.w.Spec; sp != nil && !slices.Equal(sp.Map, engine.DefaultMap) { // a generated map
+	if sp := g.w.Spec; sp != nil && !slices.Equal(sp.Map, game.DefaultMap) { // a generated map
 		s.Map = mapName(len(sp.Map), len(sp.Map[0]))
 	}
 	for _, n := range g.w.Nations {
@@ -192,10 +192,10 @@ func (g *Game) summary() GameSummary {
 
 // mapName is the size of a generated map with these dimensions.
 func mapName(rows, cols int) string {
-	if rows == len(engine.WorldMap) && cols == len(engine.WorldMap[0]) {
+	if rows == len(game.WorldMap) && cols == len(game.WorldMap[0]) {
 		return "world"
 	}
-	for _, m := range engine.MapSizes {
+	for _, m := range game.MapSizes {
 		if m.Rows == rows && m.Cols == cols {
 			return m.Name
 		}

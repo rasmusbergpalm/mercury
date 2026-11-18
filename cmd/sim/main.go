@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rasmusbergpalm/mercury/engine"
+	"github.com/rasmusbergpalm/mercury/game"
 )
 
 const window = 50 // ticks averaged over at the end of a run
@@ -17,7 +17,7 @@ const window = 50 // ticks averaged over at the end of a run
 // averages accumulates per-tick statistics over the final window.
 type averages struct {
 	utility, wage []float64
-	tierSpend     [][engine.NumTiers]float64
+	tierSpend     [][game.NumTiers]float64
 	relPrice      [][]float64 // price / wage
 	labor         map[string]float64
 	flows         []float64
@@ -25,17 +25,17 @@ type averages struct {
 	transport     float64
 }
 
-func run(cost float64, ticks int) (*engine.World, *averages) {
-	w, err := engine.BuildWorld(cost, engine.DefaultMap)
+func run(cost float64, ticks int) (*game.World, *averages) {
+	w, err := game.BuildWorld(cost, game.DefaultMap)
 	if err != nil {
 		panic(err)
 	}
 	n := len(w.Regions)
 	a := &averages{utility: make([]float64, n), wage: make([]float64, n),
-		tierSpend: make([][engine.NumTiers]float64, n), relPrice: make([][]float64, n),
+		tierSpend: make([][game.NumTiers]float64, n), relPrice: make([][]float64, n),
 		labor: map[string]float64{}, flows: make([]float64, len(w.Traders))}
 	for i := range a.relPrice {
-		a.relPrice[i] = make([]float64, engine.NumGoods)
+		a.relPrice[i] = make([]float64, game.NumGoods)
 	}
 	for t := 0; t < ticks; t++ {
 		w.Step()
@@ -67,19 +67,19 @@ func run(cost float64, ticks int) (*engine.World, *averages) {
 	return w, a
 }
 
-func (a *averages) shares(i int) [engine.NumTiers]float64 {
+func (a *averages) shares(i int) [game.NumTiers]float64 {
 	total := 0.0
 	for _, s := range a.tierSpend[i] {
 		total += s
 	}
-	var out [engine.NumTiers]float64
+	var out [game.NumTiers]float64
 	for k, s := range a.tierSpend[i] {
 		out[k] = s / math.Max(total, 1e-12)
 	}
 	return out
 }
 
-func hexMap(w *engine.World, cell func(r *engine.Region) string) string {
+func hexMap(w *game.World, cell func(r *game.Region) string) string {
 	var b strings.Builder
 	for row := 0; row < w.Rows; row++ {
 		if row%2 == 1 {
@@ -94,25 +94,25 @@ func hexMap(w *engine.World, cell func(r *engine.Region) string) string {
 	return b.String()
 }
 
-func report(w *engine.World, a *averages) {
+func report(w *game.World, a *averages) {
 	fmt.Printf("After %d ticks (averages over the last %d). Money in system: %.0f\n\n", w.Tick, window, w.Money())
 	fmt.Println("Terrain  (P plains, F forest, H hills, M mountains, T tropical, C coast)")
-	fmt.Print(hexMap(w, func(r *engine.Region) string {
-		return fmt.Sprintf("%s:%c  ", r.Name, engine.DefaultMap[r.Row][r.Col])
+	fmt.Print(hexMap(w, func(r *game.Region) string {
+		return fmt.Sprintf("%s:%c  ", r.Name, game.DefaultMap[r.Row][r.Col])
 	}))
 	fmt.Println("\nUtility per person")
-	fmt.Print(hexMap(w, func(r *engine.Region) string { return fmt.Sprintf("%6.2f", a.utility[r.ID]) }))
+	fmt.Print(hexMap(w, func(r *game.Region) string { return fmt.Sprintf("%6.2f", a.utility[r.ID]) }))
 	fmt.Println("\nLuxury share of pop spending (%)")
-	fmt.Print(hexMap(w, func(r *engine.Region) string { return fmt.Sprintf("%6.1f", 100*a.shares(r.ID)[engine.Luxury]) }))
+	fmt.Print(hexMap(w, func(r *game.Region) string { return fmt.Sprintf("%6.1f", 100*a.shares(r.ID)[game.Luxury]) }))
 	for _, g := range []string{"bread", "coal", "fish", "tea", "porcelain"} {
 		fmt.Printf("\nPrice of %s relative to the local wage\n", g)
-		gid := engine.G(g)
-		fmt.Print(hexMap(w, func(r *engine.Region) string { return fmt.Sprintf("%6.2f", a.relPrice[r.ID][gid]) }))
+		gid := game.G(g)
+		fmt.Print(hexMap(w, func(r *game.Region) string { return fmt.Sprintf("%6.2f", a.relPrice[r.ID][gid]) }))
 	}
 
 	fmt.Println("\nBy terrain:")
 	fmt.Printf("  %-10s %2s %8s %12s %12s %12s\n", "terrain", "n", "utility", "basic", "intermediate", "luxury")
-	for _, t := range engine.Terrains {
+	for _, t := range game.Terrains {
 		var ids []int
 		for _, r := range w.Regions {
 			if r.Terrain == t.Name {
@@ -123,7 +123,7 @@ func report(w *engine.World, a *averages) {
 			continue
 		}
 		u := 0.0
-		var sh [engine.NumTiers]float64
+		var sh [game.NumTiers]float64
 		for _, id := range ids {
 			u += a.utility[id] / float64(len(ids))
 			s := a.shares(id)
@@ -161,7 +161,7 @@ func sweep(ticks int) {
 	for _, cost := range []float64{0.25, 0.5, 1, 2, math.Inf(1)} {
 		w, a := run(cost, ticks)
 		u := 0.0
-		var sh [engine.NumTiers]float64
+		var sh [game.NumTiers]float64
 		n := float64(len(w.Regions))
 		for i := range w.Regions {
 			u += a.utility[i] / n

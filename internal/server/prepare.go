@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rasmusbergpalm/mercury/engine"
+	"github.com/rasmusbergpalm/mercury/game"
 )
 
 // A game on a generated map is prepared in the background: its world is
-// settled (engine.SettleDays) before it opens, which takes a while on a big
+// settled (game.SettleDays) before it opens, which takes a while on a big
 // map. Meanwhile the lobby lists it with its progress, under the ID the game
 // will have.
 
@@ -19,7 +19,7 @@ type preparing struct {
 	created  time.Time
 	mapName  string
 	tiles    int
-	nations  []engine.NationSpec
+	nations  []game.NationSpec
 	turnDays int
 	done     int // days settled so far (guarded by Server.mu)
 	total    int
@@ -35,11 +35,11 @@ const failedShown = time.Minute
 
 // MapChoice is what kind of map a new game is played on.
 type MapChoice struct {
-	Size    string // "classic" (the hand-made map) or one of engine.MapSizes
+	Size    string // "classic" (the hand-made map) or one of game.MapSizes
 	Nations int    // 0: the size's default
 	Seed    int64  // 0: a fresh one
 	// Divided shares out all the land among the nations from the start, so
-	// that there is no free land to take (engine.DivideLand).
+	// that there is no free land to take (game.DivideLand).
 	Divided bool
 }
 
@@ -53,15 +53,15 @@ func (s *Server) PrepareGame(name string, transportCost float64, turnDays int, m
 		}
 		return g.ID, nil
 	}
-	var spec engine.GameSpec
+	var spec game.GameSpec
 	var err error
 	if m.Size == "world" { // the world in 1820, with its nations
-		spec = engine.WorldGame()
+		spec = game.WorldGame()
 	} else {
-		var size *engine.MapSize
-		for i := range engine.MapSizes {
-			if engine.MapSizes[i].Name == m.Size {
-				size = &engine.MapSizes[i]
+		var size *game.MapSize
+		for i := range game.MapSizes {
+			if game.MapSizes[i].Name == m.Size {
+				size = &game.MapSizes[i]
 			}
 		}
 		if size == nil {
@@ -73,22 +73,22 @@ func (s *Server) PrepareGame(name string, transportCost float64, turnDays int, m
 		if m.Seed == 0 {
 			m.Seed = time.Now().UnixNano()
 		}
-		if spec, err = engine.GenerateGame(engine.MapOptions{Rows: size.Rows, Cols: size.Cols, Nations: m.Nations, Seed: m.Seed}); err != nil {
+		if spec, err = game.GenerateGame(game.MapOptions{Rows: size.Rows, Cols: size.Cols, Nations: m.Nations, Seed: m.Seed}); err != nil {
 			return "", err
 		}
 	}
 	if m.Divided {
-		if spec, err = engine.DivideLand(spec); err != nil {
+		if spec, err = game.DivideLand(spec); err != nil {
 			return "", err
 		}
 	}
 	spec.TransportCost, spec.AI = transportCost, true
 	tiles := 0
 	for _, row := range spec.Map {
-		tiles += len(row) - strings.Count(row, string(rune(engine.Sea)))
+		tiles += len(row) - strings.Count(row, string(rune(game.Sea)))
 	}
 	p := &preparing{id: randomHex(4), name: name, created: time.Now(), mapName: m.Size, tiles: tiles,
-		nations: spec.Nations, turnDays: turnDays, total: engine.PrepareDays(tiles)}
+		nations: spec.Nations, turnDays: turnDays, total: game.PrepareDays(tiles)}
 	s.mu.Lock()
 	busy := 0
 	for _, q := range s.preparing {
@@ -110,7 +110,7 @@ func (s *Server) PrepareGame(name string, transportCost float64, turnDays int, m
 	s.preps.Add(1)
 	go func() {
 		defer s.preps.Done()
-		w, err := engine.BuildGameProgress(spec, func(done, total int) {
+		w, err := game.BuildGameProgress(spec, func(done, total int) {
 			s.mu.Lock()
 			p.done, p.total = done, total
 			s.mu.Unlock()

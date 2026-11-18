@@ -10,8 +10,8 @@ if [ -n "$1" ]; then
   out=$1
 else
   out=$(mktemp -d)
-  TRANSPORT_SWEEP_OUT=$out/sweep go test ./engine -run TestTransportSweep -timeout 60m
-  EXPLAINER_OUT=$out/data go test ./engine -run TestExplainerData -timeout 30m
+  TRANSPORT_SWEEP_OUT=$out/sweep go test ./game -run TestTransportSweep -timeout 60m
+  EXPLAINER_OUT=$out/data go test ./game -run TestExplainerData -timeout 30m
 fi
 python3 tools/explainer/prep.py "$out"
 python3 - "$out" <<'PY'

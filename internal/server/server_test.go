@@ -13,7 +13,7 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/rasmusbergpalm/mercury/engine"
+	"github.com/rasmusbergpalm/mercury/game"
 )
 
 type env struct {
@@ -187,7 +187,7 @@ func TestNationCommands(t *testing.T) {
 	e.do("POST", base+"pension?level=5", tok, nil, 400, nil)
 	e.do("POST", base+"tariff?rate=0.3", tok, nil, 200, &st)
 	e.do("POST", base+"tariff?rate=0.5&good=tea", tok, nil, 200, &st)
-	if st.Nations[0].Tariff[0] != 0.3 || st.Nations[0].Tariff[engine.G("tea")] != 0.5 {
+	if st.Nations[0].Tariff[0] != 0.3 || st.Nations[0].Tariff[game.G("tea")] != 0.5 {
 		t.Errorf("tariffs %v", st.Nations[0].Tariff)
 	}
 	e.do("POST", base+"tariff?rate=0.5&good=military", tok, nil, 400, nil)
@@ -196,7 +196,7 @@ func TestNationCommands(t *testing.T) {
 		t.Error("embargo not set")
 	}
 	e.do("POST", base+"embargo?target=0", tok, nil, 409, nil)
-	masonry, railways := engine.TechID("Macadam roads"), engine.TechID("Railways")
+	masonry, railways := game.TechID("Macadam roads"), game.TechID("Railways")
 	e.do("POST", fmt.Sprintf("%sresearch?tech=%d", base, masonry), tok, nil, 200, &st)
 	if st.Nations[0].Researching != masonry {
 		t.Errorf("researching %d", st.Nations[0].Researching)
@@ -230,7 +230,7 @@ func TestNationCommands(t *testing.T) {
 		t.Errorf("queue %v", q)
 	}
 	e.do("POST", base+"queue?techs=x", tok, nil, 400, nil)
-	if len(st.Nations[0].TechCosts) != len(engine.Techs) || st.Date == "" {
+	if len(st.Nations[0].TechCosts) != len(game.Techs) || st.Date == "" {
 		t.Errorf("state lacks tech costs or date")
 	}
 
@@ -320,7 +320,7 @@ func TestEvents(t *testing.T) {
 	e := newEnv(t)
 	g := e.newGame("E")
 	e.do("POST", "/api/games/"+g.ID+"/step?n=400", "", nil, 200, nil)
-	var ev []engine.Event
+	var ev []game.Event
 	e.do("GET", "/api/games/"+g.ID+"/events?since=0", "", nil, 200, &ev)
 	if len(ev) == 0 {
 		t.Error("no events in 400 days")
@@ -341,7 +341,7 @@ func TestHistoryAndBreakdown(t *testing.T) {
 		} `json:"data"`
 	}
 	e.do("GET", "/api/games/"+g.ID+"/history/nations/0", "", nil, 200, &h)
-	if len(h.Ticks) == 0 || len(h.Data.GDP) != len(h.Ticks) || len(h.Data.ClassIncome) != int(engine.NumClasses) {
+	if len(h.Ticks) == 0 || len(h.Data.GDP) != len(h.Ticks) || len(h.Data.ClassIncome) != int(game.NumClasses) {
 		t.Fatalf("nation history: %d ticks, %d gdp", len(h.Ticks), len(h.Data.GDP))
 	}
 	e.do("GET", "/api/games/"+g.ID+"/history/regions/7", "", nil, 200, nil)
@@ -353,7 +353,7 @@ func TestHistoryAndBreakdown(t *testing.T) {
 	e.do("GET", "/api/games/"+g.ID+"/history/armies/999", "", nil, 404, nil)
 	var d RegionDetail
 	e.do("GET", "/api/games/"+g.ID+"/regions/7", "", nil, 200, &d)
-	if len(d.Classes) != int(engine.NumClasses) || d.GDP <= 0 {
+	if len(d.Classes) != int(game.NumClasses) || d.GDP <= 0 {
 		t.Errorf("region detail: %d classes, gdp %v", len(d.Classes), d.GDP)
 	}
 }

@@ -1,4 +1,4 @@
-"""Builds Mercury's world map (engine/worldmap.go) from Natural Earth data.
+"""Builds Mercury's world map (game/worldmap.go) from Natural Earth data.
 
 The world from 78N to 56S on an odd-r hex grid, 120 columns by 51 rows
 (about 2000 land tiles: the scale of a grand-strategy map), the Pacific at
@@ -15,7 +15,7 @@ Each land tile gets:
 - an owner in 1820, from today's countries as a rough stand-in for the
   great powers' lands then (the rest is free land, to settle or colonise).
 
-    python3 tools/world_map.py <dir of Natural Earth geojson>  # writes engine/worldmap.go
+    python3 tools/world_map.py <dir of Natural Earth geojson>  # writes game/worldmap.go
 
 The geojson files (from github.com/nvkelso/natural-earth-vector, public
 domain): ne_50m_land, ne_50m_lakes, ne_50m_geography_regions_polys,
@@ -309,7 +309,7 @@ def write_go(grid, nations, names, cells, unnamed):
             line = "\t"
         line += item
     out += [line.rstrip(), "}", ""]
-    open("engine/worldmap.go", "w", encoding="utf-8").write("\n".join(out))
+    open("game/worldmap.go", "w", encoding="utf-8").write("\n".join(out))
 
 
 def write_preview(grid, nations):

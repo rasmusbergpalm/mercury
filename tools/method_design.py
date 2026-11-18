@@ -15,9 +15,9 @@ least FLOOR times as productive per level as the one it replaces: motor
 trucks and tractors didn't make haulage or farms less productive, they made
 them more productive with fewer hands.
 
-    python3 tools/method_design.py <all-tech CSV> <century CSV>...   # rewrites the TFPs in engine/scenario.go
+    python3 tools/method_design.py <all-tech CSV> <century CSV>...   # rewrites the TFPs in game/scenario.go
 
-(The century CSVs come from CENTURY_OUT=... go test ./engine -run TestCentury.)
+(The century CSVs come from CENTURY_OUT=... go test ./game -run TestCentury.)
 """
 import csv
 import math
@@ -104,11 +104,11 @@ def main(alltech, paths):
             print(f"{firm:18s} {name:30s} era {era}  tfp {tfp:5.2f}  (a tenth more profitable: {calc:5.2f})")
             tfps[name] = tfp
             prev_t, prev_f = tfp, f
-    src = open("engine/scenario.go", encoding="utf-8").read()
+    src = open("game/scenario.go", encoding="utf-8").read()
     for name, tfp in tfps.items():
         src, n = re.subn(r'(Recipe\{"' + re.escape(name) + r'", "[^"]+", )[0-9.]+', lambda m: m.group(1) + f"{tfp:g}", src)
         assert n == 1, name
-    open("engine/scenario.go", "w", encoding="utf-8").write(src)
+    open("game/scenario.go", "w", encoding="utf-8").write(src)
 
 
 if __name__ == "__main__":

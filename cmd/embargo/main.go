@@ -5,13 +5,13 @@ package main
 import (
 	"fmt"
 
-	"github.com/rasmusbergpalm/mercury/engine"
+	"github.com/rasmusbergpalm/mercury/game"
 )
 
 func main() {
-	spec := engine.DefaultGame
+	spec := game.DefaultGame
 	spec.AI = true
-	w, err := engine.BuildGame(spec)
+	w, err := game.BuildGame(spec)
 	if err != nil {
 		panic(err)
 	}
@@ -28,14 +28,14 @@ func main() {
 		fmt.Println(w.Date().Format("2006"))
 		for _, a := range w.Armies {
 			fmt.Printf("  %-9s army %2d men %5.1f/%5.1f eff %.2f", a.Nation.Name, a.ID, a.Men, a.Target, a.Effectiveness())
-			for g := range engine.Doctrines[a.Doctrine].Needs {
+			for g := range game.Doctrines[a.Doctrine].Needs {
 				src := a.Source(g)
 				where, offered, price := "-", 0.0, 0.0
 				if src >= 0 {
 					r := w.Regions[src]
 					where, offered, price = r.Name, r.Markets[g].Supply, r.Markets[g].Price
 				}
-				fmt.Printf(" | %s %.0f%% %2.0fd @%s offer %.2f p %.1f", engine.Goods[g].Name, 100*a.Supply[g], a.StockDays(g), where, offered, price)
+				fmt.Printf(" | %s %.0f%% %2.0fd @%s offer %.2f p %.1f", game.Goods[g].Name, 100*a.Supply[g], a.StockDays(g), where, offered, price)
 			}
 			fmt.Println()
 		}

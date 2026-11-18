@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rasmusbergpalm/mercury/engine"
+	"github.com/rasmusbergpalm/mercury/game"
 )
 
 // AutosaveEvery is how often (in game days) the server saves each game, so
@@ -121,7 +121,7 @@ func (s *Server) loadAutosaves() {
 			log.Printf("autosave %s: unreadable, skipped", e.Name())
 			continue
 		}
-		w, err := engine.Restore(f.Snapshot)
+		w, err := game.Restore(f.Snapshot)
 		if err != nil {
 			log.Printf("autosave %s: %v (skipped)", e.Name(), err)
 			continue

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/rasmusbergpalm/mercury/engine"
+	"github.com/rasmusbergpalm/mercury/game"
 	"slices"
 )
 
@@ -250,9 +250,9 @@ type ArmyState struct {
 	DailyLoss     float64                  `json:"daily_loss"`    // share of men lost today outside battle
 	Path          []int                    `json:"path"`
 	Retreating    bool                     `json:"retreating"` // falling back after a lost battle
-	Attack        []engine.Modifier        `json:"attack"`     // strength per soldier, factor by factor
-	Defense       []engine.Modifier        `json:"defense"`    // extra factors when defending at home
-	Attrition     []engine.Modifier        `json:"attrition"`  // daily losses
+	Attack        []game.Modifier        `json:"attack"`     // strength per soldier, factor by factor
+	Defense       []game.Modifier        `json:"defense"`    // extra factors when defending at home
+	Attrition     []game.Modifier        `json:"attrition"`  // daily losses
 	Depot         int                      `json:"depot"`      // where supplies are bought (-1: cut off)
 	Transport     float64                  `json:"transport"`  // transport today's supplies needed
 }
@@ -269,7 +269,7 @@ type State struct {
 	Date    string         `json:"date"`
 	Turn    *TurnState     `json:"turn"` // null in real-time games
 	Armies  []ArmyState    `json:"armies"`
-	Events  []engine.Event `json:"events"` // recent, for the requester
+	Events  []game.Event `json:"events"` // recent, for the requester
 	Running bool           `json:"running"`
 	Speed   float64        `json:"speed"`
 	You     int            `json:"you"` // the requester's nation, or -1
@@ -321,7 +321,7 @@ type FirmState struct {
 	Requires  string            `json:"requires"` // tech that unlocks it, if any
 	Sector    string            `json:"sector"`
 	State     bool              `json:"state"`             // a public service
-	Bonuses   []engine.Modifier `json:"bonuses"`           // productivity, factor by factor
+	Bonuses   []game.Modifier `json:"bonuses"`           // productivity, factor by factor
 	Wanted    float64           `json:"wanted"`            // workers it wanted (and could pay) today
 	PerWorker float64           `json:"per_worker"`        // profit per worker today: value added per worker less the wage
 	LevelGain float64           `json:"level_gain"`        // extra output value a day one more level would bring, same workers and inputs
@@ -366,33 +366,33 @@ type RegionDetail struct {
 	Imports []Flow        `json:"imports"`
 }
 
-func worldInfo(w *engine.World) WorldInfo {
-	info := WorldInfo{Rows: w.Rows, Cols: w.Cols, Spending: engine.SpendingNames[:], Services: engine.ServiceNames(), Staff: engine.ServiceStaff, MaxPension: engine.MaxPension, Branches: engine.Branches,
-		Eras: engine.Eras, StartYear: engine.StartYear,
-		LevelCost: engine.LevelCost, TilesPerPort: engine.TilesPerPort, MinOccupiers: engine.MinOccupiers, OccupyStrength: engine.OccupyMinStrength, Port: PortInfo{engine.PortCost, map[string]float64{}}}
-	for g, q := range engine.PortMaterials {
-		info.Port.Materials[engine.Goods[g].Name] = q
+func worldInfo(w *game.World) WorldInfo {
+	info := WorldInfo{Rows: w.Rows, Cols: w.Cols, Spending: game.SpendingNames[:], Services: game.ServiceNames(), Staff: game.ServiceStaff, MaxPension: game.MaxPension, Branches: game.Branches,
+		Eras: game.Eras, StartYear: game.StartYear,
+		LevelCost: game.LevelCost, TilesPerPort: game.TilesPerPort, MinOccupiers: game.MinOccupiers, OccupyStrength: game.OccupyMinStrength, Port: PortInfo{game.PortCost, map[string]float64{}}}
+	for g, q := range game.PortMaterials {
+		info.Port.Materials[game.Goods[g].Name] = q
 	}
-	for _, g := range engine.ConsumerGoods {
+	for _, g := range game.ConsumerGoods {
 		info.Consumer = append(info.Consumer, int(g))
 	}
-	for c := engine.Class(0); c < engine.NumClasses; c++ {
+	for c := game.Class(0); c < game.NumClasses; c++ {
 		info.Classes = append(info.Classes, c.String())
 	}
-	for sc := engine.Sector(0); sc < 3; sc++ {
+	for sc := game.Sector(0); sc < 3; sc++ {
 		info.Sectors = append(info.Sectors, sc.String())
 	}
-	for g, good := range engine.Goods {
+	for g, good := range game.Goods {
 		tier := ""
-		if t := engine.TierOf[g]; t >= 0 {
+		if t := game.TierOf[g]; t >= 0 {
 			tier = t.String()
 		}
 		info.Goods = append(info.Goods, GoodInfo{good.Name, good.Bulk, good.Spoilage, tier})
 	}
-	for t := engine.Tier(0); t < engine.NumTiers; t++ {
+	for t := game.Tier(0); t < game.NumTiers; t++ {
 		info.Tiers = append(info.Tiers, t.String())
 	}
-	for _, t := range engine.Terrains {
+	for _, t := range game.Terrains {
 		info.Terrains = append(info.Terrains, TerrainInfo{t.Name, string(t.Symbol), t.MoveCost})
 	}
 	for _, r := range w.Regions {
@@ -404,24 +404,24 @@ func worldInfo(w *engine.World) WorldInfo {
 	for _, n := range w.Nations {
 		info.Nations = append(info.Nations, NationInfo{n.ID, n.Name, n.Color})
 	}
-	for _, l := range engine.InfraLevels {
+	for _, l := range game.InfraLevels {
 		mats := map[string]float64{}
 		for g, q := range l.Materials {
-			mats[engine.Goods[g].Name] = q
+			mats[game.Goods[g].Name] = q
 		}
 		info.Infra = append(info.Infra, InfraInfo{l.Name, l.MoveMult, l.Cost, l.Upkeep, l.Tech, mats})
 	}
-	for _, t := range engine.Techs {
+	for _, t := range game.Techs {
 		req := t.Requires
 		if req == nil {
 			req = []string{}
 		}
 		info.Techs = append(info.Techs, TechInfo{t.Name, t.Branch, t.Era, t.Cost, req, t.Effect, t.Ports})
 	}
-	for _, d := range engine.Doctrines {
+	for _, d := range game.Doctrines {
 		needs := map[string]float64{}
 		for g, q := range d.Needs {
-			needs[engine.Goods[g].Name] = q
+			needs[game.Goods[g].Name] = q
 		}
 		info.Doctrines = append(info.Doctrines, DoctrineInfo{d.Name, d.Tech, d.Power, needs})
 	}
@@ -429,16 +429,16 @@ func worldInfo(w *engine.World) WorldInfo {
 }
 
 // cityLine is how many people a tile needs to count as a city (see
-// engine.World.IsCity), worked out once for every tile.
-func cityLine(w *engine.World) float64 {
+// game.World.IsCity), worked out once for every tile.
+func cityLine(w *game.World) float64 {
 	pop := 0.0
 	for _, r := range w.Regions {
 		pop += r.Population()
 	}
-	return engine.CityMult * pop / float64(len(w.Regions))
+	return game.CityMult * pop / float64(len(w.Regions))
 }
 
-func regionState(w *engine.World, i int, cities float64) RegionState {
+func regionState(w *game.World, i int, cities float64) RegionState {
 	r := w.Regions[i]
 	ts := r.TierSpend(w.TradePrices[i])
 	employed := 0.0
@@ -455,7 +455,7 @@ func regionState(w *engine.World, i int, cities float64) RegionState {
 	st.Collect, st.Educated, st.Healthy, st.Crowding = r.Collect, r.Educated, r.Healthy, r.Crowding()
 	st.HealthGrowth = r.HealthGrowth()
 	st.Allegiance, st.Loyalties, st.WorkMult = r.Allegiance(), append([]float64{}, r.Loyalties...), r.WorkMult()
-	for k := engine.Public(0); k < engine.NumServices; k++ {
+	for k := game.Public(0); k < game.NumServices; k++ {
 		f := r.Service(k)
 		if f == nil {
 			continue
@@ -485,17 +485,17 @@ const minFlow = 1e-3
 // as there are tens of thousands of them.
 const FlowsAlways = 100
 
-func worldState(w *engine.World, flows bool) State {
+func worldState(w *game.World, flows bool) State {
 	st := State{Tick: w.Tick, Date: w.Date().Format("2 January 2006"), Money: w.Money(), You: -1,
-		Flows: []Flow{}, Armies: []ArmyState{}, Made: make([]bool, engine.NumGoods)}
+		Flows: []Flow{}, Armies: []ArmyState{}, Made: make([]bool, game.NumGoods)}
 	for g := range st.Made {
-		st.Made[g] = w.Made(engine.GoodID(g))
+		st.Made[g] = w.Made(game.GoodID(g))
 	}
 	for _, a := range w.Armies {
 		sup, days, src, off := map[string]float64{}, map[string]float64{}, map[string]int{}, map[string]float64{}
 		shares := map[string][]SourceShare{}
-		for g := range engine.Doctrines[a.Doctrine].Needs {
-			name := engine.Goods[g].Name
+		for g := range game.Doctrines[a.Doctrine].Needs {
+			name := game.Goods[g].Name
 			sup[name], days[name], src[name] = a.Supply[g], a.StockDays(g), a.Source(g)
 			for _, s := range a.Sources(g) {
 				off[name] += w.Regions[s.Tile].Markets[g].Supply
@@ -506,7 +506,7 @@ func worldState(w *engine.World, flows bool) State {
 		goods, pay := a.Costs()
 		cost := map[string]float64{}
 		for g, x := range goods {
-			cost[engine.Goods[g].Name] = x
+			cost[game.Goods[g].Name] = x
 		}
 		att, def, attr := w.Breakdown(a)
 		depot, transport := a.SupplyLine()
@@ -545,8 +545,8 @@ func worldState(w *engine.World, flows bool) State {
 		if h := w.AlliedAgainst(n); h != nil {
 			ns.AlliedAgainst = h.ID
 		}
-		ns.Adoption = make([]float64, len(engine.Techs))
-		for i := range engine.Techs {
+		ns.Adoption = make([]float64, len(game.Techs))
+		for i := range game.Techs {
 			ns.Adoption[i] = n.Adoption(i)
 		}
 		ns.GDP = n.RealGDP
@@ -559,12 +559,12 @@ func worldState(w *engine.World, flows bool) State {
 		for _, r := range n.Regions {
 			ns.Utility += r.Utility() * r.Population() / pop
 		}
-		for c := engine.Class(0); c < engine.NumClasses; c++ {
-			ns.ClassIncome = append(ns.ClassIncome, engine.NationClassIncome(n, c))
+		for c := game.Class(0); c < game.NumClasses; c++ {
+			ns.ClassIncome = append(ns.ClassIncome, game.NationClassIncome(n, c))
 		}
 		l := w.LaborShares(n)
 		ns.Labor = l[:]
-		for i := range engine.Techs {
+		for i := range game.Techs {
 			ns.TechCosts = append(ns.TechCosts, n.TechCost(i, w))
 		}
 		if n.AI {
@@ -581,7 +581,7 @@ func worldState(w *engine.World, flows bool) State {
 	return st
 }
 
-func regionDetail(w *engine.World, i int) RegionDetail {
+func regionDetail(w *game.World, i int) RegionDetail {
 	r := w.Regions[i]
 	d := RegionDetail{Info: RegionInfo{r.ID, r.Name, r.Row, r.Col, r.Terrain, r.Coastal}, State: regionState(w, i, cityLine(w)), GDP: r.GDP(),
 		Exports: []Flow{}, Imports: []Flow{}}
@@ -595,7 +595,7 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 	for _, p := range r.Pops {
 		d.Pops = append(d.Pops, PopState{p.Size, p.Cash, p.Employed()})
 	}
-	for c := engine.Class(0); c < engine.NumClasses; c++ {
+	for c := game.Class(0); c < game.NumClasses; c++ {
 		cs := ClassState{Class: c.String()}
 		u := 0.0
 		for _, p := range r.ClassPops(c) {
@@ -658,9 +658,9 @@ func regionDetail(w *engine.World, i int) RegionDetail {
 	return d
 }
 
-func bestDoctrine(n *engine.Nation) int {
+func bestDoctrine(n *game.Nation) int {
 	best := 0
-	for i, d := range engine.Doctrines {
+	for i, d := range game.Doctrines {
 		if n.Has(d.Tech) {
 			best = i
 		}

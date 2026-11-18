@@ -8,15 +8,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/rasmusbergpalm/mercury/engine"
+	"github.com/rasmusbergpalm/mercury/game"
 )
 
 func main() {
-	spec := engine.DefaultGame
+	spec := game.DefaultGame
 	spec.NationMap = []string{"AAAAAA", "AAAAAA", "AAAAAA", "AAAAAA", "AAAAAA", "AAAAAA"} // the whole map
 	spec.Nations = spec.Nations[:1]
 	spec.AI, spec.Seed = true, 1
-	w, err := engine.BuildGame(spec)
+	w, err := game.BuildGame(spec)
 	if err != nil {
 		panic(err)
 	}
@@ -29,7 +29,7 @@ func main() {
 				w.Step()
 			}
 		}
-		for w.Tick < engine.HistoryEvery {
+		for w.Tick < game.HistoryEvery {
 			w.Step()
 		}
 		h := w.History.Nations[0]

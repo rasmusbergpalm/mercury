@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rasmusbergpalm/mercury/engine"
+	"github.com/rasmusbergpalm/mercury/game"
 )
 
 // Server hosts many games.
@@ -102,7 +102,7 @@ func (s *Server) CreateGame(name string, transportCost float64, turnDays int) (*
 }
 
 // createClassic adds a game on the classic map; divided shares out all its
-// land among the nations from the start (engine.DivideLand).
+// land among the nations from the start (game.DivideLand).
 func (s *Server) createClassic(name string, transportCost float64, turnDays int, divided bool) (*Game, error) {
 	// each game's rivals have their own temperaments
 	w, err := ClassicWorld(transportCost, divided, time.Now().UnixNano())
@@ -114,18 +114,18 @@ func (s *Server) createClassic(name string, transportCost float64, turnDays int,
 
 // ClassicWorld is a new game's world on the classic map, as a server opens
 // it: settled, burnt in and warmed up, every nation the computer's.
-func ClassicWorld(transportCost float64, divided bool, seed int64) (*engine.World, error) {
-	spec := engine.DefaultGame
+func ClassicWorld(transportCost float64, divided bool, seed int64) (*game.World, error) {
+	spec := game.DefaultGame
 	if divided {
 		var err error
-		if spec, err = engine.DivideLand(spec); err != nil {
+		if spec, err = game.DivideLand(spec); err != nil {
 			return nil, err
 		}
 	}
 	spec.TransportCost = transportCost
 	spec.AI = true
 	spec.Seed = seed
-	w, err := engine.BuildGame(spec)
+	w, err := game.BuildGame(spec)
 	if err != nil {
 		return nil, err
 	}
@@ -136,16 +136,16 @@ func ClassicWorld(transportCost float64, divided bool, seed int64) (*engine.Worl
 }
 
 // AddGame adds a game on a world built elsewhere (a shipped starting game).
-func (s *Server) AddGame(name string, w *engine.World, turnDays int) (*Game, error) {
+func (s *Server) AddGame(name string, w *game.World, turnDays int) (*Game, error) {
 	return s.add(name, w, turnDays)
 }
 
-func (s *Server) add(name string, w *engine.World, turnDays int) (*Game, error) {
+func (s *Server) add(name string, w *game.World, turnDays int) (*Game, error) {
 	return s.addAs("", name, w, turnDays)
 }
 
 // addAs adds a game under the given ID (a fresh one if empty).
-func (s *Server) addAs(id, name string, w *engine.World, turnDays int) (*Game, error) {
+func (s *Server) addAs(id, name string, w *game.World, turnDays int) (*Game, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.games) >= MaxGames {
@@ -223,7 +223,7 @@ func statusOf(err error) int {
 		return he.status
 	case errors.Is(err, ErrNotPlayer), errors.Is(err, ErrNotInGame):
 		return http.StatusForbidden
-	case errors.Is(err, engine.ErrBadFunding):
+	case errors.Is(err, game.ErrBadFunding):
 		return http.StatusBadRequest
 	}
 	return http.StatusConflict
@@ -417,8 +417,8 @@ func (s *Server) handleCreateGame(w http.ResponseWriter, r *http.Request) {
 	m := MapChoice{Size: q.Get("map"), Divided: q.Get("divided") == "1"}
 	if q.Has("nations") {
 		n, err := strconv.Atoi(q.Get("nations"))
-		if err != nil || n < 1 || n > engine.MaxNations {
-			http.Error(w, fmt.Sprintf("nations must be 1 to %d", engine.MaxNations), http.StatusBadRequest)
+		if err != nil || n < 1 || n > game.MaxNations {
+			http.Error(w, fmt.Sprintf("nations must be 1 to %d", game.MaxNations), http.StatusBadRequest)
 			return
 		}
 		m.Nations = n
@@ -595,11 +595,11 @@ func (s *Server) nationCommand(cmd string) gameHandler {
 			if err != nil {
 				return err
 			}
-			good := engine.GoodID(-1)
+			good := game.GoodID(-1)
 			if name := q.Get("good"); name != "" {
 				good = -2
-				for _, x := range engine.Tradable {
-					if engine.Goods[x].Name == name {
+				for _, x := range game.Tradable {
+					if game.Goods[x].Name == name {
 						good = x
 					}
 				}
@@ -616,11 +616,11 @@ func (s *Server) nationCommand(cmd string) gameHandler {
 				return err
 			}
 			if target == nid {
-				return engine.ErrSelf
+				return game.ErrSelf
 			}
 			n.Embargo[target] = q.Get("on") != "false"
 		case "research":
-			tech, err := queryIndex(r, "tech", len(engine.Techs))
+			tech, err := queryIndex(r, "tech", len(game.Techs))
 			if err != nil {
 				return err
 			}
@@ -642,7 +642,7 @@ func (s *Server) nationCommand(cmd string) gameHandler {
 		case "pension":
 			level, err := strconv.Atoi(q.Get("level"))
 			if err != nil {
-				return badRequest("level must be 0-%d", engine.MaxPension)
+				return badRequest("level must be 0-%d", game.MaxPension)
 			}
 			if err := n.SetPension(level); err != nil {
 				return fail(http.StatusBadRequest, err)
@@ -703,7 +703,7 @@ func (s *Server) armyCommand(cmd string) gameHandler {
 		id, err := strconv.Atoi(r.PathValue("aid"))
 		a := g.w.ArmyByID(id)
 		if err != nil || a == nil {
-			return fail(http.StatusNotFound, engine.ErrNoSuchArmy)
+			return fail(http.StatusNotFound, game.ErrNoSuchArmy)
 		}
 		if g.nationOf(token(r)) != a.Nation.ID {
 			return ErrNotPlayer
@@ -773,7 +773,7 @@ func (s *Server) handleRegionHistory(g *Game, w http.ResponseWriter, r *http.Req
 func (s *Server) handleArmyHistory(g *Game, w http.ResponseWriter, r *http.Request) error {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
-		return fail(http.StatusNotFound, engine.ErrNoSuchArmy)
+		return fail(http.StatusNotFound, game.ErrNoSuchArmy)
 	}
 	for _, a := range g.w.History.Armies {
 		if a.ID == id {
@@ -781,7 +781,7 @@ func (s *Server) handleArmyHistory(g *Game, w http.ResponseWriter, r *http.Reque
 			return nil
 		}
 	}
-	return fail(http.StatusNotFound, engine.ErrNoSuchArmy)
+	return fail(http.StatusNotFound, game.ErrNoSuchArmy)
 }
 
 func (s *Server) handleEvents(g *Game, w http.ResponseWriter, r *http.Request) error {
@@ -805,7 +805,7 @@ func (s *Server) regionCommand(cmd string) gameHandler {
 		}
 		owner := g.w.Regions[id].Nation
 		if owner == nil {
-			return engine.ErrNoNation
+			return game.ErrNoNation
 		}
 		if g.nationOf(token(r)) != owner.ID {
 			return ErrNotPlayer
@@ -821,10 +821,10 @@ func (s *Server) regionCommand(cmd string) gameHandler {
 			err = g.w.RemovePort(id)
 		case "service/fund", "service/expand", "service/close":
 			var k int
-			if k, err = pathIndex(r, "svc", int(engine.NumServices)); err != nil {
+			if k, err = pathIndex(r, "svc", int(game.NumServices)); err != nil {
 				return err
 			}
-			svc := engine.Public(k)
+			svc := game.Public(k)
 			switch cmd {
 			case "service/fund": // fund this many levels
 				var n int
@@ -865,7 +865,7 @@ type SaveFile struct {
 	Name     string           `json:"name"`
 	TurnDays int              `json:"turn_days"`
 	SavedAt  time.Time        `json:"saved_at"`
-	Snapshot *engine.Snapshot `json:"snapshot"`
+	Snapshot *game.Snapshot `json:"snapshot"`
 }
 
 // SaveInfo describes a save slot.
@@ -984,7 +984,7 @@ func decodeSave(raw []byte) (*SaveFile, error) {
 
 // restore starts a new game from a save; every nation starts computer-run.
 func (s *Server) restore(w http.ResponseWriter, f *SaveFile) {
-	world, err := engine.Restore(f.Snapshot)
+	world, err := game.Restore(f.Snapshot)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
