@@ -251,4 +251,3 @@ func (w *World) SetState(s *Snapshot) error {
 	w.RefreshHops()
 	return nil
 }
-
