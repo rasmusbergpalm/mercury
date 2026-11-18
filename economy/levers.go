@@ -6,13 +6,13 @@ package economy
 // worker keeps, a tariff a wedge on a route, and a buyer anyone who buys
 // in a tile's markets without being one of its people, firms or merchants.
 // The economy reads the levers as it goes and never calls out; whoever
-// sets them (a game's nations, a model of policy) takes what piles up in
+// sets them (a model of policy, a strategy game) takes what piles up in
 // the accounts whenever it likes.
 //
 // On a tile (Region):
 //
-//   - TaxFn: the tax withheld from each income paid to its people (wages
-//     and dividends), into Withheld;
+//   - IncomeTax: the share withheld from each income paid to its people
+//     (wages and dividends), into Withheld;
 //   - Buyers: outside buyers in its markets;
 //   - Duties: the import duties collected on sales there (see Trader.Tariff);
 //   - PaybackMult: scales the years of profit owners ask a new level to
@@ -30,7 +30,7 @@ package economy
 // somewhere.
 
 // Buyer is someone outside a tile's markets who buys in them: a
-// government, a foreign merchant, an aid agency. Each day it bids for
+// state, a foreign merchant, an aid agency. Each day it bids for
 // goods (Bid, by good); the market charges its Account, which may run
 // negative until its owner settles it, and notes what it got (Got) for
 // each good it bid for.
@@ -47,12 +47,12 @@ func NewBuyer() *Buyer {
 // PayIncome splits an income payment to a pop into what the pop keeps and
 // the tax withheld.
 func (r *Region) PayIncome(p *Pop, amount float64) {
-	if r.TaxFn == nil {
+	if r.IncomeTax == 0 {
 		p.Cash += amount
 		p.Income += amount
 		return
 	}
-	tax := r.TaxFn(amount)
+	tax := amount * r.IncomeTax
 	p.Cash += amount - tax
 	p.Income += amount - tax
 	r.Withheld += tax

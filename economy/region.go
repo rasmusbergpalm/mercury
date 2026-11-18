@@ -27,14 +27,14 @@ type Region struct {
 	UtilityEMA float64 // smoothed utility per person; migration follows it
 
 	// The levers (see levers.go), and the accounts.
-	TaxFn        func(amount float64) float64 // the tax withheld from an income (nil: none)
-	Withheld     float64                      // taxes withheld, until someone takes them
-	Duties       float64                      // import duties collected here, until someone takes them
-	Buyers       []*Buyer                     // outside buyers in its markets
-	PaybackMult  float64                      // scales the payback owners ask of a new level (1: as is)
-	GrowthBonus  float64                      // added to its people's growth a year
-	CoastMult    float64                      // scales the cost of passing it by sea (1: CoastMove)
-	SpoilageMult float64                      // scales the spoilage of goods shipped from it (1: as is)
+	IncomeTax    float64  // the share withheld from every income paid here
+	Withheld     float64  // taxes withheld, until someone takes them
+	Duties       float64  // import duties collected here, until someone takes them
+	Buyers       []*Buyer // outside buyers in its markets
+	PaybackMult  float64  // scales the payback owners ask of a new level (1: as is)
+	GrowthBonus  float64  // added to its people's growth a year
+	CoastMult    float64  // scales the cost of passing it by sea (1: CoastMove)
+	SpoilageMult float64  // scales the spoilage of goods shipped from it (1: as is)
 
 	House    *TradingHouse // the tile's merchants
 	outbound [][]*Trader   // routes buying here, by good (transport: all of them)
@@ -253,7 +253,7 @@ func (r *Region) settleFirms() {
 			}
 		}
 		if f.Managed {
-			continue // the government decides about its state firms
+			continue // their runner decides about managed firms
 		}
 		if f.ProfitEMA < 0 && f.Levels > 1 {
 			f.LossTicks++
@@ -555,7 +555,7 @@ func (r *Region) capUnsuppliedPrices() {
 func (r *Region) Produce() {
 	for _, f := range r.Firms {
 		if f.Managed {
-			continue // state firms produce for their government
+			continue // managed firms produce for their runner
 		}
 		f.Inventory *= 1 - Goods[f.Output].Spoilage
 		f.Produce()
@@ -641,7 +641,7 @@ func (r *Region) UpdateAgglomeration() {
 }
 
 // Population growth per year: well-fed people multiply, hungry ones don't.
-// growth = PopGrowthSlope * (basic needs met - PopGrowthNeutral) + the government's bonus,
+// growth = PopGrowthSlope * (basic needs met - PopGrowthNeutral) + GrowthBonus,
 // within [PopGrowthMin, PopGrowthMax], less SchooledBirths times the
 // educated share: schooled people have fewer children (the demographic
 // transition: birth rates fell about a third as literacy rose from half to
@@ -693,7 +693,7 @@ func (r *Region) grow() {
 // MoveCost is the cost of moving through the tile. Roads and railways
 // improve movement over land (a land tile's base cost times the
 // infrastructure multiplier). Coastal tiles can also be passed by sea, at
-// CoastMove times the government's CoastMult; the cheaper way counts.
+// CoastMove times the tile's CoastMult; the cheaper way counts.
 func (r *Region) MoveCost() float64 {
 	land := r.BaseMove * r.RoadMult
 	if !r.Coastal {

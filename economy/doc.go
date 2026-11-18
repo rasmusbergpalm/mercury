@@ -32,8 +32,10 @@
 // BuildFullWorld makes the full one (every good and firm, production
 // methods that wait for the technology they need, workers and owners).
 //
-// A layer above the economy (package game's nations, or a model of policy)
-// plugs in through two interfaces: a tile's Government taxes it, buys in
-// its markets, levies duties on its imports and sets a few policy numbers;
-// the world's Hooks act at fixed points of each day.
+// Anything outside the economy (a model of policy, a strategy game) acts
+// on it by setting its levers (see levers.go: taxes, tariffs and embargoes,
+// outside buyers, the cost of capital, productivity) and by reading the
+// accounts where what it collects piles up. A caller that acts within a
+// day runs its steps (BeginDay, PlanTrade, Markets, Ship, Produce, EndDay)
+// itself and acts between them. The economy never calls out.
 package economy

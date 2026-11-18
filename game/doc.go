@@ -6,7 +6,9 @@
 // computer.
 //
 // A game World wraps an economy.World, and each game Region an
-// economy.Region: a tile's nation is its Government in the economy, and the
-// World's hooks run the nations' day (their purchases, their treasury,
-// their armies) at fixed points of the economy's.
+// economy.Region. The game plays its day by running the economy's steps
+// and acting between them: each morning it sets the economy's levers from
+// the nations (their technology, tariffs, embargoes, taxes and policies),
+// buys in the markets for them, takes their taxes and duties from the
+// tiles' accounts, and settles their treasuries, services and wars.
 package game

@@ -6,7 +6,7 @@ import "math"
 // and services more productive and its people have fewer children; its
 // crowding, where public health doesn't cover it, costs it people. The
 // economy takes the two shares (Region.Educated, Region.Healthy) as given:
-// a government's schools and doctors move them.
+// schools and doctors, run from outside, move them.
 const (
 	StartEducated  = 0.1   // the educated share in 1820
 	EducationBonus = 0.15  // industry and services of a fully educated tile: +15%

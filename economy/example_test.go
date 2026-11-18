@@ -34,11 +34,47 @@ func Example_tax() {
 		panic(err)
 	}
 	r := w.Regions[14]
-	r.TaxFn = func(amount float64) float64 { return 0.2 * amount }
+	r.IncomeTax = 0.2
 	for day := 0; day < economy.TicksPerYear; day++ {
 		w.Step()
 	}
 	fmt.Printf("withheld £%.0f\n", r.Withheld)
 	// Output:
 	// withheld £40970
+}
+
+// A customs border down the middle of the map: a 30% duty on everything
+// that crosses it, both ways. Trade across the border falls, and the duty
+// piles up in the tiles where the goods are sold. (Trade is valued where
+// it is bought, the duty where it is sold, after the cost of carriage.)
+func Example_tariff() {
+	run := func(duty float64) (crossing, duties float64) {
+		w, err := economy.BuildWorld(1, economy.DefaultMap)
+		if err != nil {
+			panic(err)
+		}
+		west := func(r *economy.Region) bool { return r.Col < 3 }
+		for _, t := range w.Traders {
+			if west(t.Origin) != west(t.Dest) {
+				t.Tariff = duty
+			}
+		}
+		for day := 0; day < economy.TicksPerYear; day++ {
+			w.Step()
+			for _, t := range w.Traders {
+				if west(t.Origin) != west(t.Dest) {
+					crossing += t.Shipped * t.Origin.Markets[t.Good].Price / economy.TicksPerYear
+				}
+			}
+		}
+		for _, r := range w.Regions {
+			duties += r.Duties / economy.TicksPerYear
+		}
+		return crossing, duties
+	}
+	free, _ := run(0)
+	taxed, duties := run(0.3)
+	fmt.Printf("trade across the border: £%.0f a day free, £%.0f with the duty, which raises £%.0f a day\n", free, taxed, duties)
+	// Output:
+	// trade across the border: £938 a day free, £234 with the duty, which raises £141 a day
 }

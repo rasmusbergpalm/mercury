@@ -68,17 +68,17 @@ func wrap(e *economy.World) *World {
 // people's incomes.
 func (r *Region) setNation(n *Nation) {
 	r.Nation = n
-	if n == nil {
-		r.TaxFn = nil
-	} else {
-		r.TaxFn = r.incomeTax
-	}
+	r.setTax()
 }
 
-// incomeTax is what the tile's administration collects of an income, from
-// people who pay.
-func (r *Region) incomeTax(amount float64) float64 {
-	return amount * r.Nation.TaxRate * r.Collect * r.AllegianceMult()
+// setTax sets the share of its people's incomes the tile's nation takes:
+// its tax rate, as far as the tile's administration collects it from
+// people who stand by it.
+func (r *Region) setTax() {
+	r.IncomeTax = 0
+	if r.Nation != nil {
+		r.IncomeTax = r.Nation.TaxRate * r.Collect * r.AllegianceMult()
+	}
 }
 
 // setInfra sets the tile's infrastructure level, and what it does to moving
@@ -164,6 +164,7 @@ func (w *World) setPolicies() {
 			p = of[r.Nation.ID]
 		}
 		r.PaybackMult, r.GrowthBonus, r.CoastMult, r.SpoilageMult = p.payback, p.growth, p.coast, p.spoilage
+		r.setTax()
 	}
 }
 
@@ -220,6 +221,7 @@ func (w *World) settleDay() {
 	if changed {
 		w.refreshAllHops()
 	}
+	w.setPolicies() // (the taxes on the soldiers' pay)
 	if len(w.Nations) > 0 {
 		w.armies()
 	}

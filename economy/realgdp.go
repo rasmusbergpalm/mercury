@@ -39,7 +39,7 @@ type GDPChain struct {
 	AccValue  []float64 `json:",omitempty"` // summed value traded
 	AccVolume []float64 `json:",omitempty"` // summed volume traded
 	Days      int
-	Owner     int // the group (nation) that held the tile at the last link, plus one (0: none)
+	Group     int // the group that held the tile at the last link, plus one (0: none)
 }
 
 // accumulateGDP adds today's net output and trade to the month's sums.
@@ -153,7 +153,7 @@ func chain(level float64, k gdpLink) float64 {
 }
 
 // LinkGDP closes the month in every tile (see GDPChain) and links the real
-// GDP of groups of tiles, such as nations: group(r) is the tile's group
+// GDP of groups of tiles (countries, say): group(r) is the tile's group
 // plus one (0: none), and levels[k] is group k's real GDP, moved on in
 // place. A group's tiles' values are added up before the index is taken,
 // so each tile weighs by its share of the group's output: a tile with a
@@ -170,7 +170,7 @@ func (w *World) LinkGDP(group func(r *Region) int, levels []float64) {
 		var sum gdpLink
 		for i, r := range w.Regions {
 			k := links[i]
-			if r.Real.Owner == n+1 {
+			if r.Real.Group == n+1 {
 				sum.l0 += k.l0
 				sum.q0 += k.q0
 			}
@@ -187,7 +187,7 @@ func (w *World) LinkGDP(group func(r *Region) int, levels []float64) {
 		}
 	}
 	for _, r := range w.Regions {
-		r.Real.Owner = group(r)
+		r.Real.Group = group(r)
 	}
 }
 
@@ -214,7 +214,7 @@ func value(p, q []float64) float64 {
 
 func (c GDPChain) Clone() GDPChain {
 	cp := func(x []float64) []float64 { return append([]float64(nil), x...) }
-	return GDPChain{c.Level, cp(c.PrevNet), cp(c.PrevPrice), cp(c.AccNet), cp(c.AccValue), cp(c.AccVolume), c.Days, c.Owner}
+	return GDPChain{c.Level, cp(c.PrevNet), cp(c.PrevPrice), cp(c.AccNet), cp(c.AccValue), cp(c.AccVolume), c.Days, c.Group}
 }
 
 // valid says whether a restored chain fits this build's goods.

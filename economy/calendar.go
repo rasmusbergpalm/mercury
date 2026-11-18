@@ -2,7 +2,7 @@ package economy
 
 import "time"
 
-// The calendar: one tick is one day, and games start on 1 January 1820.
+// The calendar: one tick is one day, and the economy starts on 1 January 1820.
 // Years have 365 days (no leap days), so a year is always TicksPerYear ticks.
 const (
 	TicksPerYear = 365.0

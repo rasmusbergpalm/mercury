@@ -118,38 +118,45 @@ class of people. `BuildFullWorld` makes the full world: every good and
 firm, production methods waiting for their technology, and workers and
 owners.
 
-### Governments and hooks
+### Levers, accounts and steps
 
-The economy knows nothing of states. A layer above it plugs in through two
-interfaces, defined in [`economy/government.go`](economy/government.go):
+The economy knows nothing of states, and never calls out. Anything outside
+it, such as a model of policy or the game below, acts on it in three
+ways. It sets plain levers, it reads the accounts where what the economy
+collects piles up, and, if it needs to act during the day, it runs the
+day's steps itself. [`economy/levers.go`](economy/levers.go) lists them
+all:
 
-- `Government`, set per tile (`Region.Gov`), taxes incomes, levies duties
-  on imports, buys goods in the tile's markets (`Region.PublicBid`) and
-  sets a few policy numbers.
-- `Hooks`, set per world (`World.Hooks`), acts at fixed points of each
-  day.
+| Where | Levers | Accounts |
+|---|---|---|
+| a tile (`Region`) | `IncomeTax`, `PaybackMult` (cost of capital), `GrowthBonus`, `RoadMult`, `CoastMult`, `SpoilageMult`, `Educated`, `Healthy`, `Urban` | `Withheld` (taxes), `Duties` |
+| a tile's markets | `Buyers`: outside buyers with their own bids | each buyer's `Account` and `Got` |
+| a route (`Trader`) | `Tariff`, `Closed` (an embargo) | |
+| a firm | `Mult` (productivity), `Managed` (run for someone else) | |
+| the world | `Known` (technologies known somewhere) | |
 
-A flat income tax is a handful of lines (see `ExampleGovernment` in
-[`economy/example_test.go`](economy/example_test.go)):
+The day's steps are `BeginDay`, `PlanTrade`, `Markets`, `Ship`, `Produce`
+and `EndDay`; `Step` runs them in turn.
+
+A customs border down the middle of the map takes a few lines (from
+`Example_tariff` in [`economy/example_test.go`](economy/example_test.go)):
 
 ```go
-type flatTax struct{ rate, treasury float64 }
-
-func (g *flatTax) IncomeTax(amount float64) float64 { return g.rate * amount }
-func (g *flatTax) Duty(*economy.Region, economy.GoodID) (float64, bool) { return 0, false }
-func (g *flatTax) PaybackMult() float64                 { return 1 }
-func (g *flatTax) GrowthBonus() float64                 { return 0 }
-func (g *flatTax) CoastMult() float64                   { return 1 }
-func (g *flatTax) SpoilageMult() float64                { return 1 }
-func (g *flatTax) Settle(l economy.Ledger)              { g.treasury += l.Tax + l.Paid + l.Tariffs }
-
-w.Regions[14].Gov = &flatTax{rate: 0.2}
+west := func(r *economy.Region) bool { return r.Col < 3 }
+for _, t := range w.Traders {
+	if west(t.Origin) != west(t.Dest) {
+		t.Tariff = 0.3 // a 30% duty on everything that crosses
+	}
+}
 ```
+
+It cuts the trade across the border by three quarters, and the duty piles
+up in each tile's `Duties`.
 
 ## The game
 
-[`game/`](game) is a strategy game built on the economy, in the way a
-`Government` and `Hooks` allow. Nations own the tiles, tax them, set
+[`game/`](game) is a strategy game built on the economy with nothing but
+its levers and steps. Nations own the tiles, tax them, set
 tariffs, research a tech tree from 1820 to the motor age, build roads,
 railways and ports, and run schools, public health and universities. They
 raise armies, go to war and form alliances. People or the computer play

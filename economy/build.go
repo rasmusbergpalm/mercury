@@ -103,8 +103,7 @@ var Terrains = func() []Terrain {
 
 // The ocean surrounds the map. A tile on the map's edge is coastal whatever
 // its terrain: it has the coast's producers (CoastRaw), and ships carry
-// goods past it cheaply (CoastMove, less as a government's shipping
-// improves).
+// goods past it cheaply (CoastMove, scaled by the tile's CoastMult).
 var (
 	CoastMove = terrainsData.Coast.Move
 	CoastRaw  = bonuses(terrainsData.Coast.Raw)

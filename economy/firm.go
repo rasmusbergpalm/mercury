@@ -132,7 +132,7 @@ type Firm struct {
 	Inputs     []float64 // goods bought this tick, indexed by good
 	Labor      float64   // labor employed this tick
 	// Managed firms are run for someone outside the economy (a
-	// government's schools, say): they don't seek profit or invest; their
+	// state's schools, say): they don't seek profit or invest; their
 	// runner funds Funded of their levels, staffs them and takes their
 	// output.
 	Managed bool

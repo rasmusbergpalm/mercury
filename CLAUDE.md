@@ -6,8 +6,9 @@ and a strategy game on it:
 - `economy/`: the economy on its own (pops, firms, markets, merchants and
   transport, migration, investment, demography, real GDP). Its calibration
   (goods, needs, recipes, terrains) is JSON in `economy/data/`. It knows
-  nothing of nations: a layer above plugs in through `Government` (per
-  tile) and `Hooks` (per day), in `economy/government.go`.
+  nothing of nations and never calls out: anything above it sets its
+  levers and reads its accounts (`economy/levers.go`), and runs its day's
+  steps itself when it must act within a day.
 - `game/`: the game on the economy: nations, techs, public services,
   armies, wars, alliances and the computer player.
 - `internal/server/` and `cmd/server/`: the server; `web/`: the web client
@@ -15,7 +16,9 @@ and a strategy game on it:
   `tools/explainer/build.sh`, published to GitHub Pages).
 
 Keep the split: nothing in `economy/` may refer to the game. A game rule
-that changes the economy goes through `Government` or `Hooks`.
+that changes the economy sets a lever (add one, in economic terms, if
+none fits) or acts between the day's steps. `TestEconomyKnowsNothingOfTheGame`
+guards it.
 
 ## Changing the economy
 

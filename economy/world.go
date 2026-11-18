@@ -88,8 +88,10 @@ func (w *World) landNeighbours(r *Region, f func(nb *Region) bool) {
 	}
 }
 
-// Money is all cash in the tiles and their trading houses (with what a
-// government holds, it is conserved).
+// Money is all cash in the world: its people's and firms', its trading
+// houses', and what the tiles' accounts and outside buyers hold. Money only
+// changes hands, so it is conserved, unless someone outside the economy
+// takes it from the accounts or funds a buyer.
 func (w *World) Money() float64 {
 	s := 0.0
 	for _, r := range w.Regions {
@@ -97,6 +99,12 @@ func (w *World) Money() float64 {
 	}
 	for _, r := range w.Regions {
 		s += r.House.Cash
+	}
+	for _, r := range w.Regions {
+		s += r.Withheld + r.Duties
+		for _, b := range r.Buyers {
+			s += b.Account
+		}
 	}
 	return s
 }
