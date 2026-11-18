@@ -561,7 +561,6 @@ func (f *Firm) NextLevelMult() float64 {
 	return math.Pow((n+1)/n, 1-f.Methods[f.Main()].exponentSum())
 }
 
-
 // ValueAdded is what the firm added today: its output at the given price,
 // less the goods it used up (wages and profits are the value it added).
 func (f *Firm) ValueAdded(price float64) float64 {
