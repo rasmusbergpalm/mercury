@@ -23,6 +23,9 @@ type World struct {
 	// Known lists the technologies known somewhere in the world: a good
 	// whose firms need one is in play once it is known.
 	Known map[string]bool
+	// Plan is what the world was built from (BuildWorld, BuildFullWorld), so
+	// that a snapshot can rebuild it.
+	Plan Plan
 	// TradePrices are the prices trade happened at in the last tick, per region.
 	TradePrices [][]float64
 

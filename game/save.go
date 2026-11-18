@@ -4,25 +4,29 @@ import (
 	"errors"
 	"fmt"
 	"math"
+
+	"github.com/rasmusbergpalm/mercury/economy"
 )
 
 // Snapshot is everything about a game world that carries from one tick to the
-// next. Restoring it rebuilds the scenario and overwrites this state, so a
-// restored world continues exactly as the original would have.
+// next: the economy's state (economy.Snapshot), and the game's. Restoring it
+// rebuilds the scenario and overwrites this state, so a restored world
+// continues exactly as the original would have.
 type Snapshot struct {
-	Version     int          `json:"version"`
-	Spec        GameSpec     `json:"spec"`
-	Tick        int          `json:"tick"`
-	Regions     []RegionSnap `json:"regions"`
-	Traders     []TraderSnap `json:"traders"`
-	Nations     []NationSnap `json:"nations"`
-	TradePrices [][]float64  `json:"trade_prices"`
-	Ports       []int        `json:"ports"` // in the order they opened
-	Armies      []ArmySnap   `json:"armies"`
-	NextArmyID  int          `json:"next_army_id"`
-	Events      []Event      `json:"events"`
-	History     History      `json:"history"`
+	Version    int               `json:"version"`
+	Spec       GameSpec          `json:"spec"`
+	Economy    *economy.Snapshot `json:"economy"`
+	Regions    []RegionSnap      `json:"regions"`
+	Nations    []NationSnap      `json:"nations"`
+	Ports      []int             `json:"ports"` // in the order they opened
+	Armies     []ArmySnap        `json:"armies"`
+	NextArmyID int               `json:"next_army_id"`
+	Events     []Event           `json:"events"`
+	History    History           `json:"history"`
 }
+
+// Tick is the day the snapshot was taken.
+func (s *Snapshot) Tick() int { return s.Economy.Tick }
 
 type ArmySnap struct {
 	ID, Nation, Region, Doctrine int
@@ -41,51 +45,16 @@ type SiegeSnap struct {
 
 // SnapshotVersion is bumped whenever the snapshot format changes; a build
 // reads only its own (saves of older builds are not kept up).
-const SnapshotVersion = 16
+const SnapshotVersion = 17
 
-type MarketSnap struct {
-	Price, Supply, Demand float64
-	Trend                 float64
-}
-
-type PopSnap struct {
-	Class      Class
-	Size, Cash float64
-	Jobs       []Job
-	Consumed   []float64
-}
-
-type FirmSnap struct {
-	Cash, Inventory, Labor, LastOutput, ProfitEMA float64
-	Levels, MaxLevels, LossTicks, Age, Funded     int
-	Expansion                                     *Expansion
-	Wear, Urge                                    float64
-	Projects                                      int
-	// per method: productivity, and the levels it runs (the first method's
-	// are the rest)
-	TFP          []float64
-	MethodLevels []int `json:",omitempty"`
-}
-
+// RegionSnap is what the game knows of a tile, beyond its economy.
 type RegionSnap struct {
-	Wage, Neglect, UtilityEMA  float64
-	HouseCash                  float64
-	Collect, Educated, Healthy float64
-	Loyalties                  []float64
-	Infra, Battle              int
-	Port                       bool
-	Project                    *Project
-	Siege                      *SiegeSnap
-	Markets                    []MarketSnap
-	Pops                       []PopSnap
-	Firms                      []FirmSnap
-	Real                       GDPChain // real GDP's chain
-}
-
-type TraderSnap struct {
-	Q, RelMargin, Margin float64
-	// zero on idle routes, most of them on a big map: left out
-	StockOrigin, StockDest, Shipped float64 `json:",omitempty"`
+	Neglect, Collect float64
+	Loyalties        []float64
+	Infra, Battle    int
+	Port             bool
+	Project          *Project
+	Siege            *SiegeSnap
 }
 
 type NationSnap struct {
@@ -120,9 +89,9 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	if w.Spec == nil {
 		return nil, ErrNotAGame
 	}
-	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Tick: w.Tick, Ports: append([]int(nil), w.Ports...)}
+	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Economy: w.World.Snapshot(), Ports: append([]int(nil), w.Ports...)}
 	for _, r := range w.Regions {
-		rs := RegionSnap{Wage: r.Wage, Neglect: r.Neglect, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Collect: r.Collect, Educated: r.Educated, Healthy: r.Healthy, Loyalties: append([]float64(nil), r.Loyalties...), Infra: r.Infra, Battle: r.Battle, Port: r.Port}
+		rs := RegionSnap{Neglect: r.Neglect, Collect: r.Collect, Loyalties: append([]float64(nil), r.Loyalties...), Infra: r.Infra, Battle: r.Battle, Port: r.Port}
 		if r.Siege != nil {
 			rs.Siege = &SiegeSnap{r.Siege.Nation.ID, r.Siege.Progress}
 		}
@@ -134,34 +103,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 			}
 			rs.Project = &cp
 		}
-		for _, m := range r.Markets {
-			rs.Markets = append(rs.Markets, MarketSnap{m.Price, m.Supply, m.Demand, m.Trend})
-		}
-		for _, p := range r.Pops {
-			rs.Pops = append(rs.Pops, PopSnap{p.Class, p.Size, p.Cash, append([]Job(nil), p.Jobs...),
-				append([]float64(nil), p.Consumed...)})
-		}
-		for _, f := range r.Firms {
-			fs := FirmSnap{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
-				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age, Funded: f.Funded,
-				Wear: f.Wear, Urge: f.Urge, Projects: f.Projects}
-			for i, m := range f.Methods {
-				fs.TFP = append(fs.TFP, m.TFP)
-				if i > 0 {
-					fs.MethodLevels = append(fs.MethodLevels, m.Levels)
-				}
-			}
-			if f.Expansion != nil {
-				e := *f.Expansion
-				fs.Expansion = &e
-			}
-			rs.Firms = append(rs.Firms, fs)
-		}
-		rs.Real = r.Real.Clone()
 		s.Regions = append(s.Regions, rs)
-	}
-	for _, t := range w.Traders {
-		s.Traders = append(s.Traders, TraderSnap{Q: t.Q, RelMargin: t.RelMargin, Margin: t.Margin, StockOrigin: t.StockOrigin, StockDest: t.StockDest, Shipped: t.Shipped})
 	}
 	for _, n := range w.Nations {
 		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, SpendEMA: n.SpendEMA, BuildRate: n.MaxBuildRate,
@@ -176,9 +118,6 @@ func (w *World) Snapshot() (*Snapshot, error) {
 			ns.Regions = append(ns.Regions, r.ID)
 		}
 		s.Nations = append(s.Nations, ns)
-	}
-	for _, p := range w.TradePrices {
-		s.TradePrices = append(s.TradePrices, append([]float64(nil), p...))
 	}
 	for _, a := range w.Armies {
 		s.Armies = append(s.Armies, ArmySnap{a.ID, a.Nation.ID, a.Region, a.Doctrine, a.Men, a.Target, a.March,
@@ -203,7 +142,7 @@ func Restore(s *Snapshot) (*World, error) {
 	bad := func(what string) (*World, error) {
 		return nil, fmt.Errorf("snapshot doesn't fit its scenario: %s", what)
 	}
-	if len(s.Regions) != len(w.Regions) || len(s.Nations) != len(w.Nations) || len(s.TradePrices) != len(w.Regions) {
+	if s.Economy == nil || len(s.Regions) != len(w.Regions) || len(s.Nations) != len(w.Nations) {
 		return bad("counts")
 	}
 	for _, id := range s.Ports { // reopen sea routes in their original order (hops are refreshed below)
@@ -213,71 +152,27 @@ func Restore(s *Snapshot) (*World, error) {
 		w.Regions[id].Port = true
 		w.openPort(w.Regions[id])
 	}
-	if len(s.Traders) != len(w.Traders) {
-		return bad("traders")
+	if err := w.World.SetState(s.Economy); err != nil {
+		return nil, err
 	}
-	w.Tick = s.Tick
 	for _, n := range w.Nations {
 		n.Regions = nil
 	}
 	for i, rs := range s.Regions {
 		r := w.Regions[i]
-		if len(rs.Markets) != len(r.Markets) || len(rs.Pops) != len(r.Pops) || len(rs.Firms) != len(r.Firms) {
-			return bad("region " + r.Name)
-		}
 		if rs.Port && !w.hasPortRoutes(i) {
 			return bad("port in " + r.Name)
 		}
-		r.Wage, r.Neglect, r.UtilityEMA, r.Project = rs.Wage, rs.Neglect, rs.UtilityEMA, rs.Project
+		r.Neglect, r.Project, r.Battle, r.Collect = rs.Neglect, rs.Project, rs.Battle, rs.Collect
 		r.setInfra(rs.Infra)
 		r.setNation(nil)
-		r.House.Cash, r.Battle = rs.HouseCash, rs.Battle
-		r.Collect, r.Educated, r.Healthy = rs.Collect, rs.Educated, rs.Healthy
 		if len(rs.Loyalties) != len(r.Loyalties) {
 			return bad("allegiance in " + r.Name)
 		}
 		copy(r.Loyalties, rs.Loyalties)
-		r.Real = rs.Real.Clone()
-		if !r.Real.Valid() {
-			return bad("real GDP in " + r.Name)
-		}
 		if r.Infra < 0 || r.Infra >= len(InfraLevels) || (r.Project != nil && !r.Project.Port && (r.Project.Target <= 0 || r.Project.Target >= len(InfraLevels))) {
 			return bad("infrastructure in " + r.Name)
 		}
-		for g, m := range rs.Markets {
-			r.Markets[g].Price, r.Markets[g].Supply, r.Markets[g].Demand, r.Markets[g].Trend = m.Price, m.Supply, m.Demand, m.Trend
-		}
-		for j, ps := range rs.Pops {
-			p := r.Pops[j]
-			if len(ps.Consumed) != NumGoods || ps.Class != p.Class {
-				return bad("pop in " + r.Name)
-			}
-			p.Size, p.Cash, p.Jobs = ps.Size, ps.Cash, ps.Jobs
-			copy(p.Consumed, ps.Consumed)
-		}
-		for j, fs := range rs.Firms {
-			f := r.Firms[j]
-			f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = fs.Cash, fs.Inventory, fs.Labor, fs.LastOutput, fs.ProfitEMA
-			if len(fs.TFP) != len(f.Methods) || len(fs.MethodLevels) != len(f.Methods)-1 {
-				return bad("firm methods")
-			}
-			for k, m := range f.Methods {
-				m.TFP = fs.TFP[k]
-				if k > 0 {
-					m.Levels = fs.MethodLevels[k-1]
-				}
-			}
-			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, fs.Expansion
-			f.Funded, f.Wear, f.Urge, f.Projects = fs.Funded, fs.Wear, fs.Urge, fs.Projects
-		}
-		if len(s.TradePrices[i]) != NumGoods {
-			return bad("trade prices")
-		}
-		copy(w.TradePrices[i], s.TradePrices[i])
-	}
-	for i, ts := range s.Traders {
-		t := w.Traders[i]
-		t.Q, t.StockOrigin, t.StockDest, t.RelMargin, t.Shipped, t.Margin = ts.Q, ts.StockOrigin, ts.StockDest, ts.RelMargin, ts.Shipped, ts.Margin
 	}
 	for i, ns := range s.Nations {
 		n := w.Nations[i]
@@ -288,7 +183,7 @@ func Restore(s *Snapshot) (*World, error) {
 		n.Tariff, n.Embargo, n.AutoBuild, n.IncomeEMA, n.ResearchPoints = ns.Tariff, ns.Embargo, ns.AutoBuild, ns.IncomeEMA, ns.ResearchPoints
 		n.CopyPoints = ns.CopyPoints
 		n.RealGDP = math.Max(0, ns.RealGDP)
-		n.now = s.Tick
+		n.now = s.Tick()
 		if ns.Coalition < 0 || ns.Coalition > len(s.Nations) || ns.Coalition == n.ID+1 {
 			return bad("alliance of " + n.Name)
 		}
@@ -378,7 +273,7 @@ func Restore(s *Snapshot) (*World, error) {
 		for _, r := range n.Regions { // TFP exactly as saved
 			for j, f := range r.Firms {
 				for k, m := range f.Methods {
-					m.TFP = s.Regions[r.ID].Firms[j].TFP[k]
+					m.TFP = s.Economy.Regions[r.ID].Firms[j].TFP[k]
 				}
 			}
 		}

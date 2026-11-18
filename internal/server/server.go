@@ -922,7 +922,7 @@ func (s *Server) handleSave(g *Game, w http.ResponseWriter, r *http.Request) err
 	if err := os.Rename(tmp, path); err != nil {
 		return fail(http.StatusInternalServerError, err)
 	}
-	writeJSON(w, SaveInfo{r.URL.Query().Get("slot"), f.Name, f.Snapshot.Tick, f.SavedAt})
+	writeJSON(w, SaveInfo{r.URL.Query().Get("slot"), f.Name, f.Snapshot.Tick(), f.SavedAt})
 	return nil
 }
 
@@ -939,7 +939,7 @@ func (s *Server) handleListSaves(w http.ResponseWriter, _ *http.Request) {
 			if err != nil {
 				continue
 			}
-			out = append(out, SaveInfo{slot, f.Name, f.Snapshot.Tick, f.SavedAt})
+			out = append(out, SaveInfo{slot, f.Name, f.Snapshot.Tick(), f.SavedAt})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].SavedAt.After(out[j].SavedAt) })

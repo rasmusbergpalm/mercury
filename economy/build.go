@@ -324,7 +324,9 @@ func buildWorld(transportCost float64, gameMap []string, names []string, full bo
 			}
 		}
 	}
-	return NewWorld(rows, cols, regions, traders, links), nil
+	w := NewWorld(rows, cols, regions, traders, links)
+	w.Plan = Plan{Map: gameMap, Names: names, TransportCost: transportCost, Full: full}
+	return w, nil
 }
 
 // Owner classes in full worlds: each is this share of a tile's people and

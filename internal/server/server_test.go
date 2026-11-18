@@ -511,12 +511,12 @@ func TestAutosaveSurvivesRestart(t *testing.T) {
 	path := filepath.Join(dir, "autosave", g.ID+".json")
 	var f autosaveFile
 	for i := 0; i < 100; i++ { // written in the background
-		if raw, err := os.ReadFile(path); err == nil && json.Unmarshal(raw, &f) == nil && f.Snapshot.Tick >= 75 {
+		if raw, err := os.ReadFile(path); err == nil && json.Unmarshal(raw, &f) == nil && f.Snapshot.Tick() >= 75 {
 			break
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	if f.Snapshot == nil || f.Snapshot.Tick != 75 {
+	if f.Snapshot == nil || f.Snapshot.Tick() != 75 {
 		t.Fatal("no autosave at tick 75 (30 days of warm-up, then 45)")
 	}
 	// a new server on the same data picks the game up where it was saved
