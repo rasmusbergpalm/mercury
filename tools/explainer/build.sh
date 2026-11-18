@@ -1,20 +1,17 @@
 #!/bin/sh
-# Builds web/static/economy.html, the economy explainer the server hosts,
-# from fresh runs of the engine on the classic map with no nations: the
-# transport sweep and the explainer's experiments (TestExplainerData).
+# Builds web/static/economy.html, the economy page the server hosts, from
+# the experiments' results in experiments/data. To rerun an experiment
+# first (see package experiments):
+#
+#   go generate -run corridor ./experiments    # one
+#   go generate ./experiments                  # all of them
 #
 #   sh tools/explainer/build.sh
-#   sh tools/explainer/build.sh DIR   # re-wrap the page from DIR's runs (printed by a full build)
 set -e
-if [ -n "$1" ]; then
-  out=$1
-else
-  out=$(mktemp -d)
-  TRANSPORT_SWEEP_OUT=$out/sweep go test ./game -run TestTransportSweep -timeout 60m
-  EXPLAINER_OUT=$out/data go test ./game -run TestExplainerData -timeout 30m
-fi
-python3 tools/explainer/prep.py "$out"
-python3 - "$out" <<'PY'
+data=experiments/data
+tmp=$(mktemp -d)
+python3 tools/explainer/prep.py "$data" "$tmp/explainer-data.json"
+python3 - "$tmp" <<'PY'
 import sys
 out = sys.argv[1]
 style = open("tools/explainer/common.css", encoding="utf-8").read()
@@ -29,4 +26,5 @@ for name in ("economy",):
             + "\n</body>\n</html>\n")
     open(f"web/static/{name}.html", "w", encoding="utf-8").write(html)
 PY
-echo "wrote web/static/economy.html from the runs in $out"
+rm -r "$tmp"
+echo "wrote web/static/economy.html from $data"

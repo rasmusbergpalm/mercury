@@ -258,8 +258,53 @@ __STYLE__</style>
 </div>
 </section>
 
+<section id="policy">
+<div class="col">
+<h2><span class="no">V.</span>Money, and a tariff</h2>
+<p>Everything so far has been about real things: what is made, where, and by whom. Prices have been in pounds, but nothing has said how many pounds there are. In Mercury the money is fixed: people, firms and merchants hold a stock of pounds that only changes hands. So what happens if there are more of them?</p>
+<p>The quantity theory of money says: nothing real. Hume put it in 1752. If every coin in Britain were doubled overnight, prices would double, and the same goods would be made and traded for twice the pounds. To test it, the money every person, firm and merchant holds was doubled a year after the map had settled, and in another run halved. <span class="ref" data-fig="money"></span> follows the price level (the cost of the basket people bought the day before), the average wage and real output (net output valued at the day before's prices), each against a run where nothing happened.</p>
+</div>
+
+<div class="figure" id="fig-money">
+  <div class="head"><span class="plate"></span><h3>Money is neutral, but not at once</h3></div>
+  <div class="grid2">
+    <svg class="chart" id="chart-money" role="img" aria-label="Price level, wage and real output after the money is doubled or halved"></svg>
+    <svg class="chart" id="chart-hume" role="img" aria-label="One tile's prices and money after its money alone is doubled"></svg>
+  </div>
+  <div class="legend" id="legend-money"></div>
+  <p class="cap" id="cap-money"></p>
+</div>
+
+<div class="col">
+<p>Halving the money costs output for a while, and doubling it doesn't, because a firm's cash is its working capital. When the money is halved, firms can't pay for the workers and materials they planned on until prices and wages have come down to match. Output falls until they have. Contemporaries saw the same after the Napoleonic wars, when Britain went back to gold at the old parity and prices fell for years. When the money is doubled nobody is short of cash, and prices simply rise.</p>
+<p>The right-hand chart is Hume's own experiment, his price-specie flow. Double the money in one country alone and its prices rise above its neighbours'. It buys from them and sells to them less, and money flows out until prices are even again. In the end the extra money is spread over the whole map, and every price is a little higher.</p>
+<p>Money flows across the map; so does grain, unless something stops it. From 1815 Britain's Corn Laws kept out foreign grain unless the price at home was high, until their repeal in 1846. Ricardo argued that they raised the price of bread, and with it the rents of those who owned the land that grew grain, at the expense of the workers who ate the bread and of the manufacturers who paid the workers. To test it, the map's two northern rows play Britain: hills and mountains with coal, iron and sheep, and a few plains. The rest of the map is the Continent. A duty is laid on grain entering Britain, at rates from none to an embargo, and what it raises goes back to Britain's people. <span class="ref" data-fig="cornlaws"></span> shows Britain five years on.</p>
+</div>
+
+<div class="figure" id="fig-cornlaws">
+  <div class="head"><span class="plate"></span><h3>The Corn Laws: dear bread, richer farms</h3></div>
+  <div class="grid2">
+    <svg class="chart" id="chart-corn-price" role="img" aria-label="The price of grain in Britain and on the Continent against the duty"></svg>
+    <svg class="chart" id="chart-corn-who" role="img" aria-label="Britain's farm profits, jobs and real wage against the duty"></svg>
+  </div>
+  <div class="legend" id="legend-corn"></div>
+  <p class="cap" id="cap-corn"></p>
+</div>
+
+<div class="col">
+<p>Every effect points the way Ricardo said. The effects are small because Britain grows most of its own grain: about five sixths of it on the map, close to the share in the 1840s. Historians' estimates of what repeal did to Britain's economy as a whole are modest too. Where the effects are large is in who gets what. The duty moves income from those who eat bread to those who grow grain.</p>
+<p><b>Where the model strains.</b> These two experiments asked things of the engine it wasn't built for, and three things showed.</p>
+<ul>
+<li><b>The money is written in directly.</b> The economy has no way to create money, or to make a transfer from one person to another. The experiments changed people's and firms' cash themselves. The same goes for handing the duty back to Britain's people, without which it would drain out of the economy.</li>
+<li><b>Ownership.</b> A tile's owners own all its firms together, so the landowners who gain from the Corn Laws and the manufacturers who lose are the same people. The plate measures profits by firm instead (the farms' against the rest), which is as far as the model goes. Separating landlords from capitalists would need ownership by firm or by sector.</li>
+<li><b>Land and rent.</b> There is no land as such. A farm on good land can't grow beyond a few levels, so its profits behave like rent. That is enough for Ricardo's argument, but rent isn't a separate income.</li>
+</ul>
+<p>One small thing also showed: every firm keeps a cash buffer of £20 whatever the prices are. A pound figure written into the model, it is the only place where doubling the money isn't exactly neutral, and the effect is too small to see.</p>
+</div>
+</section>
+
 <footer class="col">
-<p><b>How these numbers were made.</b> The game's classic map (36 tiles) with no nations: no state, taxes, armies, roads or new technology, so firms keep their 1820 methods. Population growth is switched off; migration and investment are on. Each run first settles for fifteen years, as owners build up their firms and people sort themselves between tiles, and then runs its experiment for five years (the transport sweep measures the fifteenth year at each cost). All start from the same state. Without nations nothing in the economy is drawn at random, so a run is exactly repeatable. The transport sweep is the engine's <code>TestTransportSweep</code>; the tiles, the routes, the Alchian–Allen runs, the blight, the strike, the coal boom, the corridor and the recipes come from <code>TestExplainerData</code>. <code>tools/explainer/build.sh</code> rebuilds this page from both.</p>
+<p><b>How these numbers were made.</b> The classic map (36 tiles) run by the economy engine alone: no state, taxes, armies, roads or new technology, so firms keep their 1820 methods. Population growth is switched off; migration and investment are on. Most runs start from the map settled for fifteen years, as owners build up their firms and people sort themselves between tiles, and then run their experiment for five years. The transport sweep instead measures the fifteenth year at each cost. Nothing in the economy is drawn at random, so a run is exactly repeatable. Each plate is an experiment in the repository's <code>experiments</code> package, which writes its results to <code>experiments/data</code>; <code>go generate -run &lt;name&gt; ./experiments</code> reruns one, and <code>tools/explainer/build.sh</code> rebuilds this page from the results.</p>
 </footer>
 </div>
 
@@ -636,12 +681,52 @@ function drawBoom() {
   document.getElementById("cap-boom").textContent = `Each point is a run: the boom tile's workers and wage averaged over its last two years, as a change from the run without a boom. With nobody moving, a tenfold boom changes its coal workers by ${sign(ch(false, "CoalAll"))}, its wage by ${sign(ch(false, "Wage"))}, its other land work by ${sign(ch(false, "OtherLand"))} and its manufacturing by ${sign(ch(false, "Industry"))}: the bigger the boom, the more it squeezes the tile's other trades. With people free to move, newcomers man much of the boom (the tile ends with ${sign(Math.round(100 * (at(true, 10).People / at(true, 1).People - 1)))} people), so the squeeze is softer: manufacturing ${sign(ch(true, "Industry"))}, other land work ${sign(ch(true, "OtherLand"))}. Other services change by ${sign(ch(false, "OtherService"))} with nobody moving and ${sign(ch(true, "OtherService"))} with people free to move.`;
 }
 
+// ---- the money plate: the quantity theory, and Hume's price-specie flow ---------------------
+function drawMoney() {
+  const M = D.money, all = (f) => M.runs.find((r) => r.tile < 0 && r.factor === f), hume = M.runs.find((r) => r.tile >= 0);
+  const up = all(2), down = all(0.5), lg = (v) => Math.log2(v);
+  const pts = (r, k) => r.months.map((m, i) => [m, lg(r[k][i])]);
+  const times = (v) => { const x = 2 ** v; return "×" + (x >= 1 ? +x.toFixed(2) : "1/" + +(1 / x).toFixed(2)); };
+  lineChart(document.getElementById("chart-money"), { title: "All the money doubled, or halved", series: [
+      { pts: pts(up, "prices"), color: "--s1", end: "prices" }, { pts: pts(up, "real"), color: "--s2", end: "output" },
+      { pts: pts(down, "prices"), color: "--s1", dash: "6 4", end: "prices", below: true }, { pts: pts(down, "real"), color: "--s2", dash: "6 4" }],
+    xTicks: [0, 6, 12, 24, 36, 48], xLabel: "months after the change", yFmt: times, w: 480, h: 320 });
+  const hp = (k) => hume.months.map((m, i) => [m, hume[k][i]]).filter((p) => p[0] <= 24);
+  lineChart(document.getElementById("chart-hume"), { title: `One tile's money doubled (${byId[M.humeTile].name})`, series: [
+      { pts: hp("tilePrices"), color: "--s1" }, { pts: hp("nearPrices"), color: "--s3" },
+      { pts: hp("tileMoney"), color: "--s4" }],
+    xTicks: [0, 3, 6, 12, 18, 24], xLabel: "months after the change", yFmt: (v) => "×" + v.toFixed(2), w: 480, h: 320 });
+  legend(document.getElementById("legend-money"), [["--s1", "price level (right: the tile's)"], ["--s2", "real output"], ["--muted", "dashed: the money halved", true], ["--s3", "its neighbours' price level"], ["--s4", "the tile's share of the map's money"]]);
+  const last = (r, k) => r[k][r[k].length - 1], at = (r, k, m) => r[k][r.months.indexOf(m)];
+  const minOut = Math.min(...down.real), pct = (v) => `${v >= 1 ? "+" : "−"}${Math.abs(100 * (v - 1)).toFixed(0)}%`;
+  document.getElementById("cap-money").textContent = `Left: log scales, each against a run where nothing changed. With the money doubled, prices reach ×${at(up, "prices", 2).toFixed(2)} within two months and stay there (×${last(up, "prices").toFixed(2)} after four years), wages ×${last(up, "wage").toFixed(2)}, and real output doesn't move (×${last(up, "real").toFixed(3)}). With it halved, prices end at ×${last(down, "prices").toFixed(2)}, but output first falls by ${(100 * (1 - minOut)).toFixed(0)}% and takes about six months to recover. Right: the tile's prices jump ${pct(hume.tilePrices[1])} in the first month while its neighbours' rise ${pct(hume.nearPrices[1])}; its extra money is gone within six months (its share of the map's money ×${hume.tileMoney[6].toFixed(2)} of what it was), spread over the map.`;
+}
+
+// ---- the Corn Laws plate ------------------------------------------------------------------
+function drawCornLaws() {
+  const C = D.cornlaws, runs = C.runs.filter((r) => r.Duty >= 0).sort((a, b) => a.Duty - b.Duty), free = runs[0];
+  const emb = C.runs.find((r) => r.Duty < 0);
+  const x = (r) => 100 * r.Duty;
+  lineChart(document.getElementById("chart-corn-price"), { title: "The price of grain", series: [
+      { pts: runs.map((r) => [x(r), r.GrainPrice]), color: "--s1", end: "in Britain" },
+      { pts: runs.map((r) => [x(r), r.GrainPriceAbroad]), color: "--s3", end: "on the Continent", below: true }],
+    xTicks: [0, 25, 50, 75, 100], xLabel: "duty on grain entering Britain, % of its price", yFmt: (v) => "£" + v.toFixed(1), w: 480, h: 320 });
+  const ch = (k) => runs.map((r) => [x(r), 100 * (r[k] / free[k] - 1)]);
+  lineChart(document.getElementById("chart-corn-who"), { title: "Britain, against free trade", series: [
+      { pts: ch("FarmProfit"), color: "--s4", end: "farms' profits" }, { pts: ch("Farm"), color: "--s3", end: "farm workers" },
+      { pts: ch("Industry"), color: "--s1", end: "industry workers", below: true }, { pts: ch("RealWage"), color: "--s2", end: "wage in bread", below: true }],
+    xTicks: [0, 25, 50, 75, 100], xLabel: "duty on grain entering Britain, % of its price", yFmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`, w: 480, h: 320 });
+  legend(document.getElementById("legend-corn"), [["--s1", "Britain / its industry workers"], ["--s3", "the Continent / Britain's farm workers"], ["--s4", "Britain's farms' profits"], ["--s2", "Britain's wage in loaves of bread"]]);
+  const imp = 100 * free.Imports / (free.Imports + free.GrainMade), pc = (k) => { const v = 100 * (emb[k] / free[k] - 1); return `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}%`; };
+  document.getElementById("cap-corn").textContent = `Averages over the fifth year. Under free trade Britain imports ${imp.toFixed(0)}% of the grain it uses. A duty of a quarter cuts the imports by ${(100 * (1 - runs[1].Imports / free.Imports)).toFixed(0)}%, and one of a half stops them: past that every duty works like an embargo. Against free trade, an embargo raises the price of grain in Britain by ${pc("GrainPrice")} and of bread by ${pc("BreadPrice")}, the farms' profits by ${pc("FarmProfit")} and their workers by ${pc("Farm")}, while the other firms' profits change by ${pc("OtherProfit")}, industry's workers by ${pc("Industry")}, and the wage buys ${(100 * (1 - emb.RealWage / free.RealWage)).toFixed(1)}% less bread. Britain's living standard hardly moves (${pc("Living")}): bread is one need of many, and potatoes stand in for it.`;
+}
+
 // plates are numbered in the order they appear, and the text's references follow
 const roman = (n) => [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]].reduce((out, [v, r]) => { while (n >= v) { out += r; n -= v; } return out; }, "");
 document.querySelectorAll(".figure").forEach((f, i) => { const p = f.querySelector(".plate"); if (p) p.textContent = `Plate ${roman(i + 1)}`; });
 document.querySelectorAll(".ref").forEach((r) => { const f = document.getElementById(`fig-${r.dataset.fig}`); r.textContent = f ? f.querySelector(".plate").textContent : "a plate below"; });
 
-function drawAll() { drawWorld(); drawFirm(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); }
+function drawAll() { drawWorld(); drawFirm(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); drawMoney(); drawCornLaws(); }
 inspect(picked);
 drawAll();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);

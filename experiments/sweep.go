@@ -1,4 +1,4 @@
-package game
+package experiments
 
 import (
 	"fmt"
@@ -8,10 +8,15 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"testing"
+
+	. "github.com/rasmusbergpalm/mercury/economy"
 )
 
-// TestTransportSweep measures what transport is worth: the classic map with
+func init() {
+	register(Experiment{"sweep", "the settled map at each cost of transport, from almost free to autarky", runSweep})
+}
+
+// runSweep measures what transport is worth: the classic map with
 // no nations (no state, army, roads or new technology), run for five years at
 // each of a range of transport costs, from nearly free to so dear that no
 // route pays (autarky). For each it records welfare (the living standard)
@@ -23,17 +28,12 @@ import (
 // integration is the price gap between a good's dearest and cheapest tile
 // (priceGap), averaged over the last 30 days. The x1 run also writes its
 // map: each tile's prices and each route's shipments (writeSweepMap).
-//
-//	TRANSPORT_SWEEP_OUT=/tmp/sweep go test ./engine -run TestTransportSweep -timeout 30m
-func TestTransportSweep(t *testing.T) {
-	dir := os.Getenv("TRANSPORT_SWEEP_OUT")
-	if dir == "" {
-		t.Skip("set TRANSPORT_SWEEP_OUT to run")
-	}
+func runSweep(o *Out) {
+	dir := filepath.Join(o.Dir, "sweep")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-	const years = explainerSettle // settled: the last of fifteen years is measured
+	const years = Settle // settled: the last of fifteen years is measured
 	costs := []float64{}
 	for k := -9; k <= 14; k++ { // x0.044 to x128 in steps of a square root of two, through x1
 		costs = append(costs, math.Pow(2, float64(k)/2))
@@ -58,14 +58,7 @@ func TestTransportSweep(t *testing.T) {
 				defer wg.Done()
 				sem <- struct{}{}
 				defer func() { <-sem }()
-				spec := DefaultGame
-				spec.TransportCost, spec.Seed = c, seed
-				w, err := baseGameWorld(spec)
-				if err != nil {
-					t.Error(err)
-					return
-				}
-				w.Migration, w.Investment, w.Demography = true, true, false // (no population growth: like with like)
+				w := worldAt(c)
 				r := &result{net: make([]float64, NumGoods), used: make([]float64, NumGoods), prices: make([]float64, NumGoods)}
 				days := int(TicksPerYear)
 				last := (years - 1) * days
@@ -123,7 +116,7 @@ func TestTransportSweep(t *testing.T) {
 				}
 				r.transportJobs = tj / lt
 				if c == 1 {
-					writeSweepMap(t, dir, w, price, flow)
+					writeSweepMap(dir, w, price, flow)
 				}
 				mu.Lock()
 				res[[2]int{ci, si}] = r
@@ -150,7 +143,7 @@ func TestTransportSweep(t *testing.T) {
 		}
 	}
 	if err := os.WriteFile(filepath.Join(dir, "sweep.csv"), []byte(b.String()), 0o644); err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 }
 
@@ -197,7 +190,7 @@ func priceGap(w *World) float64 {
 // writeSweepMap writes the x1 run's map: each tile's place, terrain and
 // average price of every good over the last 30 days (map-prices.csv), and
 // every route's average daily shipment (map-flows.csv).
-func writeSweepMap(t *testing.T, dir string, w *World, price [][]float64, flow map[*Trader]float64) {
+func writeSweepMap(dir string, w *World, price [][]float64, flow map[*Trader]float64) {
 	var b strings.Builder
 	b.WriteString("tile,name,row,col,terrain,coastal,good,price,active,made\n")
 	for i, r := range w.Regions {
@@ -211,7 +204,7 @@ func writeSweepMap(t *testing.T, dir string, w *World, price [][]float64, flow m
 		}
 	}
 	if err := os.WriteFile(filepath.Join(dir, "map-prices.csv"), []byte(b.String()), 0o644); err != nil {
-		t.Error(err)
+		panic(err)
 	}
 	b.Reset()
 	b.WriteString("good,from,to,shipped\n")
@@ -221,6 +214,6 @@ func writeSweepMap(t *testing.T, dir string, w *World, price [][]float64, flow m
 		}
 	}
 	if err := os.WriteFile(filepath.Join(dir, "map-flows.csv"), []byte(b.String()), 0o644); err != nil {
-		t.Error(err)
+		panic(err)
 	}
 }

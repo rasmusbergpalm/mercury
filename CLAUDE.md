@@ -11,9 +11,13 @@ and a strategy game on it:
   steps itself when it must act within a day.
 - `game/`: the game on the economy: nations, techs, public services,
   armies, wars, alliances and the computer player.
-- `internal/server/` and `cmd/server/`: the server; `web/`: the web client
-  and the economy page (`web/static/economy.html`, built by
-  `tools/explainer/build.sh`, published to GitHub Pages).
+- `experiments/`: the economy page's experiments, on the economy alone,
+  each a `go generate` target writing to `experiments/data`
+  (`go generate -run <name> ./experiments`); `tools/explainer/build.sh`
+  builds `web/static/economy.html` from those results (published to
+  GitHub Pages). After a change to the economy, rerun them all and
+  rebuild the page.
+- `internal/server/` and `cmd/server/`: the server; `web/`: the web client.
 
 Keep the split: nothing in `economy/` may refer to the game. A game rule
 that changes the economy sets a lever (add one, in economic terms, if

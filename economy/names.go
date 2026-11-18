@@ -1,4 +1,4 @@
-package game
+package economy
 
 import (
 	"math/rand"
@@ -55,13 +55,14 @@ func NameTiles(gameMap []string, seed int64) []string {
 				coast = coast || gameMap[nb[0]][nb[1]] == Sea
 			}
 			coast = coast || len(nbs) < 6
-			out = append(out, placeName(rng, sym, coast, used))
+			out = append(out, PlaceName(rng, sym, coast, used))
 		}
 	}
 	return out
 }
 
-func placeName(rng *rand.Rand, terrain byte, coast bool, used map[string]bool) string {
+// PlaceName makes up a name for a tile of the terrain, not yet used.
+func PlaceName(rng *rand.Rand, terrain byte, coast bool, used map[string]bool) string {
 	pick := func(xs []string) string { return xs[rng.Intn(len(xs))] }
 	for try := 0; ; try++ {
 		endings := nameEndings[terrain]
@@ -77,23 +78,6 @@ func placeName(rng *rand.Rand, terrain byte, coast bool, used map[string]bool) s
 		if try > 20 { // a crowded map: an old and a new town of the same name
 			name = pick([]string{"Upper ", "Lower ", "New ", "Old ", "Great ", "Little "}) + name
 		}
-		if !used[name] {
-			used[name] = true
-			return name
-		}
-	}
-}
-
-var nationRoots = []string{"Mont", "Verd", "Thal", "Aust", "Bor", "Cael", "Dalm", "Esk", "Fris",
-	"Gall", "Hesp", "Ilyr", "Lus", "Mor", "Norv", "Ost", "Pann", "Rhaet", "Sard", "Tav", "Ulr", "Vand", "Wess", "Zell"}
-var nationEndings = []string{"ara", "ania", "assa", "ia", "onia", "avia", "esia", "ica", "and", "ovia", "eria"}
-
-// nationName makes up a nation's name not yet used.
-func nationName(rng *rand.Rand, used map[string]bool) string {
-	for {
-		root := nationRoots[rng.Intn(len(nationRoots))]
-		end := nationEndings[rng.Intn(len(nationEndings))]
-		name := root + end
 		if !used[name] {
 			used[name] = true
 			return name

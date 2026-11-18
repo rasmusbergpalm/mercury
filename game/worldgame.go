@@ -1,6 +1,10 @@
 package game
 
-import "math/rand"
+import (
+	"math/rand"
+
+	"github.com/rasmusbergpalm/mercury/economy"
+)
 
 // WorldGame is the world in 1820 on about two thousand land tiles (the scale
 // of a grand-strategy map): the twelve great powers on their lands, and the
@@ -39,7 +43,7 @@ func worldTileNames() []string {
 				for _, nb := range HexNeighbors(r, c, len(WorldMap), len(row)) {
 					coast = coast || WorldMap[nb[0]][nb[1]] == Sea
 				}
-				name = placeName(rng, row[c], coast, used)
+				name = economy.PlaceName(rng, row[c], coast, used)
 			}
 			out = append(out, name)
 			i++

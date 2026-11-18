@@ -1,5 +1,6 @@
 import csv, json, sys, collections
-S = sys.argv[1]
+S = sys.argv[1]  # the experiments' results (experiments/data)
+OUT = sys.argv[2]  # where the page's data goes
 out = {}
 # transport sweep
 rows = list(csv.DictReader(open(f"{S}/sweep/sweep.csv")))
@@ -26,14 +27,14 @@ out["map"] = {"tiles": [tiles[i] for i in sorted(tiles)], "goods": goods,
               "prices": {g: prices[g] for g in goods}, "flows": {g: flows[g] for g in goods},
               "made": {g: {t: round(v, 3) for t, v in made[g].items() if v > 0} for g in goods}}
 # tiles after five years
-td = json.load(open(f"{S}/data/tiles.json"))
+td = json.load(open(f"{S}/tiles.json"))
 out["tiles"] = [{"id": t["ID"], "people": round(t["People"], 1), "wage": round(t["Wage"], 3), "utility": round(t["Utility"], 3),
                  "growth": round(t["Growth"], 5),
                  "firms": [{"name": f["Name"], "method": f["Method"], "good": f["Good"], "sector": f["Sector"],
                             "labor": round(f["Labor"], 2), "va": round(f["ValueAdded"], 2), "levels": f["Levels"]}
                            for f in t["Firms"] if f["Labor"] > 0.05][:8]} for t in td]
 # migration shock
-sh = json.load(open(f"{S}/data/shock.json"))
+sh = json.load(open(f"{S}/shock.json"))
 s, c, h = sh["shocked"], sh["control"], sh["hops"]
 rings = sorted(set(h))
 months = s["Months"]
@@ -46,14 +47,14 @@ out["shock"] = {"tile": sh["tile"], "shockMonth": sh["shockMonth"], "months": mo
                 "final": [round(s["People"][i][-1] - c["People"][i][-1], 1) for i in range(len(h))],
                 "peopleTile": [round(x, 1) for x in s["People"][sh["tile"]]], "peopleTileControl": [round(x, 1) for x in c["People"][sh["tile"]]]}
 # production functions
-rc = json.load(open(f"{S}/data/recipes.json"))
+rc = json.load(open(f"{S}/recipes.json"))
 keep = ["Farm", "Potato farm", "Iron mine", "Coal mine", "Forestry", "Mill", "Smelter", "Tailor", "Transport", "Toolmaker", "Brewery"]
 out["firms"] = [f for f in rc["firms"] if f["Name"] in keep]
 out["growth"] = rc["growth"]
 out["migration"] = rc["migration"]
 # trade routes: each route's landed cost against its destination price, and
 # the busiest routes' first year
-rt = json.load(open(f"{S}/data/routes.json"))
+rt = json.load(open(f"{S}/routes.json"))
 busy = [r for r in rt["routes"] if r["Shipped"] > 0.01 and r["Landed"] > 0]
 # (a market where the good never changes hands keeps its starting price of 1: not a price)
 idle = [r for r in rt["routes"] if r["Shipped"] < 1e-4 and r["Landed"] > 0 and r["Dest"] > 0 and abs(r["Dest"] - 1) > 1e-6]
@@ -64,11 +65,11 @@ out["routes"] = {"busy": [[round(r["Landed"], 3), round(r["Dest"], 3)] for r in 
                  "converging": [{"good": c["Route"]["Good"], "from": c["Route"]["From"], "to": c["Route"]["To"],
                                  "ratio": [round(a / b, 4) for a, b in zip(c["Path"]["Dest"], c["Path"]["Landed"])]} for c in rt["converging"]]}
 # the Alchian-Allen runs: every good's place, and the goods moved by their bulk
-aa = json.load(open(f"{S}/data/aa.json"))
+aa = json.load(open(f"{S}/aa.json"))
 pt = lambda g: {"good": g["Good"], "bulk": g["Bulk"], "vpb": round(g["Price"] / g["Bulk"], 3), "hops": round(g["HopsPerUnit"], 4)}
 out["aa"] = {"base": [pt(g) for g in aa["base"]], "moves": {k: [pt(g) for g in v] for k, v in aa["moves"].items()}}
 # substitution: the potato blight
-bl = json.load(open(f"{S}/data/blight.json"))
+bl = json.load(open(f"{S}/blight.json"))
 out["blight"] = {"day": bl["blightDay"], "sigma": bl["sigma"],
                  "runs": {k: {kk: [round(x, 4) for x in vv] for kk, vv in v.items()} for k, v in (("blight", bl["blight"]), ("control", bl["control"]))}}
 # evening out: the struck tile against its neighbours, with and without migration
@@ -84,24 +85,34 @@ def even(run):
             "people": [round(r["People"][t][m], 1) for m in range(n)]}
 out["even"] = {"move": even("shocked"), "stay": even("shockedStill"), "control": even("control")}
 # trade across transport costs: wages and specialisation, and each tile's farm share
-tr = json.load(open(f"{S}/data/trade.json"))["runs"]
+tr = json.load(open(f"{S}/trade.json"))["runs"]
 out["trade"] = [{"cost": r["Cost"], "migration": r["Migration"], "wageSpread": round(r["WageSpread"], 4),
                  "spec": round(r["Specialisation"], 4), "farm": [round(x, 4) for x in r["FarmShare"]]} for r in tr]
 # Engel's law: each tile's share of spending on basic needs against its income a head
-en = json.load(open(f"{S}/data/engel.json"))
+en = json.load(open(f"{S}/engel.json"))
 out["engel"] = [{"tile": int(r["Day"]), "basic": round(r["BasicShare"], 4), "income": round(r["IncomeHead"], 3)} for r in en["tiles"]]
 # a coal boom: the boom tile at each dose of coal, with and without migration
-bo = json.load(open(f"{S}/data/boom.json"))["runs"]
+bo = json.load(open(f"{S}/boom.json"))["runs"]
 # (the carters hauling the tile's coal away count as coal work, not services)
 for r in bo:
     r["CoalAll"], r["OtherService"] = r["Coal"] + r["Haul"], r["Service"] - r["Haul"]
 out["boom"] = [{k: (round(v, 3) if isinstance(v, float) else v) for k, v in r.items()} for r in bo]
 # a corridor across the map: the trade over each link and each tile's people, on the map as it is
 # (cheap coasts) and with the route instead
-co = json.load(open(f"{S}/data/corridor.json"))
+co = json.load(open(f"{S}/corridor.json"))
 run = {r["Name"]: r for r in co["runs"]}
 out["corridor"] = {"route": co["route"],
                    "trade": {k: [[int(a), int(b), round(v, 2)] for a, b, v in run[k]["Trade"]] for k in run},
                    "people": {k: [round(x, 1) for x in run[k]["People"]] for k in run}}
-json.dump(out, open(f"{S}/explainer-data.json", "w"), separators=(",", ":"))
+# money: the quantity theory and Hume's price-specie flow
+mo = json.load(open(f"{S}/money.json"))
+r3 = lambda xs: [round(x, 4) for x in xs] if xs else xs
+out["money"] = {"humeTile": mo["humeTile"], "runs": [{"factor": r["Factor"], "tile": r["Tile"], "months": r["Months"],
+                 "prices": r3(r["Prices"]), "wage": r3(r["Wage"]), "real": r3(r["Real"]), "money": r3(r["Money"]),
+                 "tilePrices": r3(r.get("TilePrices")), "tileMoney": r3(r.get("TileMoney")), "nearPrices": r3(r.get("NearPrices"))}
+                for r in mo["runs"]]}
+# the Corn Laws
+cl = json.load(open(f"{S}/cornlaws.json"))
+out["cornlaws"] = {"britain": cl["britain"], "runs": [{k: (round(v, 4) if isinstance(v, float) else v) for k, v in r.items()} for r in cl["runs"]]}
+json.dump(out, open(OUT, "w"), separators=(",", ":"))
 print(f"{len(json.dumps(out))} bytes of data; goods {goods}")

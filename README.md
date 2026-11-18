@@ -174,6 +174,7 @@ go run ./cmd/server    # then open http://localhost:8080
 | `game/` | The game: nations, technology, services, armies, diplomacy, the computer player |
 | `internal/server/`, `cmd/server/` | The game's HTTP server |
 | `web/` | The web client and the economy page |
+| `experiments/` | The economy page's experiments, each a `go generate` target, and their results |
 | `tools/` | Plotting and data tools, and the economy page's build (`tools/explainer/build.sh`) |
 
 ## Testing and experiments
@@ -195,7 +196,22 @@ python3 tools/century_plot.py /tmp/run    # ...plotted against history
 ```
 
 ```bash
-sh tools/explainer/build.sh    # reruns the economy page's experiments and rebuilds it
+go generate -run corridor ./experiments    # reruns one of the economy page's experiments (go generate ./experiments: all)
+```
+
+```bash
+sh tools/explainer/build.sh    # rebuilds the economy page from the experiments' results
+```
+
+Each experiment on the economy page is a file in
+[`experiments/`](experiments): the corridor, the coal boom, money's
+neutrality, the Corn Laws, and the rest. They use nothing but the
+`economy` package. An experiment can also record the whole economy as it
+runs, as a snapshot every so many days, to read out afterwards whatever it
+didn't measure:
+
+```bash
+go run ./experiments/run -out /tmp/money -record 30 money
 ```
 
 ## Licence
