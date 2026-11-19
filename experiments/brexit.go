@@ -17,10 +17,12 @@ func inBritain(r *Region) bool { return r.Row < 2 }
 // people, so nobody moves across it either. Then the realistic hard
 // Brexit: no embargo, but each side charges the other the EU's standard
 // tariffs (mfnTariff), with and without the border closed to people; the
-// duties go back to the people of the side that collects them. Against a run where nothing
+// duties go back to the people of the side that collects them. And the
+// tariffs again with the border's other costs added (borderFriction). Against a run where nothing
 // changes, month by month for Years: the living standard of Britain's
 // people and of the Continent's, real output a head (each tile's net
-// output at its prices the day before) and the people on each side; and
+// output at its prices the day before), the people on each side, and the
+// goods crossing the border (at the same prices); and
 // at the end, Britain's workers by trade.
 func runBrexit(o *Out) {
 	type side struct {
@@ -30,10 +32,13 @@ func runBrexit(o *Out) {
 		Name               string
 		Months             []int
 		Britain, Continent side
+		Trade              []float64          // goods crossing the border both ways a day, at the prices the day before
 		Jobs               map[string]float64 // Britain's workers by trade, the last year's average
 	}
 	// trade: "embargo" closes every route across the border; "tariff" puts
-	// the EU's standard (most-favoured-nation) duties on them, both ways
+	// the EU's standard (most-favoured-nation) duties on them, both ways;
+	// "friction" adds the border's paperwork, checks and delays to those
+	// duties (see borderFriction)
 	run := func(name, trade string, people bool, out *result) func() {
 		return func() {
 			w := settled()
@@ -48,6 +53,13 @@ func runBrexit(o *Out) {
 						t.Closed = true
 					case "tariff":
 						t.Tariff = mfnTariff(t.Good)
+					case "friction":
+						t.Tariff = mfnTariff(t.Good)
+						// more carriage for each unit: worth borderFriction of
+						// the good's price, at today's prices
+						p, pt := t.Origin.Markets[t.Good].Price, t.Origin.Markets[Transport].Price
+						t.TransportCost += borderFriction * p / (pt * t.Distance * Goods[t.Good].Bulk)
+						t.SetDistance(t.Distance)
 					}
 				}
 			}
@@ -92,6 +104,13 @@ func runBrexit(o *Out) {
 				rebateDuties(w, func(r *Region) bool { return !inBritain(r) })
 				if (d-settle)%30 == 0 {
 					out.Months = append(out.Months, (d-settle)/30)
+					cross := 0.0
+					for _, t := range w.Traders {
+						if crosses(t.Origin, t.Dest) {
+							cross += t.Shipped * p0[t.Origin.ID][t.Good]
+						}
+					}
+					out.Trade = append(out.Trade, cross)
 					measure(&out.Britain, inBritain)
 					measure(&out.Continent, func(r *Region) bool { return !inBritain(r) })
 				}
@@ -113,9 +132,10 @@ func runBrexit(o *Out) {
 			}
 		}
 	}
-	runs := make([]result, 5)
+	runs := make([]result, 7)
 	parallel(run("control", "", false, &runs[0]), run("embargo", "embargo", false, &runs[1]), run("closed", "embargo", true, &runs[2]),
-		run("tariff", "tariff", false, &runs[3]), run("tariffClosed", "tariff", true, &runs[4]))
+		run("tariff", "tariff", false, &runs[3]), run("tariffClosed", "tariff", true, &runs[4]),
+		run("friction", "friction", false, &runs[5]), run("frictionClosed", "friction", true, &runs[6]))
 	var tiles []int
 	for _, r := range world().Regions {
 		if inBritain(r) {
@@ -161,3 +181,12 @@ func rebateDuties(w *World, in func(r *Region) bool) {
 		}
 	}
 }
+
+// borderFriction is what crossing the border costs beyond the duty, as a
+// share of a good's value: customs declarations, checks, proving where a
+// good was made, and the delays they cause. Estimates of these costs for
+// Britain leaving the EU with no deal run from about 5% to 15% of the
+// value of goods traded; 9% is in the middle. They are real costs, paid in
+// work rather than to a treasury, so they are added to the route's
+// carriage: more transport for each unit that crosses.
+const borderFriction = 0.09
