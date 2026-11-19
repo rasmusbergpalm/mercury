@@ -165,20 +165,37 @@ func worldAt(cost float64) *World {
 func world() *World { return worldAt(1) }
 
 var (
-	settledOnce sync.Once
-	settledSnap *Snapshot
+	settledMu    sync.Mutex
+	settledSnaps = map[float64]*Snapshot{}
+	settledOnces = map[float64]*sync.Once{}
 )
 
 // settled is a copy of the map settled for Settle years.
-func settled() *World {
-	settledOnce.Do(func() {
-		w := world()
+func settled() *World { return settledAt(1) }
+
+// settledAt is a copy of the map at a cost of transport, settled for Settle
+// years (computed once for each cost).
+func settledAt(cost float64) *World {
+	settledMu.Lock()
+	once := settledOnces[cost]
+	if once == nil {
+		once = &sync.Once{}
+		settledOnces[cost] = once
+	}
+	settledMu.Unlock()
+	once.Do(func() {
+		w := worldAt(cost)
 		for d := 0; d < settle; d++ {
 			w.Step()
 		}
-		settledSnap = w.Snapshot()
+		settledMu.Lock()
+		settledSnaps[cost] = w.Snapshot()
+		settledMu.Unlock()
 	})
-	w, err := Restore(settledSnap)
+	settledMu.Lock()
+	s := settledSnaps[cost]
+	settledMu.Unlock()
+	w, err := Restore(s)
 	if err != nil {
 		panic(err)
 	}

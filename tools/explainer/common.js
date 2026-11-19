@@ -72,7 +72,7 @@ function mix(a, b, t) {
 
 // ---- charts -----------------------------------------------------------------
 // lineChart draws series of [x, y] points with a log or linear x axis.
-function lineChart(svg, { series, xLog = false, xTicks, xLabel, yLabel, yFmt = (v) => fmt(v), title = "", marks = [], w = 520, h = 300, yMin, yMax, points = [] }) {
+function lineChart(svg, { series, xLog = false, xRev = false, xFmt = (v) => v, xTicks, xLabel, yLabel, yFmt = (v) => fmt(v), title = "", marks = [], w = 520, h = 300, yMin, yMax, points = [] }) {
   const m = { l: 54, r: 14, t: title ? 30 : 12, b: 44 };
   const xs = series.flatMap((s) => s.pts.map((p) => p[0])).concat(points.map((p) => p.x));
   const ys = series.flatMap((s) => s.pts.map((p) => p[1])).concat(points.map((p) => p.y));
@@ -80,14 +80,14 @@ function lineChart(svg, { series, xLog = false, xTicks, xLabel, yLabel, yFmt = (
   let x0 = Math.min(...xs.map(fx)), x1 = Math.max(...xs.map(fx));
   let y0 = yMin ?? Math.min(...ys), y1 = yMax ?? Math.max(...ys);
   const pad = (y1 - y0) * 0.06 || 1; if (yMin === undefined) y0 -= pad; if (yMax === undefined) y1 += pad;
-  const X = (v) => m.l + (fx(v) - x0) / (x1 - x0) * (w - m.l - m.r);
+  const X = (v) => m.l + (xRev ? x1 - fx(v) : fx(v) - x0) / (x1 - x0) * (w - m.l - m.r);
   const Y = (v) => h - m.b - (v - y0) / (y1 - y0) * (h - m.t - m.b);
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
   let s = "";
   if (title) s += `<text class="title" x="${m.l}" y="18">${esc(title)}</text>`;
   const yt = niceTicks(y0, y1, 5);
   for (const v of yt) s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${yFmt(v)}</text>`;
-  for (const v of xTicks) { const x = X(v); if (x < m.l - 1 || x > w - m.r + 1) continue; s += `<line class="axis" x1="${x}" x2="${x}" y1="${h - m.b}" y2="${h - m.b + 4}"/><text x="${x}" y="${h - m.b + 18}" text-anchor="middle">${v}</text>`; }
+  for (const v of xTicks) { const x = X(v); if (x < m.l - 1 || x > w - m.r + 1) continue; s += `<line class="axis" x1="${x}" x2="${x}" y1="${h - m.b}" y2="${h - m.b + 4}"/><text x="${x}" y="${h - m.b + 18}" text-anchor="middle">${xFmt(v)}</text>`; }
   s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${h - m.b}" y2="${h - m.b}"/>`;
   if (xLabel) s += `<text x="${(m.l + w - m.r) / 2}" y="${h - 6}" text-anchor="middle">${esc(xLabel)}</text>`;
   if (yLabel) s += `<text x="12" y="${(m.t + h - m.b) / 2}" text-anchor="middle" transform="rotate(-90 12 ${(m.t + h - m.b) / 2})">${esc(yLabel)}</text>`;

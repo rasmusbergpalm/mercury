@@ -136,9 +136,17 @@ type Firm struct {
 	// runner funds Funded of their levels, staffs them and takes their
 	// output.
 	Managed bool
-	Funded  int
-	EduMult float64 // productivity from the tile's schooling (industry and services)
-	Mult    float64 // productivity from outside the economy (1: none)
+	// Market power, off by default: every firm takes its market's price as
+	// given, as one of many small producers would (the tile's farms, mills
+	// or bakeries, together). A Monopoly is the tile's only maker of its
+	// good, and reckons with how its own sales move the price, given the
+	// Elasticity of the demand it faces (see worth).
+	Monopoly   bool
+	Elasticity float64
+	share      float64 // its share of what the tile's market offered at the last clearing (a monopoly's)
+	Funded     int
+	EduMult    float64 // productivity from the tile's schooling (industry and services)
+	Mult       float64 // productivity from outside the economy (1: none)
 	// Site and SiteMult: where a land-bound producer's productivity comes
 	// from (its terrain, or the coast) and how much it multiplies it.
 	Site       string
@@ -373,13 +381,32 @@ func (f *Firm) unitCost(fc Factor, prices []float64, wage float64) float64 {
 // share of revenue, one less the exponents. Owners compare methods by it.
 func (f *Firm) LevelProfit(i int, prices []float64, wage float64) float64 {
 	m := f.Methods[i]
-	p := prices[f.Output]
+	p := f.worth(prices[f.Output])
 	k, s := m.TFP*f.Agglom*f.EduMult*f.Mult, 0.0
 	for _, fc := range m.Factors {
 		k *= math.Pow(fc.Exp*p/f.unitCost(fc, prices, wage), fc.Exp)
 		s += fc.Exp
 	}
 	return (1 - s) * p * math.Pow(k, 1/(1-s))
+}
+
+// worth is what a unit of the firm's output is worth to it when it plans
+// at price p. A firm that takes the price as given (the default) plans to
+// make what it can sell at a profit at that price: it hires and buys until
+// the last worker or input adds as much to its sales as it costs, so price
+// equals its marginal cost. A monopoly knows that selling more lowers the
+// price: a unit more earns only its marginal revenue, the price less what
+// the lower price loses on the rest, p(1 - s/Elasticity) for a firm with a
+// share s of its market. It plans on that, so it makes less, and the
+// market's price is higher, by a markup over marginal cost. Its share is
+// what it offered of all the tile's market offered, imports included (the
+// merchants who bring the good from other tiles are its rivals), so cheap
+// imports shrink its share and its markup with it.
+func (f *Firm) worth(p float64) float64 {
+	if !f.Monopoly {
+		return p
+	}
+	return p * math.Max(0.05, 1-f.share/f.Elasticity)
 }
 
 // Plan sets the profit-maximising labor and goods demand at current prices,
@@ -404,7 +431,7 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 	if !f.Enabled || f.Managed { // their runner staffs managed firms
 		return
 	}
-	p := prices[f.Output]
+	p := f.worth(prices[f.Output])
 	type plan struct {
 		m    *Method
 		want []float64

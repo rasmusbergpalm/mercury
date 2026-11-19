@@ -25,8 +25,9 @@ package economy
 //   - Educated, Healthy and Urban: its schooling, its public health and
 //     whether its size makes its industry more productive.
 //
-// On a route (Trader): Tariff and Closed. On a firm: Mult, and Managed for
-// a firm run for someone else. On the world: Known, the technologies known
+// On a route (Trader): Tariff and Closed. On a firm: Mult, Managed for a
+// firm run for someone else, and Monopoly and Elasticity for a firm with
+// market power (none has any unless it is given). On the world: Known, the technologies known
 // somewhere.
 
 // Buyer is someone outside a tile's markets who buys in them: a

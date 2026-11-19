@@ -120,5 +120,8 @@ r4 = lambda xs: [round(x, 4) for x in xs]
 out["brexit"] = {"britain": bx["britain"], "runs": {r["Name"]: {"months": r["Months"],
                  "britain": {k: r4(v) for k, v in r["Britain"].items()}, "continent": {k: r4(v) for k, v in r["Continent"].items()},
                  "trade": r4(r["Trade"]), "jobs": {k: round(v, 2) for k, v in r["Jobs"].items()}} for r in bx["runs"]}}
+# a monopoly brewer
+mn = json.load(open(f"{S}/monopoly.json"))
+out["monopoly"] = {"tile": mn["tile"], "elasticity": mn["elasticity"], "runs": [{k: (round(v, 5) if isinstance(v, float) else v) for k, v in r.items()} for r in mn["runs"]]}
 json.dump(out, open(OUT, "w"), separators=(",", ":"))
 print(f"{len(json.dumps(out))} bytes of data; goods {goods}")

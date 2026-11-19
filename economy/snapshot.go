@@ -67,6 +67,8 @@ type FirmState struct {
 	Levels, MaxLevels, LossTicks, Age, Funded     int
 	Expansion                                     *Expansion
 	Wear, Urge, Mult                              float64
+	Monopoly                                      bool    `json:",omitempty"`
+	Elasticity, Share                             float64 `json:",omitempty"`
 	Projects                                      int
 	Enabled, Managed                              bool
 	// per method: productivity, whether it works, and the levels it runs
@@ -118,7 +120,8 @@ func (w *World) Snapshot() *Snapshot {
 		for _, f := range r.Firms {
 			fs := FirmState{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
 				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age, Funded: f.Funded,
-				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Projects: f.Projects, Enabled: f.Enabled, Managed: f.Managed}
+				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Projects: f.Projects, Enabled: f.Enabled, Managed: f.Managed,
+				Monopoly: f.Monopoly, Elasticity: f.Elasticity, Share: f.share}
 			for i, m := range f.Methods {
 				fs.TFP = append(fs.TFP, m.TFP)
 				fs.MethodOn = append(fs.MethodOn, m.Enabled)
@@ -235,6 +238,7 @@ func (w *World) SetState(s *Snapshot) error {
 			}
 			f.Funded, f.Wear, f.Urge, f.Mult, f.Projects = fs.Funded, fs.Wear, fs.Urge, fs.Mult, fs.Projects
 			f.Enabled, f.Managed = fs.Enabled, fs.Managed
+			f.Monopoly, f.Elasticity, f.share = fs.Monopoly, fs.Elasticity, fs.Share
 		}
 		if len(s.TradePrices[i]) != NumGoods {
 			return bad("trade prices")

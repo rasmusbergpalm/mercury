@@ -168,6 +168,12 @@ func (r *Region) planInvestment(seed int64) {
 		// earn least: refitting one of the second to the first adds the
 		// difference
 		best, bestProfit := f.BestMethod(r.prices, r.Wage)
+		if f.Monopoly && best >= 0 {
+			// a monopoly builds on what a level more adds to its profit
+			// (at its marginal revenue), not on the markup its levels earn
+			// on average: more capacity would lower its price
+			perLevel = math.Min(perLevel, bestProfit)
+		}
 		worst, worstProfit := f.WorstMethod(r.prices, r.Wage)
 		refitGain := 0.0
 		if best >= 0 && worst >= 0 && best != worst {
@@ -448,11 +454,13 @@ func (r *Region) GoodsMarkets() {
 				bidRefs = append(bidRefs, agentRef{buyerAgent, i})
 			}
 		}
+		power := false // a monopoly in this market notes its share of it
 		for _, i := range r.firmsMaking[g] {
 			if f := r.Firms[i]; f.Inventory > 0 {
 				asks = append(asks, Order{&f.Cash, f.Inventory})
 				askRefs = append(askRefs, agentRef{firmAgent, i})
 			}
+			power = power || r.Firms[i].Monopoly
 		}
 		for i, t := range r.inbound[g] {
 			if t.StockDest > 0 { // the house is another tile's: it is paid later
@@ -461,6 +469,20 @@ func (r *Region) GoodsMarkets() {
 			}
 		}
 
+		if power {
+			offered := 0.0
+			for _, a := range asks {
+				offered += a.Qty
+			}
+			for _, i := range r.firmsMaking[g] {
+				if f := r.Firms[i]; f.Monopoly {
+					f.share = 0
+					if offered > 0 {
+						f.share = f.Inventory / offered
+					}
+				}
+			}
+		}
 		price := market.Price // what trade happens at; Clear then moves the price
 		var bidFills, askFills []float64
 		bidFills, askFills = market.clearInto(bids, asks, sc.bidFills, sc.askFills)
