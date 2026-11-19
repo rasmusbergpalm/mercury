@@ -14,7 +14,10 @@ func inBritain(r *Region) bool { return r.Row < 2 }
 // runBrexit cuts Britain off from the Continent. From the settled map,
 // every route between the two is closed to every good, both ways (an
 // embargo: no deal at all); in a second run the border is also closed to
-// people, so nobody moves across it either. Against a run where nothing
+// people, so nobody moves across it either. Then the realistic hard
+// Brexit: no embargo, but each side charges the other the EU's standard
+// tariffs (mfnTariff), with and without the border closed to people; the
+// duties go back to the people of the side that collects them. Against a run where nothing
 // changes, month by month for Years: the living standard of Britain's
 // people and of the Continent's, real output a head (each tile's net
 // output at its prices the day before) and the people on each side; and
@@ -29,17 +32,22 @@ func runBrexit(o *Out) {
 		Britain, Continent side
 		Jobs               map[string]float64 // Britain's workers by trade, the last year's average
 	}
-	run := func(name string, trade, people bool, out *result) func() {
+	// trade: "embargo" closes every route across the border; "tariff" puts
+	// the EU's standard (most-favoured-nation) duties on them, both ways
+	run := func(name, trade string, people bool, out *result) func() {
 		return func() {
 			w := settled()
 			record, done := o.Recorder(name)
 			defer done()
 			out.Name, out.Jobs = name, map[string]float64{}
 			crosses := func(a, b *Region) bool { return inBritain(a) != inBritain(b) }
-			if trade {
-				for _, t := range w.Traders {
-					if crosses(t.Origin, t.Dest) {
+			for _, t := range w.Traders {
+				if crosses(t.Origin, t.Dest) {
+					switch trade {
+					case "embargo":
 						t.Closed = true
+					case "tariff":
+						t.Tariff = mfnTariff(t.Good)
 					}
 				}
 			}
@@ -80,6 +88,8 @@ func runBrexit(o *Out) {
 			for d := settle; d < end; d++ {
 				w.Step()
 				record(w)
+				rebateDuties(w, inBritain)
+				rebateDuties(w, func(r *Region) bool { return !inBritain(r) })
 				if (d-settle)%30 == 0 {
 					out.Months = append(out.Months, (d-settle)/30)
 					measure(&out.Britain, inBritain)
@@ -103,8 +113,9 @@ func runBrexit(o *Out) {
 			}
 		}
 	}
-	runs := make([]result, 3)
-	parallel(run("control", false, false, &runs[0]), run("embargo", true, false, &runs[1]), run("closed", true, true, &runs[2]))
+	runs := make([]result, 5)
+	parallel(run("control", "", false, &runs[0]), run("embargo", "embargo", false, &runs[1]), run("closed", "embargo", true, &runs[2]),
+		run("tariff", "tariff", false, &runs[3]), run("tariffClosed", "tariff", true, &runs[4]))
 	var tiles []int
 	for _, r := range world().Regions {
 		if inBritain(r) {
@@ -112,4 +123,41 @@ func runBrexit(o *Out) {
 		}
 	}
 	o.Write("brexit.json", map[string]any{"britain": tiles, "runs": runs})
+}
+
+// mfnTariff is the EU's standard import duty on a good, its most-favoured-
+// nation rate: what it charges a country with no trade deal, as Britain
+// would have after leaving with none (and what Britain's own tariff copied).
+// The WTO's tariff profile of the EU gives a simple average of about 11% on
+// farm goods and 4% on the rest; fish counts with the rest, as in the WTO's
+// tables.
+func mfnTariff(g GoodID) float64 {
+	switch Goods[g].Name {
+	case "bread", "potatoes", "meat", "beer", "tea", "sugar", "wine", "grain", "wool", "cotton", "sugar cane", "grapes", "silk":
+		return 0.11
+	}
+	return 0.041
+}
+
+// rebateDuties hands the duties the tiles in collected today back to their
+// people, by head (the economy has no transfers: they are written in).
+func rebateDuties(w *World, in func(r *Region) bool) {
+	pool, people := 0.0, 0.0
+	for _, r := range w.Regions {
+		if in(r) {
+			pool += r.Duties
+			r.Duties = 0
+			people += r.Population()
+		}
+	}
+	if pool == 0 {
+		return
+	}
+	for _, r := range w.Regions {
+		if in(r) {
+			for _, p := range r.Pops {
+				p.Cash += pool * p.Size / people
+			}
+		}
+	}
 }
