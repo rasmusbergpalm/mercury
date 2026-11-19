@@ -393,6 +393,7 @@ footer { margin-top: 64px; border-top: 3px double var(--rule); padding-top: 18px
   <div class="head"><span class="plate"></span><h3>A hard Brexit: Britain cut off from the Continent</h3></div>
   <div class="grid2">
     <svg class="chart" id="chart-brexit" role="img" aria-label="Living standard in Britain and on the Continent after the embargo, against no embargo"></svg>
+    <svg class="chart" id="chart-brexit-gdp" role="img" aria-label="Real GDP in Britain and on the Continent after the embargo, against no embargo"></svg>
     <svg class="chart" id="chart-brexit-jobs" role="img" aria-label="Britain's workers by trade, with and without the embargo"></svg>
   </div>
   <div class="legend" id="legend-brexit"></div>
@@ -945,6 +946,14 @@ function drawBrexit() {
       { pts: rel(B.embargo, "continent", "Living"), color: "--s2", end: "the Continent" },
       { pts: rel(B.closed, "continent", "Living"), color: "--s2", dash: "6 4" }],
     xTicks: [0, 12, 24, 36, 48, 60], xLabel: "months after the embargo", yFmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`, w: 480, h: 320 });
+  // real GDP: net output at the prices before the embargo, a head, times the people
+  const gdp = (run, side) => run.months.map((m, i) => [m, 100 * (run[side].Output[i] * run[side].People[i] / (c[side].Output[i] * c[side].People[i]) - 1)]);
+  lineChart(document.getElementById("chart-brexit-gdp"), { title: "Real GDP, against no embargo", series: [
+      { pts: gdp(B.embargo, "britain"), color: "--s1", end: "Britain" },
+      { pts: gdp(B.closed, "britain"), color: "--s1", dash: "6 4" },
+      { pts: gdp(B.embargo, "continent"), color: "--s2", end: "the Continent" },
+      { pts: gdp(B.closed, "continent"), color: "--s2", dash: "6 4" }],
+    xTicks: [0, 12, 24, 36, 48, 60], xLabel: "months after the embargo", yFmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`, w: 480, h: 320 });
   // Britain's trades that change most: bars of workers, before and after
   const svg = document.getElementById("chart-brexit-jobs"), e = B.embargo.jobs;
   const names = Object.keys(e).sort((a, b) => Math.abs(e[b] - (c.jobs[b] || 0)) - Math.abs(e[a] - (c.jobs[a] || 0))).slice(0, 8);
@@ -964,8 +973,9 @@ function drawBrexit() {
   legend(document.getElementById("legend-brexit"), [["--s1", "Britain / a trade that shrinks"], ["--s2", "the Continent"], ["--muted", "dashed: the border closed to people too", true], ["--s4", "a trade that grows"]]);
   const end = (run, side, k) => 100 * (run[side][k][run[side][k].length - 1] / c[side][k][c[side][k].length - 1] - 1);
   const first = Math.min(...rel(B.embargo, "britain", "Living").map((p) => p[1]));
+  const lastOf = (pts) => pts[pts.length - 1][1];
   const down = (v) => `${Math.abs(v).toFixed(1)}% ${v < 0 ? "lower" : "higher"}`;
-  document.getElementById("cap-brexit").textContent = `Each line against a run with no embargo. With people free to move, Britain's living standard falls by ${Math.abs(first).toFixed(1)}% at first and is ${down(end(B.embargo, "britain", "Living"))} after five years; its output a head is ${down(end(B.embargo, "britain", "Output"))}, and ${Math.abs(end(B.embargo, "britain", "People")).toFixed(1)}% of its people have left for the Continent, whose living standard is ${down(end(B.embargo, "continent", "Living"))}. With the border closed to people too, Britain's living standard ends ${down(end(B.closed, "britain", "Living"))} (output a head ${down(end(B.closed, "britain", "Output"))}) and the Continent's ${down(end(B.closed, "continent", "Living"))}. Right: Britain's workers in the trades that change most, with people free to move; with less to sell and less to haul, less is built too.`;
+  document.getElementById("cap-brexit").textContent = `Each line against a run with no embargo. With people free to move, Britain's living standard falls by ${Math.abs(first).toFixed(1)}% at first and is ${down(end(B.embargo, "britain", "Living"))} after five years; its real GDP is ${down(lastOf(gdp(B.embargo, "britain")))} (a head, ${down(end(B.embargo, "britain", "Output"))}), and ${Math.abs(end(B.embargo, "britain", "People")).toFixed(1)}% of its people have left for the Continent, whose living standard is ${down(end(B.embargo, "continent", "Living"))} and real GDP ${down(lastOf(gdp(B.embargo, "continent")))}, with the newcomers. With the border closed to people too, Britain's living standard ends ${down(end(B.closed, "britain", "Living"))} and its real GDP ${down(lastOf(gdp(B.closed, "britain")))}; the Continent's ${down(end(B.closed, "continent", "Living"))} and ${down(lastOf(gdp(B.closed, "continent")))}. Real GDP is net output valued at the prices before the embargo. Below: Britain's workers in the trades that change most, with people free to move; with less to sell and less to haul, less is built too.`;
 }
 
 // plates are numbered in the order they appear, and the text's references follow
