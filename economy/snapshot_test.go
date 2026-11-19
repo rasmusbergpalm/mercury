@@ -39,3 +39,35 @@ func TestSnapshotRestoresExactly(t *testing.T) {
 		t.Error("the restored world went its own way")
 	}
 }
+
+// Worlds restored from one snapshot share nothing: run side by side, they
+// stay identical.
+func TestSnapshotRestoresIndependentWorlds(t *testing.T) {
+	w, err := BuildFullWorld(1, DefaultMap, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Investment, w.Migration = true, true
+	for d := 0; d < 300; d++ {
+		w.Step()
+	}
+	s := w.Snapshot()
+	a, _ := Restore(s)
+	b, _ := Restore(s)
+	done := make(chan bool)
+	for _, x := range []*World{a, b} {
+		go func(x *World) {
+			for d := 0; d < 200; d++ {
+				x.Step()
+			}
+			done <- true
+		}(x)
+	}
+	<-done
+	<-done
+	ja, _ := json.Marshal(a.Snapshot())
+	jb, _ := json.Marshal(b.Snapshot())
+	if string(ja) != string(jb) {
+		t.Error("two worlds restored from one snapshot went different ways")
+	}
+}

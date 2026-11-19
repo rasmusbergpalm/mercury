@@ -18,8 +18,8 @@ func init() {
 // wages, and kept Britain on farms it would do better to leave for its
 // mills, its mines and its trade.
 //
-// "Britain" is the map's two northern rows: hills and mountains with coal,
-// iron and sheep, and some forest and plains; the rest of the map, with
+// "Britain" is the map's two northern rows (inBritain): hills and mountains
+// with coal, iron and sheep, and some forest and plains; the rest of the map, with
 // its plains and tropics, is "the Continent". From the settled map, a duty
 // is laid on grain entering Britain from the Continent, at each of several
 // rates, up to an embargo; the duty Britain's tiles collect goes back to
@@ -29,7 +29,7 @@ func init() {
 // people's jobs by trade, its incomes by source (wages, the farms' profits
 // and the other firms'), and its living standard.
 func runCornLaws(o *Out) {
-	britain := func(r *Region) bool { return r.Row < 2 }
+	britain := inBritain
 	grain, bread := G("grain"), G("bread")
 	type result struct {
 		Duty                     float64 // the duty, a share of the price; -1: an embargo

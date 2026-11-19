@@ -114,5 +114,11 @@ out["money"] = {"humeTile": mo["humeTile"], "runs": [{"factor": r["Factor"], "ti
 # the Corn Laws
 cl = json.load(open(f"{S}/cornlaws.json"))
 out["cornlaws"] = {"britain": cl["britain"], "runs": [{k: (round(v, 4) if isinstance(v, float) else v) for k, v in r.items()} for r in cl["runs"]]}
+# a hard Brexit
+bx = json.load(open(f"{S}/brexit.json"))
+r4 = lambda xs: [round(x, 4) for x in xs]
+out["brexit"] = {"britain": bx["britain"], "runs": {r["Name"]: {"months": r["Months"],
+                 "britain": {k: r4(v) for k, v in r["Britain"].items()}, "continent": {k: r4(v) for k, v in r["Continent"].items()},
+                 "jobs": {k: round(v, 2) for k, v in r["Jobs"].items()}} for r in bx["runs"]}}
 json.dump(out, open(OUT, "w"), separators=(",", ":"))
 print(f"{len(json.dumps(out))} bytes of data; goods {goods}")

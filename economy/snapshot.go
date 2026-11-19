@@ -213,7 +213,7 @@ func (w *World) SetState(s *Snapshot) error {
 			if len(ps.Consumed) != NumGoods || ps.Class != p.Class {
 				return bad("people in " + r.Name)
 			}
-			p.Size, p.Cash, p.Jobs = ps.Size, ps.Cash, ps.Jobs
+			p.Size, p.Cash, p.Jobs = ps.Size, ps.Cash, append([]Job(nil), ps.Jobs...) // (copies: one snapshot may restore many worlds)
 			copy(p.Consumed, ps.Consumed)
 		}
 		for j, fs := range rs.Firms {
@@ -228,7 +228,11 @@ func (w *World) SetState(s *Snapshot) error {
 					m.Levels = fs.MethodLevels[k-1]
 				}
 			}
-			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, fs.Expansion
+			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, nil
+			if fs.Expansion != nil {
+				e := *fs.Expansion
+				f.Expansion = &e
+			}
 			f.Funded, f.Wear, f.Urge, f.Mult, f.Projects = fs.Funded, fs.Wear, fs.Urge, fs.Mult, fs.Projects
 			f.Enabled, f.Managed = fs.Enabled, fs.Managed
 		}

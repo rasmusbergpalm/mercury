@@ -293,6 +293,21 @@ __STYLE__</style>
 
 <div class="col">
 <p>Every effect points the way Ricardo said. The effects are small because Britain grows most of its own grain: about five sixths of it on the map, close to the share in the 1840s. Historians' estimates of what repeal did to Britain's economy as a whole are modest too. Where the effects are large is in who gets what. The duty moves income from those who eat bread to those who grow grain.</p>
+<p>A duty on one good is a small barrier. The largest is to stop trading altogether. In 2016 Britain voted to leave the European Union, and a "hard Brexit", leaving with no deal, would have put tariffs and customs checks on all its trade with its largest market. The Treasury's estimate before the vote was that leaving on such terms would leave Britain's output 7.5% lower after fifteen years. To see the barrier at its most extreme, the same Britain is cut off: every route between it and the Continent is closed to every good, both ways. In a second run the border is closed to people as well. <span class="ref" data-fig="brexit"></span> follows both against a run where nothing changed.</p>
+</div>
+
+<div class="figure" id="fig-brexit">
+  <div class="head"><span class="plate"></span><h3>A hard Brexit: Britain cut off from the Continent</h3></div>
+  <div class="grid2">
+    <svg class="chart" id="chart-brexit" role="img" aria-label="Living standard in Britain and on the Continent after the embargo, against no embargo"></svg>
+    <svg class="chart" id="chart-brexit-jobs" role="img" aria-label="Britain's workers by trade, with and without the embargo"></svg>
+  </div>
+  <div class="legend" id="legend-brexit"></div>
+  <p class="cap" id="cap-brexit"></p>
+</div>
+
+<div class="col">
+<p>Britain loses most, because it is the smaller side and traded more of what it made. What it used to import it now has to make, worse and dearer: fine clothes, refined sugar. Its coal, ironware and porcelain lose their buyers on the Continent, and fewer carters are needed to haul goods to the border. The Continent loses too, but much less, since Britain was a small share of its trade. When people are free to move, some of Britain's leave for the Continent, and their move softens the loss for those who stay. With the border closed to people as well, nobody can escape the shock, and Britain ends poorer still.</p>
 </div>
 </section>
 
@@ -711,12 +726,45 @@ function drawCornLaws() {
   document.getElementById("cap-corn").textContent = `Averages over the fifth year. Under free trade Britain imports ${imp.toFixed(0)}% of the grain it uses. A duty of a quarter cuts the imports by ${(100 * (1 - runs[1].Imports / free.Imports)).toFixed(0)}%, and one of a half stops them: past that every duty works like an embargo. Against free trade, an embargo raises the price of grain in Britain by ${pc("GrainPrice")} and of bread by ${pc("BreadPrice")}, the farms' profits by ${pc("FarmProfit")} and their workers by ${pc("Farm")}, while the other firms' profits change by ${pc("OtherProfit")}, industry's workers by ${pc("Industry")}, and the wage buys ${(100 * (1 - emb.RealWage / free.RealWage)).toFixed(1)}% less bread. Britain's living standard hardly moves (${pc("Living")}): bread is one need of many, and potatoes stand in for it.`;
 }
 
+// ---- the Brexit plate: an embargo between Britain and the Continent ------------------------------------
+function drawBrexit() {
+  const B = D.brexit.runs, c = B.control;
+  const rel = (run, side, k) => run.months.map((m, i) => [m, 100 * (run[side][k][i] / c[side][k][i] - 1)]);
+  lineChart(document.getElementById("chart-brexit"), { title: "Living standard, against no embargo", series: [
+      { pts: rel(B.embargo, "britain", "Living"), color: "--s1", end: "Britain" },
+      { pts: rel(B.closed, "britain", "Living"), color: "--s1", dash: "6 4" },
+      { pts: rel(B.embargo, "continent", "Living"), color: "--s2", end: "the Continent" },
+      { pts: rel(B.closed, "continent", "Living"), color: "--s2", dash: "6 4" }],
+    xTicks: [0, 12, 24, 36, 48, 60], xLabel: "months after the embargo", yFmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`, w: 480, h: 320 });
+  // Britain's trades that change most: bars of workers, before and after
+  const svg = document.getElementById("chart-brexit-jobs"), e = B.embargo.jobs;
+  const names = Object.keys(e).sort((a, b) => Math.abs(e[b] - (c.jobs[b] || 0)) - Math.abs(e[a] - (c.jobs[a] || 0))).slice(0, 8);
+  const w = 480, h = 320, m = { l: 118, r: 40, t: 30, b: 34 }, top = Math.max(...names.map((n) => Math.max(e[n], c.jobs[n] || 0)));
+  const X = (v) => m.l + v / top * (w - m.l - m.r), rowH = (h - m.t - m.b) / names.length;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  let s = `<text class="title" x="${m.l - 110}" y="18">Britain's workers, the trades that change most</text>`;
+  names.forEach((n, i) => {
+    const y = m.t + i * rowH, before = c.jobs[n] || 0, after = e[n];
+    s += `<text x="${m.l - 8}" y="${y + rowH * 0.62}" text-anchor="end">${esc(n)}</text>`;
+    s += `<rect x="${m.l}" y="${y + rowH * 0.14}" width="${X(before) - m.l}" height="${rowH * 0.32}" fill="${css("--muted")}" opacity=".55"/>`;
+    s += `<rect x="${m.l}" y="${y + rowH * 0.5}" width="${X(after) - m.l}" height="${rowH * 0.32}" fill="${css(after > before ? "--s4" : "--s1")}"/>`;
+    s += `<text x="${X(after) + 5}" y="${y + rowH * 0.78}" style="font-size:11px">${after > before ? "+" : "−"}${Math.abs(after - before).toFixed(0)}</text>`;
+  });
+  s += `<text x="${(m.l + w - m.r) / 2}" y="${h - 8}" text-anchor="middle">workers, the last year (grey: with no embargo)</text>`;
+  svg.innerHTML = s;
+  legend(document.getElementById("legend-brexit"), [["--s1", "Britain / a trade that shrinks"], ["--s2", "the Continent"], ["--muted", "dashed: the border closed to people too", true], ["--s4", "a trade that grows"]]);
+  const end = (run, side, k) => 100 * (run[side][k][run[side][k].length - 1] / c[side][k][c[side][k].length - 1] - 1);
+  const first = Math.min(...rel(B.embargo, "britain", "Living").map((p) => p[1]));
+  const down = (v) => `${Math.abs(v).toFixed(1)}% ${v < 0 ? "lower" : "higher"}`;
+  document.getElementById("cap-brexit").textContent = `Each line against a run with no embargo. With people free to move, Britain's living standard falls by ${Math.abs(first).toFixed(1)}% at first and is ${down(end(B.embargo, "britain", "Living"))} after five years; its output a head is ${down(end(B.embargo, "britain", "Output"))}, and ${Math.abs(end(B.embargo, "britain", "People")).toFixed(1)}% of its people have left for the Continent, whose living standard is ${down(end(B.embargo, "continent", "Living"))}. With the border closed to people too, Britain's living standard ends ${down(end(B.closed, "britain", "Living"))} (output a head ${down(end(B.closed, "britain", "Output"))}) and the Continent's ${down(end(B.closed, "continent", "Living"))}. Right: Britain's workers in the trades that change most, with people free to move; with less to sell and less to haul, less is built too.`;
+}
+
 // plates are numbered in the order they appear, and the text's references follow
 const roman = (n) => [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]].reduce((out, [v, r]) => { while (n >= v) { out += r; n -= v; } return out; }, "");
 document.querySelectorAll(".figure").forEach((f, i) => { const p = f.querySelector(".plate"); if (p) p.textContent = `Plate ${roman(i + 1)}`; });
 document.querySelectorAll(".ref").forEach((r) => { const f = document.getElementById(`fig-${r.dataset.fig}`); r.textContent = f ? f.querySelector(".plate").textContent : "a plate below"; });
 
-function drawAll() { drawWorld(); drawFirm(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); drawMoney(); drawCornLaws(); }
+function drawAll() { drawWorld(); drawFirm(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); drawMoney(); drawCornLaws(); drawBrexit(); }
 inspect(picked);
 drawAll();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
