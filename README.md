@@ -153,10 +153,10 @@ for _, t := range w.Traders {
 It cuts the trade across the border by three quarters, and the duty piles
 up in each tile's `Duties`.
 
-## The game
+## An example: a strategy game
 
-[`game/`](game) is a strategy game built on the economy with nothing but
-its levers and steps. Nations own the tiles, tax them, set
+[`game/`](game) is an example of building on Mercury: a strategy game, not
+yet named, that uses nothing but the economy's levers and steps. Nations own the tiles, tax them, set
 tariffs, research a tech tree from 1820 to the motor age, build roads,
 railways and ports, and run schools, public health and universities. They
 raise armies, go to war and form alliances. People or the computer play

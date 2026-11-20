@@ -1,7 +1,9 @@
 # Mercury
 
-A deterministic economic simulation of the nineteenth century, from 1820,
-and a strategy game on it:
+Mercury is a deterministic, spatial, agent-based economy, calibrated on the
+nineteenth century from 1820, where transport is a good like any other.
+The repository also holds a strategy game built on it, not yet named, which
+is an example of using the economy, not part of Mercury:
 
 - `economy/`: the economy on its own (pops, firms, markets, merchants and
   transport, migration, investment, demography, real GDP). Its calibration

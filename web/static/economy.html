@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IM+Fell+English+SC&display=swap">
 <style>
 /* Layout: one reading column of ledger text, with wider engraved "plates"
-   for the maps and charts, in the game's own Victorian atlas palette. */
+   for the maps and charts, in a Victorian atlas palette. */
 :root {
   --bg: #e9dcbd; --paper: #f4ead2; --surface: #fbf5e4; --ink: #2b2118; --muted: #6b5a44;
   --rule: #8c7350; --border: #c4ab7f; --accent: #8b2e1f; --brass: #a87b2c; --good: #3d6b2a;
@@ -113,13 +113,13 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
 <header class="title">
   <p class="kicker"><a href="./" class="back">Mercury</a> · A ledger of the simulation</p>
   <h1>The Mercury Economy</h1>
-  <p class="lede">How thirty-six tiles of farms, mills and merchants feed, clothe and move their people, with no state to steer them, and what happens when moving goods gets cheaper.</p>
+  <p class="lede">An economy where moving goods takes work: how thirty-six tiles of farms, mills and merchants feed, clothe and move their people, with no one to steer them, and what happens when carriage gets cheaper.</p>
 </header>
 
 <div class="col">
-<p>Mercury is an open-source economy engine, calibrated on the nineteenth century, with a strategy game of nations, armies and treaties built on top of it. This page looks at the economy alone: no taxes, no tariffs, no roads built by a state, no new inventions. What is left is land, people, firms, markets and merchants, on the classic map of thirty-six hexagonal tiles.</p>
-<p>Every number and chart below comes from running that map in the engine itself (<a href="https://github.com/rasmusbergpalm/mercury">the source is on GitHub</a>). Click a tile on the map to see what its people do for a living once the map has settled.</p>
-<p>Nothing in this economy is solved for. Four kinds of agent each want something simple, and act on it every day at the prices in front of them. The prices, the wages, the trade between tiles and where people live all come out of what they do.</p>
+<p>Mercury is an open-source economy, calibrated on the nineteenth century, in which transport is a good like any other: produced by workers and bought by merchants. It is a map of tiles. Each tile has its own people, its own firms, and its own markets for labour and goods. Merchants carry goods between neighbouring tiles and pay for the transport it takes. Firms hire workers and buy inputs, and owners build more capacity where it pays. People spend their income on what they need most, and move to where they live better.</p>
+<p>Most models of trade treat transport as an "iceberg", where a fixed share of each shipment melts away on the way, or as a cost set from outside the model. In Mercury, carriage is made by carters, horses and boats, a trade like any other that hires its workers in each tile's labour market. Merchants buy it at the market price, in proportion to how far they ship and how bulky the good is. So the cost of trade is an outcome, not a parameter. It rises with wages and with the demand for carriage, and falls with better ways of carrying. When trade booms, carters compete with every other trade for workers.</p>
+<p>Nothing in this economy is solved for. Four kinds of agent each want something simple, and act on it every day at the prices in front of them. The prices, the wages, the trade between tiles, what each tile specialises in and where people live all come out of what they do.</p>
 <div class="table-wrap"><table class="agents">
 <tr><th>Agent</th><th>Wants</th><th>Decides, each day</th><th>Section</th></tr>
 <tr><td><b>Firms</b></td><td>the most profit at today's prices</td><td>how many workers to hire and how much of each input to buy</td><td>I</td></tr>
@@ -128,6 +128,7 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
 <tr><td><b>People</b></td><td>the best living they can afford</td><td>what to buy with their income, and whether to move to a neighbouring tile</td><td>IV</td></tr>
 </table></div>
 <p>The markets are not agents: they only collect everyone's orders, and move each price a little each day towards where supply meets demand.</p>
+<p>This page runs the economy on its classic map of thirty-six hexagonal tiles, with nothing added: no taxes, tariffs or roads unless an experiment puts them there, and no new inventions, so firms keep their 1820 methods. Every number and chart below comes from the engine itself (<a href="https://github.com/rasmusbergpalm/mercury">the source is on GitHub</a>). Click a tile on the map to see what its people do for a living once the map has settled.</p>
 </div>
 
 <div class="figure" id="fig-world">
@@ -152,7 +153,7 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
 <dt>limits</dt><dd>its buildings are fixed from day to day, and it can't spend more than its cash</dd>
 </dl></div>
 <p><em>Levels</em> are the firm's buildings, its capital. Owners add a level when the firm earns more than a level costs, and the exponents add up to less than one. So each extra worker in a given building adds less than the one before. <span class="ref" data-fig="firm"></span> shows this diminishing return for a single level, holding the other inputs at one unit each.</p>
-<p>A firm can make its good in several ways, called methods. The first is the one available in 1820; later ones come with technology. In the full game nations research those technologies; here the methods are shown only to compare them. A later method is more productive (higher TFP) and often needs fewer hands (a lower labour exponent), but needs machinery or fuel the old way didn't.</p>
+<p>A firm can make its good in several ways, called methods. The first is the one available in 1820; later ones come with technology. On this page every firm keeps its 1820 method; the later ones are shown only to compare them. A later method is more productive (higher TFP) and often needs fewer hands (a lower labour exponent), but needs machinery or fuel the old way didn't.</p>
 </div>
 
 <div class="figure" id="fig-firm">
@@ -269,7 +270,7 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
 <section id="transport">
 <div class="col">
 <h2><span class="no">III.</span>What transport is worth</h2>
-<p>Transport cost is one number in the game that scales every hop. To see what it does, the same map was run for fifteen years at each of 25 costs, and the last year measured: from nearly free (a twentieth of the normal cost) to 128 times normal, and finally to autarky, where no route ever pays and every tile lives on what it makes itself.</p>
+<p>The cost of transport has one dial: a multiplier on the transport every hop takes. To see what it does, the same map was run for fifteen years at each of 25 costs, and the last year measured: from nearly free (a twentieth of the normal cost) to 128 times normal, and finally to autarky, where no route ever pays and every tile lives on what it makes itself.</p>
 <div class="facts" id="facts"></div>
 <p>As transport gets dearer every measure of well-being falls smoothly (<span class="ref" data-fig="sweep"></span>). Living standards drop because each tile must make more of its own goods, including the ones its land is bad at, and people pay more for imports. Output per head falls even faster. The economy loses gains from specialisation, and more of its work goes into hauling goods.</p>
 </div>
@@ -277,7 +278,7 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
 <div class="figure" id="fig-sweep">
   <div class="head"><span class="plate"></span><h3>The settled economy at each transport cost</h3></div>
   <div class="grid2" id="sweep-charts"></div>
-  <p class="cap">The horizontal axis is the transport cost on a log scale, as a multiple of the game's normal cost (1). The dot on the far right of each panel is autarky. Output per head is net output valued at one set of prices for every run (those at normal costs), so the runs compare like for like. It is shown with transport counted as an input to trade (solid) and as output in its own right (dashed).</p>
+  <p class="cap">The horizontal axis is the transport cost on a log scale, as a multiple of the normal cost (1). The dot on the far right of each panel is autarky. Output per head is net output valued at one set of prices for every run (those at normal costs), so the runs compare like for like. It is shown with transport counted as an input to trade (solid) and as output in its own right (dashed).</p>
 </div>
 
 <div class="col">
@@ -335,7 +336,7 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
 <dt>decide</dt><dd>how to spend a twentieth of their cash each day (the rest is savings that carry them through a bad month), across all their needs and the goods that meet each; and whether to move: a few move each day towards a neighbour where people live better, more when the gap is wide and the journey cheap</dd>
 <dt>work</dt><dd>every worker works, at the going wage, for whichever firms hire. The wage rises when firms want more hands than there are, and falls when there are more hands than work</dd>
 </dl></div>
-<p>Each tile's people work for its firms, own them, and spend their income on needs in three tiers: basic needs (food, clothing and heat), then comforts, then luxuries. How well they meet those needs is their <em>living standard</em>, the game's utility per person. Within a need, goods substitute for each other: bread and potatoes both meet the need for staples, meat and fish for protein, wood and coal for heat. People spend each day to get the most out of their income at today's prices. (In the game populations also grow when people eat well; on this page that is switched off, so that the experiments compare like with like.)</p>
+<p>Each tile's people work for its firms, own them, and spend their income on needs in three tiers: basic needs (food, clothing and heat), then comforts, then luxuries. How well they meet those needs is their <em>living standard</em>, their utility per person. Within a need, goods substitute for each other: bread and potatoes both meet the need for staples, meat and fish for protein, wood and coal for heat. People spend each day to get the most out of their income at today's prices. (People also multiply when they eat well; on this page that is switched off, so that the experiments compare like with like.)</p>
 <p>So when one good gets dear, people buy its substitute. To see it, a blight was let loose on the map's potatoes: every potato farm makes half what it did, as in the potato blight of the 1840s. <span class="ref" data-fig="blight"></span> compares it with a run without the blight.</p>
 </div>
 

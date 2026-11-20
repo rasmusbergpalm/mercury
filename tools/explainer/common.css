@@ -1,5 +1,5 @@
 /* Layout: one reading column of ledger text, with wider engraved "plates"
-   for the maps and charts, in the game's own Victorian atlas palette. */
+   for the maps and charts, in a Victorian atlas palette. */
 :root {
   --bg: #e9dcbd; --paper: #f4ead2; --surface: #fbf5e4; --ink: #2b2118; --muted: #6b5a44;
   --rule: #8c7350; --border: #c4ab7f; --accent: #8b2e1f; --brass: #a87b2c; --good: #3d6b2a;
