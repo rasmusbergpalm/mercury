@@ -206,7 +206,7 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
     <svg class="chart" id="map-va" role="img" aria-label="Map of value added per worker"></svg>
     <div class="inspector" id="va-note"></div>
   </div>
-  <p class="cap">Darker tiles add more value per worker. The ranking reflects both the land's yields and the prices the tile's goods fetch.</p>
+  <p class="cap">The stronger a tile's colour, the more value it adds per worker. The ranking reflects both the land's yields and the prices the tile's goods fetch.</p>
 </div>
 </section>
 
@@ -864,7 +864,7 @@ function drawCorridor() {
   const tot = (P, f) => P.filter((_, i) => f(i)).reduce((x, y) => x + y, 0);
   const coastal = new Set(tiles.filter((t) => t.coastal).map((t) => t.id));
   const share = (P, f) => Math.round(100 * tot(P, f) / tot(P, () => true));
-  document.getElementById("cap-corridor").textContent = `Top: each line joins two neighbouring tiles, as thick as the value of the goods they trade both ways, on one scale in both maps. Bottom: each tile's people, darker for more, on one scale in both maps; the dashed line is the route. Before, trade runs round the coasts, where shipping is cheap, and ${share(P0, (i) => coastal.has(i))}% of the people live on the coast. After, ${Math.round(100 * onRoute("route") / sum("route"))}% of the map's trade (by value) runs along the route's ${C.route.length - 1} links, and the share of the people living on the route's ${C.route.length} tiles goes from ${share(P0, (i) => on.has(i))}% to ${share(P1, (i) => on.has(i))}%, while the coast's goes to ${share(P1, (i) => coastal.has(i))}%.`;
+  document.getElementById("cap-corridor").textContent = `Top: each line joins two neighbouring tiles, as thick as the value of the goods they trade both ways, on one scale in both maps. Bottom: each tile's people, the stronger the colour the more, on one scale in both maps; the dashed line is the route. Before, trade runs round the coasts, where shipping is cheap, and ${share(P0, (i) => coastal.has(i))}% of the people live on the coast. After, ${Math.round(100 * onRoute("route") / sum("route"))}% of the map's trade (by value) runs along the route's ${C.route.length - 1} links, and the share of the people living on the route's ${C.route.length} tiles goes from ${share(P0, (i) => on.has(i))}% to ${share(P1, (i) => on.has(i))}%, while the coast's goes to ${share(P1, (i) => coastal.has(i))}%.`;
 }
 
 // ---- the even plate: migration evens out living standards -----------------------------------
@@ -922,9 +922,12 @@ function drawSpec() {
   for (const v of [...new Set(qs)].sort()) s += `<line class="axis" x1="${X(v)}" x2="${X(v)}" y1="${h - m.b}" y2="${h - m.b + 4}"/><text x="${X(v)}" y="${h - m.b + 18}" text-anchor="middle">${v}</text>`;
   s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${h - m.b}" y2="${h - m.b}"/><text x="${(m.l + w - m.r) / 2}" y="${h - 6}" text-anchor="middle">how good the land is for farming (productivity ×)</text>`;
   tiles.forEach((t, i) => {
-    const jit = ((i * 37) % 11 - 5) / 5 * 0.035; // spread the tiles of one terrain apart
-    s += `<circle cx="${X(qs[i] + jit - 0.05)}" cy="${Y(dear.farm[i])}" r="3.5" fill="${css("--s2")}" fill-opacity=".8"/>`;
-    s += `<circle cx="${X(qs[i] + jit + 0.05)}" cy="${Y(cheap.farm[i])}" r="3.5" fill="${css("--s1")}" fill-opacity=".85"/>`;
+    // a tile's land is the same in both runs: its two dots share an x
+    // (spread a little from the other tiles of its terrain), joined by a line
+    const x = X(qs[i] + ((i * 37) % 11 - 5) / 5 * 0.06);
+    s += `<line x1="${x}" x2="${x}" y1="${Y(dear.farm[i])}" y2="${Y(cheap.farm[i])}" stroke="${css("--muted")}" stroke-opacity=".5"/>`;
+    s += `<circle cx="${x}" cy="${Y(dear.farm[i])}" r="3.5" fill="${css("--s2")}" fill-opacity=".8"/>`;
+    s += `<circle cx="${x}" cy="${Y(cheap.farm[i])}" r="3.5" fill="${css("--s1")}" fill-opacity=".85"/>`;
   });
   svg.innerHTML = s;
   legend(document.getElementById("legend-spec"), [["--s1", `nearly free carriage (×${cheap.cost})`], ["--s2", `prohibitive carriage (×${dear.cost})`]]);
