@@ -17,26 +17,29 @@ package economy
 //   - Duties: the import duties collected on sales there (see Trader.Tariff);
 //   - PaybackMult: scales the years of profit owners ask a new level to
 //     repay (below 1: they build sooner, as with cheaper credit);
-//   - GrowthBonus: added to its people's growth a year;
-//   - RoadMult and CoastMult: scale the cost of moving past it over land
-//     and by sea;
+//   - GrowthBonus: added to its people's growth a year, beyond their
+//     natural growth;
+//   - LandTransportMult and SeaTransportMult: scale the transport it takes
+//     to cross it over land and to pass it by sea;
 //   - SpoilageMult: scales how much of a perishable good shipped from it is
 //     lost on the way;
-//   - Educated and Healthy: its schooling and its public health.
 //
-// On a route (Trader): Tariff and Closed. On a firm: Mult, Managed for a
-// firm run for someone else, and Monopoly and Elasticity for a firm with
-// market power (none has any unless it is given). On the world: Known, the technologies known
-// somewhere.
+// On a route (Trader): Tariff and Closed. On a firm: Mult (its
+// productivity), Enabled and each method's Enabled (which recipes it may
+// use), Expansion with External set (a level paid for from outside, its
+// construction delivered by whoever pays), and Monopoly and Elasticity
+// for a firm with market power (none has any unless it is given).
 
-// Buyer is someone outside a tile's markets who buys in them: a
-// state, a foreign merchant, an aid agency. Each day it bids for
-// goods (Bid, by good); the market charges its Account, which may run
-// negative until its owner settles it, and notes what it got (Got) for
-// each good it bid for.
+// Buyer is someone outside a tile's markets who buys in them: a state, a
+// foreign merchant, an aid agency, an employer from outside the tile's
+// firms (a school, a hospital). Each day it bids for goods (Bid, by good)
+// and for workers (Hire); the markets charge its Account, which may run
+// negative until its owner settles it, and note what it got (Got, Hired).
+// Workers are hired after the firms, at the same wage.
 type Buyer struct {
-	Bid, Got []float64
-	Account  float64
+	Bid, Got    []float64
+	Hire, Hired float64
+	Account     float64
 }
 
 // NewBuyer makes a buyer with no bids.

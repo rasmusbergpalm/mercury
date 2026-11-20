@@ -10,7 +10,8 @@ import (
 // tile's size (industry and services), its schooling, and the crowding
 // malus: how much less productive it is than it would be with one more
 // building level.
-func FirmBonuses(f *Firm, n *Nation) []Modifier {
+func FirmBonuses(r *Region, f *Firm) []Modifier {
+	n := r.Nation
 	site := 1.0
 	if f.SiteMult > 0 {
 		site = f.SiteMult
@@ -39,13 +40,13 @@ func FirmBonuses(f *Firm, n *Nation) []Modifier {
 	if f.Agglom != 1 {
 		out = append(out, Modifier{"Tile size", f.Agglom, "industry and services gain from the people around them", false})
 	}
-	if f.Mult < 1 {
-		out = append(out, Modifier{"Allegiance", f.Mult, "the tile's people don't yet stand by their new rulers", false})
+	if m := r.WorkMult(); m < 1 {
+		out = append(out, Modifier{"Allegiance", m, "the tile's people don't yet stand by their new rulers", false})
 	}
-	if f.EduMult != 1 {
-		out = append(out, Modifier{"Schooling", f.EduMult, "the tile's educated share", false})
+	if m := r.eduMult(f); m != 1 {
+		out = append(out, Modifier{"Schooling", m, "the tile's educated share", false})
 	}
-	if !f.Managed && f.Levels > 0 {
+	if f.Levels > 0 {
 		m := f.NextLevelMult()
 		note := fmt.Sprintf("%d levels; one more would make every worker and input %.0f%% more productive", f.Levels, 100*(m-1))
 		if f.AtCap() {

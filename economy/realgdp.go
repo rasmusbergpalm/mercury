@@ -6,7 +6,8 @@ import (
 )
 
 // publicSlot is the extra entry after the goods in a GDPChain's vectors:
-// public services, which nobody buys, counted at cost (their staff's wages).
+// the work of outside employers (Buyer.Hire), which nobody buys, counted at
+// cost (their staff's wages).
 var publicSlot = NumGoods
 
 // settledMove is how far a good's price may move in a month for it to count
@@ -49,16 +50,16 @@ func (r *Region) accumulateGDP() {
 		c.AccNet, c.AccValue, c.AccVolume = make([]float64, NumGoods+1), make([]float64, NumGoods+1), make([]float64, NumGoods+1)
 	}
 	for _, f := range r.Firms {
-		if f.Managed {
-			c.AccNet[publicSlot] += f.Labor
-			c.AccValue[publicSlot] += f.Labor * r.Wage
-			c.AccVolume[publicSlot] += f.Labor
-			continue
-		}
 		c.AccNet[f.Output] += f.LastOutput
 		for g, q := range f.Used {
 			c.AccNet[g] -= q
 		}
+	}
+	// work for outside employers (a state's schools, say), at what it costs
+	for _, b := range r.Buyers {
+		c.AccNet[publicSlot] += b.Hired
+		c.AccValue[publicSlot] += b.Hired * r.Wage
+		c.AccVolume[publicSlot] += b.Hired
 	}
 	// the transport the tile's merchants used up moving goods is an input
 	// to trade, like a firm's coal, not a product anyone consumes: hauling

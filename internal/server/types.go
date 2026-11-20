@@ -150,7 +150,6 @@ type ServiceState struct {
 	PerLevel  float64  `json:"per_level"` // universities: research per funded level, fully staffed
 	Cost      float64  `json:"cost"`      // wages per funded level per day
 	Building  *float64 `json:"building"`  // progress of a new level (0..1), or null
-	Enabled   bool     `json:"enabled"`
 }
 
 type Occupation struct {
@@ -320,7 +319,6 @@ type FirmState struct {
 	Enabled   bool            `json:"enabled"`
 	Requires  string          `json:"requires"` // tech that unlocks it, if any
 	Sector    string          `json:"sector"`
-	State     bool            `json:"state"`             // a public service
 	Bonuses   []game.Modifier `json:"bonuses"`           // productivity, factor by factor
 	Wanted    float64         `json:"wanted"`            // workers it wanted (and could pay) today
 	PerWorker float64         `json:"per_worker"`        // profit per worker today: value added per worker less the wage
@@ -462,7 +460,7 @@ func regionState(w *game.World, i int, cities float64) RegionState {
 		}
 		ss := w.ServiceStats(r, k)
 		sv := &ServiceState{Levels: f.Levels, Funded: f.Funded, MaxLevels: f.MaxLevels, Staff: ss.Staff, Need: ss.Need,
-			Coverage: ss.Coverage, Research: ss.Research, PerLevel: ss.PerLevel, Cost: ss.Cost, Enabled: f.Enabled}
+			Coverage: ss.Coverage, Research: ss.Research, PerLevel: ss.PerLevel, Cost: ss.Cost}
 		if e := f.Expansion; e != nil {
 			p := e.Delivered / e.Cost()
 			sv.Building = &p
@@ -610,9 +608,9 @@ func regionDetail(w *game.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), f.Managed, game.FirmBonuses(f, r.Nation), 0, 0, 0, nil}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), game.FirmBonuses(r, f), 0, 0, 0, nil}
 		fs.Wanted = f.PlanLabor
-		if !f.Managed && !f.AtCap() {
+		if !f.AtCap() {
 			fs.LevelGain = f.LastOutput * r.Markets[f.Output].Price * (f.NextLevelMult() - 1)
 		}
 		if f.Labor > 1e-9 {

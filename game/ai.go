@@ -1012,15 +1012,15 @@ func (w *World) aiServices(n *Nation, war, funding, universities bool) {
 	short := n.payScale < 0.999
 	if funding {
 		for _, r := range n.Regions {
-			for _, f := range r.Firms {
-				if !f.Managed {
+			for _, f := range r.Services {
+				if f == nil {
 					continue
 				}
 				funded := f.Levels
-				if isService(f, University) && (short || war) {
+				if f.Kind == University && (short || war) {
 					funded = (f.Levels + 1) / 2
 				}
-				w.SetServiceFunding(r.ID, serviceKind(f), funded)
+				w.SetServiceFunding(r.ID, f.Kind, funded)
 			}
 		}
 	}
@@ -1042,10 +1042,7 @@ func (w *World) aiServices(n *Nation, war, funding, universities bool) {
 		bestCov := 2.0
 		for _, r := range n.Regions {
 			f := r.Service(k)
-			if f == nil || !f.Enabled || f.Expansion != nil {
-				continue
-			}
-			if f.AtCap() {
+			if f == nil || f.Expansion != nil || f.Levels >= f.MaxLevels {
 				continue
 			}
 			cov := 0.0
@@ -1073,7 +1070,7 @@ func (w *World) aiServices(n *Nation, war, funding, universities bool) {
 func (n *Nation) serviceBillOf(k Public) float64 {
 	s := 0.0
 	for _, r := range n.Regions {
-		if f := r.Service(k); f != nil && f.Enabled {
+		if f := r.Service(k); f != nil {
 			s += float64(f.Funded) * ServiceStaff * r.Wage
 		}
 	}
@@ -1122,7 +1119,7 @@ func (w *World) aiExpandFirm(n *Nation) {
 	}
 	for _, r := range n.Regions {
 		for _, f := range r.Firms {
-			if f.Expansion != nil && f.Expansion.External && !f.Managed {
+			if f.Expansion != nil && f.Expansion.External {
 				return
 			}
 		}
@@ -1131,7 +1128,7 @@ func (w *World) aiExpandFirm(n *Nation) {
 	best := 0.0
 	for _, r := range n.Regions {
 		for i, f := range r.Firms {
-			if f.Expansion != nil || f.Managed || !f.Enabled || f.AtCap() {
+			if f.Expansion != nil || !f.Enabled || f.AtCap() {
 				continue
 			}
 			if f.Levels == 0 {

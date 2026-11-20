@@ -31,10 +31,11 @@ type Tech struct {
 	Requires []string // techs needed first
 	Effect   string   // human-readable summary
 
-	FirmTFP     map[string]float64 // multiplies the productivity of the named firms
-	PrimaryTFP  float64            // multiplies every land-bound producer (farms, mines, ...)
-	IndustryTFP float64            // multiplies every manufacturing firm
-	EnableFirms []string           // firms that only work for nations with this tech
+	FirmTFP      map[string]float64 // multiplies the productivity of the named firms
+	ResearchMult float64            // multiplies what a university's staff discover
+	PrimaryTFP   float64            // multiplies every land-bound producer (farms, mines, ...)
+	IndustryTFP  float64            // multiplies every manufacturing firm
+	EnableFirms  []string           // firms that only work for nations with this tech
 
 	CoastMove       float64 // multiplies the movement cost of the nation's coast tiles
 	TransitSpoilage float64 // multiplies spoilage on the way for goods leaving the nation
@@ -104,7 +105,7 @@ var Techs = []Tech{
 	{Name: "Nationalism", Branch: BranchPolitics, Era: 0, Cost: era1, Requires: []string{"Statistical bureaus"},
 		Effect: "Defence +25%, sieges 25% faster", Defense: 1.25, OccupySpeed: 1.25},
 	{Name: "Steam printing", Branch: BranchScience, Era: 0, Cost: era1, Effect: "Universities +25%",
-		FirmTFP: firms("University", 1.25)},
+		ResearchMult: 1.25},
 
 	// ---- era 2: Railway age, 1840s–60s
 	{Name: "Steam power", Branch: BranchEconomy, Era: 1, Cost: era2, Requires: []string{"Factory system"},
@@ -142,14 +143,14 @@ var Techs = []Tech{
 	{Name: "Joint-stock banks", Branch: BranchPolitics, Era: 1, Cost: era2, Requires: []string{"Civil service reform"},
 		Effect: "Firms invest more readily (payback horizon +50%)", InvestPayback: 1.5},
 	{Name: "Research universities", Branch: BranchScience, Era: 1, Cost: era2, Requires: []string{"Steam printing"},
-		Effect: "Universities +30%", FirmTFP: firms("University", 1.3)},
+		Effect: "Universities +30%", ResearchMult: 1.3},
 	{Name: "Public education", Branch: BranchScience, Era: 1, Cost: era2, Requires: []string{"Research universities"},
-		Effect: "Universities +30%, all industry +3%; teachers teach 40% more", FirmTFP: firms("University", 1.3), IndustryTFP: 1.03,
+		Effect: "Universities +30%, all industry +3%; teachers teach 40% more", ResearchMult: 1.3, IndustryTFP: 1.03,
 		SchoolMult: 1.4},
 
 	{Name: "Telegraph", Branch: BranchScience, Era: 1, Cost: era2, Requires: []string{"Research universities", "Railways"},
-		Effect:  "Universities +15%; ideas from trade partners spread 50% better; armies call up 25% faster (the order reaches every district in hours)",
-		FirmTFP: firms("University", 1.15), Diffusion: 1.5, CallUp: 0.75},
+		Effect:       "Universities +15%; ideas from trade partners spread 50% better; armies call up 25% faster (the order reaches every district in hours)",
+		ResearchMult: 1.15, Diffusion: 1.5, CallUp: 0.75},
 
 	// ---- era 3: Second industrial revolution, 1870s–90s
 	{Name: "Steel", Branch: BranchEconomy, Era: 2, Cost: era3, Requires: []string{"Steam power"},
@@ -187,7 +188,7 @@ var Techs = []Tech{
 	{Name: "Central bank", Branch: BranchPolitics, Era: 2, Cost: era3, Requires: []string{"Joint-stock banks"},
 		Effect: "Firms invest more readily (payback horizon +30%)", InvestPayback: 1.3},
 	{Name: "Research laboratories", Branch: BranchScience, Era: 2, Cost: era3, EnableFirms: []string{"Pasteurizing winery"}, Requires: []string{"Public education"},
-		Effect: "Universities +40%", FirmTFP: firms("University", 1.4)},
+		Effect: "Universities +40%", ResearchMult: 1.4},
 	{Name: "Engineering", Branch: BranchScience, Era: 2, Cost: era3, Requires: []string{"Public education", "Locomotives"},
 		Effect:      "Smelters and smithies +15%",
 		EnableFirms: []string{"Steam cranes"}, FirmTFP: firms("Smelter", 1.15, "Smithy", 1.15)},
@@ -221,8 +222,8 @@ var Techs = []Tech{
 	{Name: "Propaganda", Branch: BranchPolitics, Era: 3, Cost: era4, Requires: []string{"Nationalism"},
 		Effect: "Desertion −50%, defence +10%", Desertion: 0.5, Defense: 1.1},
 	{Name: "Radio", Branch: BranchScience, Era: 3, Cost: era4, Requires: []string{"Telegraph", "Electricity"},
-		Effect:  "Universities +30%; ideas from trade partners spread 50% better",
-		FirmTFP: firms("University", 1.3), Diffusion: 1.5},
+		Effect:       "Universities +30%; ideas from trade partners spread 50% better",
+		ResearchMult: 1.3, Diffusion: 1.5},
 }
 
 var techIndex = func() map[string]int {

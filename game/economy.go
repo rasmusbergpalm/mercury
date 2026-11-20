@@ -39,6 +39,8 @@ const (
 	Service       = economy.Service
 	Basic         = economy.Basic
 	NumTiers      = economy.NumTiers
+	PopGrowthMin  = economy.PopGrowthMin
+	PopGrowthMax  = economy.PopGrowthMax
 	Luxury        = economy.Luxury
 	StartYear     = economy.StartYear
 	LevelCost     = economy.LevelCost

@@ -46,16 +46,10 @@ func median(xs []float64) float64 {
 
 // the economy's names the tests use
 const (
-	HealthCover        = economy.HealthCover
-	StartEducated      = economy.StartEducated
-	EducationBonus     = economy.EducationBonus
 	UnsuppliedPriceCap = economy.UnsuppliedPriceCap
 	ParallelMin        = economy.ParallelMin
-	SchooledBirths     = economy.SchooledBirths
 	PopGrowthSlope     = economy.PopGrowthSlope
 	PopGrowthNeutral   = economy.PopGrowthNeutral
-	PopGrowthMin       = economy.PopGrowthMin
-	PopGrowthMax       = economy.PopGrowthMax
 	MigrationRate      = economy.MigrationRate
 	SizeBonusPop       = economy.SizeBonusPop
 	SizeBonusExp       = economy.SizeBonusExp

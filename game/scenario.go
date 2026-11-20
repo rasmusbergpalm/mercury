@@ -77,10 +77,11 @@ func baseGameWorld(spec GameSpec) (*World, error) {
 	}
 	w := wrap(e)
 	for _, r := range w.Regions {
+		r.Educated = StartEducated
 		for k := Public(0); k < NumServices; k++ {
-			r.Firms = append(r.Firms, newServiceFirm(k))
+			r.Services[k] = newService(r, k)
 		}
-		r.UpdateAgglomeration()
+		r.applyAllegiance()
 	}
 	return w, nil
 }

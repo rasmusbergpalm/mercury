@@ -483,6 +483,12 @@ func (n *Nation) plan(w *World) {
 				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(rate, e.Cost()-e.Delivered)})
 			}
 		}
+		for _, sv := range r.Services {
+			if sv != nil && sv.Expansion != nil {
+				e := sv.Expansion
+				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(rate, e.Cost()-e.Delivered)})
+			}
+		}
 	}
 	// building is paid from its budget
 	building := 0.0

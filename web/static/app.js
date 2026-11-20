@@ -1390,7 +1390,6 @@ function tilePanel() {
       const bon = (f.bonuses || []).slice(1).map((m) => `${esc(m.name.toLowerCase())} ×${m.value.toFixed(2)}`).join(" · ");
       const total = (f.bonuses || []).reduce((t, m) => t * m.value, 1);
       const tip = (f.bonuses || []).map((m) => `${m.name}: ×${m.value.toFixed(2)} (${m.note})`).join("\n");
-      if (f.state) return `<tr class="dim"><td>${esc(f.name)}<br><span class="sub">public · ${f.levels} levels, run from the ${f.name === "University" ? "Research" : "State"} tab</span></td><td>${f.name === "University" ? "research" : "service"}</td><td>${fmt(f.labor, 1)}</td><td colspan="3"></td></tr>`;
       const m = d.markets.find((x) => x.good === f.output) || { supply: 0, demand: 0 };
       // profit per worker: the value each worker adds a day (output less the goods used up) less the wage
       const per = f.labor > 0.01 ? `<span class="${f.per_worker >= 0 ? "good" : "bad"}">${f.per_worker < 0 ? "−" : ""}£${fmt(Math.abs(f.per_worker))}</span>` : "–";

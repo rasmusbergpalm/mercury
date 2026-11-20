@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+
+	"github.com/rasmusbergpalm/mercury/economy"
 )
 
 // Public services are run by the state in every tile: universities,
@@ -94,36 +96,48 @@ func ServiceNames() []string {
 	return out
 }
 
-// newServiceFirm makes a tile's service.
-func newServiceFirm(s Public) *Firm {
-	f := NewFirm(services[s].Firm, Construction, 1, []Factor{Labor(0.6)}, 0)
-	if s == University {
-		f = NewFirm("University", Research, 1, []Factor{Labor(0.6)}, 0)
-	}
-	f.Managed, f.Sector = true, Service
-	f.Levels, f.Funded, f.MaxLevels, f.Cash = services[s].Start, services[s].Start, serviceMaxLevels, 0
-	return f
+// PublicService is one of a tile's public services: its building levels (built
+// with construction, like a firm's), how many of them its nation funds, and
+// the outside employer (economy.Buyer) through which it hires its staff in
+// the tile's labour market.
+type PublicService struct {
+	Kind              Public
+	Levels, MaxLevels int
+	Funded            int
+	Expansion         *Expansion // a level being built, or nil
+	LastOutput        float64    // universities: research, the last day
+	employer          *economy.Buyer
+}
+
+// Staff is the workers the service employs today.
+func (s *PublicService) Staff() float64 { return s.employer.Hired }
+
+// newService makes a tile's service of a kind, hiring in r's labour market.
+func newService(r *Region, k Public) *PublicService {
+	s := &PublicService{Kind: k, Levels: services[k].Start, Funded: services[k].Start, MaxLevels: serviceMaxLevels, employer: economy.NewBuyer()}
+	r.Buyers = append(r.Buyers, s.employer)
+	return s
 }
 
 // Service is the tile's service of a kind, or nil.
-func (r *Region) Service(s Public) *Firm {
-	for _, f := range r.Firms {
-		if f.Managed && isService(f, s) {
-			return f
-		}
-	}
-	return nil
-}
+func (r *Region) Service(s Public) *PublicService { return r.Services[s] }
 
 // University is the tile's university, or nil.
-func (r *Region) University() *Firm { return r.Service(University) }
+func (r *Region) University() *PublicService { return r.Service(University) }
 
-// research is what a university produces today with the staff it has.
-func research(f *Firm) float64 {
-	if f.Funded <= 0 || f.Labor <= 0 {
+// science is how much the tile's scholars find: scholars come from the
+// schooled.
+func (r *Region) science() float64 {
+	return scienceUnschooled + scienceEducation*r.Educated
+}
+
+// research is what a university produces today with the staff it has: more
+// in a big tile, a schooled one and a loyal one.
+func (r *Region) research(u *PublicService) float64 {
+	if u.Funded <= 0 || u.Staff() <= 0 {
 		return 0
 	}
-	return f.TFP() * f.Agglom * f.EduMult * f.Mult * math.Pow(float64(f.Funded), 0.4) * math.Pow(f.Labor, 0.6)
+	return r.SizeBonus() * r.science() * r.WorkMult() * r.Nation.staffMult(University) * math.Pow(float64(u.Funded), 0.4) * math.Pow(u.Staff(), 0.6)
 }
 
 // staffMult is how much one of the nation's staff of a service achieves,
@@ -140,6 +154,8 @@ func (n *Nation) staffMult(s Public) float64 {
 			return t.SchoolMult
 		case Health:
 			return t.HealthMult
+		case University:
+			return t.ResearchMult
 		}
 		return 0
 	})
@@ -171,7 +187,7 @@ func (w *World) Coverage(r *Region, s Public) float64 {
 	if f == nil {
 		return 0
 	}
-	return math.Min(1, f.Labor/need)
+	return math.Min(1, f.Staff()/need)
 }
 
 // capital is the nation's most populous tile.
@@ -197,24 +213,24 @@ func (w *World) hopsFromCapital(r *Region) int {
 func (n *Nation) serviceBill() float64 {
 	s := 0.0
 	for _, r := range n.Regions {
-		for _, f := range r.Firms {
-			if f.Managed && f.Enabled {
-				s += float64(f.Funded) * ServiceStaff * r.Wage
+		for _, sv := range r.Services {
+			if sv != nil {
+				s += float64(sv.Funded) * ServiceStaff * r.Wage
 			}
 		}
 	}
 	return s
 }
 
-// staffServices lets each funded service hire its staff, paying (scale of)
-// their wages into it from the treasury.
+// staffServices has each funded service hire its staff (scale of them),
+// paid from the treasury once the labour market has cleared (collect).
 func (n *Nation) staffServices(scale float64) {
 	for _, r := range n.Regions {
 		// the services may employ at most maxPublicShare of the tile's workers
 		want := 0.0
-		for _, f := range r.Firms {
-			if f.Managed && f.Enabled {
-				want += float64(f.Funded) * ServiceStaff
+		for _, sv := range r.Services {
+			if sv != nil {
+				want += float64(sv.Funded) * ServiceStaff
 			}
 		}
 		local := scale
@@ -225,38 +241,38 @@ func (n *Nation) staffServices(scale float64) {
 		if ref := publicWageCap * n.averageWage(); ref > 0 && r.Wage > ref {
 			local *= ref / r.Wage
 		}
-		for _, f := range r.Firms {
-			if !f.Managed || !f.Enabled || f.Funded <= 0 {
-				continue
+		for _, sv := range r.Services {
+			if sv != nil {
+				sv.employer.Hire = float64(max(sv.Funded, 0)) * ServiceStaff * local
 			}
-			f.PlanLabor = float64(f.Funded) * ServiceStaff * local
-			pay := f.PlanLabor * r.Wage
-			n.Treasury -= pay
-			f.Cash += pay
-			n.SpentOn[services[serviceKind(f)].Spending] += pay
 		}
 	}
 }
 
-// settleServices collects the day's research and returns unspent wages.
+// settleServices collects the day's research.
 func (n *Nation) settleServices() {
 	for _, r := range n.Regions {
-		for _, f := range r.Firms {
-			if !f.Managed {
+		if u := r.University(); u != nil {
+			u.LastOutput = r.research(u)
+			n.ResearchPoints += u.LastOutput
+			if n.Copying >= 0 {
+				n.CopyPoints += u.LastOutput
+			}
+		}
+	}
+}
+
+// buildServices finishes the services' levels whose construction is
+// delivered: funded once built.
+func (w *World) buildServices() {
+	for _, r := range w.Regions {
+		for _, sv := range r.Services {
+			if sv == nil || sv.Expansion == nil || sv.Expansion.Delivered < sv.Expansion.Cost()-1e-9 {
 				continue
 			}
-			if isService(f, University) {
-				f.LastOutput = research(f)
-				n.ResearchPoints += f.LastOutput
-				if n.Copying >= 0 {
-					n.CopyPoints += f.LastOutput
-				}
-			}
-			if f.Cash > 0 {
-				n.Treasury += f.Cash
-				n.SpentOn[services[serviceKind(f)].Spending] -= f.Cash
-				f.Cash = 0
-			}
+			sv.Expansion = nil
+			sv.Levels++
+			sv.Funded++
 		}
 	}
 }
@@ -322,9 +338,9 @@ func (w *World) ServiceStats(r *Region, s Public) ServiceStats {
 	if f == nil {
 		return ServiceStats{}
 	}
-	st := ServiceStats{Staff: f.Labor, Need: w.ServiceNeed(r, s), Coverage: w.Coverage(r, s), Cost: ServiceStaff * r.Wage}
+	st := ServiceStats{Staff: f.Staff(), Need: w.ServiceNeed(r, s), Coverage: w.Coverage(r, s), Cost: ServiceStaff * r.Wage}
 	if s == University {
-		st.Research, st.PerLevel = f.LastOutput, f.TFP()*f.Agglom*f.EduMult*math.Pow(ServiceStaff, 0.6)
+		st.Research, st.PerLevel = f.LastOutput, r.SizeBonus()*r.science()*math.Pow(ServiceStaff, 0.6)
 	}
 	return st
 }
@@ -366,30 +382,22 @@ func (w *World) CloseServiceLevel(region int, s Public) error {
 // (funded once built).
 func (w *World) ExpandService(region int, s Public) error {
 	r := w.Regions[region]
-	for i, f := range r.Firms {
-		if f.Managed && isService(f, s) {
-			return w.Expand(region, i)
-		}
+	sv := r.Service(s)
+	switch {
+	case r.Nation == nil:
+		return ErrNoNation
+	case sv == nil:
+		return ErrNoService
+	case sv.Expansion != nil:
+		return ErrExpanding
+	case sv.Levels >= sv.MaxLevels:
+		return ErrFirmMax
 	}
-	return ErrNoService
+	sv.Expansion = &Expansion{External: true}
+	return nil
 }
 
 // SetFunding funds a tile's university (SetServiceFunding).
 func (w *World) SetFunding(region, levels int) error {
 	return w.SetServiceFunding(region, University, levels)
-}
-
-// serviceKind is which public service a managed firm provides.
-func serviceKind(f *Firm) Public {
-	for s := range services {
-		if services[s].Firm == f.Name {
-			return Public(s)
-		}
-	}
-	panic("not a public service: " + f.Name)
-}
-
-// isService reports whether a firm is the tile's public service s.
-func isService(f *Firm, s Public) bool {
-	return f.Managed && f.Name == services[s].Firm
 }

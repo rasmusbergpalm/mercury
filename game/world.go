@@ -45,7 +45,11 @@ type Region struct {
 	// per nation, and a last one for nobody; they add up to 1 (nil outside
 	// games with nations). See Allegiance.
 	Loyalties []float64
-	Battle    int // days the current battle on the tile has lasted (0: none)
+	Battle    int     // days the current battle on the tile has lasted (0: none)
+	Educated  float64 // share of its people who were schooled
+	Healthy   float64 // share of its crowding public health covers
+	// Services are its public services, by kind (none on a bare map)
+	Services [NumServices]*PublicService
 
 	claims    []claim        // what the nation buys here this tick
 	buyer     *economy.Buyer // the nation, buying in the tile's markets
@@ -57,7 +61,7 @@ type Region struct {
 func wrap(e *economy.World) *World {
 	w := &World{World: e}
 	for _, r := range e.Regions {
-		g := &Region{Region: r, w: w, Collect: 1, buyer: economy.NewBuyer()}
+		g := &Region{Region: r, w: w, Collect: 1, Healthy: 1, buyer: economy.NewBuyer()}
 		r.Buyers = append(r.Buyers, g.buyer)
 		w.Regions = append(w.Regions, g)
 	}
@@ -85,7 +89,7 @@ func (r *Region) setTax() {
 // over land.
 func (r *Region) setInfra(level int) {
 	r.Infra = level
-	r.RoadMult = InfraLevels[level].MoveMult
+	r.LandTransportMult = InfraLevels[level].MoveMult
 }
 
 // Step plays a day: the economy's, with the nations' part in it. The
@@ -149,9 +153,10 @@ func (w *World) duty(t *Trader) (float64, bool) {
 	return dn.Tariff[t.Good], false
 }
 
-// setPolicies sets what each tile's owner's technology does to its economy:
-// the payback owners ask, its people's growth, and the cost and losses of
-// shipping.
+// setPolicies sets what each tile's owner's technology, its schooling, its
+// public health and its people's loyalty do to its economy: the payback
+// owners ask, its people's growth, its firms' productivity, and the cost
+// and losses of shipping.
 func (w *World) setPolicies() {
 	type policy struct{ payback, growth, coast, spoilage float64 }
 	of := make([]policy, len(w.Nations))
@@ -163,7 +168,9 @@ func (w *World) setPolicies() {
 		if r.Nation != nil {
 			p = of[r.Nation.ID]
 		}
-		r.PaybackMult, r.GrowthBonus, r.CoastMult, r.SpoilageMult = p.payback, p.growth, p.coast, p.spoilage
+		r.PaybackMult, r.SeaTransportMult, r.SpoilageMult = p.payback, p.coast, p.spoilage
+		r.GrowthBonus = r.growthBonus(p.growth)
+		r.applyAllegiance()
 		r.setTax()
 	}
 }
@@ -171,10 +178,14 @@ func (w *World) setPolicies() {
 // planDay: the universities' scholars, and the nations' purchases.
 func (w *World) planDay() {
 	for _, r := range w.Regions {
-		r.scholars()
 		if r.Nation == nil {
 			for g := range r.buyer.Bid {
 				r.buyer.Bid[g] = 0
+			}
+			for _, sv := range r.Services { // nobody pays for free land's services
+				if sv != nil {
+					sv.employer.Hire = 0
+				}
 			}
 		}
 	}
@@ -192,8 +203,19 @@ func (w *World) collect() {
 			n.Revenue += r.Withheld
 			n.Spending -= r.buyer.Account
 			n.TariffRevenue += r.Duties
+			for _, sv := range r.Services { // the services' staff, paid
+				if sv != nil {
+					n.Treasury += sv.employer.Account
+					n.SpentOn[services[sv.Kind].Spending] -= sv.employer.Account
+				}
+			}
 		}
 		r.Withheld, r.buyer.Account, r.Duties = 0, 0, 0
+		for _, sv := range r.Services {
+			if sv != nil {
+				sv.employer.Account = 0
+			}
+		}
 	}
 }
 
@@ -215,11 +237,12 @@ func (w *World) settleDay() {
 	if w.Spec != nil {
 		w.serviceEffects()
 	}
+	w.buildServices()
 	w.openNewPorts()
 	if changed {
 		w.refreshAllHops()
 	}
-	w.setPolicies() // (the taxes on the soldiers' pay)
+	w.setPolicies() // (the taxes on the soldiers' pay, and today's growth)
 	if len(w.Nations) > 0 {
 		w.armies()
 	}
@@ -566,6 +589,11 @@ func (w *World) transfer(r *Region, n *Nation) {
 			f.Expansion = nil
 		}
 	}
+	for _, sv := range r.Services {
+		if sv != nil {
+			sv.Expansion = nil
+		}
+	}
 	// (the new owner's applyTech below sets productivity and which firms work)
 	r.setNation(n)
 	n.Regions = append(n.Regions, r)
@@ -621,20 +649,3 @@ func (n *Nation) settleTaxes() {
 
 // IsCity reports whether a tile has grown into a city (see economy.World.IsCity).
 func (w *World) IsCity(r *Region) bool { return w.World.IsCity(r.Region) }
-
-// UpdateAgglomeration sets what the tile's size and schooling do to its
-// firms (see economy.Region.UpdateAgglomeration), and to its university.
-func (r *Region) UpdateAgglomeration() {
-	r.Region.UpdateAgglomeration()
-	r.scholars()
-}
-
-// scholars sets the tile's university's productivity: scholars come from
-// the schooled.
-func (r *Region) scholars() {
-	for _, f := range r.Firms {
-		if f.Managed && isService(f, University) {
-			f.EduMult = scienceUnschooled + scienceEducation*r.Educated
-		}
-	}
-}

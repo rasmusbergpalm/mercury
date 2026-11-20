@@ -17,23 +17,21 @@ type Region struct {
 	WageSpeed float64
 
 	BaseMove float64  // terrain's movement cost
-	RoadMult float64  // what roads and railways do to moving over land (1: none)
 	Real     GDPChain // real GDP, linked monthly
 	warm     bool     // past the real GDP chain's warm-up (set at each link)
-	Educated float64  // share of its people who were schooled
-	Healthy  float64  // share of its crowding public health covers
 
 	UtilityEMA float64 // smoothed utility per person; migration follows it
 
 	// The levers (see levers.go), and the accounts.
-	IncomeTax    float64  // the share withheld from every income paid here
-	Withheld     float64  // taxes withheld, until someone takes them
-	Duties       float64  // import duties collected here, until someone takes them
-	Buyers       []*Buyer // outside buyers in its markets
-	PaybackMult  float64  // scales the payback owners ask of a new level (1: as is)
-	GrowthBonus  float64  // added to its people's growth a year
-	CoastMult    float64  // scales the cost of passing it by sea (1: CoastMove)
-	SpoilageMult float64  // scales the spoilage of goods shipped from it (1: as is)
+	IncomeTax         float64  // the share withheld from every income paid here
+	Withheld          float64  // taxes withheld, until someone takes them
+	Duties            float64  // import duties collected here, until someone takes them
+	Buyers            []*Buyer // outside buyers in its markets
+	PaybackMult       float64  // scales the payback owners ask of a new level (1: as is)
+	GrowthBonus       float64  // added to its people's growth a year, beyond their natural growth
+	LandTransportMult float64  // scales the transport it takes to cross the tile over land (1: its terrain's)
+	SeaTransportMult  float64  // scales the transport it takes to pass it by sea (1: CoastMove)
+	SpoilageMult      float64  // scales the spoilage of goods shipped from it (1: as is)
 
 	House    *TradingHouse // the tile's merchants
 	outbound [][]*Trader   // routes buying here, by good (transport: all of them)
@@ -51,9 +49,9 @@ type Region struct {
 
 // NewRegion makes a region with n identical pops.
 func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash float64) *Region {
-	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1, BaseMove: 1, RoadMult: 1,
+	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1, BaseMove: 1, LandTransportMult: 1,
 		outbound: make([][]*Trader, NumGoods), inbound: make([][]*Trader, NumGoods), bidders: make([][]*Trader, NumGoods),
-		prices: make([]float64, NumGoods), Healthy: 1, PaybackMult: 1, CoastMult: 1, SpoilageMult: 1}
+		prices: make([]float64, NumGoods), PaybackMult: 1, SeaTransportMult: 1, SpoilageMult: 1}
 	for i := 0; i < nPops; i++ {
 		r.Pops = append(r.Pops, NewPop(popSize, popCash))
 		r.popDemand = append(r.popDemand, make([]float64, NumGoods))
@@ -157,7 +155,7 @@ func (r *Region) planInvestment(seed int64) {
 	payback *= r.PaybackMult
 	for i, f := range r.Firms {
 		f.upkeepWant = 0
-		if f.Managed || f.Levels < 1 {
+		if f.Levels < 1 {
 			continue
 		}
 		perLevel := f.ProfitEMA / float64(f.Levels)
@@ -234,7 +232,7 @@ func (r *Region) settleFirms() {
 	for _, f := range r.Firms {
 		f.Age++
 		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.TickRevenue-f.TickCost)
-		if !f.Managed && f.Levels > 1 { // wear, less today's upkeep (made good at the market)
+		if f.Levels > 1 { // wear, less today's upkeep (made good at the market)
 			f.Wear += depreciation * float64(f.Levels) / TicksPerYear
 			if f.Wear >= 1 {
 				f.dropLevel(r)
@@ -251,12 +249,6 @@ func (r *Region) settleFirms() {
 			if c := f.landCap(); c > 0 && f.Levels > c {
 				f.dropLevel(r) // on full land the new method takes over the old one's
 			}
-			if f.Managed {
-				f.Funded++ // a new state level is funded once built
-			}
-		}
-		if f.Managed {
-			continue // their runner decides about managed firms
 		}
 		if f.ProfitEMA < 0 && f.Levels > 1 {
 			f.LossTicks++
@@ -275,13 +267,17 @@ func (r *Region) settleFirms() {
 // labor can be split across firms), and get paid by the firm that employs them.
 func (r *Region) LaborMarket() {
 	// a firm only claims the workers it can pay the full wage; the rest look
-	// for work at firms that can
+	// for work at firms that can. Outside employers (Buyer.Hire) hire after
+	// the firms, and pay from their account.
 	totalD := 0.0
 	for _, f := range r.Firms {
 		if r.Wage > 0 {
 			f.PlanLabor = math.Min(f.PlanLabor, math.Max(f.Cash, 0)/r.Wage)
 		}
 		totalD += f.PlanLabor
+	}
+	for _, b := range r.Buyers {
+		totalD += b.Hire
 	}
 	workers := r.ClassPops(Workers)
 	supply := 0.0
@@ -297,21 +293,20 @@ func (r *Region) LaborMarket() {
 	}
 	pi := 0
 	free := workers[0].Size
-	for fi, f := range r.Firms {
-		f.Labor = f.PlanLabor * scale
+	// hire fills employer e's jobs (a firm's index, or len(Firms) on for a
+	// buyer), paying from cash
+	hire := func(e int, need float64, cash *float64) {
 		wage := r.Wage
-		need := f.Labor
 		for need > 1e-12 && pi < len(workers) {
 			pop := workers[pi]
 			take := math.Min(need, free)
-			if n := len(pop.Jobs); n > 0 && pop.Jobs[n-1].Firm == fi {
+			if n := len(pop.Jobs); n > 0 && pop.Jobs[n-1].Firm == e {
 				pop.Jobs[n-1].Amount += take
 			} else {
-				pop.Jobs = append(pop.Jobs, Job{fi, take})
+				pop.Jobs = append(pop.Jobs, Job{e, take})
 			}
 			r.PayIncome(pop, take*wage)
-			f.Cash -= take * wage
-			f.TickCost += take * wage
+			*cash -= take * wage
 			need -= take
 			free -= take
 			if free <= 1e-12 {
@@ -323,6 +318,16 @@ func (r *Region) LaborMarket() {
 				}
 			}
 		}
+	}
+	for fi, f := range r.Firms {
+		f.Labor = f.PlanLabor * scale
+		cash0 := f.Cash
+		hire(fi, f.Labor, &f.Cash)
+		f.TickCost += cash0 - f.Cash
+	}
+	for bi, b := range r.Buyers {
+		b.Hired = b.Hire * scale
+		hire(len(r.Firms)+bi, b.Hired, &b.Account)
 	}
 	excess := (totalD - supply) / supply
 	r.Wage = math.Max(MinPrice, math.Min(MaxPrice, r.Wage*math.Exp(r.WageSpeed*clip(excess)))) // bounded, like prices
@@ -573,9 +578,6 @@ func (r *Region) capUnsuppliedPrices() {
 // Produce decays unsold stock, then lets every firm produce.
 func (r *Region) Produce() {
 	for _, f := range r.Firms {
-		if f.Managed {
-			continue // managed firms produce for their runner
-		}
 		f.Inventory *= 1 - Goods[f.Output].Spoilage
 		f.Produce()
 	}
@@ -647,24 +649,23 @@ func (r *Region) SizeBonus() float64 {
 	return math.Pow(math.Max(r.Population(), 1)/SizeBonusPop, SizeBonusExp)
 }
 
+// UpdateAgglomeration sets what the tile's size does to its industry and
+// services.
 func (r *Region) UpdateAgglomeration() {
-	b, e := r.SizeBonus(), 1+EducationBonus*r.Educated
+	b := r.SizeBonus()
 	for _, f := range r.Firms {
 		if f.Sector != Primary {
-			f.Agglom, f.EduMult = b, e
+			f.Agglom = b
 		}
 	}
 }
 
 // Population growth per year: well-fed people multiply, hungry ones don't.
-// growth = PopGrowthSlope * (basic needs met - PopGrowthNeutral) + GrowthBonus,
-// within [PopGrowthMin, PopGrowthMax], less SchooledBirths times the
-// educated share: schooled people have fewer children (the demographic
-// transition: birth rates fell about a third as literacy rose from half to
-// nearly all), so growth falls from about 1.4% a year in 1820 to under 1% as
-// a country schools everyone.
+// Natural growth is PopGrowthSlope * (basic needs met - PopGrowthNeutral),
+// within [PopGrowthMin, PopGrowthMax]: about 1.4% a year where people eat
+// well, as in 1820. Anything else that moves births and deaths (medicine,
+// public health, schooling) comes from outside as GrowthBonus.
 const (
-	SchooledBirths   = 0.012
 	PopGrowthSlope   = 0.035
 	PopGrowthNeutral = 0.5
 	PopGrowthMin     = -0.03
@@ -691,11 +692,16 @@ func (r *Region) BasicNeedsMet() float64 {
 	return s / float64(n)
 }
 
-// GrowthRate is the tile's population growth per year at current consumption.
+// NaturalGrowth is the tile's population growth per year at current
+// consumption before its limits: what eating well or badly does.
+func (r *Region) NaturalGrowth() float64 {
+	return PopGrowthSlope * (r.BasicNeedsMet() - PopGrowthNeutral)
+}
+
+// GrowthRate is the tile's population growth per year: its natural growth
+// within its limits, and GrowthBonus.
 func (r *Region) GrowthRate() float64 {
-	g := PopGrowthSlope*(r.BasicNeedsMet()-PopGrowthNeutral) + r.HealthGrowth()
-	g += r.GrowthBonus
-	return math.Max(PopGrowthMin, math.Min(PopGrowthMax, g)-SchooledBirths*r.Educated)
+	return math.Max(PopGrowthMin, math.Min(PopGrowthMax, r.NaturalGrowth())) + r.GrowthBonus
 }
 
 // grow applies a day of population growth. Newborns bring no cash.
@@ -706,17 +712,17 @@ func (r *Region) grow() {
 	}
 }
 
-// MoveCost is the cost of moving through the tile. Roads and railways
-// improve movement over land (a land tile's base cost times the
-// infrastructure multiplier). Coastal tiles can also be passed by sea, at
-// CoastMove times the tile's CoastMult; the cheaper way counts.
+// MoveCost is the transport it takes to move through the tile: over land,
+// its terrain's cost times LandTransportMult; coastal tiles can also be
+// passed by sea, at CoastMove times SeaTransportMult; the cheaper way
+// counts.
 func (r *Region) MoveCost() float64 {
-	land := r.BaseMove * r.RoadMult
+	land := r.BaseMove * r.LandTransportMult
 	if !r.Coastal {
 		return land
 	}
 	sea := CoastMove
-	sea *= r.CoastMult
+	sea *= r.SeaTransportMult
 	return math.Min(sea, land)
 }
 

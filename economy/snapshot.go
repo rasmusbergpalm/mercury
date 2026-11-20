@@ -33,16 +33,16 @@ type Snapshot struct {
 
 // RegionState is a tile's state in a Snapshot.
 type RegionState struct {
-	Wage, UtilityEMA, HouseCash, Educated, Healthy float64
+	Wage, UtilityEMA, HouseCash float64
 	// levers and accounts
-	IncomeTax, PaybackMult, GrowthBonus float64
-	RoadMult, CoastMult, SpoilageMult   float64
-	Withheld, Duties                    float64
-	Buyers                              []BuyerState `json:",omitempty"`
-	Markets                             []MarketState
-	Pops                                []PopState
-	Firms                               []FirmState
-	Real                                GDPChain // real GDP's chain
+	IncomeTax, PaybackMult, GrowthBonus               float64
+	LandTransportMult, SeaTransportMult, SpoilageMult float64
+	Withheld, Duties                                  float64
+	Buyers                                            []BuyerState `json:",omitempty"`
+	Markets                                           []MarketState
+	Pops                                              []PopState
+	Firms                                             []FirmState
+	Real                                              GDPChain // real GDP's chain
 }
 
 // MarketState is a market's state in a Snapshot.
@@ -61,13 +61,13 @@ type PopState struct {
 // FirmState is a firm's state in a Snapshot.
 type FirmState struct {
 	Cash, Inventory, Labor, LastOutput, ProfitEMA float64
-	Levels, MaxLevels, LossTicks, Age, Funded     int
+	Levels, MaxLevels, LossTicks, Age             int
 	Expansion                                     *Expansion
 	Wear, Urge, Mult                              float64
 	Monopoly                                      bool    `json:",omitempty"`
 	Elasticity, Share                             float64 `json:",omitempty"`
 	Projects                                      int
-	Enabled, Managed                              bool
+	Enabled                                       bool
 	// per method: productivity, whether it works, and the levels it runs
 	// (the first method's are the rest)
 	TFP          []float64
@@ -85,8 +85,9 @@ type TraderState struct {
 
 // BuyerState is an outside buyer's state in a Snapshot.
 type BuyerState struct {
-	Bid, Got []float64
-	Account  float64
+	Bid, Got    []float64
+	Hire, Hired float64 `json:",omitempty"`
+	Account     float64
 }
 
 // Snapshot captures the economy's state.
@@ -100,12 +101,11 @@ func (w *World) Snapshot() *Snapshot {
 	}
 	sort.Strings(s.Known)
 	for _, r := range w.Regions {
-		rs := RegionState{Wage: r.Wage, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Educated: r.Educated,
-			Healthy: r.Healthy, IncomeTax: r.IncomeTax, PaybackMult: r.PaybackMult,
-			GrowthBonus: r.GrowthBonus, RoadMult: r.RoadMult, CoastMult: r.CoastMult, SpoilageMult: r.SpoilageMult,
+		rs := RegionState{Wage: r.Wage, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, IncomeTax: r.IncomeTax, PaybackMult: r.PaybackMult,
+			GrowthBonus: r.GrowthBonus, LandTransportMult: r.LandTransportMult, SeaTransportMult: r.SeaTransportMult, SpoilageMult: r.SpoilageMult,
 			Withheld: r.Withheld, Duties: r.Duties, Real: r.Real.Clone()}
 		for _, b := range r.Buyers {
-			rs.Buyers = append(rs.Buyers, BuyerState{append([]float64(nil), b.Bid...), append([]float64(nil), b.Got...), b.Account})
+			rs.Buyers = append(rs.Buyers, BuyerState{append([]float64(nil), b.Bid...), append([]float64(nil), b.Got...), b.Hire, b.Hired, b.Account})
 		}
 		for _, m := range r.Markets {
 			rs.Markets = append(rs.Markets, MarketState{m.Price, m.Supply, m.Demand, m.Trend})
@@ -116,8 +116,8 @@ func (w *World) Snapshot() *Snapshot {
 		}
 		for _, f := range r.Firms {
 			fs := FirmState{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
-				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age, Funded: f.Funded,
-				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Projects: f.Projects, Enabled: f.Enabled, Managed: f.Managed,
+				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age,
+				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Projects: f.Projects, Enabled: f.Enabled,
 				Monopoly: f.Monopoly, Elasticity: f.Elasticity, Share: f.share}
 			for i, m := range f.Methods {
 				fs.TFP = append(fs.TFP, m.TFP)
@@ -182,9 +182,9 @@ func (w *World) SetState(s *Snapshot) error {
 		if len(rs.Markets) != len(r.Markets) || len(rs.Pops) != len(r.Pops) || len(rs.Firms) != len(r.Firms) || len(rs.Buyers) != len(r.Buyers) {
 			return bad("tile " + r.Name)
 		}
-		r.Wage, r.UtilityEMA, r.House.Cash, r.Educated, r.Healthy = rs.Wage, rs.UtilityEMA, rs.HouseCash, rs.Educated, rs.Healthy
+		r.Wage, r.UtilityEMA, r.House.Cash = rs.Wage, rs.UtilityEMA, rs.HouseCash
 		r.IncomeTax, r.PaybackMult, r.GrowthBonus = rs.IncomeTax, rs.PaybackMult, rs.GrowthBonus
-		r.RoadMult, r.CoastMult, r.SpoilageMult = rs.RoadMult, rs.CoastMult, rs.SpoilageMult
+		r.LandTransportMult, r.SeaTransportMult, r.SpoilageMult = rs.LandTransportMult, rs.SeaTransportMult, rs.SpoilageMult
 		r.Withheld, r.Duties = rs.Withheld, rs.Duties
 		for j, bs := range rs.Buyers {
 			b := r.Buyers[j]
@@ -193,7 +193,7 @@ func (w *World) SetState(s *Snapshot) error {
 			}
 			copy(b.Bid, bs.Bid)
 			copy(b.Got, bs.Got)
-			b.Account = bs.Account
+			b.Account, b.Hire, b.Hired = bs.Account, bs.Hire, bs.Hired
 		}
 		r.Real = rs.Real.Clone()
 		if !r.Real.Valid() {
@@ -227,8 +227,8 @@ func (w *World) SetState(s *Snapshot) error {
 				e := *fs.Expansion
 				f.Expansion = &e
 			}
-			f.Funded, f.Wear, f.Urge, f.Mult, f.Projects = fs.Funded, fs.Wear, fs.Urge, fs.Mult, fs.Projects
-			f.Enabled, f.Managed = fs.Enabled, fs.Managed
+			f.Wear, f.Urge, f.Mult, f.Projects = fs.Wear, fs.Urge, fs.Mult, fs.Projects
+			f.Enabled = fs.Enabled
 			f.Monopoly, f.Elasticity, f.share = fs.Monopoly, fs.Elasticity, fs.Share
 		}
 		if len(s.TradePrices[i]) != NumGoods {

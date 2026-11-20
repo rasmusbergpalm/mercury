@@ -131,11 +131,6 @@ type Firm struct {
 	Inventory  float64   // stock of own output, for sale
 	Inputs     []float64 // goods bought this tick, indexed by good
 	Labor      float64   // labor employed this tick
-	// Managed firms are run for someone outside the economy (a
-	// state's schools, say): they don't seek profit or invest; their
-	// runner funds Funded of their levels, staffs them and takes their
-	// output.
-	Managed bool
 	// Market power, off by default: every firm takes its market's price as
 	// given, as one of many small producers would (the tile's farms, mills
 	// or bakeries, together). A Monopoly is the tile's only maker of its
@@ -144,8 +139,6 @@ type Firm struct {
 	Monopoly   bool
 	Elasticity float64
 	share      float64 // its share of what the tile's market offered at the last clearing (a monopoly's)
-	Funded     int
-	EduMult    float64 // productivity from the tile's schooling (industry and services)
 	Mult       float64 // productivity from outside the economy (1: none)
 	// Site and SiteMult: where a land-bound producer's productivity comes
 	// from (its terrain, or the coast) and how much it multiplies it.
@@ -270,7 +263,7 @@ func (f *Firm) effectiveTFP(i int) float64 {
 	if m.powLevels != l || m.levelsPow == 0 {
 		m.powLevels, m.levelsPow = l, math.Pow(float64(l), 1-m.exponentSum())
 	}
-	return m.TFP * m.levelsPow * f.Agglom * f.EduMult * f.Mult
+	return m.TFP * m.levelsPow * f.Agglom * f.Mult
 }
 
 // main is the method that runs most of the firm's levels (its first, at
@@ -352,7 +345,7 @@ func (f *Firm) WorstMethod(prices []float64, wage float64) (int, float64) {
 func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash float64) *Firm {
 	return &Firm{Name: name, Output: output, Cash: cash,
 		Methods: []*Method{newMethod(name, tfp, factors)},
-		Levels:  1, Enabled: true, Agglom: 1, EduMult: 1, Mult: 1,
+		Levels:  1, Enabled: true, Agglom: 1, Mult: 1,
 		CashBuffer: 20, Inputs: make([]float64, NumGoods),
 		PlanQty: make([]float64, NumGoods), PlanHas: make([]bool, NumGoods)}
 }
@@ -382,7 +375,7 @@ func (f *Firm) unitCost(fc Factor, prices []float64, wage float64) float64 {
 func (f *Firm) LevelProfit(i int, prices []float64, wage float64) float64 {
 	m := f.Methods[i]
 	p := f.worth(prices[f.Output])
-	k, s := m.TFP*f.Agglom*f.EduMult*f.Mult, 0.0
+	k, s := m.TFP*f.Agglom*f.Mult, 0.0
 	for _, fc := range m.Factors {
 		k *= math.Pow(fc.Exp*p/f.unitCost(fc, prices, wage), fc.Exp)
 		s += fc.Exp
@@ -428,7 +421,7 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 			m.planQty[g] = 0
 		}
 	}
-	if !f.Enabled || f.Managed { // their runner staffs managed firms
+	if !f.Enabled {
 		return
 	}
 	p := f.worth(prices[f.Output])

@@ -75,10 +75,11 @@ func (r *Region) WorkMult() float64 {
 	return 1 - 0.5*math.Max(0, rival)
 }
 
-// applyAllegiance sets the tile's firms' productivity from its allegiance.
+// applyAllegiance sets the tile's firms' productivity (the economy's
+// Mult) from its allegiance and its schooling.
 func (r *Region) applyAllegiance() {
 	m := r.WorkMult()
 	for _, f := range r.Firms {
-		f.Mult = m
+		f.Mult = m * r.eduMult(f)
 	}
 }

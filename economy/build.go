@@ -97,7 +97,7 @@ var Terrains = func() []Terrain {
 
 // The ocean surrounds the map. A tile on the map's edge is coastal whatever
 // its terrain: it has the coast's producers (CoastRaw), and ships carry
-// goods past it cheaply (CoastMove, scaled by the tile's CoastMult).
+// goods past it cheaply (CoastMove, scaled by the tile's SeaTransportMult).
 var (
 	CoastMove = terrainsData.Coast.Move
 	CoastRaw  = bonuses(terrainsData.Coast.Raw)
@@ -266,7 +266,6 @@ func buildWorld(transportCost float64, gameMap []string, names []string) (*World
 			// of whom are made owners
 			reg := NewRegion(len(regions), name, makeFirms(t, coastal), 1, 100, 1000/spendShare)
 			addOwnerClasses(reg)
-			reg.Educated = StartEducated
 			reg.Row, reg.Col, reg.Terrain, reg.BaseMove, reg.Coastal = r, c, t.Name, t.MoveCost, coastal
 			grid[r][c] = reg
 			regions = append(regions, reg)

@@ -2,7 +2,7 @@ package economy
 
 // Job is labor a pop supplies to one firm.
 type Job struct {
-	Firm   int // index into the region's firms
+	Firm   int // the employer: an index into the region's firms, or len(Firms) on for its buyers
 	Amount float64
 }
 

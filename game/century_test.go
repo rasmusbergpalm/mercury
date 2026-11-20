@@ -185,9 +185,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 					}
 					constrPriv += math.Max(0, got) * m.Price
 				}
-				if !f.Managed {
-					profit += f.TickRevenue - f.TickCost
-				}
+				profit += f.TickRevenue - f.TickCost
 				wages += f.Labor * r.Wage
 				for _, m := range f.Methods {
 					made[f.Name+"|"+m.Name] += m.Output
@@ -210,10 +208,8 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		small := math.Inf(1)
 		for _, r := range w.Regions {
 			for _, f := range r.Firms {
-				if !f.Managed {
-					k += float64(f.Levels) * LevelCost * r.Markets[Construction].Price
-					levels += float64(f.Levels)
-				}
+				k += float64(f.Levels) * LevelCost * r.Markets[Construction].Price
+				levels += float64(f.Levels)
 				sector := f.Sector
 				if sector == Primary && mined[f.Output] {
 					sector = Industry // mining is industry in the historical series (Kuznets, Maddison)

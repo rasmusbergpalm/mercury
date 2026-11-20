@@ -127,7 +127,7 @@ all:
 
 | Where | Levers | Accounts |
 |---|---|---|
-| a tile (`Region`) | `IncomeTax`, `PaybackMult` (cost of capital), `GrowthBonus`, `RoadMult`, `CoastMult`, `SpoilageMult`, `Educated`, `Healthy`, `Urban` | `Withheld` (taxes), `Duties` |
+| a tile (`Region`) | `IncomeTax`, `PaybackMult` (cost of capital), `GrowthBonus`, `LandTransportMult`, `SeaTransportMult`, `SpoilageMult`, `Educated`, `Healthy`, `Urban` | `Withheld` (taxes), `Duties` |
 | a tile's markets | `Buyers`: outside buyers with their own bids | each buyer's `Account` and `Got` |
 | a route (`Trader`) | `Tariff`, `Closed` (an embargo) | |
 | a firm | `Mult` (productivity), `Managed` (run for someone else) | |

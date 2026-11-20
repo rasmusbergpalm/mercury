@@ -197,8 +197,7 @@ func TestFundedUniversitiesDriveResearch(t *testing.T) {
 		w := newTestGame(t)
 		n := w.Nations[0]
 		for _, r := range n.Regions {
-			f := r.University()
-			f.Levels = levels
+			r.Service(University).Levels = levels
 			if err := w.SetFunding(r.ID, levels); err != nil {
 				t.Fatal(err)
 			}
@@ -225,7 +224,7 @@ func TestFundedUniversitiesDriveResearch(t *testing.T) {
 	}
 	w := newTestGame(t)
 	r := w.Nations[0].Regions[0]
-	if err := w.SetFunding(r.ID, r.University().Levels+1); !errors.Is(err, ErrBadFunding) {
+	if err := w.SetFunding(r.ID, r.Service(University).Levels+1); !errors.Is(err, ErrBadFunding) {
 		t.Errorf("funding beyond the levels: %v", err)
 	}
 }
@@ -297,9 +296,6 @@ func TestProfitableFirmsInvest(t *testing.T) {
 	grew := 0
 	for _, r := range w.Regions {
 		for _, f := range r.Firms {
-			if f.Managed {
-				continue // public services are the state's to build
-			}
 			if (f.MaxLevels > 0 && f.Levels > f.MaxLevels) || (f.Levels < 1 && f.Enabled) { // a method not yet known has none
 				t.Errorf("%s in %s has %d levels (max %d)", f.Name, r.Name, f.Levels, f.MaxLevels)
 			}
@@ -317,7 +313,7 @@ func TestProfitableFirmsInvest(t *testing.T) {
 	}
 	for _, r := range still.Regions {
 		for _, f := range r.Firms {
-			if f.Levels != 1 && !f.Managed {
+			if f.Levels != 1 {
 				t.Fatalf("with investment off, firm %s grew to %d levels", f.Name, f.Levels)
 			}
 		}

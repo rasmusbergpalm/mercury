@@ -49,12 +49,21 @@ const SnapshotVersion = 17
 
 // RegionSnap is what the game knows of a tile, beyond its economy.
 type RegionSnap struct {
-	Neglect, Collect float64
-	Loyalties        []float64
-	Infra, Battle    int
-	Port             bool
-	Project          *Project
-	Siege            *SiegeSnap
+	Neglect, Collect  float64
+	Educated, Healthy float64
+	Loyalties         []float64
+	Infra, Battle     int
+	Port              bool
+	Project           *Project
+	Siege             *SiegeSnap
+	Services          []ServiceSnap
+}
+
+// ServiceSnap is a public service's state (its staff's are the economy's).
+type ServiceSnap struct {
+	Levels, MaxLevels, Funded int
+	Expansion                 *Expansion
+	LastOutput                float64
 }
 
 type NationSnap struct {
@@ -91,7 +100,15 @@ func (w *World) Snapshot() (*Snapshot, error) {
 	}
 	s := &Snapshot{Version: SnapshotVersion, Spec: *w.Spec, Economy: w.World.Snapshot(), Ports: append([]int(nil), w.Ports...)}
 	for _, r := range w.Regions {
-		rs := RegionSnap{Neglect: r.Neglect, Collect: r.Collect, Loyalties: append([]float64(nil), r.Loyalties...), Infra: r.Infra, Battle: r.Battle, Port: r.Port}
+		rs := RegionSnap{Neglect: r.Neglect, Collect: r.Collect, Educated: r.Educated, Healthy: r.Healthy, Loyalties: append([]float64(nil), r.Loyalties...), Infra: r.Infra, Battle: r.Battle, Port: r.Port}
+		for _, sv := range r.Services {
+			ss := ServiceSnap{Levels: sv.Levels, MaxLevels: sv.MaxLevels, Funded: sv.Funded, LastOutput: sv.LastOutput}
+			if sv.Expansion != nil {
+				e := *sv.Expansion
+				ss.Expansion = &e
+			}
+			rs.Services = append(rs.Services, ss)
+		}
 		if r.Siege != nil {
 			rs.Siege = &SiegeSnap{r.Siege.Nation.ID, r.Siege.Progress}
 		}
@@ -164,6 +181,14 @@ func Restore(s *Snapshot) (*World, error) {
 			return bad("port in " + r.Name)
 		}
 		r.Neglect, r.Project, r.Battle, r.Collect = rs.Neglect, rs.Project, rs.Battle, rs.Collect
+		r.Educated, r.Healthy = rs.Educated, rs.Healthy
+		if len(rs.Services) != int(NumServices) {
+			return bad("services in " + r.Name)
+		}
+		for k, ss := range rs.Services {
+			sv := r.Services[k]
+			sv.Levels, sv.MaxLevels, sv.Funded, sv.Expansion, sv.LastOutput = ss.Levels, ss.MaxLevels, ss.Funded, ss.Expansion, ss.LastOutput
+		}
 		r.setInfra(rs.Infra)
 		r.setNation(nil)
 		if len(rs.Loyalties) != len(r.Loyalties) {

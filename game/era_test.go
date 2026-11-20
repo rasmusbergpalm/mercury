@@ -56,7 +56,7 @@ func TestPopulationFollowsFood(t *testing.T) {
 			}
 		}
 	}
-	if g := r.GrowthRate(); g <= 0 || g > PopGrowthMax {
+	if g := r.GrowthRate(); g <= 0 || g > PopGrowthMax+r.GrowthBonus {
 		t.Errorf("well-fed tile grows %v a year", g)
 	}
 	w.Migration = false

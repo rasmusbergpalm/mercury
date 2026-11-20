@@ -56,8 +56,8 @@ func TestSchoolsEducate(t *testing.T) {
 		t.Errorf("three years of schools: educated %v -> %v", e0, r.Educated)
 	}
 	for _, x := range r.Firms {
-		if x.Sector == Industry && math.Abs(x.EduMult-(1+EducationBonus*r.Educated)) > 1e-3 { // set the morning before
-			t.Errorf("%s: schooling bonus %v for educated share %v", x.Name, x.EduMult, r.Educated)
+		if x.Sector == Industry && math.Abs(x.Mult-r.WorkMult()*(1+EducationBonus*r.Educated)) > 1e-3 { // set the evening before
+			t.Errorf("%s: productivity %v for educated share %v", x.Name, x.Mult, r.Educated)
 		}
 	}
 }
@@ -155,13 +155,10 @@ func TestEducationMattersMostToScience(t *testing.T) {
 	r := w.Regions[0]
 	mults := func(educated float64) (uni, mill float64) {
 		r.Educated = educated
-		r.UpdateAgglomeration()
+		uni = r.science()
 		for _, f := range r.Firms {
-			switch {
-			case f.Managed && isService(f, University):
-				uni = f.EduMult
-			case f.Sector == Industry:
-				mill = f.EduMult
+			if f.Sector == Industry {
+				mill = r.eduMult(f)
 			}
 		}
 		return

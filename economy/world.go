@@ -164,9 +164,6 @@ func (w *World) Produce() {
 		r.Produce()
 		owners := r.owners()
 		for _, f := range r.Firms {
-			if f.Managed {
-				continue
-			}
 			// keep cash for what the firm wants to spend, but no more than it
 			// can grow into: twice what it actually spent today
 			r.PayDividends(&f.Cash, f.CashBuffer, math.Min(f.DesiredSpend, 2*f.TickCost+f.CashBuffer), owners)
