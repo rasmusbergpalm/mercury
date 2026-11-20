@@ -1,5 +1,5 @@
 /* Layout: one reading column of ledger text, with wider engraved "plates"
-   for the maps and charts, in the game's own Victorian atlas palette. */
+   for the maps and charts, in a Victorian atlas palette. */
 :root {
   --bg: #e9dcbd; --paper: #f4ead2; --surface: #fbf5e4; --ink: #2b2118; --muted: #6b5a44;
   --rule: #8c7350; --border: #c4ab7f; --accent: #8b2e1f; --brass: #a87b2c; --good: #3d6b2a;
@@ -84,3 +84,15 @@ select { font: 16px var(--serif); color: var(--ink); background: var(--surface);
 .fact span { font-size: 15px; color: var(--muted); }
 footer { margin-top: 64px; border-top: 3px double var(--rule); padding-top: 18px; font-size: 16px; color: var(--muted); }
 @media (prefers-reduced-motion: no-preference) { .hexes polygon { transition: fill .25s; } }
+
+/* the agents: a card for each, and the table that introduces them */
+.agent { border: 1px solid var(--border); border-left: 4px solid var(--brass); background: color-mix(in srgb, var(--paper) 88%, var(--brass)); padding: 12px 18px; margin: 18px 0; font-size: 17px; }
+.agent h4 { font-family: var(--display); font-weight: 400; font-size: 21px; margin: 0 0 6px; letter-spacing: .03em; }
+.agent dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; }
+.agent dt { font-variant: small-caps; color: var(--muted); }
+.agent dd { margin: 0; }
+@media (max-width: 760px) { .agent dl { grid-template-columns: 1fr; } .agent dt { margin-top: 6px; } }
+table.agents { width: 100%; border-collapse: collapse; font-size: 16px; margin: 14px 0 20px; }
+table.agents th { text-align: left; font-weight: 600; border-bottom: 1px solid var(--rule); padding: 6px 8px 6px 0; }
+table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 0; vertical-align: top; }
+.table-wrap { overflow-x: auto; }

@@ -26,11 +26,14 @@
 // tiles' own work, which runs in parallel, settles what it owes others in a
 // fixed order afterwards.
 //
-// The calibration (the goods, needs, recipes and terrains of a nineteenth
-// century economy) is data, in the JSON files of data/. BuildWorld makes
-// the classic world (the core goods and firms, one class of people);
-// BuildFullWorld makes the full one (every good and firm, production
-// methods that wait for the technology they need, workers and owners).
+// What the economy makes and where is not the engine's: the goods, needs,
+// recipes and terrains are data, in the JSON files of data/, and a map is
+// a list of rows of terrain symbols. The data that comes with the package
+// is an example economy, Europe around 1820, and DefaultMap a small example
+// map. BuildWorld makes the classic world from them (the core goods and
+// firms, one class of people); BuildFullWorld makes the full one (every
+// good and firm, production methods that wait for the technology they
+// need, workers and owners).
 //
 // Anything outside the economy (a model of policy, a strategy game) acts
 // on it by setting its levers (see levers.go: taxes, tariffs and embargoes,
