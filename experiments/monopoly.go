@@ -30,8 +30,8 @@ func init() {
 // stays as it was. Its
 // demand's elasticity is 2: beer substitutes for tea within the need for
 // drink at an elasticity of 2 (data/needs.json). After Years, the last
-// year's averages: the price of beer in the tile, the brewery's output and
-// profit, the beer brought in from other tiles, the brewery's share of the
+// year's averages: the price of beer in the tile, the cheapest a merchant
+// can land it there for, the brewery's output and profit, the beer brought in from other tiles, the brewery's share of the
 // beer sold in the tile, and the tile's living standard.
 func runMonopoly(o *Out) {
 	const tile = 14 // an inland tile in the middle of the map
@@ -42,6 +42,7 @@ func runMonopoly(o *Out) {
 		Price, Output, Profit  float64 // in the tile: beer's price, and the brewery's output and profit a day
 		Imports, Share, Living float64 // beer brought in a day, the brewery's share of the beer sold in the tile, the living standard
 		Labor                  float64 // the brewery's workers
+		Landed                 float64 // the cheapest a merchant can land beer in the tile: a neighbour's price plus the carriage
 	}
 	costs := []float64{4, 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125}
 	results := make([]result, 2*len(costs))
@@ -86,15 +87,18 @@ func runMonopoly(o *Out) {
 					out.Profit += brewery.TickRevenue - brewery.TickCost
 					out.Labor += brewery.Labor
 					out.Living += r.Utility()
-					in := 0.0
+					in, landed := 0.0, math.Inf(1)
 					for _, t := range w.Traders {
 						if t.Good == beer && t.Dest == r {
 							in += t.Shipped * t.Arriving
+							o := t.Origin.Markets
+							landed = math.Min(landed, (o[beer].Price+t.Tau*o[Transport].Price)/t.Arriving)
 						}
 					}
+					out.Landed += landed
 					out.Imports += in
 				}
-				for _, x := range []*float64{&out.Price, &out.Output, &out.Profit, &out.Imports, &out.Living, &out.Labor} {
+				for _, x := range []*float64{&out.Price, &out.Output, &out.Profit, &out.Imports, &out.Living, &out.Labor, &out.Landed} {
 					*x /= samples
 				}
 				if traded > 0 {
