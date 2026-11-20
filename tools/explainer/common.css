@@ -8,24 +8,7 @@
   --t-plains: #e3d59b; --t-forest: #b9c28c; --t-hills: #d6bd8c; --t-mountains: #c9bdab; --t-tropical: #bcd194;
   --serif: "EB Garamond", Garamond, "Iowan Old Style", Georgia, serif;
   --display: "IM Fell English SC", "EB Garamond", Georgia, serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #17120d; --paper: #211b15; --surface: #2a221a; --ink: #ecdfc4; --muted: #a8977a;
-    --rule: #7a6446; --border: #4d3f2e; --accent: #d9805f; --brass: #c9a45a; --good: #8fbf6a;
-    --sea: #22383d; --hex: rgba(0, 0, 0, 0.5);
-    --s1: #e08a6a; --s2: #7fb2d3; --s3: #d8b25e; --s4: #9cc27a; --s5: #c39bd4; --s6: #d9a46a;
-    --t-plains: #5c5434; --t-forest: #3e4a2f; --t-hills: #5b4b34; --t-mountains: #514b44; --t-tropical: #3d5234;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #17120d; --paper: #211b15; --surface: #2a221a; --ink: #ecdfc4; --muted: #a8977a;
-  --rule: #7a6446; --border: #4d3f2e; --accent: #d9805f; --brass: #c9a45a; --good: #8fbf6a;
-  --sea: #22383d; --hex: rgba(0, 0, 0, 0.5);
-  --s1: #e08a6a; --s2: #7fb2d3; --s3: #d8b25e; --s4: #9cc27a; --s5: #c39bd4; --s6: #d9a46a;
-  --t-plains: #5c5434; --t-forest: #3e4a2f; --t-hills: #5b4b34; --t-mountains: #514b44; --t-tropical: #3d5234;
-  color-scheme: dark;
+  color-scheme: light; /* one palette: the captions name its colours */
 }
 * { box-sizing: border-box; }
 a { color: var(--accent); text-underline-offset: 3px; }
