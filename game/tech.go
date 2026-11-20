@@ -418,19 +418,21 @@ func (n *Nation) CanBuildPorts() bool {
 	return false
 }
 
-// firmEnabled reports whether a firm works for this owner (nil: unowned).
 // applyMethods brings a firm's methods up to its owner's technology (nil:
-// free land, only the methods that need none, at base productivity).
+// free land, only the methods that need none, at base productivity). The
+// first method is the firm's own recipe, on whenever the firm is
+// (firmEnabled).
 func applyMethods(f *Firm, owner *Nation) {
-	for _, m := range f.Methods {
+	for k, m := range f.Methods {
 		m.TFP = m.BaseTFP
 		if owner != nil {
 			m.TFP *= owner.methodMult(f, m)
 		}
-		m.Enabled = owner.allows(m.Name)
+		m.Enabled = k == 0 || owner.allows(m.Name)
 	}
 }
 
+// firmEnabled reports whether a firm works for this owner (nil: unowned).
 func firmEnabled(f *Firm, owner *Nation) bool { return owner.allows(f.Name) }
 
 // FirmTech maps a firm or production method to the tech that switches it

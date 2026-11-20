@@ -191,6 +191,9 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 					made[f.Name+"|"+m.Name] += m.Output
 				}
 			}
+			for _, b := range r.Buyers {
+				wages += b.Hired * r.Wage
+			}
 			for _, p := range r.Pops {
 				ni += p.Income
 			}
@@ -215,6 +218,9 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 					sector = Industry // mining is industry in the historical series (Kuznets, Maddison)
 				}
 				labor[sector] += f.Labor
+			}
+			for _, b := range r.Buyers { // the state's teachers, doctors and officials
+				labor[Service] += b.Hired
 			}
 			p := r.Population()
 			people += p

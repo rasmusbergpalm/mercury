@@ -988,6 +988,11 @@ func (w *World) roomToBuild(n *Nation) bool {
 				under++
 			}
 		}
+		for _, sv := range r.Services {
+			if sv != nil && sv.Expansion != nil {
+				under++
+			}
+		}
 	}
 	if k == 0 {
 		return false
