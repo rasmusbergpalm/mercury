@@ -839,4 +839,6 @@ document.querySelectorAll(".ref").forEach((r) => { const f = document.getElement
 function drawAll() { drawWorld(); drawFirm(); drawMonopoly(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); drawMoney(); drawCornLaws(); drawBrexit(); }
 inspect(picked);
 drawAll();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 </script>

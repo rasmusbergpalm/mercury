@@ -47,10 +47,11 @@ function hexMap(svg, { fill, label = (t) => t.name, arrows = [], selected = null
     p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(+p.dataset.id); } });
   });
 }
-// a single warm ramp, light to dark
+// a single warm ramp, light to dark (or the reverse in the dark theme)
 function ramp(t) {
   t = Math.max(0, Math.min(1, t));
-  const stops = [[246, 236, 208], [228, 196, 128], [190, 120, 60], [125, 42, 23]];
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light" || document.documentElement.dataset.theme === "dark";
+  const stops = dark ? [[58, 46, 34], [120, 84, 40], [190, 130, 60], [235, 190, 110]] : [[246, 236, 208], [228, 196, 128], [190, 120, 60], [125, 42, 23]];
   const x = t * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(x)), f = x - i;
   const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
   return `rgb(${c.join(",")})`;

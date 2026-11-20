@@ -17,7 +17,24 @@
   --t-plains: #e3d59b; --t-forest: #b9c28c; --t-hills: #d6bd8c; --t-mountains: #c9bdab; --t-tropical: #bcd194;
   --serif: "EB Garamond", Garamond, "Iowan Old Style", Georgia, serif;
   --display: "IM Fell English SC", "EB Garamond", Georgia, serif;
-  color-scheme: light; /* one palette: the captions name its colours */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17120d; --paper: #211b15; --surface: #2a221a; --ink: #ecdfc4; --muted: #a8977a;
+    --rule: #7a6446; --border: #4d3f2e; --accent: #d9805f; --brass: #c9a45a; --good: #8fbf6a;
+    --sea: #22383d; --hex: rgba(0, 0, 0, 0.5);
+    --s1: #e08a6a; --s2: #7fb2d3; --s3: #d8b25e; --s4: #9cc27a; --s5: #c39bd4; --s6: #d9a46a;
+    --t-plains: #5c5434; --t-forest: #3e4a2f; --t-hills: #5b4b34; --t-mountains: #514b44; --t-tropical: #3d5234;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17120d; --paper: #211b15; --surface: #2a221a; --ink: #ecdfc4; --muted: #a8977a;
+  --rule: #7a6446; --border: #4d3f2e; --accent: #d9805f; --brass: #c9a45a; --good: #8fbf6a;
+  --sea: #22383d; --hex: rgba(0, 0, 0, 0.5);
+  --s1: #e08a6a; --s2: #7fb2d3; --s3: #d8b25e; --s4: #9cc27a; --s5: #c39bd4; --s6: #d9a46a;
+  --t-plains: #5c5434; --t-forest: #3e4a2f; --t-hills: #5b4b34; --t-mountains: #514b44; --t-tropical: #3d5234;
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 a { color: var(--accent); text-underline-offset: 3px; }
@@ -518,10 +535,11 @@ function hexMap(svg, { fill, label = (t) => t.name, arrows = [], selected = null
     p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(+p.dataset.id); } });
   });
 }
-// a single warm ramp, light to dark
+// a single warm ramp, light to dark (or the reverse in the dark theme)
 function ramp(t) {
   t = Math.max(0, Math.min(1, t));
-  const stops = [[246, 236, 208], [228, 196, 128], [190, 120, 60], [125, 42, 23]];
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light" || document.documentElement.dataset.theme === "dark";
+  const stops = dark ? [[58, 46, 34], [120, 84, 40], [190, 130, 60], [235, 190, 110]] : [[246, 236, 208], [228, 196, 128], [190, 120, 60], [125, 42, 23]];
   const x = t * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(x)), f = x - i;
   const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
   return `rgb(${c.join(",")})`;
@@ -1042,6 +1060,8 @@ document.querySelectorAll(".ref").forEach((r) => { const f = document.getElement
 function drawAll() { drawWorld(); drawFirm(); drawMonopoly(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); drawMoney(); drawCornLaws(); drawBrexit(); }
 inspect(picked);
 drawAll();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 </script>
 
 </body>
