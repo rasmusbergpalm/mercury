@@ -66,7 +66,7 @@ __STYLE__</style>
 
 <div class="figure" id="fig-monopoly">
   <div class="head"><span class="plate"></span><h3>A monopoly, and the free trade that erodes it</h3></div>
-  <svg class="chart" id="chart-mono" role="img" aria-label="The monopoly's profit, price and output against a competitive brewery's, and its share of the beer sold in the tile, from dear to nearly free transport"></svg>
+  <svg class="chart" id="chart-mono" role="img" aria-label="The monopoly's profit, price, output and share of the beer sold in the tile, each against a competitive brewery's, from dear to nearly free transport"></svg>
   <div class="legend" id="legend-mono"></div>
   <p class="cap" id="cap-mono"></p>
 </div>
@@ -819,13 +819,11 @@ function drawMonopoly() {
   const cfg = { xLog: true, xRev: true, xTicks: [4, 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125], xFmt: (v) => (v >= 1 ? `×${v}` : `×1/${1 / v}`),
     xLabel: "cost of transport, dear to nearly free (×1: the normal cost)", w: 480, h: 320, yFmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%` };
   const vs = (k) => mono.map((r, i) => [r.Cost, 100 * (r[k] / comp[i][k] - 1)]);
-  lineChart(document.getElementById("chart-mono"), { ...cfg, w: 760, h: 380, title: "The monopoly against a competitive brewery, and its share of the tile's beer",
+  lineChart(document.getElementById("chart-mono"), { ...cfg, w: 760, h: 380, title: "The monopoly against a competitive brewery",
     yLabel: "against the competitive brewery", series: [
       { pts: vs("Profit"), color: "--s4", end: "profit" }, { pts: vs("Price"), color: "--s1", end: "price", below: true },
-      { pts: vs("Output"), color: "--s3", end: "output", below: true }],
-    right: { yMin: 0, yMax: 100, yFmt: (v) => `${v.toFixed(0)}%`, yLabel: "its share of the beer sold in the tile",
-      series: [{ pts: mono.map((r) => [r.Cost, 100 * r.Share]), color: "--s2", dash: "6 4", end: "share" }] } });
-  legend(document.getElementById("legend-mono"), [["--s4", "its profit"], ["--s1", "its price"], ["--s3", "its output, each against the competitive brewery's (left)"], ["--s2", "its share of the beer sold in the tile; the rest is brought in (right)", true]]);
+      { pts: vs("Share"), color: "--s2", end: "share", below: true }, { pts: vs("Output"), color: "--s3", end: "output", below: true }] });
+  legend(document.getElementById("legend-mono"), [["--s4", "its profit"], ["--s1", "its price"], ["--s2", "its share of the beer sold in the tile (the rest is brought in)"], ["--s3", "its output, each against the competitive brewery's"]]);
   const at = (rs, c) => rs.find((r) => r.Cost === c), m1 = at(mono, 1), c1 = at(comp, 1), mF = at(mono, 0.03125), cF = at(comp, 0.03125), m4 = at(mono, 4), c4 = at(comp, 4);
   const up = (a, b) => `${Math.round(100 * (a / b - 1))}%`;
   const livingGap = 100 * mono.reduce((s, r, i) => s + (1 - r.Living / comp[i].Living), 0) / mono.length;
