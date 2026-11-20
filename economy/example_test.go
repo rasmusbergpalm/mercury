@@ -23,8 +23,8 @@ func Example() {
 		fmt.Printf("tile %s: bread £%.2f, %.0f people\n", r.Name, r.Markets[bread].Price, r.Population())
 	}
 	// Output:
-	// tile 00: bread £28.02, 84 people
-	// tile 55: bread £32.38, 138 people
+	// tile 00: bread £28.13, 84 people
+	// tile 55: bread £32.37, 138 people
 }
 
 // A 20% tax on one tile's incomes: what it has withheld after a year.
@@ -40,7 +40,7 @@ func Example_tax() {
 	}
 	fmt.Printf("withheld £%.0f\n", r.Withheld)
 	// Output:
-	// withheld £40970
+	// withheld £40908
 }
 
 // A customs border down the middle of the map: a 30% duty on everything
@@ -76,5 +76,5 @@ func Example_tariff() {
 	taxed, duties := run(0.3)
 	fmt.Printf("trade across the border: £%.0f a day free, £%.0f with the duty, which raises £%.0f a day\n", free, taxed, duties)
 	// Output:
-	// trade across the border: £938 a day free, £234 with the duty, which raises £141 a day
+	// trade across the border: £943 a day free, £234 with the duty, which raises £141 a day
 }
