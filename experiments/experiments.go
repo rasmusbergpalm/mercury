@@ -202,6 +202,26 @@ func settledAt(cost float64) *World {
 	return w
 }
 
+// withSpoilage runs f with a good's spoilage set to s: its stock and its
+// shipments keep as well as that (0: not at all lost). The maps settled
+// before and after are the usual ones, settled afresh.
+func withSpoilage(good string, s float64, f func()) {
+	g := G(good)
+	was := Goods[g].Spoilage
+	reset := func() {
+		settledMu.Lock()
+		settledSnaps, settledOnces = map[float64]*Snapshot{}, map[float64]*sync.Once{}
+		settledMu.Unlock()
+	}
+	Goods[g].Spoilage = s
+	reset()
+	defer func() {
+		Goods[g].Spoilage = was
+		reset()
+	}()
+	f()
+}
+
 // parallel runs the jobs four at a time.
 func parallel(jobs ...func()) {
 	var wg sync.WaitGroup

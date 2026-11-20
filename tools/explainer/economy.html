@@ -61,21 +61,18 @@ __STYLE__</style>
 
 <div class="col">
 <p>How much does a firm make? Each day it looks at the prices in its tile, today's price for its good, the wage, and the prices of its inputs, and plans to make what pays best at those prices. It hires workers and buys inputs until the last worker or the last ton of coal adds exactly as much to its sales as it costs. Its target is the textbook competitive one: it makes up to the point where the price equals its marginal cost. It does this because it takes the price as given, as one of many small producers would. A tile's "brewery" stands for all its brewers, and no one of them can move the price of beer by brewing more or less.</p>
-<p>A monopoly plans differently. As the only maker of its good, it knows that selling more lowers the price, so a unit more earns it only its <em>marginal revenue</em>: the price, less what the lower price loses on all the rest. It makes up to the point where marginal revenue equals marginal cost. That is less than a competitive industry would make, and it charges more. With demand of elasticity ε, the monopoly's last unit earns the price times (1 − 1/ε), so it sets a markup over marginal cost. <b>No firm in Mercury has market power unless it is given it</b>; the experiment below gives it to one. One tile's brewery becomes a monopoly, facing demand of elasticity 2 (beer substitutes for tea at that elasticity). Its rivals are the merchants who bring beer from the neighbouring tiles, as far as carriage allows: the more of the tile's beer they bring, the smaller the monopoly's share, and the less its own sales move the price. <span class="ref" data-fig="monopoly"></span> repeats this at each cost of transport.</p>
+<p>A monopoly plans differently. As the only maker of its good, it knows that selling more lowers the price, so a unit more earns it only its <em>marginal revenue</em>: the price, less what the lower price loses on all the rest. It makes up to the point where marginal revenue equals marginal cost. That is less than a competitive industry would make, and it charges more. With demand of elasticity ε, the monopoly's last unit earns the price times (1 − 1/ε), so it sets a markup over marginal cost. <b>No firm in Mercury has market power unless it is given it</b>; the experiment below gives it to one. One tile's brewery becomes a monopoly, facing demand of elasticity 2 (beer substitutes for tea at that elasticity). Its rivals are the merchants who bring beer from the neighbouring tiles, as far as carriage allows: the more of the tile's beer they bring, the smaller the monopoly's share, and the less its own sales move the price. So that only carriage stands in their way, beer here doesn't spoil (in the example economy a tenth of it is lost on every hop). <span class="ref" data-fig="monopoly"></span> repeats this at each cost of transport.</p>
 </div>
 
 <div class="figure" id="fig-monopoly">
   <div class="head"><span class="plate"></span><h3>A monopoly, and the free trade that erodes it</h3></div>
-  <div class="grid2">
-    <svg class="chart" id="chart-mono-price" role="img" aria-label="The monopoly's profit and price against a competitive brewery's, from dear to nearly free transport"></svg>
-    <svg class="chart" id="chart-mono-profit" role="img" aria-label="The monopoly's output and its share of the tile's beer, from dear to nearly free transport"></svg>
-  </div>
+  <svg class="chart" id="chart-mono" role="img" aria-label="The monopoly's profit, price and output against a competitive brewery's, and its share of the beer sold in the tile, from dear to nearly free transport"></svg>
   <div class="legend" id="legend-mono"></div>
   <p class="cap" id="cap-mono"></p>
 </div>
 
 <div class="col">
-<p>When carriage is dear, nobody can bring beer in, and the monopoly is worth about twice what the competitive brewery earns: it brews half as much and sells it dearer. As carriage gets cheaper, merchants bring beer from the neighbours whenever the monopoly's price is worth the trip, and the markup shrinks. "Free trade is the best antitrust policy" is an old saying, and here it shows. Once trade is nearly free, the monopoly earns no more than the competitive brewery did. It still holds back its brewing, taking the merchants' shipments as given, as Cournot's firms do. But the merchants simply bring in more, and holding back only hands them its trade.</p>
+<p>When carriage is dear, nobody can bring beer in, and the monopoly is worth about twice what the competitive brewery earns: it brews half as much and sells it dearer. As carriage gets cheaper, merchants bring beer from the neighbours whenever the monopoly's price is worth the trip, and the markup shrinks. "Free trade is the best antitrust policy" is an old saying, and here it shows. Once trade is nearly free, the monopoly earns less than the competitive brewery did. It still holds back its brewing, taking the merchants' shipments as given, as Cournot's firms do. But the merchants simply bring in more, and holding back only hands them its trade.</p>
 </div>
 
 <div class="col">
@@ -822,16 +819,18 @@ function drawMonopoly() {
   const cfg = { xLog: true, xRev: true, xTicks: [4, 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125], xFmt: (v) => (v >= 1 ? `×${v}` : `×1/${1 / v}`),
     xLabel: "cost of transport, dear to nearly free (×1: the normal cost)", w: 480, h: 320, yFmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%` };
   const vs = (k) => mono.map((r, i) => [r.Cost, 100 * (r[k] / comp[i][k] - 1)]);
-  lineChart(document.getElementById("chart-mono-price"), { ...cfg, title: "The monopoly against a competitive brewery", series: [
-      { pts: vs("Profit"), color: "--s4", end: "profit" }, { pts: vs("Price"), color: "--s1", end: "price", below: true }] });
-  lineChart(document.getElementById("chart-mono-profit"), { ...cfg, title: "What it sells", yMax: 5, series: [
-      { pts: mono.map((r) => [r.Cost, 100 * (r.Share - 1)]), color: "--s2", end: "its share of the tile's beer" },
-      { pts: vs("Output"), color: "--s3", end: "its output", below: true }] });
-  legend(document.getElementById("legend-mono"), [["--s4", "its profit"], ["--s1", "its price"], ["--s3", "its output, each against the competitive brewery's"], ["--s2", "its share of the tile's beer (the rest is brought in)"]]);
+  lineChart(document.getElementById("chart-mono"), { ...cfg, w: 760, h: 380, title: "The monopoly against a competitive brewery, and its share of the tile's beer",
+    yLabel: "against the competitive brewery", series: [
+      { pts: vs("Profit"), color: "--s4", end: "profit" }, { pts: vs("Price"), color: "--s1", end: "price", below: true },
+      { pts: vs("Output"), color: "--s3", end: "output", below: true }],
+    right: { yMin: 0, yMax: 100, yFmt: (v) => `${v.toFixed(0)}%`, yLabel: "its share of the beer sold in the tile",
+      series: [{ pts: mono.map((r) => [r.Cost, 100 * r.Share]), color: "--s2", dash: "6 4", end: "share" }] } });
+  legend(document.getElementById("legend-mono"), [["--s4", "its profit"], ["--s1", "its price"], ["--s3", "its output, each against the competitive brewery's (left)"], ["--s2", "its share of the beer sold in the tile; the rest is brought in (right)", true]]);
   const at = (rs, c) => rs.find((r) => r.Cost === c), m1 = at(mono, 1), c1 = at(comp, 1), mF = at(mono, 0.03125), cF = at(comp, 0.03125), m4 = at(mono, 4), c4 = at(comp, 4);
   const up = (a, b) => `${Math.round(100 * (a / b - 1))}%`;
   const livingGap = 100 * mono.reduce((s, r, i) => s + (1 - r.Living / comp[i].Living), 0) / mono.length;
-  document.getElementById("cap-mono").textContent = `The fifth year's averages in ${byId[M.tile].name}, against the same tile with a competitive brewery. At the normal cost of transport the monopoly brews ${Math.round(100 * (1 - m1.Output / c1.Output))}% less, sells it ${up(m1.Price, c1.Price)} dearer, and makes ${(m1.Profit / c1.Profit).toFixed(1)} times the competitive brewery's profit (${(m4.Profit / c4.Profit).toFixed(1)} times at four times the cost). With carriage at a thirty-second of the normal, merchants bring in ${Math.round(100 * (1 - mF.Share))}% of the tile's beer, the markup is down to ${up(mF.Price, cF.Price)}, and the monopoly makes ${mF.Profit < cF.Profit ? `${Math.round(100 * (1 - mF.Profit / cF.Profit))}% less than` : mF.Profit / cF.Profit < 1.1 ? `about what` : `only ${Math.round(100 * (mF.Profit / cF.Profit - 1))}% more than`} a competitive brewery would. The tile's people, for whom beer is one need of many, live ${livingGap >= 0 ? `${livingGap.toFixed(1)}% worse` : `${(-livingGap).toFixed(1)}% better`} under the monopoly, on average over the costs of transport: little more than a tile's ups and downs.`;
+  const worseAll = mono.every((r, i) => r.Living < comp[i].Living);
+  document.getElementById("cap-mono").textContent = `The fifth year's averages in ${byId[M.tile].name}, against the same tile with a competitive brewery. At the normal cost of transport the monopoly brews ${Math.round(100 * (1 - m1.Output / c1.Output))}% less, sells it ${up(m1.Price, c1.Price)} dearer, and makes ${(m1.Profit / c1.Profit).toFixed(1)} times the competitive brewery's profit (${(m4.Profit / c4.Profit).toFixed(1)} times at four times the cost). With carriage at a thirty-second of the normal, the brewery sells only ${Math.round(100 * mF.Share)}% of the beer sold in the tile, merchants bringing in the rest, the markup is down to ${up(mF.Price, cF.Price)}, and the monopoly makes ${mF.Profit < cF.Profit ? `${Math.round(100 * (1 - mF.Profit / cF.Profit))}% less than` : mF.Profit / cF.Profit < 1.1 ? `about what` : `only ${Math.round(100 * (mF.Profit / cF.Profit - 1))}% more than`} a competitive brewery would. The tile's people, for whom beer is one need of many, live ${livingGap >= 0 ? `${livingGap.toFixed(1)}% worse` : `${(-livingGap).toFixed(1)}% better`} under the monopoly, on average over the costs of transport${worseAll ? ", and worse at every one of them" : ""}.`;
 }
 
 // plates are numbered in the order they appear, and the text's references follow

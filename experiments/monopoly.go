@@ -1,6 +1,10 @@
 package experiments
 
-import . "github.com/rasmusbergpalm/mercury/economy"
+import (
+	"math"
+
+	. "github.com/rasmusbergpalm/mercury/economy"
+)
 
 func init() {
 	register(Experiment{"monopoly", "a monopoly brewer, and how trade erodes its markup", runMonopoly})
@@ -11,8 +15,11 @@ func init() {
 // given and makes what pays at that price. A monopoly instead reckons with
 // how its own sales lower the price, and makes less, to sell dearer
 // (Firm.Monopoly). Brewers were a classic local monopoly (the tied
-// house), and beer keeps well enough to travel, so merchants bringing beer
-// from the neighbours compete with it as far as carriage allows.
+// house). Merchants bringing beer from the neighbours compete with it as
+// far as carriage allows; so that only the cost of carriage stands in their
+// way, beer here doesn't spoil (in the example economy a tenth of it is
+// lost on each hop, which keeps the local brewer safe from all but the
+// nearest rivals).
 //
 // The map settles at each cost of transport, from four times the normal
 // (little trade) to nearly free carriage; then the brewery of a tile in the middle of
@@ -20,8 +27,8 @@ func init() {
 // demand's elasticity is 2: beer substitutes for tea within the need for
 // drink at an elasticity of 2 (data/needs.json). After Years, the last
 // year's averages: the price of beer in the tile, the brewery's output and
-// profit, the beer brought in from other tiles, the monopoly's share of the
-// tile's market, and the tile's living standard.
+// profit, the beer brought in from other tiles, the brewery's share of the
+// beer sold in the tile, and the tile's living standard.
 func runMonopoly(o *Out) {
 	const tile = 14 // an inland tile in the middle of the map
 	beer := G("beer")
@@ -29,7 +36,7 @@ func runMonopoly(o *Out) {
 		Cost                   float64 // the cost of transport, a multiple of the normal (autarky: no trade)
 		Monopoly               bool
 		Price, Output, Profit  float64 // in the tile: beer's price, and the brewery's output and profit a day
-		Imports, Share, Living float64 // beer brought in a day, the brewery's share of what was offered, the living standard
+		Imports, Share, Living float64 // beer brought in a day, the brewery's share of the beer sold in the tile, the living standard
 		Labor                  float64 // the brewery's workers
 	}
 	costs := []float64{4, 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125}
@@ -52,35 +59,41 @@ func runMonopoly(o *Out) {
 				if mono {
 					brewery.Monopoly, brewery.Elasticity = true, 2
 				}
-				samples := 0.0
+				samples, sold, traded := 0.0, 0.0, 0.0
 				for d := settle; d < end; d++ {
+					stock := brewery.Inventory
 					w.Step()
 					if d < end-days {
 						continue
 					}
 					samples++
+					// what it sold today (beer here doesn't spoil), against all
+					// the beer the tile's market sold
+					m := r.Markets[beer]
+					sold += stock + brewery.LastOutput - brewery.Inventory
+					traded += math.Min(m.Supply, m.Demand)
 					out.Price += r.Markets[beer].Price
 					out.Output += brewery.LastOutput
 					out.Profit += brewery.TickRevenue - brewery.TickCost
 					out.Labor += brewery.Labor
 					out.Living += r.Utility()
-					made, in := brewery.LastOutput, 0.0
+					in := 0.0
 					for _, t := range w.Traders {
 						if t.Good == beer && t.Dest == r {
 							in += t.Shipped * t.Arriving
 						}
 					}
 					out.Imports += in
-					if made+in > 0 {
-						out.Share += made / (made + in)
-					}
 				}
-				for _, x := range []*float64{&out.Price, &out.Output, &out.Profit, &out.Imports, &out.Share, &out.Living, &out.Labor} {
+				for _, x := range []*float64{&out.Price, &out.Output, &out.Profit, &out.Imports, &out.Living, &out.Labor} {
 					*x /= samples
+				}
+				if traded > 0 {
+					out.Share = sold / traded
 				}
 			})
 		}
 	}
-	parallel(jobs...)
+	withSpoilage("beer", 0, func() { parallel(jobs...) })
 	o.Write("monopoly.json", map[string]any{"tile": tile, "elasticity": 2, "runs": results})
 }

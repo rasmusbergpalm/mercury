@@ -72,8 +72,10 @@ function mix(a, b, t) {
 
 // ---- charts -----------------------------------------------------------------
 // lineChart draws series of [x, y] points with a log or linear x axis.
-function lineChart(svg, { series, xLog = false, xRev = false, xFmt = (v) => v, xTicks, xLabel, yLabel, yFmt = (v) => fmt(v), title = "", marks = [], w = 520, h = 300, yMin, yMax, points = [] }) {
-  const m = { l: 54, r: 14, t: title ? 30 : 12, b: 44 };
+// right, if given, is a second set of series on their own y axis, at the
+// right ({ series, yMin, yMax, yFmt, yLabel }).
+function lineChart(svg, { series, xLog = false, xRev = false, xFmt = (v) => v, xTicks, xLabel, yLabel, yFmt = (v) => fmt(v), title = "", marks = [], w = 520, h = 300, yMin, yMax, points = [], right }) {
+  const m = { l: 54, r: right ? (right.yLabel ? 62 : 48) : 14, t: title ? 30 : 12, b: 44 };
   const xs = series.flatMap((s) => s.pts.map((p) => p[0])).concat(points.map((p) => p.x));
   const ys = series.flatMap((s) => s.pts.map((p) => p[1])).concat(points.map((p) => p.y));
   const fx = xLog ? Math.log10 : (v) => v;
@@ -82,6 +84,13 @@ function lineChart(svg, { series, xLog = false, xRev = false, xFmt = (v) => v, x
   const pad = (y1 - y0) * 0.06 || 1; if (yMin === undefined) y0 -= pad; if (yMax === undefined) y1 += pad;
   const X = (v) => m.l + (xRev ? x1 - fx(v) : fx(v) - x0) / (x1 - x0) * (w - m.l - m.r);
   const Y = (v) => h - m.b - (v - y0) / (y1 - y0) * (h - m.t - m.b);
+  let Y2 = Y, r0, r1;
+  if (right) {
+    const rs = right.series.flatMap((s) => s.pts.map((p) => p[1]));
+    r0 = right.yMin ?? Math.min(...rs); r1 = right.yMax ?? Math.max(...rs);
+    const rp = (r1 - r0) * 0.06 || 1; if (right.yMin === undefined) r0 -= rp; if (right.yMax === undefined) r1 += rp;
+    Y2 = (v) => h - m.b - (v - r0) / (r1 - r0) * (h - m.t - m.b);
+  }
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
   let s = "";
   if (title) s += `<text class="title" x="${m.l}" y="18">${esc(title)}</text>`;
@@ -91,17 +100,24 @@ function lineChart(svg, { series, xLog = false, xRev = false, xFmt = (v) => v, x
   s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${h - m.b}" y2="${h - m.b}"/>`;
   if (xLabel) s += `<text x="${(m.l + w - m.r) / 2}" y="${h - 6}" text-anchor="middle">${esc(xLabel)}</text>`;
   if (yLabel) s += `<text x="12" y="${(m.t + h - m.b) / 2}" text-anchor="middle" transform="rotate(-90 12 ${(m.t + h - m.b) / 2})">${esc(yLabel)}</text>`;
+  if (right) {
+    const rf = right.yFmt || ((v) => fmt(v));
+    for (const v of niceTicks(r0, r1, 5)) s += `<line class="axis" x1="${w - m.r}" x2="${w - m.r + 4}" y1="${Y2(v)}" y2="${Y2(v)}"/><text x="${w - m.r + 7}" y="${Y2(v) + 4}">${rf(v)}</text>`;
+    s += `<line class="axis" x1="${w - m.r}" x2="${w - m.r}" y1="${m.t}" y2="${h - m.b}"/>`;
+    if (right.yLabel) { const x = w - 10, y = (m.t + h - m.b) / 2; s += `<text x="${x}" y="${y}" text-anchor="middle" transform="rotate(90 ${x} ${y})">${esc(right.yLabel)}</text>`; }
+  }
   for (const mk of marks) { const x = X(mk.x); s += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${h - m.b}" stroke="${css("--muted")}" stroke-dasharray="4 4"/>${mk.label ? `<text x="${x + 5}" y="${m.t + 12}">${esc(mk.label)}</text>` : ""}`; }
   // lines are clipped to the plot (a series may run off a fixed scale)
   const clip = `clip-${svg.id || Math.random().toString(36).slice(2)}`;
   s += `<clipPath id="${clip}"><rect x="${m.l}" y="${m.t}" width="${w - m.l - m.r}" height="${h - m.t - m.b}"/></clipPath><g clip-path="url(#${clip})">`;
-  for (const se of series) {
-    const d = se.pts.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
+  const all = series.map((se) => [se, Y]).concat(right ? right.series.map((se) => [se, Y2]) : []);
+  for (const [se, Yf] of all) {
+    const d = se.pts.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Yf(p[1]).toFixed(1)}`).join("");
     s += `<path d="${d}" fill="none" stroke="${css(se.color)}" stroke-width="${se.width || 2.4}" ${se.dash ? `stroke-dasharray="${se.dash}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
   }
   s += "</g>";
-  for (const se of series) {
-    if (se.end) { const p = se.pts[se.pts.length - 1]; s += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="3.5" fill="${css(se.color)}"/><text x="${X(p[0]) - 6}" y="${Y(p[1]) - 8}" text-anchor="end" style="fill:${css(se.color)}" ${se.below ? `dy="26"` : ""}>${esc(se.end)}</text>`; }
+  for (const [se, Yf] of all) {
+    if (se.end) { const p = se.pts[se.pts.length - 1]; s += `<circle cx="${X(p[0])}" cy="${Yf(p[1])}" r="3.5" fill="${css(se.color)}"/><text x="${X(p[0]) - 6}" y="${Yf(p[1]) - 8}" text-anchor="end" style="fill:${css(se.color)}" ${se.below ? `dy="26"` : ""}>${esc(se.end)}</text>`; }
   }
   for (const p of points) s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="4.5" fill="${css(p.color)}" stroke="${css("--paper")}" stroke-width="1.5"/>${p.label ? `<text x="${X(p.x) - 8}" y="${Y(p.y) + (p.below ? 18 : -9)}" text-anchor="end">${esc(p.label)}</text>` : ""}`;
   svg.innerHTML = s;
