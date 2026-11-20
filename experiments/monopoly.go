@@ -34,7 +34,7 @@ func init() {
 // can land it there for, the brewery's output and profit, the beer brought in from other tiles, the brewery's share of the
 // beer sold in the tile, and the tile's living standard.
 func runMonopoly(o *Out) {
-	const tile = 14 // an inland tile in the middle of the map
+	const tile = 24 // a tile that, with beer cheap to carry, would export it competitively and imports it under a monopoly
 	beer := G("beer")
 	type result struct {
 		Cost                   float64 // beer's cost of transport, a multiple of the normal

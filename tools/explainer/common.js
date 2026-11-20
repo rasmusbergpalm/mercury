@@ -72,8 +72,8 @@ function mix(a, b, t) {
 
 // ---- charts -----------------------------------------------------------------
 // lineChart draws series of [x, y] points with a log or linear x axis.
-// bands shade ranges of y behind the lines ({ from, to, color, label }).
-function lineChart(svg, { series, xLog = false, xRev = false, xFmt = (v) => v, xTicks, xLabel, yLabel, yFmt = (v) => fmt(v), title = "", marks = [], w = 520, h = 300, yMin, yMax, points = [], bands = [] }) {
+// A series with fillTo shades the area between it and that y.
+function lineChart(svg, { series, xLog = false, xRev = false, xFmt = (v) => v, xTicks, xLabel, yLabel, yFmt = (v) => fmt(v), title = "", marks = [], w = 520, h = 300, yMin, yMax, points = [] }) {
   const m = { l: 54, r: 14, t: title ? 30 : 12, b: 44 };
   const xs = series.flatMap((s) => s.pts.map((p) => p[0])).concat(points.map((p) => p.x));
   const ys = series.flatMap((s) => s.pts.map((p) => p[1])).concat(points.map((p) => p.y));
@@ -86,11 +86,6 @@ function lineChart(svg, { series, xLog = false, xRev = false, xFmt = (v) => v, x
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
   let s = "";
   if (title) s += `<text class="title" x="${m.l}" y="18">${esc(title)}</text>`;
-  for (const b of bands) {
-    const ya = Y(Math.min(y1, Math.max(y0, b.to))), yb = Y(Math.min(y1, Math.max(y0, b.from)));
-    s += `<rect x="${m.l}" y="${ya}" width="${w - m.l - m.r}" height="${yb - ya}" fill="${css(b.color)}" fill-opacity=".14"/>`;
-    if (b.label) s += `<text x="${m.l + 8}" y="${b.labelBottom ? yb - 8 : ya + 16}" style="fill:${css(b.color)}">${esc(b.label)}</text>`;
-  }
   const yt = niceTicks(y0, y1, 5);
   for (const v of yt) s += `<line class="grid" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${yFmt(v)}</text>`;
   for (const v of xTicks) { const x = X(v); if (x < m.l - 1 || x > w - m.r + 1) continue; s += `<line class="axis" x1="${x}" x2="${x}" y1="${h - m.b}" y2="${h - m.b + 4}"/><text x="${x}" y="${h - m.b + 18}" text-anchor="middle">${xFmt(v)}</text>`; }
@@ -101,6 +96,11 @@ function lineChart(svg, { series, xLog = false, xRev = false, xFmt = (v) => v, x
   // lines are clipped to the plot (a series may run off a fixed scale)
   const clip = `clip-${svg.id || Math.random().toString(36).slice(2)}`;
   s += `<clipPath id="${clip}"><rect x="${m.l}" y="${m.t}" width="${w - m.l - m.r}" height="${h - m.t - m.b}"/></clipPath><g clip-path="url(#${clip})">`;
+  for (const se of series) {
+    if (se.fillTo === undefined) continue;
+    const top = se.pts.map((p) => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`), base = [...se.pts].reverse().map((p) => `${X(p[0]).toFixed(1)},${Y(se.fillTo).toFixed(1)}`);
+    s += `<polygon points="${top.concat(base).join(" ")}" fill="${css(se.color)}" fill-opacity=".22"/>`;
+  }
   for (const se of series) {
     const d = se.pts.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
     s += `<path d="${d}" fill="none" stroke="${css(se.color)}" stroke-width="${se.width || 2.4}" ${se.dash ? `stroke-dasharray="${se.dash}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
