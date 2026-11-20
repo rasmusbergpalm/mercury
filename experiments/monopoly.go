@@ -21,9 +21,13 @@ func init() {
 // lost on each hop, which keeps the local brewer safe from all but the
 // nearest rivals).
 //
-// The map settles at each cost of transport, from four times the normal
-// (little trade) to nearly free carriage; then the brewery of a tile in the middle of
-// the map becomes a monopoly, against a run where it stays as it was. Its
+// The map settles at the normal cost of transport. Then only beer's carriage
+// changes, from four times the normal (little trade) to nearly free, as if
+// beer were that many times as bulky (a route's transport per unit is its
+// cost times its length times the good's bulk); everything else carries as
+// before, so each run is the same economy but for beer. The brewery of a
+// tile in the middle of the map becomes a monopoly, against a run where it
+// stays as it was. Its
 // demand's elasticity is 2: beer substitutes for tea within the need for
 // drink at an elasticity of 2 (data/needs.json). After Years, the last
 // year's averages: the price of beer in the tile, the brewery's output and
@@ -33,7 +37,7 @@ func runMonopoly(o *Out) {
 	const tile = 14 // an inland tile in the middle of the map
 	beer := G("beer")
 	type result struct {
-		Cost                   float64 // the cost of transport, a multiple of the normal (autarky: no trade)
+		Cost                   float64 // beer's cost of transport, a multiple of the normal
 		Monopoly               bool
 		Price, Output, Profit  float64 // in the tile: beer's price, and the brewery's output and profit a day
 		Imports, Share, Living float64 // beer brought in a day, the brewery's share of the beer sold in the tile, the living standard
@@ -47,7 +51,12 @@ func runMonopoly(o *Out) {
 			out := &results[2*i+k]
 			c, mono := c, mono
 			jobs = append(jobs, func() {
-				w := settledAt(c)
+				w := settledAt(1)
+				for _, t := range w.Traders { // beer c times as bulky
+					if t.Good == beer {
+						t.Tau *= c
+					}
+				}
 				out.Cost, out.Monopoly = c, mono
 				r := w.Regions[tile]
 				var brewery *Firm
