@@ -43,6 +43,7 @@ func runMonopoly(o *Out) {
 		Imports, Share, Living float64 // beer brought in a day, the brewery's share of the beer sold in the tile, the living standard
 		Labor                  float64 // the brewery's workers
 		Landed                 float64 // the cheapest a merchant can land beer in the tile: a neighbour's price plus the carriage
+		Demand                 float64 // the beer the tile's own people drink a day
 	}
 	costs := []float64{4, 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125}
 	results := make([]result, 2*len(costs))
@@ -96,9 +97,12 @@ func runMonopoly(o *Out) {
 						}
 					}
 					out.Landed += landed
+					for _, p := range r.Pops {
+						out.Demand += p.Consumed[beer]
+					}
 					out.Imports += in
 				}
-				for _, x := range []*float64{&out.Price, &out.Output, &out.Profit, &out.Imports, &out.Living, &out.Labor, &out.Landed} {
+				for _, x := range []*float64{&out.Price, &out.Output, &out.Profit, &out.Imports, &out.Living, &out.Labor, &out.Landed, &out.Demand} {
 					*x /= samples
 				}
 				if traded > 0 {

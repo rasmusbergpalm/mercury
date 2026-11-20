@@ -66,9 +66,10 @@ __STYLE__</style>
 
 <div class="figure" id="fig-monopoly">
   <div class="head"><span class="plate"></span><h3>A monopoly, and the free trade that erodes it</h3></div>
-  <div class="grid2">
+  <div class="grid3">
     <svg class="chart" id="chart-mono-price" role="img" aria-label="The price of beer in the tile under the monopoly and under a competitive brewery, and the cheapest merchants can land beer there, from dear to nearly free carriage of beer"></svg>
-    <svg class="chart" id="chart-mono-share" role="img" aria-label="The brewery's share of the beer sold in the tile, monopoly and competitive, from dear to nearly free carriage of beer"></svg>
+    <svg class="chart" id="chart-mono-profit" role="img" aria-label="The brewery's profit a day, monopoly and competitive, from dear to nearly free carriage of beer"></svg>
+    <svg class="chart" id="chart-mono-supply" role="img" aria-label="The brewery's output as a share of what the tile's people drink, monopoly and competitive: above 100% the tile exports beer, below it imports"></svg>
   </div>
   <div class="legend" id="legend-mono"></div>
   <p class="cap" id="cap-mono"></p>
@@ -823,21 +824,26 @@ function drawMonopoly() {
   const M = D.monopoly, runs = (mono) => M.runs.filter((r) => r.Monopoly === mono).sort((a, b) => b.Cost - a.Cost);
   const comp = runs(false), mono = runs(true);
   const cfg = { xLog: true, xRev: true, xTicks: [4, 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125], xFmt: (v) => (v >= 1 ? `×${v}` : `×1/${1 / v}`),
-    xLabel: "beer's cost of transport, dear to nearly free (×1: normal)", w: 480, h: 320 };
+    xLabel: "beer's carriage, dear to nearly free", w: 340, h: 300 };
   const top = Math.ceil(1.35 * Math.max(...mono.map((r) => r.Price)));
   lineChart(document.getElementById("chart-mono-price"), { ...cfg, title: "The price of beer in the tile", yMin: 6, yMax: top, yFmt: (v) => `£${v % 1 ? v.toFixed(1) : v.toFixed(0)}`, series: [
       { pts: mono.map((r) => [r.Cost, r.Landed]), color: "--muted", dash: "5 4" },
       { pts: mono.map((r) => [r.Cost, r.Price]), color: "--s1" },
       { pts: comp.map((r) => [r.Cost, r.Price]), color: "--s2" }] });
-  lineChart(document.getElementById("chart-mono-share"), { ...cfg, title: "The brewery's share of the beer sold in the tile", yMin: 0, yMax: 100, yFmt: (v) => `${v.toFixed(0)}%`, series: [
-      { pts: comp.map((r) => [r.Cost, 100 * r.Share]), color: "--s2", end: "competitive" },
-      { pts: mono.map((r) => [r.Cost, 100 * r.Share]), color: "--s1", end: "monopoly", below: true }] });
-  legend(document.getElementById("legend-mono"), [["--s1", "a monopoly brewery"], ["--s2", "a competitive brewery"], ["--muted", "the cheapest merchants can land beer in the tile, under the monopoly", true]]);
+  lineChart(document.getElementById("chart-mono-profit"), { ...cfg, title: "The brewery's profit a day", yMin: 0, yFmt: (v) => `£${v.toFixed(0)}`, series: [
+      { pts: mono.map((r) => [r.Cost, r.Profit]), color: "--s1" },
+      { pts: comp.map((r) => [r.Cost, r.Profit]), color: "--s2" }] });
+  const self = (rs) => rs.map((r) => [r.Cost, 100 * r.Output / r.Demand]);
+  const sTop = Math.ceil(Math.max(...self(comp).map((p) => p[1])) / 20) * 20 + 20;
+  lineChart(document.getElementById("chart-mono-supply"), { ...cfg, title: "What it brews, of what the tile drinks", yMin: 0, yMax: sTop, yFmt: (v) => `${v.toFixed(0)}%`,
+    bands: [{ from: 100, to: sTop, color: "--s2", label: "exports" }, { from: 0, to: 100, color: "--s1", label: "imports", labelBottom: true }],
+    series: [{ pts: self(mono), color: "--s1" }, { pts: self(comp), color: "--s2" }] });
+  legend(document.getElementById("legend-mono"), [["--s1", "a monopoly brewery"], ["--s2", "a competitive brewery"], ["--muted", "the cheapest merchants can land beer in the tile, under the monopoly (left)", true]]);
   const at = (rs, c) => rs.find((r) => r.Cost === c), m1 = at(mono, 1), c1 = at(comp, 1), mF = at(mono, 0.03125), cF = at(comp, 0.03125), m4 = at(mono, 4), c4 = at(comp, 4);
   const up = (a, b) => `${Math.round(100 * (a / b - 1))}%`;
   const livingGap = 100 * mono.reduce((s, r, i) => s + (1 - r.Living / comp[i].Living), 0) / mono.length;
   const capped = mono.find((r) => r.Landed < 1.02 * r.Price);
-  document.getElementById("cap-mono").textContent = `The fifth year's averages in ${byId[M.tile].name}, a monopoly brewery against a competitive one in the same tile, as only beer gets dearer or cheaper to carry. At beer's normal cost of carriage merchants could land beer for £${m1.Landed.toFixed(1)}, far above the monopoly's £${m1.Price.toFixed(1)} (the competitive price is £${c1.Price.toFixed(1)}): it brews ${Math.round(100 * (1 - m1.Output / c1.Output))}% less than the competitive brewery and makes ${(m1.Profit / c1.Profit).toFixed(1)} times its profit. ${capped ? `From ${capped.Cost >= 1 ? `×${capped.Cost}` : `×1/${1 / capped.Cost}`} the landed price reaches the monopoly's and caps it` : "The landed price never reaches the monopoly's"}: at a thirty-second of the normal cost the monopoly charges £${mF.Price.toFixed(1)} against a landed £${mF.Landed.toFixed(1)}, and sells ${Math.round(100 * mF.Share)}% of the tile's beer, merchants bringing in the rest. Its markup over the competitive price is down to ${up(mF.Price, cF.Price)}, and it makes ${mF.Profit < cF.Profit ? `${Math.round(100 * (1 - mF.Profit / cF.Profit))}% less than` : `${(mF.Profit / cF.Profit).toFixed(1)} times`} the competitive brewery's profit, which now sells to the neighbours too. The tile's people, for whom beer is one need of many, live ${livingGap >= 0 ? `${livingGap.toFixed(1)}% worse` : `${(-livingGap).toFixed(1)}% better`} under the monopoly, on average over beer's costs of carriage.`;
+  document.getElementById("cap-mono").textContent = `The fifth year's averages in ${byId[M.tile].name}, a monopoly brewery against a competitive one in the same tile, as only beer gets dearer or cheaper to carry. At beer's normal cost of carriage merchants could land beer for £${m1.Landed.toFixed(1)}, far above the monopoly's £${m1.Price.toFixed(1)} (the competitive price is £${c1.Price.toFixed(1)}): it brews ${Math.round(100 * (1 - m1.Output / c1.Output))}% less than the competitive brewery and makes ${(m1.Profit / c1.Profit).toFixed(1)} times its profit. ${capped ? `From ${capped.Cost >= 1 ? `×${capped.Cost}` : `×1/${1 / capped.Cost}`} the landed price reaches the monopoly's and caps it` : "The landed price never reaches the monopoly's"}: at a thirty-second of the normal cost the monopoly charges £${mF.Price.toFixed(1)} against a landed £${mF.Landed.toFixed(1)}, and sells ${Math.round(100 * mF.Share)}% of the tile's beer, merchants bringing in the rest. Its markup over the competitive price is down to ${up(mF.Price, cF.Price)}, and it makes ${mF.Profit < cF.Profit ? `${Math.round(100 * (1 - mF.Profit / cF.Profit))}% less than` : `${(mF.Profit / cF.Profit).toFixed(1)} times`} the competitive brewery's profit, which now sells to the neighbours too: it brews ${(cF.Output / cF.Demand).toFixed(1)} times what the tile drinks, while the monopoly brews about what the tile drinks (${Math.round(100 * mF.Output / mF.Demand)}%; some of the beer merchants bring in passes on to the next tile). The tile's people, for whom beer is one need of many, live ${livingGap >= 0 ? `${livingGap.toFixed(1)}% worse` : `${(-livingGap).toFixed(1)}% better`} under the monopoly, on average over beer's costs of carriage.`;
 }
 
 // plates are numbered in the order they appear, and the text's references follow
