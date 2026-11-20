@@ -1,7 +1,8 @@
 # Mercury
 
-A deterministic, spatial, agent-based economy in Go, calibrated on the
-nineteenth century.
+A deterministic, spatial, agent-based economy in Go, where transport is a
+good like any other: produced by workers and bought by merchants. It comes
+with an example economy to run: Europe around 1820.
 
 Mercury is a map of tiles. Each tile has its own people, firms and markets.
 Merchants carry goods between neighbouring tiles and pay for the transport
@@ -100,11 +101,14 @@ Each day, on every tile:
 - **Real GDP** is chained monthly with a Fisher index, so growth is
   measured in quantities, not pounds.
 
-### Calibration is data
+### The economy is data; 1820 is an example
 
-The goods, needs, recipes and terrains are JSON files in
-[`economy/data/`](economy/data). Each file starts with a note on what its
-fields mean. Edit them to model another economy.
+The engine doesn't fix what is made or where. The goods, needs, recipes and
+terrains are JSON files in [`economy/data/`](economy/data), and a map is a
+list of rows of terrain letters. What comes with Mercury is an example
+economy, Europe around 1820, and an example map (`DefaultMap`, 36 tiles).
+Each data file starts with a note on what its fields mean. Edit them to
+model another economy.
 
 | File | What it holds |
 |---|---|
