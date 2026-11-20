@@ -20,10 +20,7 @@ type World struct {
 	// Seed keys the economy's random draws (owners' resolve to invest), so
 	// that the same seed gives the same history.
 	Seed int64
-	// Known lists the technologies known somewhere in the world: a good
-	// whose firms need one is in play once it is known.
-	Known map[string]bool
-	// Plan is what the world was built from (BuildWorld, BuildFullWorld), so
+	// Plan is what the world was built from (BuildWorld), so
 	// that a snapshot can rebuild it.
 	Plan Plan
 	// TradePrices are the prices trade happened at in the last tick, per region.
@@ -196,9 +193,8 @@ func (w *World) EndDay() {
 	})
 }
 
-// refreshMade notes which goods are in play: those some firm on the map
-// makes without any technology, or with one known somewhere (Known).
-// The rest (oil before anyone has Petroleum) are left out of the economy
+// refreshMade notes which goods are in play: those some enabled firm on
+// the map makes. The rest (oil before any oil well is switched on) are left out of the economy
 // entirely: no market clears for them, no merchant or state buys them, and
 // they have no price.
 func (w *World) refreshMade() {
@@ -210,14 +206,7 @@ func (w *World) refreshMade() {
 	}
 	for _, r := range w.Regions {
 		for _, f := range r.Firms {
-			if w.made[f.Output] {
-				continue
-			}
-			if f.Requires == "" {
-				w.made[f.Output] = true
-				continue
-			}
-			if w.Known[f.Requires] {
+			if f.Enabled {
 				w.made[f.Output] = true
 			}
 		}
@@ -341,7 +330,7 @@ func (w *World) Population() float64 {
 
 // RefreshHops recomputes the cost of every hop over land, and the
 // distance of every land route, from the tiles' movement costs (after a
-// road is built, say). Routes of a fixed distance (by sea) keep theirs.
+// tile's LandTransportMult changes, say). Routes of a fixed distance (by sea) keep theirs.
 func (w *World) RefreshHops() {
 	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
 	for i, l := range w.Links {
@@ -367,16 +356,6 @@ func (w *World) RefreshHopsAt(r *Region) {
 			t.SetDistance(hop(t.Origin, t.Dest))
 		}
 	}
-}
-
-// IsCity reports whether a tile has grown into a city: it holds at least
-// CityMult times the people of the average tile.
-func (w *World) IsCity(r *Region) bool {
-	pop := 0.0
-	for _, x := range w.Regions {
-		pop += x.Population()
-	}
-	return r.Population() >= CityMult*pop/float64(len(w.Regions))
 }
 
 // AddTraders opens new routes (sea routes between ports, say): each

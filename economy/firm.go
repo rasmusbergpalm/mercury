@@ -43,20 +43,19 @@ func (s Sector) String() string { return sectorNames[s] }
 
 // Method is one way a firm makes its good: a Cobb-Douglas recipe
 // q = TFP * L^(1-s) * prod f_i^a_i over the L levels the firm runs it on,
-// with sum a_i = s < 1. Every firm has its first method; technologies add others
+// with sum a_i = s < 1. Every firm has its first method; inventions add others
 // (MethodRecipes), more productive and needing machinery or fuel the first
 // doesn't. The firm runs each of its levels on one method, and its owners
 // refit a level from one method to another when the difference pays.
 type Method struct {
-	Name     string
-	Requires string // the tech it needs ("" for the firm's first method)
-	Enabled  bool
+	Name    string
+	Enabled bool // the firm may run it (a later method starts off: Recipe.StartsOff)
 	// short: an input it needs is out of play (nobody can make it yet, as
-	// engines before Steam power): it can't run, and owners don't build it
+	// engines before any engine works is switched on): it can't run, and owners don't build it
 	short   bool
 	Factors []Factor
-	// TFP is productivity per level, including technology; BaseTFP is
-	// without technology.
+	// TFP is productivity per level, a lever (an outside improvement to the
+	// method raises it); BaseTFP is the recipe's.
 	TFP, BaseTFP float64
 	// Cap is the most levels it may run (0: the firm's MaxLevels): steam
 	// pumps and blasting reach seams the old mines couldn't.
@@ -92,7 +91,7 @@ func (m *Method) checkInputs(made []bool) {
 	}
 }
 
-// Runs reports whether the method can run: its tech known, its inputs in play.
+// Runs reports whether the method can run: switched on, its inputs in play.
 func (m *Method) Runs() bool { return m.Enabled && !m.short }
 
 // exponentSum is s, the variable factors' share.
@@ -113,16 +112,15 @@ type Firm struct {
 	Methods []*Method
 	// Levels of buildings, over all its methods. Output is constant-returns
 	// in levels and the variable factors together. MaxLevels caps them where
-	// something else is scarce: land for farms and mines (RawMaxLevels), the
-	// state's budget for its services; 0 is no cap (workshops and services
+	// something else is scarce, as land for farms and mines (RawMaxLevels);
+	// 0 is no cap (workshops and services
 	// grow while a level pays for itself).
 	Levels, MaxLevels int
 	Expansion         *Expansion // a level under construction, or nil
-	// Requires names the tech the owner needs for the firm to work; Enabled
-	// says whether it does (see World.Known).
-	Requires string
-	Enabled  bool
-	Sector   Sector
+	// Enabled: the firm works at all (one whose recipe StartsOff doesn't
+	// until it is switched on).
+	Enabled bool
+	Sector  Sector
 	// Agglom multiplies productivity for firms that gain from a city around
 	// them (1 elsewhere).
 	Agglom     float64
@@ -330,7 +328,7 @@ func (f *Firm) WorstMethod(prices []float64, wage float64) (int, float64) {
 		if f.MethodLevels(i) == 0 {
 			continue
 		}
-		p := 0.0 // a method the owner can't run (its tech lost, an input out of play) earns nothing
+		p := 0.0 // a method the owner can't run (switched off, an input out of play) earns nothing
 		if m.Runs() {
 			p = f.LevelProfit(i, prices, wage)
 		}

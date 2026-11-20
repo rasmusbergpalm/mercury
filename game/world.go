@@ -118,22 +118,9 @@ func (w *World) Step() {
 	}
 }
 
-// setLevers sets the economy's levers from the nations: the technologies
-// known, each route's tariff and embargo, and each tile's policies.
+// setLevers sets the economy's levers from the nations: each route's
+// tariff and embargo, and each tile's policies.
 func (w *World) setLevers() {
-	if w.Known == nil {
-		w.Known = map[string]bool{}
-	}
-	for i := range Techs {
-		known := false
-		for _, n := range w.Nations {
-			if n.Known[i] {
-				known = true
-				break
-			}
-		}
-		w.Known[Techs[i].Name] = known
-	}
 	for _, t := range w.Traders {
 		t.Tariff, t.Closed = w.duty(t)
 	}
@@ -647,5 +634,12 @@ func (n *Nation) settleTaxes() {
 	}
 }
 
-// IsCity reports whether a tile has grown into a city (see economy.World.IsCity).
-func (w *World) IsCity(r *Region) bool { return w.World.IsCity(r.Region) }
+// CityMult: a tile is a city when it has this many times the average
+// tile's people.
+const CityMult = 2.0
+
+// IsCity reports whether a tile has grown into a city: it holds at least
+// CityMult times the people of the average tile.
+func (w *World) IsCity(r *Region) bool {
+	return r.Population() >= CityMult*w.Population()/float64(len(w.Regions))
+}

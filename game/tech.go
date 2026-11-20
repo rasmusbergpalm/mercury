@@ -427,13 +427,27 @@ func applyMethods(f *Firm, owner *Nation) {
 		if owner != nil {
 			m.TFP *= owner.methodMult(f, m)
 		}
-		m.Enabled = m.Requires == "" || (owner != nil && owner.Has(m.Requires))
+		m.Enabled = owner.allows(m.Name)
 	}
 }
 
-func firmEnabled(f *Firm, owner *Nation) bool {
-	if f.Requires == "" {
-		return true
+func firmEnabled(f *Firm, owner *Nation) bool { return owner.allows(f.Name) }
+
+// FirmTech maps a firm or production method to the tech that switches it
+// on (EnableFirms); the rest work from the start.
+var FirmTech = func() map[string]string {
+	m := map[string]string{}
+	for _, t := range Techs {
+		for _, f := range t.EnableFirms {
+			m[f] = t.Name
+		}
 	}
-	return owner != nil && owner.Has(f.Requires)
+	return m
+}()
+
+// allows reports whether a firm or method works for this owner (nil:
+// unowned, only what needs no tech).
+func (n *Nation) allows(name string) bool {
+	t, ok := FirmTech[name]
+	return !ok || (n != nil && n.Has(t))
 }

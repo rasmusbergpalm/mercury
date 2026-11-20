@@ -639,8 +639,6 @@ func (r *Region) PayDividends(cash *float64, cashBuffer, desiredSpend float64, o
 const (
 	SizeBonusPop = 100.0 // a starting tile's people: bonus 1
 	SizeBonusExp = 0.12
-	// a tile is a city when it has this many times the average tile's people
-	CityMult = 2.0
 )
 
 // SizeBonus is the productivity multiplier the tile's size gives its
@@ -664,7 +662,7 @@ func (r *Region) UpdateAgglomeration() {
 // Natural growth is PopGrowthSlope * (basic needs met - PopGrowthNeutral),
 // within [PopGrowthMin, PopGrowthMax]: about 1.4% a year where people eat
 // well, as in 1820. Anything else that moves births and deaths (medicine,
-// public health, schooling) comes from outside as GrowthBonus.
+// sanitation) comes from outside as GrowthBonus.
 const (
 	PopGrowthSlope   = 0.035
 	PopGrowthNeutral = 0.5

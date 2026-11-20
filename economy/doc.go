@@ -31,12 +31,13 @@
 // a list of rows of terrain symbols. The data that comes with the package
 // is an example economy, Europe around 1820, and DefaultMap a small example
 // map. BuildWorld builds a world from them: every good and firm, with
-// production methods that wait for the technology they need, and workers
-// and owners in every tile.
+// later production methods switched off until whoever runs it switches
+// them on, and workers and owners in every tile.
 //
 // Anything outside the economy (a model of policy, a strategy game) acts
 // on it by setting its levers (see levers.go: taxes, tariffs and embargoes,
-// outside buyers, the cost of capital, productivity) and by reading the
+// outside buyers and employers, the cost of capital, productivity, the cost
+// of transport, which recipes firms may use) and by reading the
 // accounts where what it collects piles up. A caller that acts within a
 // day runs its steps (BeginDay, PlanTrade, Markets, Ship, Produce, EndDay)
 // itself and acts between them. The economy never calls out.

@@ -26,13 +26,13 @@ package economy
 //
 // On a route (Trader): Tariff and Closed. On a firm: Mult (its
 // productivity), Enabled and each method's Enabled (which recipes it may
-// use), Expansion with External set (a level paid for from outside, its
+// use) and TFP, Expansion with External set (a level paid for from outside, its
 // construction delivered by whoever pays), and Monopoly and Elasticity
 // for a firm with market power (none has any unless it is given).
 
 // Buyer is someone outside a tile's markets who buys in them: a state, a
-// foreign merchant, an aid agency, an employer from outside the tile's
-// firms (a school, a hospital). Each day it bids for goods (Bid, by good)
+// foreign merchant, an aid agency, or an employer from outside the tile's
+// firms. Each day it bids for goods (Bid, by good)
 // and for workers (Hire); the markets charge its Account, which may run
 // negative until its owner settles it, and note what it got (Got, Hired).
 // Workers are hired after the firms, at the same wage.

@@ -52,14 +52,8 @@ func G(name string) GoodID {
 var Transport = G("transport")
 
 // Construction is building work: owners buy it to build and maintain
-// their works, and others for roads and ports.
+// their works, and outside buyers for whatever they build.
 var Construction = G("construction")
-
-// Research is research work, bought to develop technology.
-var Research = G("research")
-
-// Electricity is power from a tile's power station.
-var Electricity = G("electricity")
 
 // IsService reports whether a good is a local service that can't be shipped.
 func IsService(g GoodID) bool {

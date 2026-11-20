@@ -15,9 +15,9 @@ func runRecipes(o *Out) {
 		Exp  float64
 	}
 	type method struct {
-		Name, Requires string
-		TFP            float64
-		Factors        []factor
+		Name    string
+		TFP     float64
+		Factors []factor
 	}
 	type firm struct {
 		Name, Good string
@@ -40,10 +40,10 @@ func runRecipes(o *Out) {
 	}
 	var firms []firm
 	addFirm := func(rc Recipe) {
-		f := firm{Name: rc.Firm, Good: rc.Output, Methods: []method{{rc.Firm, "", rc.TFP, facs(rc.Factors)}}, Sites: map[string]float64{}}
+		f := firm{Name: rc.Firm, Good: rc.Output, Methods: []method{{rc.Firm, rc.TFP, facs(rc.Factors)}}, Sites: map[string]float64{}}
 		for _, mr := range MethodRecipes {
 			if mr.Base == rc.Firm {
-				f.Methods = append(f.Methods, method{mr.Firm, FirmTech[mr.Firm], mr.TFP, facs(mr.Factors)})
+				f.Methods = append(f.Methods, method{mr.Firm, mr.TFP, facs(mr.Factors)})
 			}
 		}
 		for _, tn := range Terrains {

@@ -608,7 +608,7 @@ func regionDetail(w *game.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, f.Requires, f.Sector.String(), game.FirmBonuses(r, f), 0, 0, 0, nil}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, game.FirmTech[f.Name], f.Sector.String(), game.FirmBonuses(r, f), 0, 0, 0, nil}
 		fs.Wanted = f.PlanLabor
 		if !f.AtCap() {
 			fs.LevelGain = f.LastOutput * r.Markets[f.Output].Price * (f.NextLevelMult() - 1)
@@ -624,7 +624,7 @@ func regionDetail(w *game.World, i int) RegionDetail {
 		}
 		if len(f.Methods) > 1 {
 			for k, m := range f.Methods {
-				ms := MethodState{Name: m.Name, Levels: f.MethodLevels(k), Known: m.Enabled, Runs: m.Runs(), Requires: m.Requires, Produced: m.Output}
+				ms := MethodState{Name: m.Name, Levels: f.MethodLevels(k), Known: m.Enabled, Runs: m.Runs(), Requires: game.FirmTech[m.Name], Produced: m.Output}
 				if m.Runs() {
 					ms.LevelProfit = f.LevelProfit(k, r.Prices(), r.Wage)
 				}

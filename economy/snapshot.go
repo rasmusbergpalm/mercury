@@ -3,7 +3,6 @@ package economy
 import (
 	"errors"
 	"fmt"
-	"sort"
 )
 
 // Plan is what a world is built from (BuildWorld): a hex map of terrain
@@ -25,7 +24,6 @@ type Snapshot struct {
 	Tick                                        int
 	Investment, Migration, Demography, TrackGDP bool
 	Seed                                        int64
-	Known                                       []string `json:",omitempty"`
 	Regions                                     []RegionState
 	Traders                                     []TraderState
 	TradePrices                                 [][]float64
@@ -94,12 +92,6 @@ type BuyerState struct {
 func (w *World) Snapshot() *Snapshot {
 	s := &Snapshot{Plan: w.Plan, Tick: w.Tick, Investment: w.Investment, Migration: w.Migration,
 		Demography: w.Demography, TrackGDP: w.TrackGDP, Seed: w.Seed}
-	for t, ok := range w.Known {
-		if ok {
-			s.Known = append(s.Known, t)
-		}
-	}
-	sort.Strings(s.Known)
 	for _, r := range w.Regions {
 		rs := RegionState{Wage: r.Wage, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, IncomeTax: r.IncomeTax, PaybackMult: r.PaybackMult,
 			GrowthBonus: r.GrowthBonus, LandTransportMult: r.LandTransportMult, SeaTransportMult: r.SeaTransportMult, SpoilageMult: r.SpoilageMult,
@@ -173,10 +165,6 @@ func (w *World) SetState(s *Snapshot) error {
 		return bad("counts")
 	}
 	w.Tick, w.Investment, w.Migration, w.Demography, w.TrackGDP, w.Seed = s.Tick, s.Investment, s.Migration, s.Demography, s.TrackGDP, s.Seed
-	w.Known = map[string]bool{}
-	for _, t := range s.Known {
-		w.Known[t] = true
-	}
 	for i, rs := range s.Regions {
 		r := w.Regions[i]
 		if len(rs.Markets) != len(r.Markets) || len(rs.Pops) != len(r.Pops) || len(rs.Firms) != len(r.Firms) || len(rs.Buyers) != len(r.Buyers) {

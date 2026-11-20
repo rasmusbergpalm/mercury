@@ -23,7 +23,7 @@ __STYLE__</style>
 <tr><td><b>People</b></td><td>the best living they can afford</td><td>what to buy with their income, and whether to move to a neighbouring tile</td><td>IV</td></tr>
 </table></div>
 <p>The markets are not agents: they only collect everyone's orders, and move each price a little each day towards where supply meets demand.</p>
-<p>The engine doesn't fix what the economy makes, or where. Its goods, what people need, how each good is made and what each kind of land is good for are all data, and the map is data too. This page runs the example economy that comes with Mercury: Europe around 1820, with its farms, mines, mills and carters, on a small map of thirty-six hexagonal tiles. Another time or place would be another set of goods, recipes and maps on the same engine. The example is run with nothing added: no taxes, tariffs or roads unless an experiment puts them there, and no new inventions, so firms keep their 1820 methods. Every number and chart below comes from the engine itself (<a href="https://github.com/rasmusbergpalm/mercury">the source is on GitHub</a>). Click a tile on the map to see what its people do for a living once the map has settled.</p>
+<p>The engine doesn't fix what the economy makes, or where. Its goods, what people need, how each good is made and what each kind of land is good for are all data, and the map is data too. This page runs the example economy that comes with Mercury: Europe around 1820, with its farms, mines, mills and carters, on a small map of thirty-six hexagonal tiles. Another time or place would be another set of goods, recipes and maps on the same engine. The example is run with nothing added: no taxes, tariffs or cheaper transport unless an experiment puts them there, and no new inventions, so firms keep their 1820 methods. Every number and chart below comes from the engine itself (<a href="https://github.com/rasmusbergpalm/mercury">the source is on GitHub</a>). Click a tile on the map to see what its people do for a living once the map has settled.</p>
 </div>
 
 <div class="figure" id="fig-world">
@@ -48,7 +48,7 @@ __STYLE__</style>
 <dt>limits</dt><dd>its buildings are fixed from day to day, and it can't spend more than its cash</dd>
 </dl></div>
 <p><em>Levels</em> are the firm's buildings, its capital. Owners add a level when the firm earns more than a level costs, and the exponents add up to less than one. So each extra worker in a given building adds less than the one before. <span class="ref" data-fig="firm"></span> shows this diminishing return for a single level, holding the other inputs at one unit each.</p>
-<p>A firm can make its good in several ways, called methods. The first is the one available in 1820; later ones come with technology. On this page every firm keeps its 1820 method; the later ones are shown only to compare them. A later method is more productive (higher TFP) and often needs fewer hands (a lower labour exponent), but needs machinery or fuel the old way didn't.</p>
+<p>A firm can make its good in several ways, called methods. The first is the one available in 1820; later ones start switched off, as inventions not yet made, until whoever runs the economy switches them on. On this page every firm keeps its 1820 method; the later ones are shown only to compare them. A later method is more productive (higher TFP) and often needs fewer hands (a lower labour exponent), but needs machinery or fuel the old way didn't.</p>
 </div>
 
 <div class="figure" id="fig-firm">
@@ -413,7 +413,7 @@ function drawFirm() {
   const pts = (m) => { const a = (m.Factors.find((x) => x.Kind === "labour") || { Exp: 0 }).Exp; return [...Array(41)].map((_, i) => { const l = i / 10; return [l, m.TFP * Math.pow(l, a)]; }); };
   const series = f.Methods.map((m, i) => ({ pts: pts(m), color: SERIES[i], end: i === 0 ? "1820" : "" }));
   lineChart(document.getElementById("chart-firm"), { series, xTicks: [0, 1, 2, 3, 4], xLabel: "workers per level", yLabel: `output per level (${f.Good})`, w: 700, h: 320, yMin: 0 });
-  legend(document.getElementById("legend-firm"), f.Methods.map((m, i) => [SERIES[i], `${m.Name}${m.Requires ? ` (with ${m.Requires})` : " (1820)"}: TFP ${m.TFP}, labour exponent ${(m.Factors.find((x) => x.Kind === "labour") || { Exp: 0 }).Exp}`]));
+  legend(document.getElementById("legend-firm"), f.Methods.map((m, i) => [SERIES[i], `${m.Name}${i ? " (later)" : " (1820)"}: TFP ${m.TFP}, labour exponent ${(m.Factors.find((x) => x.Kind === "labour") || { Exp: 0 }).Exp}`]));
   const first = f.Methods[0], last = f.Methods[f.Methods.length - 1];
   const inputs = (m) => m.Factors.filter((x) => x.Kind !== "labour").map((x) => `${x.Kind} (${x.Exp})`).join(", ") || "nothing but labour";
   document.getElementById("cap-firm").textContent = `The other inputs are held at one unit per level. The ${first.Name.toLowerCase()} of 1820 needs ${inputs(first)}; the ${last.Name.toLowerCase()} needs ${inputs(last)}. Each curve flattens as workers are added: that is the diminishing return. A higher curve with a lower exponent makes more with fewer hands.`;

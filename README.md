@@ -109,12 +109,12 @@ model another economy.
 |---|---|
 | `goods.json` | Goods with their bulk and spoilage, and substitutable inputs (fuel = wood or coal) |
 | `needs.json` | Need groups, their tiers, goods, elasticities, weights and requirements |
-| `recipes.json` | Every firm's recipe, and the later production methods that technologies unlock |
+| `recipes.json` | Every firm's recipe, and later production methods, which start switched off until invented |
 | `terrains.json` | Tile types, their movement cost, and the land-bound producers each suits |
 
 `BuildWorld` builds a world from the data and a map: every good and firm,
-with the production methods waiting for the technology they need, and
-workers and owners in every tile.
+with the later production methods switched off, and workers and owners in
+every tile.
 
 ### Levers, accounts and steps
 
@@ -127,11 +127,10 @@ all:
 
 | Where | Levers | Accounts |
 |---|---|---|
-| a tile (`Region`) | `IncomeTax`, `PaybackMult` (cost of capital), `GrowthBonus`, `LandTransportMult`, `SeaTransportMult`, `SpoilageMult`, `Educated`, `Healthy`, `Urban` | `Withheld` (taxes), `Duties` |
-| a tile's markets | `Buyers`: outside buyers with their own bids | each buyer's `Account` and `Got` |
+| a tile (`Region`) | `IncomeTax`, `PaybackMult` (cost of capital), `GrowthBonus`, `LandTransportMult` and `SeaTransportMult` (the cost of transport), `SpoilageMult` | `Withheld` (taxes), `Duties` |
+| a tile's markets | `Buyers`: outside buyers and employers, with their own bids for goods and workers | each buyer's `Account`, `Got` and `Hired` |
 | a route (`Trader`) | `Tariff`, `Closed` (an embargo) | |
-| a firm | `Mult` (productivity), `Managed` (run for someone else) | |
-| the world | `Known` (technologies known somewhere) | |
+| a firm | `Mult` (productivity), `Enabled` and each method's `Enabled` (which recipes it may use) and `TFP`, an `Expansion` paid from outside, `Monopoly` | |
 
 The day's steps are `BeginDay`, `PlanTrade`, `Markets`, `Ship`, `Produce`
 and `EndDay`; `Step` runs them in turn.
@@ -155,8 +154,10 @@ up in each tile's `Duties`.
 
 [`game/`](game) is an example of building on Mercury: a strategy game, not
 yet named, that uses nothing but the economy's levers and steps. Nations own the tiles, tax them, set
-tariffs, research a tech tree from 1820 to the motor age, build roads,
-railways and ports, and run schools, public health and universities. They
+tariffs, research a tech tree from 1820 to the motor age (a tech switches
+recipes on and raises productivity), build roads, railways and ports (which
+lower the cost of transport), and run schools, public health and
+universities (outside employers that raise productivity and growth). They
 raise armies, go to war and form alliances. People or the computer play
 them.
 

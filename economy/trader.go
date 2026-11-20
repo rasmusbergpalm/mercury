@@ -195,7 +195,7 @@ func NewTrader(good GoodID, origin, dest *Region, distance, transportCost float6
 	return t
 }
 
-// SetDistance changes the route's length (e.g. after a road is built): the
+// SetDistance changes the route's length (e.g. after a tile's LandTransportMult changes): the
 // transport needed per unit and the share of perishables that arrives.
 func (t *Trader) SetDistance(d float64) {
 	t.Distance = d

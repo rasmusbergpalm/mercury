@@ -58,13 +58,13 @@ type recipeData struct {
 	TFP          float64
 	Factors      [][2]any
 	Sector       string
-	Requires     string
+	Enabled      *bool
 	Base         string
 	Cap          int
 }
 
 func (d recipeData) recipe() Recipe {
-	r := Recipe{Firm: d.Firm, Output: d.Output, TFP: d.TFP, Requires: d.Requires, Service: d.Sector == "service"}
+	r := Recipe{Firm: d.Firm, Output: d.Output, TFP: d.TFP, StartsOff: d.Enabled != nil && !*d.Enabled, Service: d.Sector == "service"}
 	for _, f := range d.Factors {
 		name, _ := f[0].(string)
 		exp, ok := f[1].(float64)

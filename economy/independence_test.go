@@ -16,7 +16,7 @@ func TestEconomyKnowsNothingOfTheGame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	words := regexp.MustCompile(`(?i)\b(nations?|nation's|armies|army|treasur(y|ies)|mercury/game)\b`)
+	words := regexp.MustCompile(`(?i)\b(nations?|nation's|armies|army|treasur(y|ies)|techs?|technolog\w*|schools?|schooling|universit(y|ies)|hospitals?|roads?|railways?|public services?|mercury/game)\b`)
 	for _, f := range files {
 		if strings.HasSuffix(f, "_test.go") {
 			continue

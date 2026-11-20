@@ -7,12 +7,15 @@ import (
 
 // Recipe is a firm template: output, base TFP and Cobb-Douglas factors.
 type Recipe struct {
-	Firm     string
-	Output   string
-	TFP      float64
-	Factors  []Factor
-	Requires string // the technology it needs before it works ("": none)
-	Service  bool   // in the service sector (else industry, or primary if land-bound)
+	Firm    string
+	Output  string
+	TFP     float64
+	Factors []Factor
+	// StartsOff: the firm or method starts switched off (Firm.Enabled,
+	// Method.Enabled), an invention not yet made, until whoever runs the
+	// economy switches it on.
+	StartsOff bool
+	Service   bool // in the service sector (else industry, or primary if land-bound)
 }
 
 // The recipes (data/recipes.json).
@@ -23,8 +26,8 @@ var (
 	ProcessingRecipes = recipes(recipesData.Processing)
 )
 
-// MethodRecipe is another way of making what a firm makes, which a
-// technology makes available: a firm of its own beside the old one, with
+// MethodRecipe is a later way of making what a firm makes, usually
+// starting switched off until it is invented (StartsOff): a firm of its own beside the old one, with
 // its own recipe and levels. More productive, it needs machinery and fuel
 // the old one doesn't, so it spreads as owners find it worth building (and
 // the old one comes back where the machinery is dear). A land-bound one
@@ -46,24 +49,6 @@ var MethodRecipes = func() []MethodRecipe {
 		out = append(out, MethodRecipe{d.Base, d.recipe(), d.Cap})
 	}
 	return out
-}()
-
-// FirmTech maps a firm or method to the technology it needs.
-var FirmTech = func() map[string]string {
-	m := map[string]string{}
-	for _, rs := range [][]Recipe{RawRecipes, ProcessingRecipes} {
-		for _, r := range rs {
-			if r.Requires != "" {
-				m[r.Firm] = r.Requires
-			}
-		}
-	}
-	for _, r := range MethodRecipes {
-		if r.Requires != "" {
-			m[r.Firm] = r.Requires
-		}
-	}
-	return m
 }()
 
 // RawMaxLevels caps building levels of land-bound producers (land is scarce).
@@ -151,6 +136,7 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 					f := NewFirm(rc.Firm, G(rc.Output), rc.TFP*b.Mult, rc.Factors, 50)
 					f.MaxLevels, f.Sector = RawMaxLevels, Primary
 					f.Site, f.SiteMult = site, b.Mult
+					f.Enabled = !rc.StartsOff
 					firms = append(firms, f)
 				}
 			}
@@ -165,12 +151,11 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 		if rc.Service {
 			f.Sector = Service
 		}
+		f.Enabled = !rc.StartsOff
 		firms = append(firms, f)
 	}
 	for _, f := range firms {
-		f.Requires = FirmTech[f.Name]
-		f.Enabled = f.Requires == ""
-		// the methods techs bring, at the site's productivity; a land-bound
+		// the later methods, at the site's productivity; a land-bound
 		// one may work as much of the land as its Cap
 		for _, mr := range MethodRecipes {
 			if mr.Base != f.Name {
@@ -181,7 +166,7 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 				site = f.SiteMult
 			}
 			m := newMethod(mr.Firm, mr.TFP*site, mr.Factors)
-			m.Requires, m.Enabled = FirmTech[mr.Firm], false
+			m.Enabled = !mr.StartsOff
 			if f.Sector == Primary {
 				m.Cap = max(RawMaxLevels, mr.Cap)
 			}
@@ -192,8 +177,8 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 }
 
 // BuildWorld builds the world for a hex map: a tile for every land cell,
-// with its terrain's firms and every tile's (their later methods waiting for
-// the technology they need), a hundred people of whom a few are owners, and
+// with its terrain's firms and every tile's (the recipes that start off
+// switched off), a hundred people of whom a few are owners, and
 // routes for every good to every neighbour. transportCost scales every hop;
 // +Inf means autarky (no trade). names, if given, names the tiles in order
 // (row by row, skipping the sea); otherwise a tile is named by its row and

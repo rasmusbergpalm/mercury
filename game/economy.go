@@ -44,7 +44,6 @@ const (
 	Luxury        = economy.Luxury
 	StartYear     = economy.StartYear
 	LevelCost     = economy.LevelCost
-	CityMult      = economy.CityMult
 	MinPopulation = economy.MinPopulation
 	minPopulation = economy.MinPopulation
 )
@@ -56,12 +55,9 @@ var (
 	NumGoods        = economy.NumGoods
 	Transport       = economy.Transport
 	Construction    = economy.Construction
-	Research        = economy.Research
-	Electricity     = economy.Electricity
 	ConsumerGoods   = economy.ConsumerGoods
 	Tradable        = economy.Tradable
 	MethodRecipes   = economy.MethodRecipes
-	FirmTech        = economy.FirmTech
 	DefaultMap      = economy.DefaultMap
 	Terrains        = economy.Terrains
 	RawMaxLevels    = economy.RawMaxLevels
