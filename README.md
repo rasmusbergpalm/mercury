@@ -1,9 +1,8 @@
 # Mercury
 
-A deterministic, spatial, agent-based economy in Go, calibrated on the
-nineteenth century.
+A deterministic, spatial, agent-based economy, where transport is a good like any other: produced by workers and bought by merchants.
 
-Mercury is a map of tiles. Each tile has its own people, firms and markets.
+Mercury is a map of tiles. Each tile has its own people, firms and markets for labour and goods.
 Merchants carry goods between neighbouring tiles and pay for the transport
 it takes. Firms hire workers and buy inputs, and owners build more capacity
 where it pays. People spend their income on what they need most and move to
@@ -11,23 +10,20 @@ where they live better. Nothing is solved for: prices, wages, trade routes,
 specialisation and where people live all come out of these choices, day by
 day.
 
-From those few rules come many of the textbook results of economics:
+Most trade models treat transport as an “iceberg”, where a fixed share of each shipment melts away on the way, or as a cost set from outside the model. In Mercury, carriage is made by firms like any other good and bought by merchants at a market price. So the cost of trade is an outcome of the model, not a parameter. It rises with wages and with demand for carriage, and falls with better methods of transport and better roads. When trade booms, carters compete with every other trade for workers.
 
-- **Prices** differ between tiles by the cost of moving goods between
-  them, and the law of one price holds net of it.
-- **Weight matters**: cheap, heavy goods stay home and valuable, light ones
-  travel far (the Alchian–Allen effect).
-- **Trade in goods alone** brings wages closer together, even when nobody
-  moves (factor-price equalisation).
-- **Cheaper transport** makes tiles specialise in what they do best
-  (comparative advantage).
-- **People switch** to substitutes when a good gets dear, and spend a
-  smaller share of a rising income on food (Engel's law).
-- **Migration** equalises living standards between places, and a cheap
-  route across the map draws people to it (spatial equilibrium).
+From those few rules many of the textbook economics results can be reproduced:
 
-**[The economy page](https://rasmusbergpalm.github.io/mercury/)** shows each
-of these with experiments run on the engine itself.
+- **Prices** differ between tiles by the cost of moving goods between them, and the law of one price holds net of it.
+- **Weight matters**: cheap, heavy goods stay home and valuable, light ones travel far (the Alchian–Allen effect).
+- **Trade in goods alone** brings wages closer together, even when nobody moves (factor-price equalisation).
+- **Cheaper transport** makes tiles specialise in what they do best (comparative advantage).
+- **People switch** to substitutes when a good gets dear, and spend a smaller share of a rising income on food (Engel's law).
+- **Migration** evens out living standards between places, and a cheap route across the map draws trade and people to it (spatial equilibrium).
+- **Money is neutral** in the long run: double or halve it and prices follow while output doesn’t move.
+- **Policy** has textbook effects: a duty on grain raises bread prices and farm profits (the Corn Laws), and free trade erodes a monopoly’s markup.
+
+**[The economy page](https://rasmusbergpalm.github.io/mercury/)** explains the economy in detail and shows each of these with experiments run on the engine itself.
 
 ## Quick start
 
