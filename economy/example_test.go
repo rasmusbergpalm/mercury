@@ -6,11 +6,11 @@ import (
 	"github.com/rasmusbergpalm/mercury/economy"
 )
 
-// A world on the classic 6×6 map, with owners investing and people free to
+// The example economy on its 6×6 example map, with owners investing and people free to
 // move, run for two years: the price of bread, and the people, in the
 // map's first and last tiles.
 func Example() {
-	w, err := economy.BuildFullWorld(1, economy.DefaultMap, nil)
+	w, err := economy.BuildWorld(1, economy.DefaultMap, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -23,13 +23,13 @@ func Example() {
 		fmt.Printf("tile %s: bread £%.2f, %.0f people\n", r.Name, r.Markets[bread].Price, r.Population())
 	}
 	// Output:
-	// tile 00: bread £28.13, 84 people
-	// tile 55: bread £32.37, 138 people
+	// tile 00: bread £27.82, 84 people
+	// tile 55: bread £32.27, 137 people
 }
 
 // A 20% tax on one tile's incomes: what it has withheld after a year.
 func Example_tax() {
-	w, err := economy.BuildWorld(1, economy.DefaultMap)
+	w, err := economy.BuildWorld(1, economy.DefaultMap, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -40,7 +40,7 @@ func Example_tax() {
 	}
 	fmt.Printf("withheld £%.0f\n", r.Withheld)
 	// Output:
-	// withheld £40908
+	// withheld £40911
 }
 
 // A customs border down the middle of the map: a 30% duty on everything
@@ -49,7 +49,7 @@ func Example_tax() {
 // it is bought, the duty where it is sold, after the cost of carriage.)
 func Example_tariff() {
 	run := func(duty float64) (crossing, duties float64) {
-		w, err := economy.BuildWorld(1, economy.DefaultMap)
+		w, err := economy.BuildWorld(1, economy.DefaultMap, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -76,5 +76,5 @@ func Example_tariff() {
 	taxed, duties := run(0.3)
 	fmt.Printf("trade across the border: £%.0f a day free, £%.0f with the duty, which raises £%.0f a day\n", free, taxed, duties)
 	// Output:
-	// trade across the border: £943 a day free, £234 with the duty, which raises £141 a day
+	// trade across the border: £1022 a day free, £257 with the duty, which raises £163 a day
 }

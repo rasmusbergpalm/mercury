@@ -166,9 +166,6 @@ var (
 	ErrBadTaxRate  = errors.New("tax rate must be in [0, 0.9]")
 	ErrBadTariff   = errors.New("tariff must be in [0, 5]")
 	ErrNeedTech    = errors.New("that needs a technology the nation lacks")
-	ErrOwned       = errors.New("tile already belongs to a nation")
-	ErrNotAdjacent = errors.New("tile does not border the nation")
-	ErrTreasury    = errors.New("treasury cannot afford it")
 	ErrBadTech     = errors.New("tech unknown, already known, or missing prerequisites")
 	ErrBadPension  = errors.New("the pension level must be between 0 and 4")
 	ErrBadStanding = errors.New("the standing army must be between 10% and 100% of wartime strength")
@@ -215,7 +212,7 @@ func (n *Nation) SetTariff(good GoodID, rate float64) error {
 		n.Tariff[good] = rate
 		return nil
 	}
-	for _, g := range FullTradable {
+	for _, g := range Tradable {
 		n.Tariff[g] = rate
 	}
 	return nil

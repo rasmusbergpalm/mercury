@@ -30,10 +30,9 @@
 // recipes and terrains are data, in the JSON files of data/, and a map is
 // a list of rows of terrain symbols. The data that comes with the package
 // is an example economy, Europe around 1820, and DefaultMap a small example
-// map. BuildWorld makes the classic world from them (the core goods and
-// firms, one class of people); BuildFullWorld makes the full one (every
-// good and firm, production methods that wait for the technology they
-// need, workers and owners).
+// map. BuildWorld builds a world from them: every good and firm, with
+// production methods that wait for the technology they need, and workers
+// and owners in every tile.
 //
 // Anything outside the economy (a model of policy, a strategy game) acts
 // on it by setting its levers (see levers.go: taxes, tariffs and embargoes,

@@ -1,14 +1,14 @@
 {
-  "about": "Tile types. symbol: the map letter. move: the cost of moving through the tile. raw: the land-bound producers it has, with how well the site suits them (a multiplier on their tfp); full_raw: more of them in full worlds. coast: every tile next to the sea also has these producers, and ships carry goods past it at move. raw_max_levels: the most building levels a land-bound producer may have (land is scarce).",
+  "about": "Tile types. symbol: the map letter. move: the cost of moving through the tile. raw: the land-bound producers it has, with how well the site suits them (a multiplier on their tfp). coast: every tile next to the sea also has these producers, and ships carry goods past it at move. raw_max_levels: the most building levels a land-bound producer may have (land is scarce).",
   "terrains": [
-    {"name": "plains", "symbol": "P", "move": 1, "raw": [["Farm", 1.5], ["Potato farm", 1.2], ["Ranch", 1.3], ["Sheep farm", 1], ["Clay pit", 1], ["Iron mine", 0.25]], "full_raw": [["Oil well", 0.7]]},
+    {"name": "plains", "symbol": "P", "move": 1, "raw": [["Farm", 1.5], ["Potato farm", 1.2], ["Ranch", 1.3], ["Sheep farm", 1], ["Clay pit", 1], ["Iron mine", 0.25], ["Oil well", 0.7]]},
     {"name": "forest", "symbol": "F", "move": 1, "raw": [["Forestry", 1.8], ["Potato farm", 0.8], ["Ranch", 0.7], ["Iron mine", 0.3]]},
     {"name": "hills", "symbol": "H", "move": 1, "raw": [["Sheep farm", 1.5], ["Vineyard", 1.5], ["Coal mine", 1], ["Clay pit", 1.3], ["Potato farm", 1], ["Iron mine", 0.5]]},
     {"name": "mountains", "symbol": "M", "move": 1, "raw": [["Coal mine", 1.5], ["Iron mine", 1.5], ["Sheep farm", 0.8]]},
-    {"name": "tropical", "symbol": "T", "move": 1, "raw": [["Cotton plantation", 1.5], ["Sugar plantation", 1.5], ["Tea plantation", 1.5], ["Silk farm", 1.2], ["Farm", 0.6], ["Iron mine", 0.25]], "full_raw": [["Oil well", 1.5]]},
-    {"name": "steppe", "symbol": "S", "move": 1, "raw": [["Ranch", 1.6], ["Sheep farm", 1.4], ["Farm", 1], ["Potato farm", 0.5], ["Clay pit", 0.8], ["Iron mine", 0.25]], "full_raw": [["Oil well", 0.7]]},
-    {"name": "desert", "symbol": "D", "move": 1, "raw": [["Ranch", 0.3], ["Sheep farm", 0.4], ["Farm", 0.2], ["Clay pit", 0.6], ["Iron mine", 0.25]], "full_raw": [["Oil well", 1.5]]},
-    {"name": "tundra", "symbol": "U", "move": 1, "raw": [["Ranch", 0.2], ["Forestry", 0.3], ["Iron mine", 0.4], ["Coal mine", 0.6]], "full_raw": [["Oil well", 0.5]]}
+    {"name": "tropical", "symbol": "T", "move": 1, "raw": [["Cotton plantation", 1.5], ["Sugar plantation", 1.5], ["Tea plantation", 1.5], ["Silk farm", 1.2], ["Farm", 0.6], ["Iron mine", 0.25], ["Oil well", 1.5]]},
+    {"name": "steppe", "symbol": "S", "move": 1, "raw": [["Ranch", 1.6], ["Sheep farm", 1.4], ["Farm", 1], ["Potato farm", 0.5], ["Clay pit", 0.8], ["Iron mine", 0.25], ["Oil well", 0.7]]},
+    {"name": "desert", "symbol": "D", "move": 1, "raw": [["Ranch", 0.3], ["Sheep farm", 0.4], ["Farm", 0.2], ["Clay pit", 0.6], ["Iron mine", 0.25], ["Oil well", 1.5]]},
+    {"name": "tundra", "symbol": "U", "move": 1, "raw": [["Ranch", 0.2], ["Forestry", 0.3], ["Iron mine", 0.4], ["Coal mine", 0.6], ["Oil well", 0.5]]}
   ],
   "coast": {"move": 0.25, "raw": [["Fishery", 1.5]]},
   "raw_max_levels": 4

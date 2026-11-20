@@ -12,7 +12,7 @@ type World struct {
 	// made is, per good, whether anyone in the world can make it or still
 	// has some to sell; merchants leave the rest alone (refreshMade)
 	made []bool
-	// Rules, off in the classic world: firms invest in building levels,
+	// Rules, off unless switched on: firms invest in building levels,
 	// people migrate between neighbouring tiles, and populations grow.
 	Investment, Migration, Demography bool
 	// TrackGDP keeps every tile's real GDP chain (Region.Real).

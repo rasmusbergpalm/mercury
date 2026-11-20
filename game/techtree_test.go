@@ -10,7 +10,7 @@ func TestTechTreeIsWellFormed(t *testing.T) {
 	branches := map[string]int{}
 	seen := map[string]bool{}
 	firms := map[string]bool{}
-	for _, rc := range append(append(append(append([]Recipe(nil), RawRecipes...), ProcessingRecipes...), FullRecipes...), FullRawRecipes...) {
+	for _, rc := range append(append([]Recipe(nil), RawRecipes...), ProcessingRecipes...) {
 		firms[rc.Firm] = true
 	}
 	for k := Public(0); k < NumServices; k++ {
@@ -97,13 +97,11 @@ func TestGatedFirmsNeedTheirTech(t *testing.T) {
 	if firmIn(unowned, "Fertilizer works").Enabled {
 		t.Error("an unowned tile's fertilizer works were unlocked by another nation's tech")
 	}
-	// the classic world has no gating
-	classic := newTestWorld(t, 1)
-	if f := firmIn(classic.Regions[0], "Kiln"); !f.Enabled {
-		t.Error("classic world kiln is locked")
-	}
-	if firmIn(classic.Regions[0], "Textile factory") != nil {
-		t.Error("classic world has industrial firms")
+	// with no nations, the firms that need no technology work, and the
+	// methods that need one wait
+	bare := newTestWorld(t, 1)
+	if f := firmIn(bare.Regions[0], "Kiln"); !f.Enabled || len(f.Methods) < 2 || f.Methods[1].Enabled {
+		t.Error("with no nations: the kiln locked, or its later methods unlocked")
 	}
 }
 
@@ -311,8 +309,8 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 		t.Fatal("a lone port opened routes")
 	}
 	b := buildPortNow(t, w, "50")
-	if got := len(w.Traders) - traders; got != 2*len(FullTradable) {
-		t.Fatalf("second port added %d traders, want %d", got, 2*len(FullTradable))
+	if got := len(w.Traders) - traders; got != 2*len(Tradable) {
+		t.Fatalf("second port added %d traders, want %d", got, 2*len(Tradable))
 	}
 	want := portHandling + seaPerHex*4*th.coastMult()
 	sea := 0
@@ -328,7 +326,7 @@ func TestPortsOpenSeaRoutes(t *testing.T) {
 			t.Fatalf("sea hop %v, want %v", tr.Distance, want)
 		}
 	}
-	if sea != 2*len(FullTradable) {
+	if sea != 2*len(Tradable) {
 		t.Fatalf("%d sea traders", sea)
 	}
 	money := w.Money()

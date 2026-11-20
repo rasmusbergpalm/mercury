@@ -7,10 +7,6 @@ import (
 	"github.com/rasmusbergpalm/mercury/economy"
 )
 
-// serviceFirms are the firms in the service sector (the rest of the
-// non-primary firms are industry).
-var serviceFirms = map[string]bool{"Transport": true, "Construction": true, "University": true}
-
 // NationSpec describes a nation in a game scenario.
 type NationSpec struct {
 	Symbol byte // marks its tiles in the nation map
@@ -75,7 +71,7 @@ func BuildGameProgress(spec GameSpec, progress func(done, total int)) (*World, e
 // baseGameWorld builds a game's map, the economy's full world with the
 // public services on every tile, before any nation or settling.
 func baseGameWorld(spec GameSpec) (*World, error) {
-	e, err := economy.BuildFullWorld(spec.TransportCost, spec.Map, spec.Names)
+	e, err := economy.BuildWorld(spec.TransportCost, spec.Map, spec.Names)
 	if err != nil {
 		return nil, err
 	}

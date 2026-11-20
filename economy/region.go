@@ -20,7 +20,6 @@ type Region struct {
 	RoadMult float64  // what roads and railways do to moving over land (1: none)
 	Real     GDPChain // real GDP, linked monthly
 	warm     bool     // past the real GDP chain's warm-up (set at each link)
-	Urban    bool     // industry and services gain from the tile's size
 	Educated float64  // share of its people who were schooled
 	Healthy  float64  // share of its crowding public health covers
 
@@ -101,9 +100,7 @@ func (r *Region) Plan() {
 	for _, p := range r.Pops {
 		p.Income = 0
 	}
-	if r.Urban {
-		r.UpdateAgglomeration()
-	}
+	r.UpdateAgglomeration()
 	prices := r.refreshPrices()
 	for _, f := range r.Firms {
 		f.TickRevenue, f.TickCost, f.tickInputs, f.investWant = 0, 0, 0, 0
@@ -596,7 +593,7 @@ func (r *Region) ClassPops(c Class) []*Pop {
 }
 
 // owners are the pops that own the tile's firms and trading house. Where
-// there is no owner class (as in the classic world) everyone owns a share.
+// there is no owner class everyone owns a share.
 func (r *Region) owners() []*Pop {
 	if o := r.ClassPops(Owners); len(o) > 0 {
 		return o
@@ -645,11 +642,8 @@ const (
 )
 
 // SizeBonus is the productivity multiplier the tile's size gives its
-// non-primary firms (1 unless the tile is Urban).
+// non-primary firms.
 func (r *Region) SizeBonus() float64 {
-	if !r.Urban {
-		return 1
-	}
 	return math.Pow(math.Max(r.Population(), 1)/SizeBonusPop, SizeBonusExp)
 }
 

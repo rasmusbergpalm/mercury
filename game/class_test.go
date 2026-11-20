@@ -16,12 +16,6 @@ func TestTilesHaveOwnerClasses(t *testing.T) {
 	if math.Abs(size[Owners]-OwnerPeopleShare*pop) > 1e-9 {
 		t.Errorf("class sizes %v of %v", size, pop)
 	}
-	classic := newTestWorld(t, 1)
-	for _, p := range classic.Regions[0].Pops {
-		if p.Class != Workers {
-			t.Error("the classic world has owner classes")
-		}
-	}
 }
 
 // Workers work; owners live off dividends from land, works and trade.

@@ -21,11 +21,6 @@ var (
 	RawRecipes = recipes(recipesData.Raw)
 	// ProcessingRecipes can be set up anywhere.
 	ProcessingRecipes = recipes(recipesData.Processing)
-	// FullRecipes exist only in full worlds.
-	FullRecipes = recipes(recipesData.Full)
-	// FullRawRecipes are land-bound producers that exist only in full
-	// worlds (terrains say where: Terrain.FullRaw).
-	FullRawRecipes = recipes(recipesData.FullRaw)
 )
 
 // MethodRecipe is another way of making what a firm makes, which a
@@ -56,7 +51,7 @@ var MethodRecipes = func() []MethodRecipe {
 // FirmTech maps a firm or method to the technology it needs.
 var FirmTech = func() map[string]string {
 	m := map[string]string{}
-	for _, rs := range [][]Recipe{RawRecipes, ProcessingRecipes, FullRecipes, FullRawRecipes} {
+	for _, rs := range [][]Recipe{RawRecipes, ProcessingRecipes} {
 		for _, r := range rs {
 			if r.Requires != "" {
 				m[r.Firm] = r.Requires
@@ -86,7 +81,6 @@ type Terrain struct {
 	Symbol   byte
 	MoveCost float64 // cost of moving through the tile
 	Raw      []Bonus
-	FullRaw  []Bonus // more raw producers, in full worlds
 }
 
 // Terrains are the tile types (data/terrains.json).
@@ -96,7 +90,7 @@ var Terrains = func() []Terrain {
 		if len(t.Symbol) != 1 {
 			panic(fmt.Sprintf("data/terrains.json: %s: a symbol is one letter", t.Name))
 		}
-		out = append(out, Terrain{t.Name, t.Symbol[0], t.Move, bonuses(t.Raw), bonuses(t.FullRaw)})
+		out = append(out, Terrain{t.Name, t.Symbol[0], t.Move, bonuses(t.Raw)})
 	}
 	return out
 }()
@@ -148,7 +142,7 @@ func HexNeighbors(r, c, rows, cols int) [][2]int {
 	return out
 }
 
-func makeFirms(t Terrain, coastal, full bool) []*Firm {
+func makeFirms(t Terrain, coastal bool) []*Firm {
 	var firms []*Firm
 	addRaw := func(recipes []Recipe, bonuses []Bonus, site string) {
 		for _, rc := range recipes {
@@ -166,68 +160,53 @@ func makeFirms(t Terrain, coastal, full bool) []*Firm {
 	if coastal {
 		addRaw(RawRecipes, CoastRaw, "the coast")
 	}
-	if full {
-		addRaw(FullRawRecipes, t.FullRaw, t.Name)
-	}
-	recipes := ProcessingRecipes
-	if full {
-		recipes = append(append([]Recipe(nil), recipes...), FullRecipes...)
-	}
-	for _, rc := range recipes {
+	for _, rc := range ProcessingRecipes {
 		f := NewFirm(rc.Firm, G(rc.Output), rc.TFP, rc.Factors, 50)
 		if rc.Service {
 			f.Sector = Service
 		}
 		firms = append(firms, f)
 	}
-	if full {
-		for _, f := range firms {
-			f.Requires = FirmTech[f.Name]
-			f.Enabled = f.Requires == ""
-			// the methods techs bring, at the site's productivity; a land-bound
-			// one may work as much of the land as its Cap
-			for _, mr := range MethodRecipes {
-				if mr.Base != f.Name {
-					continue
-				}
-				site := 1.0
-				if f.SiteMult > 0 {
-					site = f.SiteMult
-				}
-				m := newMethod(mr.Firm, mr.TFP*site, mr.Factors)
-				m.Requires, m.Enabled = FirmTech[mr.Firm], false
-				if f.Sector == Primary {
-					m.Cap = max(RawMaxLevels, mr.Cap)
-				}
-				f.Methods = append(f.Methods, m)
+	for _, f := range firms {
+		f.Requires = FirmTech[f.Name]
+		f.Enabled = f.Requires == ""
+		// the methods techs bring, at the site's productivity; a land-bound
+		// one may work as much of the land as its Cap
+		for _, mr := range MethodRecipes {
+			if mr.Base != f.Name {
+				continue
 			}
+			site := 1.0
+			if f.SiteMult > 0 {
+				site = f.SiteMult
+			}
+			m := newMethod(mr.Firm, mr.TFP*site, mr.Factors)
+			m.Requires, m.Enabled = FirmTech[mr.Firm], false
+			if f.Sector == Primary {
+				m.Cap = max(RawMaxLevels, mr.Cap)
+			}
+			f.Methods = append(f.Methods, m)
 		}
 	}
 	return firms
 }
 
-// BuildWorld builds the classic world for a hex map (the model the Python
-// reference specifies): the classic goods and firms, one class of people.
-// transportCost scales every hop; +Inf means autarky (no trade).
-func BuildWorld(transportCost float64, gameMap []string) (*World, error) {
-	return buildWorld(transportCost, gameMap, nil, false)
-}
-
-// BuildFullWorld builds the full world for a hex map: every good and firm
-// in the data (the production methods wait for the technology they need),
-// workers and owners, and every tile urban (industry and services gain from
-// its size). names, if given, names the tiles in order (row by row,
-// skipping the sea); otherwise a tile is named by its row and column.
-func BuildFullWorld(transportCost float64, gameMap, names []string) (*World, error) {
-	if math.IsInf(transportCost, 0) || math.IsNaN(transportCost) || transportCost < 0 {
+// BuildWorld builds the world for a hex map: a tile for every land cell,
+// with its terrain's firms and every tile's (their later methods waiting for
+// the technology they need), a hundred people of whom a few are owners, and
+// routes for every good to every neighbour. transportCost scales every hop;
+// +Inf means autarky (no trade). names, if given, names the tiles in order
+// (row by row, skipping the sea); otherwise a tile is named by its row and
+// column.
+func BuildWorld(transportCost float64, gameMap, names []string) (*World, error) {
+	if math.IsNaN(transportCost) || transportCost < 0 {
 		return nil, fmt.Errorf("transport cost must be a non-negative number")
 	}
-	w, err := buildWorld(transportCost, gameMap, names, true)
+	w, err := buildWorld(transportCost, gameMap, names)
 	if err != nil {
 		return nil, err
 	}
 	for _, r := range w.Regions {
-		r.Urban = true
 		r.UpdateAgglomeration()
 	}
 	return w, nil
@@ -243,7 +222,7 @@ const Sea = '~'
 // of tiles.
 // names, if given, names the tiles in order (row by row, skipping the sea);
 // otherwise a tile is named by its row and column.
-func buildWorld(transportCost float64, gameMap []string, names []string, full bool) (*World, error) {
+func buildWorld(transportCost float64, gameMap []string, names []string) (*World, error) {
 	if len(gameMap) == 0 {
 		return nil, fmt.Errorf("empty map")
 	}
@@ -283,13 +262,11 @@ func buildWorld(transportCost float64, gameMap []string, names []string, full bo
 				name = names[len(regions)]
 			}
 			// a hundred people, who start with 10 a head of spending a day, in
-			// savings of a twentieth (spendShare): one group of workers (the
-			// full world then makes a few of them owners)
-			reg := NewRegion(len(regions), name, makeFirms(t, coastal, full), 1, 100, 1000/spendShare)
-			if full {
-				addOwnerClasses(reg)
-				reg.Educated = StartEducated
-			}
+			// savings of a twentieth (spendShare): one group of workers, a few
+			// of whom are made owners
+			reg := NewRegion(len(regions), name, makeFirms(t, coastal), 1, 100, 1000/spendShare)
+			addOwnerClasses(reg)
+			reg.Educated = StartEducated
 			reg.Row, reg.Col, reg.Terrain, reg.BaseMove, reg.Coastal = r, c, t.Name, t.MoveCost, coastal
 			grid[r][c] = reg
 			regions = append(regions, reg)
@@ -315,22 +292,18 @@ func buildWorld(transportCost float64, gameMap []string, names []string, full bo
 				links = append(links, Link{a.ID, b.ID, hop})
 			}
 			if !math.IsInf(transportCost, 1) {
-				tradable := Tradable
-				if full {
-					tradable = FullTradable
-				}
-				for _, g := range tradable {
+				for _, g := range Tradable {
 					traders = append(traders, NewTrader(g, a, b, hop, transportCost))
 				}
 			}
 		}
 	}
 	w := NewWorld(rows, cols, regions, traders, links)
-	w.Plan = Plan{Map: gameMap, Names: names, TransportCost: transportCost, Full: full}
+	w.Plan = Plan{Map: gameMap, Names: names, TransportCost: transportCost}
 	return w, nil
 }
 
-// Owner classes in full worlds: each is this share of a tile's people and
+// Owner classes: each is this share of a tile's people and
 // starts with this share of its cash (so owners are much richer per head).
 const (
 	OwnerPeopleShare = 0.04

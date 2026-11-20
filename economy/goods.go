@@ -16,9 +16,6 @@ type Good struct {
 	// Service marks a good made and used where it is (transport, building
 	// work): it is never shipped.
 	Service bool
-	// Full marks goods that only exist in full worlds (the classic world,
-	// the one the Python reference specifies, doesn't trade them).
-	Full bool
 }
 
 // Goods lists every good (data/goods.json). The order is part of the
@@ -26,7 +23,7 @@ type Good struct {
 var Goods = func() []Good {
 	out := make([]Good, len(goodsData.Goods))
 	for i, g := range goodsData.Goods {
-		out[i] = Good{g.Name, g.Bulk, g.Spoilage, g.Service, g.Full}
+		out[i] = Good{g.Name, g.Bulk, g.Spoilage, g.Service}
 	}
 	return out
 }()
@@ -69,20 +66,8 @@ func IsService(g GoodID) bool {
 	return Goods[g].Service
 }
 
-// Tradable lists the goods traders ship in the classic world.
+// Tradable lists the goods merchants ship: every good but the services.
 var Tradable = func() []GoodID {
-	var out []GoodID
-	for i, g := range Goods {
-		if !IsService(GoodID(i)) && !g.Full {
-			out = append(out, GoodID(i))
-		}
-	}
-	return out
-}()
-
-// FullTradable lists the goods traders ship in full worlds: Tradable plus
-// the full world's goods.
-var FullTradable = func() []GoodID {
 	var out []GoodID
 	for i := range Goods {
 		if !IsService(GoodID(i)) {

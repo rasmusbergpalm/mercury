@@ -76,7 +76,7 @@ func runAA(o *Out) {
 					hops[tr.Good] += tr.Shipped * tr.Distance / TicksPerYear
 				}
 			}
-			for _, g := range FullTradable {
+			for _, g := range Tradable {
 				if made[g] > 0.5 && r.bulks[g] > 0 {
 					r.out = append(r.out, travel{Goods[g].Name, r.bulks[g], price[g], made[g], hops[g] / made[g]})
 				}

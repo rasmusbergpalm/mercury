@@ -11,8 +11,8 @@ func TestSizeBonusGrowsWithPopulation(t *testing.T) {
 	w := newTestGame(t)
 	r := regionByName(w, "11")
 	for _, x := range w.Regions {
-		if !x.Urban || w.IsCity(x) {
-			t.Fatalf("tile %s: urban %v, city %v at the start", x.Name, x.Urban, w.IsCity(x))
+		if w.IsCity(x) {
+			t.Fatalf("tile %s is a city at the start", x.Name)
 		}
 	}
 	if b := r.SizeBonus(); math.Abs(b-math.Pow(r.Population()/SizeBonusPop, SizeBonusExp)) > 1e-9 {

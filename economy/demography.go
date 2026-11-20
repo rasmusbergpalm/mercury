@@ -36,9 +36,5 @@ func (r *Region) HealthBonus() float64 {
 // population growth a year: the bonus of its coverage less what uncovered
 // crowding costs. Negative means the tile needs more public health.
 func (r *Region) HealthGrowth() float64 {
-	g := -r.CrowdingPenalty()
-	if r.Urban { // full worlds: public health
-		g += r.HealthBonus()
-	}
-	return g
+	return r.HealthBonus() - r.CrowdingPenalty()
 }

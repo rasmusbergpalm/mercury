@@ -85,6 +85,6 @@ func TestRestoreRejectsBadSnapshots(t *testing.T) {
 		t.Error("a tile owned twice accepted")
 	}
 	if _, err := newTestWorld(t, 1).Snapshot(); err == nil {
-		t.Error("classic world snapshotted")
+		t.Error("a world with no scenario saved as a game")
 	}
 }

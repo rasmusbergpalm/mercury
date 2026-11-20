@@ -6,15 +6,13 @@ import (
 	"sort"
 )
 
-// Plan is what a world is built from: a hex map of terrain symbols, the
-// tiles' names (row by row, skipping the sea; none: by row and column), the
-// cost of transport, and whether it is the full world (BuildFullWorld) or
-// the classic one (BuildWorld).
+// Plan is what a world is built from (BuildWorld): a hex map of terrain
+// symbols, the tiles' names (row by row, skipping the sea; none: by row and
+// column), and the cost of transport.
 type Plan struct {
 	Map           []string
 	Names         []string `json:",omitempty"`
 	TransportCost float64
-	Full          bool
 }
 
 // Snapshot is everything about an economy that carries from one day to the
@@ -36,7 +34,6 @@ type Snapshot struct {
 // RegionState is a tile's state in a Snapshot.
 type RegionState struct {
 	Wage, UtilityEMA, HouseCash, Educated, Healthy float64
-	Urban                                          bool
 	// levers and accounts
 	IncomeTax, PaybackMult, GrowthBonus float64
 	RoadMult, CoastMult, SpoilageMult   float64
@@ -104,7 +101,7 @@ func (w *World) Snapshot() *Snapshot {
 	sort.Strings(s.Known)
 	for _, r := range w.Regions {
 		rs := RegionState{Wage: r.Wage, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, Educated: r.Educated,
-			Healthy: r.Healthy, Urban: r.Urban, IncomeTax: r.IncomeTax, PaybackMult: r.PaybackMult,
+			Healthy: r.Healthy, IncomeTax: r.IncomeTax, PaybackMult: r.PaybackMult,
 			GrowthBonus: r.GrowthBonus, RoadMult: r.RoadMult, CoastMult: r.CoastMult, SpoilageMult: r.SpoilageMult,
 			Withheld: r.Withheld, Duties: r.Duties, Real: r.Real.Clone()}
 		for _, b := range r.Buyers {
@@ -150,13 +147,7 @@ func (w *World) Snapshot() *Snapshot {
 // Restore builds the world a snapshot was taken of, and gives it the
 // snapshot's state.
 func Restore(s *Snapshot) (*World, error) {
-	var w *World
-	var err error
-	if s.Plan.Full {
-		w, err = BuildFullWorld(s.Plan.TransportCost, s.Plan.Map, s.Plan.Names)
-	} else {
-		w, err = BuildWorld(s.Plan.TransportCost, s.Plan.Map)
-	}
+	w, err := BuildWorld(s.Plan.TransportCost, s.Plan.Map, s.Plan.Names)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +182,7 @@ func (w *World) SetState(s *Snapshot) error {
 		if len(rs.Markets) != len(r.Markets) || len(rs.Pops) != len(r.Pops) || len(rs.Firms) != len(r.Firms) || len(rs.Buyers) != len(r.Buyers) {
 			return bad("tile " + r.Name)
 		}
-		r.Wage, r.UtilityEMA, r.House.Cash, r.Educated, r.Healthy, r.Urban = rs.Wage, rs.UtilityEMA, rs.HouseCash, rs.Educated, rs.Healthy, rs.Urban
+		r.Wage, r.UtilityEMA, r.House.Cash, r.Educated, r.Healthy = rs.Wage, rs.UtilityEMA, rs.HouseCash, rs.Educated, rs.Healthy
 		r.IncomeTax, r.PaybackMult, r.GrowthBonus = rs.IncomeTax, rs.PaybackMult, rs.GrowthBonus
 		r.RoadMult, r.CoastMult, r.SpoilageMult = rs.RoadMult, rs.CoastMult, rs.SpoilageMult
 		r.Withheld, r.Duties = rs.Withheld, rs.Duties
@@ -252,9 +243,7 @@ func (w *World) SetState(s *Snapshot) error {
 		t.SetDistance(ts.Distance)
 	}
 	for _, r := range w.Regions {
-		if r.Urban {
-			r.UpdateAgglomeration()
-		}
+		r.UpdateAgglomeration()
 	}
 	w.RefreshHops()
 	return nil

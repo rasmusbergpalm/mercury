@@ -311,14 +311,14 @@ func TestProfitableFirmsInvest(t *testing.T) {
 	if grew == 0 {
 		t.Error("no firm expanded in 600 ticks")
 	}
-	classic := newTestWorld(t, 1)
+	still := newTestWorld(t, 1) // investment off
 	for i := 0; i < 300; i++ {
-		classic.Step()
+		still.Step()
 	}
-	for _, r := range classic.Regions {
+	for _, r := range still.Regions {
 		for _, f := range r.Firms {
-			if f.Levels != 1 {
-				t.Fatalf("classic world firm %s grew to %d levels", f.Name, f.Levels)
+			if f.Levels != 1 && !f.Managed {
+				t.Fatalf("with investment off, firm %s grew to %d levels", f.Name, f.Levels)
 			}
 		}
 	}

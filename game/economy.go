@@ -57,7 +57,6 @@ var (
 	Research        = economy.Research
 	Electricity     = economy.Electricity
 	ConsumerGoods   = economy.ConsumerGoods
-	FullTradable    = economy.FullTradable
 	Tradable        = economy.Tradable
 	MethodRecipes   = economy.MethodRecipes
 	FirmTech        = economy.FirmTech

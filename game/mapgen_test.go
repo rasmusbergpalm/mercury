@@ -87,7 +87,7 @@ func TestSeaTiles(t *testing.T) {
 		"PPPPPP",
 		"PPPP~P",
 		"PPPPPP",
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestSeaTiles(t *testing.T) {
 	if w.RegionAt(2, 2).Coastal || !w.RegionAt(3, 3).Coastal || !w.RegionAt(0, 2).Coastal {
 		t.Error("coast: inland (2,2), by the sea (3,3) and on the edge (0,2) are wrong")
 	}
-	if _, err := BuildWorld(1, []string{"~~", "~~"}); err == nil {
+	if _, err := BuildWorld(1, []string{"~~", "~~"}, nil); err == nil {
 		t.Error("a map of sea alone was accepted")
 	}
 }
@@ -126,7 +126,7 @@ func TestSeaRoutes(t *testing.T) {
 	}
 	before := len(w.Traders)
 	w.openNewPorts()
-	if sea, want := len(w.Traders)-before, opened*(opened-1)*len(FullTradable); sea != want {
+	if sea, want := len(w.Traders)-before, opened*(opened-1)*len(Tradable); sea != want {
 		t.Errorf("%d sea routes, want %d", sea, want)
 	}
 }

@@ -86,7 +86,7 @@ func TestRemovePort(t *testing.T) {
 		t.Errorf("removed twice: %v", err)
 	}
 	left := len(ports) - 1
-	if want := land + left*(left-1)*len(FullTradable); len(w.Traders) != want {
+	if want := land + left*(left-1)*len(Tradable); len(w.Traders) != want {
 		t.Errorf("%d routes after the removal, want %d", len(w.Traders), want)
 	}
 	for _, x := range w.Traders {

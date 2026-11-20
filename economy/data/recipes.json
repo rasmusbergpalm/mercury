@@ -1,5 +1,5 @@
 {
-  "about": "Production: each firm makes its output with a Cobb-Douglas recipe, q = tfp * levels^(1-sum of exponents) * product of factor^exponent. factors: labor, a good, or a composite. raw: land-bound producers, placed by terrain (terrains.json). processing: firms every tile has. full and full_raw: only in full worlds. methods: later ways of making what base makes, each a firm of its own beside the old one (cap: the levels a land-bound method may work). requires: the technology a firm or method needs before it works (none: from the start).",
+  "about": "Production: each firm makes its output with a Cobb-Douglas recipe, q = tfp * levels^(1-sum of exponents) * product of factor^exponent. factors: labor, a good, or a composite. raw: land-bound producers, placed by terrain (terrains.json). processing: firms every tile has. methods: later ways of making what base makes, each a firm of its own beside the old one (cap: the levels a land-bound method may work). requires: the technology a firm or method needs before it works (none: from the start).",
   "raw": [
     {"firm": "Farm", "output": "grain", "tfp": 2, "factors": [["labor", 0.6]]},
     {"firm": "Potato farm", "output": "potatoes", "tfp": 2.5, "factors": [["labor", 0.6]]},
@@ -14,7 +14,8 @@
     {"firm": "Sugar plantation", "output": "sugar cane", "tfp": 2, "factors": [["labor", 0.6]]},
     {"firm": "Vineyard", "output": "grapes", "tfp": 1.5, "factors": [["labor", 0.6]]},
     {"firm": "Silk farm", "output": "silk", "tfp": 0.8, "factors": [["labor", 0.6]]},
-    {"firm": "Clay pit", "output": "clay", "tfp": 2, "factors": [["labor", 0.6]]}
+    {"firm": "Clay pit", "output": "clay", "tfp": 2, "factors": [["labor", 0.6]]},
+    {"firm": "Oil well", "output": "oil", "tfp": 1.5, "factors": [["labor", 0.6]], "requires": "Petroleum"}
   ],
   "processing": [
     {"firm": "Bakery", "output": "bread", "tfp": 2, "factors": [["labor", 0.3], ["grain", 0.4], ["fuel", 0.1]]},
@@ -28,9 +29,7 @@
     {"firm": "Winery", "output": "wine", "tfp": 1.2, "factors": [["labor", 0.3], ["grapes", 0.4]]},
     {"firm": "Couturier", "output": "fine clothes", "tfp": 1, "factors": [["labor", 0.4], ["silk", 0.3]]},
     {"firm": "Kiln", "output": "porcelain", "tfp": 1, "factors": [["labor", 0.4], ["clay", 0.2], ["fuel", 0.2]]},
-    {"firm": "Transport", "output": "transport", "tfp": 2, "factors": [["labor", 0.6]], "sector": "service"}
-  ],
-  "full": [
+    {"firm": "Transport", "output": "transport", "tfp": 2, "factors": [["labor", 0.6]], "sector": "service"},
     {"firm": "Construction", "output": "construction", "tfp": 1.5, "factors": [["labor", 0.5], ["wood", 0.2]], "sector": "service"},
     {"firm": "Armory", "output": "arms", "tfp": 1, "factors": [["labor", 0.3], ["iron", 0.25], ["wood", 0.1]]},
     {"firm": "Foundry", "output": "artillery", "tfp": 0.8, "factors": [["labor", 0.3], ["iron", 0.3], ["coal", 0.1]]},
@@ -42,9 +41,6 @@
     {"firm": "Chemical works", "output": "explosives", "tfp": 1, "factors": [["labor", 0.3], ["coal", 0.2], ["clay", 0.1]], "requires": "Industrial chemistry"},
     {"firm": "Fertilizer works", "output": "fertilizer", "tfp": 1.2, "factors": [["labor", 0.3], ["coal", 0.15], ["clay", 0.15]], "requires": "Fertilizers"},
     {"firm": "Power station", "output": "electricity", "tfp": 2, "factors": [["labor", 0.2], ["coal", 0.3], ["steam engines", 0.1]], "requires": "Electricity"}
-  ],
-  "full_raw": [
-    {"firm": "Oil well", "output": "oil", "tfp": 1.5, "factors": [["labor", 0.6]], "requires": "Petroleum"}
   ],
   "methods": [
     {"firm": "Seed-drill farm", "output": "grain", "tfp": 3.58, "factors": [["labor", 0.44], ["tools", 0.16]], "requires": "Seed drill", "base": "Farm"},

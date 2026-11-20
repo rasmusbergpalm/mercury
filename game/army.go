@@ -137,7 +137,6 @@ const (
 // Army errors.
 var (
 	ErrNoSuchArmy  = errors.New("no such army")
-	ErrNotYours    = errors.New("that army belongs to another nation")
 	ErrNoPath      = errors.New("the army can't get there")
 	ErrMobilized   = errors.New("that exceeds how many people the nation can mobilize")
 	ErrArmySize    = errors.New("that is more men than one army can field (techs raise it)")

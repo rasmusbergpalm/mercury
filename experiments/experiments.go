@@ -153,7 +153,7 @@ var (
 // worldAt is the full world on the map at a transport cost, with owners
 // investing and people free to move, and no population growth.
 func worldAt(cost float64) *World {
-	w, err := BuildFullWorld(cost, theMap, theNames)
+	w, err := BuildWorld(cost, theMap, theNames)
 	if err != nil {
 		panic(err)
 	}

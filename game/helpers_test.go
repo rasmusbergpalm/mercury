@@ -12,11 +12,11 @@ func relDiff(a, b float64) float64 {
 	return math.Abs(a-b) / math.Max(math.Max(math.Abs(a), math.Abs(b)), 1e-6)
 }
 
-// newTestWorld is the classic world (economy.BuildWorld) as a game without
+// newTestWorld is the economy's world (economy.BuildWorld) as a game without
 // nations.
 func newTestWorld(t *testing.T, cost float64) *World {
 	t.Helper()
-	e, err := economy.BuildWorld(cost, DefaultMap)
+	e, err := economy.BuildWorld(cost, DefaultMap, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,8 +71,6 @@ var (
 	Composites        = economy.Composites
 	RawRecipes        = economy.RawRecipes
 	ProcessingRecipes = economy.ProcessingRecipes
-	FullRecipes       = economy.FullRecipes
-	FullRawRecipes    = economy.FullRawRecipes
 	BuildWorld        = economy.BuildWorld
 )
 

@@ -83,18 +83,7 @@ var (
 	ErrNoService  = errors.New("the tile has no such service")
 	ErrBadFunding = errors.New("funding must be between 0 and the service's levels")
 	ErrNoLevel    = errors.New("there is no level to close")
-	ErrBadService = errors.New("no such public service")
 )
-
-// ServiceByName looks a service up by name.
-func ServiceByName(name string) (Public, error) {
-	for s := Public(0); s < NumServices; s++ {
-		if services[s].Name == name {
-			return s, nil
-		}
-	}
-	return 0, ErrBadService
-}
 
 // ServiceNames lists the services' names, in order.
 func ServiceNames() []string {
@@ -385,14 +374,10 @@ func (w *World) ExpandService(region int, s Public) error {
 	return ErrNoService
 }
 
-// SetFunding, CloseUniversityLevel and ExpandUniversity act on universities.
+// SetFunding funds a tile's university (SetServiceFunding).
 func (w *World) SetFunding(region, levels int) error {
 	return w.SetServiceFunding(region, University, levels)
 }
-func (w *World) CloseUniversityLevel(region int) error {
-	return w.CloseServiceLevel(region, University)
-}
-func (w *World) ExpandUniversity(region int) error { return w.ExpandService(region, University) }
 
 // serviceKind is which public service a managed firm provides.
 func serviceKind(f *Firm) Public {

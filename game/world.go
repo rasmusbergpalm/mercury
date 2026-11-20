@@ -171,9 +171,7 @@ func (w *World) setPolicies() {
 // planDay: the universities' scholars, and the nations' purchases.
 func (w *World) planDay() {
 	for _, r := range w.Regions {
-		if r.Urban {
-			r.scholars()
-		}
+		r.scholars()
 		if r.Nation == nil {
 			for g := range r.buyer.Bid {
 				r.buyer.Bid[g] = 0
@@ -515,7 +513,7 @@ func (w *World) openPort(r *Region) {
 		for _, id := range w.Ports {
 			p := w.Regions[id]
 			hop := w.seaHop(r.Region, p.Region)
-			for _, g := range FullTradable {
+			for _, g := range Tradable {
 				a := NewTrader(g, r.Region, p.Region, hop, w.Spec.TransportCost)
 				b := NewTrader(g, p.Region, r.Region, hop, w.Spec.TransportCost)
 				a.FixedDistance, b.FixedDistance = true, true // the houses fund them from their purse

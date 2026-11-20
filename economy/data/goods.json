@@ -1,5 +1,5 @@
 {
-  "about": "Every good, in the order the simulation indexes them. bulk: transport needed per unit shipped per hop. spoilage: share of unsold stock lost a day, and per hop in transit. service: made and used where it is, never shipped (the economy needs transport and construction; research and electricity are used by the game). full: only in full worlds, not in the classic world. composites: substitutable inputs a recipe can name, with their elasticity of substitution.",
+  "about": "Every good, in the order the simulation indexes them. bulk: transport needed per unit shipped per hop. spoilage: share of unsold stock lost a day, and per hop in transit. service: made and used where it is, never shipped (the economy needs transport, which merchants buy, and construction, which owners buy; the rest are made for whoever buys them). composites: substitutable inputs a recipe can name, with their elasticity of substitution.",
   "goods": [
     {"name": "bread", "bulk": 1, "spoilage": 0.3},
     {"name": "potatoes", "bulk": 2, "spoilage": 0.1},
@@ -29,17 +29,17 @@
     {"name": "transport", "bulk": 0, "spoilage": 1, "service": true},
     {"name": "construction", "bulk": 0, "spoilage": 1, "service": true},
     {"name": "research", "bulk": 0, "spoilage": 1, "service": true},
-    {"name": "arms", "bulk": 0.5, "spoilage": 0, "full": true},
-    {"name": "artillery", "bulk": 2, "spoilage": 0, "full": true},
-    {"name": "munitions", "bulk": 1, "spoilage": 0, "full": true},
-    {"name": "vehicles", "bulk": 3, "spoilage": 0, "full": true},
-    {"name": "aircraft", "bulk": 2, "spoilage": 0, "full": true},
-    {"name": "oil", "bulk": 1.5, "spoilage": 0, "full": true},
-    {"name": "tools", "bulk": 0.5, "spoilage": 0, "full": true},
-    {"name": "steam engines", "bulk": 2, "spoilage": 0, "full": true},
-    {"name": "explosives", "bulk": 1, "spoilage": 0, "full": true},
-    {"name": "fertilizer", "bulk": 1.5, "spoilage": 0.02, "full": true},
-    {"name": "electricity", "bulk": 0, "spoilage": 1, "service": true, "full": true}
+    {"name": "arms", "bulk": 0.5, "spoilage": 0},
+    {"name": "artillery", "bulk": 2, "spoilage": 0},
+    {"name": "munitions", "bulk": 1, "spoilage": 0},
+    {"name": "vehicles", "bulk": 3, "spoilage": 0},
+    {"name": "aircraft", "bulk": 2, "spoilage": 0},
+    {"name": "oil", "bulk": 1.5, "spoilage": 0},
+    {"name": "tools", "bulk": 0.5, "spoilage": 0},
+    {"name": "steam engines", "bulk": 2, "spoilage": 0},
+    {"name": "explosives", "bulk": 1, "spoilage": 0},
+    {"name": "fertilizer", "bulk": 1.5, "spoilage": 0.02},
+    {"name": "electricity", "bulk": 0, "spoilage": 1, "service": true}
   ],
   "composites": [
     {"name": "fuel", "goods": ["wood", "coal"], "sigma": 3},

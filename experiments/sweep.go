@@ -165,7 +165,7 @@ func indexOf(xs []float64, x float64) int {
 // doesn't swamp the rest.
 func priceGap(w *World) float64 {
 	var gaps []float64
-	for _, g := range FullTradable {
+	for _, g := range Tradable {
 		lo, hi, n := math.Inf(1), 0.0, 0
 		for _, r := range w.Regions {
 			if m := r.Markets[g]; m.Supply > 0 && m.Demand > 0 {

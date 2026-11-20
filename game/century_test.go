@@ -246,7 +246,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			infra += float64(r.Infra) / float64(len(w.Regions))
 		}
 		spread, goods := 0.0, 0
-		for _, g := range FullTradable {
+		for _, g := range Tradable {
 			var logs []float64
 			for _, r := range w.Regions {
 				if m := r.Markets[g]; m.Supply > 0 || m.Demand > 0 {

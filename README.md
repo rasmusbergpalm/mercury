@@ -41,8 +41,8 @@ import (
 )
 
 func main() {
-	// the full world on the classic 6×6 map, transport at its normal cost
-	w, err := economy.BuildFullWorld(1, economy.DefaultMap, nil)
+	// the example economy on its 6×6 example map, transport at its normal cost
+	w, err := economy.BuildWorld(1, economy.DefaultMap, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -112,10 +112,9 @@ model another economy.
 | `recipes.json` | Every firm's recipe, and the later production methods that technologies unlock |
 | `terrains.json` | Tile types, their movement cost, and the land-bound producers each suits |
 
-`BuildWorld` makes the classic world: the core goods and firms, and one
-class of people. `BuildFullWorld` makes the full world: every good and
-firm, production methods waiting for their technology, and workers and
-owners.
+`BuildWorld` builds a world from the data and a map: every good and firm,
+with the production methods waiting for the technology they need, and
+workers and owners in every tile.
 
 ### Levers, accounts and steps
 

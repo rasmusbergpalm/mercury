@@ -29,7 +29,7 @@ type Pop struct {
 	Cash     float64
 	Jobs     []Job
 	Consumed []float64 // this tick, whole pop, indexed by good
-	Income   float64   // this tick, after tax: wages, dividends, rebates
+	Income   float64   // this tick, after tax: wages and dividends
 
 	perPerson []float64 // scratch
 }

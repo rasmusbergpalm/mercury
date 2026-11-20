@@ -28,7 +28,7 @@ func TestHistoryIsRecordedMonthly(t *testing.T) {
 		t.Fatal("region series lengths wrong")
 	}
 	if w := newTestWorld(t, 1); func() bool { w.Step(); return len(w.History.Ticks) > 0 }() {
-		t.Error("the classic world records history")
+		t.Error("a world with no scenario records history")
 	}
 }
 

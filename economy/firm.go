@@ -119,7 +119,7 @@ type Firm struct {
 	Levels, MaxLevels int
 	Expansion         *Expansion // a level under construction, or nil
 	// Requires names the tech the owner needs for the firm to work; Enabled
-	// says whether it does (always true in the classic world).
+	// says whether it does (see World.Known).
 	Requires string
 	Enabled  bool
 	Sector   Sector

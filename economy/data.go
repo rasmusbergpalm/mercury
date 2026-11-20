@@ -27,7 +27,7 @@ type goodsFile struct {
 	Goods []struct {
 		Name           string
 		Bulk, Spoilage float64
-		Service, Full  bool
+		Service        bool
 	}
 	Composites []struct {
 		Name  string
@@ -84,9 +84,8 @@ func (d recipeData) recipe() Recipe {
 }
 
 type recipesFile struct {
-	Raw, Processing, Full []recipeData
-	FullRaw               []recipeData `json:"full_raw"`
-	Methods               []recipeData
+	Raw, Processing []recipeData
+	Methods         []recipeData
 }
 
 var recipesData = func() recipesFile {
@@ -108,7 +107,6 @@ type terrainsFile struct {
 		Name, Symbol string
 		Move         float64
 		Raw          [][2]any
-		FullRaw      [][2]any `json:"full_raw"`
 	}
 	Coast struct {
 		Move float64

@@ -22,8 +22,7 @@ package economy
 //     and by sea;
 //   - SpoilageMult: scales how much of a perishable good shipped from it is
 //     lost on the way;
-//   - Educated, Healthy and Urban: its schooling, its public health and
-//     whether its size makes its industry more productive.
+//   - Educated and Healthy: its schooling and its public health.
 //
 // On a route (Trader): Tariff and Closed. On a firm: Mult, Managed for a
 // firm run for someone else, and Monopoly and Elasticity for a firm with
