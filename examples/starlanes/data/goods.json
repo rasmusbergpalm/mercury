@@ -7,7 +7,7 @@
     {"name": "textiles", "bulk": 0.1, "spoilage": 0.01},
     {"name": "ore", "bulk": 0.5, "spoilage": 0},
     {"name": "alloy", "bulk": 0.3, "spoilage": 0},
-    {"name": "appliances", "bulk": 0.2, "spoilage": 0},
+    {"name": "fabricators", "bulk": 0.2, "spoilage": 0},
     {"name": "fruit", "bulk": 0.3, "spoilage": 0.1},
     {"name": "spirits", "bulk": 0.1, "spoilage": 0},
     {"name": "aether", "bulk": 0.01, "spoilage": 0},
