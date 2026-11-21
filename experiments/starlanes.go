@@ -15,9 +15,12 @@ func init() {
 // years; then, after a year, riots on Cinder cut its aether wells'
 // productivity by 85% for two years, against a run without them, and both
 // go on for two more years. Each month: every system's prices of aether
-// and freight, its people and living standard; every lane's trade (the
-// value shipped along it, both ways, at the origins' prices); Cinder's
-// aether output.
+// and freight, its people, living standard and real GDP a head (what its
+// firms made less what they used up, valued at its prices when the map had
+// settled: a fixed base, since aether's price jumps eightfold and back, and
+// an index chained through that drifts); every
+// lane's trade (the value shipped along it, both ways, at the origins'
+// prices); Cinder's aether output.
 func runStarlanes(o *Out) {
 	if err := starlanes.Load(); err != nil {
 		panic(err)
@@ -45,6 +48,7 @@ func runStarlanes(o *Out) {
 	aether := G("aether")
 	type series struct {
 		Aether, Freight, People, Living [][]float64 // [system][month]
+		GDP                             [][]float64 // real GDP a head, [system][month]
 		Trade                           [][]float64 // [lane][month]
 		Output                          []float64   // Cinder's aether output a day, [month]
 	}
@@ -58,7 +62,7 @@ func runStarlanes(o *Out) {
 			return out
 		}
 		n := len(starlanes.Systems)
-		return &series{mk(n), mk(n), mk(n), mk(n), mk(len(starlanes.Lanes)), make([]float64, months)}
+		return &series{mk(n), mk(n), mk(n), mk(n), mk(n), mk(len(starlanes.Lanes)), make([]float64, months)}
 	}
 	lane := map[[2]int]int{}
 	for k, l := range starlanes.Lanes {
@@ -71,6 +75,10 @@ func runStarlanes(o *Out) {
 		}
 		s := newSeries()
 		perMonth := make([]float64, months)
+		base := make([][]float64, len(w.Regions)) // the settled map's prices, the same in both runs
+		for i, r := range w.Regions {
+			base[i] = r.Prices()
+		}
 		var wells *Firm
 		for _, f := range w.Regions[starlanes.Source].Firms {
 			if f.Output == aether {
@@ -97,9 +105,19 @@ func runStarlanes(o *Out) {
 				s.Trade[lane[[2]int{t.Origin.ID, t.Dest.ID}]][m] += t.Shipped * t.Origin.Markets[t.Good].Price
 			}
 			s.Output[m] += wells.LastOutput
+			for i, r := range w.Regions {
+				net := 0.0
+				for _, f := range r.Firms {
+					net += f.LastOutput * base[i][f.Output]
+					for g, q := range f.Used {
+						net -= q * base[i][g]
+					}
+				}
+				s.GDP[i][m] += net / r.Population()
+			}
 		}
 		for m, n := range perMonth {
-			for _, xs := range [][][]float64{s.Aether, s.Freight, s.People, s.Living, s.Trade} {
+			for _, xs := range [][][]float64{s.Aether, s.Freight, s.People, s.Living, s.GDP, s.Trade} {
 				for i := range xs {
 					xs[i][m] /= n
 				}
