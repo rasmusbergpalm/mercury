@@ -142,13 +142,14 @@ go run ./examples/starlanes/run
 ```
 
 Aether takes almost no room and never spoils. Every world can feed a few
-billion people the simple way, in vertical farms and water reclaimers; the
-empire's 650 billion live on protein foundries and comet harvesters, run
-on water and fabricators shipped between systems. Food and water have a subsistence
+billion people the simple way, by automated vertical farming and
+integrated water reclamation; the empire's 650 billion live on direct
+nutrition printing and off-world water harvesting, run on water and
+nanobots shipped between systems. Food and water have a subsistence
 level, below which people starve. Its ticks are days and each of its
 people stands for a billion. Then riots on Cinder cut its wells'
-productivity by 85% for two years. The trade collapses, the foundries and
-harvesters stand idle, and within half a year more than half the
+productivity by 85% for two years. The trade collapses, the nutrition
+printers and water harvesters stand idle, and within half a year more than half the
 empire starves, until it is no bigger than its vertical farms and what
 little trade still runs can feed. The survivors then live as well as
 before, and after the riots better, in an empire of half the people. The economy page shows it as its last experiment.

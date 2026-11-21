@@ -4,7 +4,7 @@
     {"name": "food", "tier": "basic", "goods": ["rations", "fruit"], "sigma": 3, "weight": 1, "requirement": 0.025, "subsistence": 0.05},
     {"name": "water", "tier": "basic", "goods": ["water"], "sigma": 2, "weight": 1, "requirement": 0.025, "subsistence": 0.05},
     {"name": "clothing", "tier": "basic", "goods": ["textiles"], "sigma": 2, "weight": 1, "requirement": 0.025},
-    {"name": "home", "tier": "intermediate", "goods": ["fabricators"], "sigma": 2, "weight": 2, "requirement": 0.015},
+    {"name": "home", "tier": "intermediate", "goods": ["nanobots"], "sigma": 2, "weight": 2, "requirement": 0.015},
     {"name": "drink", "tier": "luxury", "goods": ["spirits"], "sigma": 2, "weight": 3, "requirement": 0.3}
   ]
 }

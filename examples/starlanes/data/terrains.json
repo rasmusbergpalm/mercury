@@ -1,11 +1,11 @@
 {
-  "about": "Kinds of system, by their main world. symbol: a letter (unused on a graph map). move: the cost of moving through it (on a graph map, each lane has its own length instead). raw: the producers it has, with how well it suits them (a multiplier on their tfp). coast: unused (a graph map has no sea). raw_max_levels: the most building levels a world-bound producer may have. Vertical farms and water reclaimers are the simple way to food and water, on every world; protein foundries and comet harvesters the productive one, where a world suits them.",
+  "about": "Kinds of system, by their main world. symbol: a letter (unused on a graph map). move: the cost of moving through it (on a graph map, each lane has its own length instead). raw: the producers it has, with how well it suits them (a multiplier on their tfp). coast: unused (a graph map has no sea). raw_max_levels: the most building levels a world-bound producer may have. Automated vertical farming and integrated water reclamation are the simple way to food and water, on every world; direct nutrition printing and off-world water harvesting the productive one, where a world suits them.",
   "terrains": [
-    {"name": "garden", "symbol": "G", "move": 1, "raw": [["Protein foundry", 1.5], ["Fiber farm", 1.5], ["Orchard", 1.5], ["Vertical farm", 1.5], ["Water reclaimer", 0.6]]},
-    {"name": "ocean", "symbol": "O", "move": 1, "raw": [["Comet harvester", 1.5], ["Vertical farm", 0.8], ["Water reclaimer", 1.5]]},
-    {"name": "ice", "symbol": "I", "move": 1, "raw": [["Comet harvester", 2], ["Ore mine", 0.5], ["Vertical farm", 0.5], ["Water reclaimer", 1.5]]},
-    {"name": "forge", "symbol": "F", "move": 1, "raw": [["Ore mine", 1.8], ["Vertical farm", 0.6], ["Water reclaimer", 0.6]]},
-    {"name": "barren", "symbol": "B", "move": 1, "raw": [["Aether well", 1.6], ["Vertical farm", 0.4], ["Water reclaimer", 0.4]]}
+    {"name": "garden", "symbol": "G", "move": 1, "raw": [["Direct nutrition printing", 1.5], ["Fiber farm", 1.5], ["Orchard", 1.5], ["Automated vertical farming", 1.5], ["Integrated water reclamation", 0.6]]},
+    {"name": "ocean", "symbol": "O", "move": 1, "raw": [["Off-world water harvesting", 1.5], ["Automated vertical farming", 0.8], ["Integrated water reclamation", 1.5]]},
+    {"name": "ice", "symbol": "I", "move": 1, "raw": [["Off-world water harvesting", 2], ["Ore mine", 0.5], ["Automated vertical farming", 0.5], ["Integrated water reclamation", 1.5]]},
+    {"name": "forge", "symbol": "F", "move": 1, "raw": [["Ore mine", 1.8], ["Automated vertical farming", 0.6], ["Integrated water reclamation", 0.6]]},
+    {"name": "barren", "symbol": "B", "move": 1, "raw": [["Aether well", 1.6], ["Automated vertical farming", 0.4], ["Integrated water reclamation", 0.4]]}
   ],
   "coast": {"move": 1, "raw": []},
   "raw_max_levels": 4
