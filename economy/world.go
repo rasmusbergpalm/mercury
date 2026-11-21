@@ -15,6 +15,9 @@ type World struct {
 	// Rules, off unless switched on: firms invest in building levels,
 	// people migrate between neighbouring tiles, and populations grow.
 	Investment, Migration, Demography bool
+	// Starvation: people short of a need's subsistence level die (see
+	// StarvationRate); nothing starves in an economy whose needs have none.
+	Starvation bool
 	// TrackGDP keeps every tile's real GDP chain (Region.Real).
 	TrackGDP bool
 	// Seed keys the economy's random draws (owners' resolve to invest), so
@@ -186,7 +189,7 @@ func (w *World) EndTick() {
 		w.Migrate()
 	}
 	w.Tick++
-	starving := hasSubsistence()
+	starving := w.Starvation && hasSubsistence()
 	w.eachRegion(func(r *Region) {
 		if w.Demography {
 			r.grow()

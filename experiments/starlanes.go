@@ -41,9 +41,10 @@ func runStarlanes(o *Out) {
 	if err != nil {
 		panic(err)
 	}
-	for d := 0; d < Settle*year; d++ {
+	for d := 0; d < Settle*year; d++ { // the empire forms; its founding years, before there is any trade, are no famine
 		w.Step()
 	}
+	w.Starvation = true // from now on, people short of food or water starve
 	settled := w.Snapshot()
 	aether := G("aether")
 	type series struct {

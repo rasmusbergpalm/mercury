@@ -1,11 +1,11 @@
 {
-  "about": "Kinds of system, by their main world. symbol: a letter (unused on a graph map). move: the cost of moving through it (on a graph map, each lane has its own length instead). raw: the producers it has, with how well it suits them (a multiplier on their tfp). coast: unused (a graph map has no sea). raw_max_levels: the most building levels a world-bound producer may have. Water recyclers and hydroponic farms are the dear way to water and food where a world has none of its own: enough to scrape by without trade, not to live well.",
+  "about": "Kinds of system, by their main world. symbol: a letter (unused on a graph map). move: the cost of moving through it (on a graph map, each lane has its own length instead). raw: the producers it has, with how well it suits them (a multiplier on their tfp). coast: unused (a graph map has no sea). raw_max_levels: the most building levels a world-bound producer may have. Smallholdings and wells are the simple way to food and water, on every world; agrifactories and ice refineries the productive one, where a world suits them.",
   "terrains": [
-    {"name": "garden", "symbol": "G", "move": 1, "raw": [["Farm", 1.6], ["Fiber farm", 1.5], ["Orchard", 1.5], ["Water recycler", 0.5]]},
-    {"name": "ocean", "symbol": "O", "move": 1, "raw": [["Ice mine", 1.8], ["Farm", 0.4]]},
-    {"name": "ice", "symbol": "I", "move": 1, "raw": [["Ice mine", 2], ["Ore mine", 0.5], ["Hydroponics", 0.5]]},
-    {"name": "forge", "symbol": "F", "move": 1, "raw": [["Ore mine", 1.8], ["Water recycler", 0.5], ["Hydroponics", 0.5]]},
-    {"name": "barren", "symbol": "B", "move": 1, "raw": [["Aether well", 1.6], ["Water recycler", 0.5], ["Hydroponics", 0.5]]}
+    {"name": "garden", "symbol": "G", "move": 1, "raw": [["Agrifactory", 1.5], ["Fiber farm", 1.5], ["Orchard", 1.5], ["Smallholding", 1.5], ["Well", 0.6]]},
+    {"name": "ocean", "symbol": "O", "move": 1, "raw": [["Ice refinery", 1.5], ["Smallholding", 0.8], ["Well", 1.5]]},
+    {"name": "ice", "symbol": "I", "move": 1, "raw": [["Ice refinery", 2], ["Ore mine", 0.5], ["Smallholding", 0.5], ["Well", 1.5]]},
+    {"name": "forge", "symbol": "F", "move": 1, "raw": [["Ore mine", 1.8], ["Smallholding", 0.6], ["Well", 0.6]]},
+    {"name": "barren", "symbol": "B", "move": 1, "raw": [["Aether well", 1.6], ["Smallholding", 0.4], ["Well", 0.4]]}
   ],
   "coast": {"move": 1, "raw": []},
   "raw_max_levels": 4

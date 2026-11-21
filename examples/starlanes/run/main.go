@@ -49,7 +49,8 @@ func run(years, riot int) (before, during []system, err error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	before = observe(w, years)
+	before = observe(w, years) // the empire forms (its founding years, before any trade, are no famine)
+	w.Starvation = true
 	starlanes.Riot(w, 0.15)
 	during = observe(w, riot)
 	return before, during, nil

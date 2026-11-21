@@ -141,18 +141,17 @@ changes. Its ticks are days, from 2300:
 go run ./examples/starlanes/run
 ```
 
-Aether takes almost no room and never spoils, and the worlds are
-specialised (garden worlds have little water, ice and ocean worlds little
-food, forge worlds only ore), so the twelve systems are one economy, held
-together by trade; food and water have a subsistence level, below which
-people starve. Its ticks are days and each of its people stands for ten
-million, so the empire holds six and a half billion. Then riots on Cinder
-cut its wells' productivity by 85% for two years. In half a year nineteen
-twentieths of the trade is gone and a billion and a half people starve;
-then the price of aether rations what is left, trade climbs back to two
-fifths,
-and the survivors live almost as well as before, in an empire a quarter
-smaller whose output stays a fifth lower. The economy page shows it as its last experiment.
+Aether takes almost no room and never spoils. Every world can feed a few
+billion people by hand, on smallholdings and wells; the empire's 650
+billion live on agrifactories and ice refineries, run on water and
+machinery shipped between systems. Food and water have a subsistence
+level, below which people starve. Its ticks are days and each of its
+people stands for a billion. Then riots on Cinder cut its wells'
+productivity by 85% for two years. The trade collapses, the agrifactories
+and refineries stand idle, and within half a year more than half the
+empire starves, until it is no bigger than its smallholdings and what
+little trade still runs can feed. The survivors then live as well as
+before, and after the riots better, in an empire of half the people. The economy page shows it as its last experiment.
 
 ### Levers, accounts and steps
 

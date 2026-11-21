@@ -46,26 +46,26 @@ const (
 // PeopleUnit is how many people one of the economy's people stands for.
 // The engine's unit of people is arbitrary (one supplies a unit of labour),
 // and the economy on top says what it is, as it says what a tick is: here,
-// ten million, so that each system holds billions.
-const PeopleUnit = 1e7
+// a billion, so that the empire holds hundreds of billions.
+const PeopleUnit = 1e9
 
 // Systems are the star systems, and Lanes the lanes between them (a lane's
 // length scales the aether it takes to cross). Cinder, a barren world, has
 // the only aether wells.
 var (
 	Systems = []economy.Place{
-		{Name: "Cinder", Terrain: "barren"},
-		{Name: "Halcyon", Terrain: "garden"},
-		{Name: "Tamsin", Terrain: "ocean"},
-		{Name: "Vey", Terrain: "forge"},
-		{Name: "Corran", Terrain: "ice"},
-		{Name: "Pellam", Terrain: "garden"},
-		{Name: "Drace", Terrain: "forge"},
-		{Name: "Mirrow", Terrain: "ocean"},
-		{Name: "Saltreach", Terrain: "ice"},
-		{Name: "Umber", Terrain: "garden"},
-		{Name: "Quillon", Terrain: "forge"},
-		{Name: "Isk", Terrain: "ocean"},
+		{Name: "Cinder", Terrain: "barren", People: 54},
+		{Name: "Halcyon", Terrain: "garden", People: 54},
+		{Name: "Tamsin", Terrain: "ocean", People: 54},
+		{Name: "Vey", Terrain: "forge", People: 54},
+		{Name: "Corran", Terrain: "ice", People: 54},
+		{Name: "Pellam", Terrain: "garden", People: 54},
+		{Name: "Drace", Terrain: "forge", People: 54},
+		{Name: "Mirrow", Terrain: "ocean", People: 54},
+		{Name: "Saltreach", Terrain: "ice", People: 54},
+		{Name: "Umber", Terrain: "garden", People: 54},
+		{Name: "Quillon", Terrain: "forge", People: 54},
+		{Name: "Isk", Terrain: "ocean", People: 54},
 	}
 	Lanes = []economy.Lane{
 		{A: 0, B: 1, Length: 1.5}, {A: 0, B: 3, Length: 2},

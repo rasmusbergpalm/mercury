@@ -192,11 +192,12 @@ type Graph struct {
 
 // Place is a tile of a map: its name, its terrain's name, whether it is on
 // the coast (it then has the coast's producers, CoastRaw, and goods pass it
-// by sea at CoastMove), and, on a grid, its cell.
+// by sea at CoastMove), on a grid its cell, and its people at the start.
 type Place struct {
 	Name, Terrain string
-	Coastal       bool `json:",omitempty"`
-	Row, Col      int  `json:",omitempty"`
+	Coastal       bool    `json:",omitempty"`
+	Row, Col      int     `json:",omitempty"`
+	People        float64 `json:",omitempty"` // its people at the start (0: a hundred)
 }
 
 // Lane joins places A and B (indices into the places). A hop along it
@@ -235,10 +236,14 @@ func BuildWorld(transportCost float64, g Graph) (*World, error) {
 		if g.Rows > 0 && (p.Row < 0 || p.Row >= g.Rows || p.Col < 0 || p.Col >= g.Cols) {
 			return nil, fmt.Errorf("place %s: cell (%d, %d) is off the %d×%d grid", p.Name, p.Row, p.Col, g.Rows, g.Cols)
 		}
-		// a hundred people, who start with 10 a head of spending a tick, in
-		// savings of a twentieth (spendShare): one group of workers, a few
-		// of whom are made owners
-		reg := NewRegion(i, p.Name, makeFirms(*t, p.Coastal), 1, 100, 1000/spendShare)
+		// a hundred people (or the place's own number), who start with 10 a
+		// head of spending a tick, in savings of a twentieth (spendShare):
+		// one group of workers, a few of whom are made owners
+		people := 100.0
+		if p.People > 0 {
+			people = p.People
+		}
+		reg := NewRegion(i, p.Name, makeFirms(*t, p.Coastal), 1, people, 10*people/spendShare)
 		addOwnerClasses(reg)
 		reg.Row, reg.Col, reg.Terrain, reg.BaseMove, reg.Coastal = p.Row, p.Col, t.Name, t.MoveCost, p.Coastal
 		regions[i] = reg

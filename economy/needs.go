@@ -242,14 +242,18 @@ func hasSubsistence() bool {
 // whose needs have no subsistence level.
 const StarvationRate = 0.01
 
+// starveFloor is the fewest people a famine leaves on a tile.
+const starveFloor = 1.0
+
 // wantTicks is about how many ticks of want Pop.Want averages over: people
 // get through a bad day or week on what they have put by, not through a
 // month (at a tick a day).
 const wantTicks = 30.0
 
 // starve applies a tick of deaths from want, whether or not the people
-// otherwise grow (World.Demography): a tile never empties below
-// MinPopulation. The dead's savings stay with the living.
+// otherwise grow (World.Demography). A famine can take a tile far below
+// MinPopulation, the floor migration keeps, but never empties it
+// (starveFloor). The dead's savings stay with the living.
 func (r *Region) starve() {
 	deaths := make([]float64, len(r.Pops))
 	total := 0.0
@@ -267,7 +271,7 @@ func (r *Region) starve() {
 	if total <= 0 {
 		return
 	}
-	scale := math.Min(1, math.Max(0, r.Population()-MinPopulation)/total)
+	scale := math.Min(1, math.Max(0, r.Population()-starveFloor)/total)
 	for i, p := range r.Pops {
 		p.Size -= deaths[i] * scale
 	}

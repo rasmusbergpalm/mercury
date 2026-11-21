@@ -1,14 +1,14 @@
 {
-  "about": "Production: each firm makes its output with a Cobb-Douglas recipe, q = tfp * levels^(1-sum of exponents) * product of factor^exponent. raw: producers bound to a world, placed by terrain (terrains.json). processing: firms every system has. Freight, the transport between systems, burns aether: a system with none can receive goods but can't send any.",
+  "about": "Production: each firm makes its output with a Cobb-Douglas recipe, q = tfp * levels^(1-sum of exponents) * product of factor^exponent. raw: producers bound to a world, placed by terrain (terrains.json). processing: firms every system has. Food and water are made two ways: simply, by hand (smallholdings and wells, on every world), enough to keep a few billion alive on each; or in agrifactories and ice refineries, very productive but run on imported water and machinery, which only trade keeps going. Freight, the transport between systems, burns aether: a system with none can receive goods but can't send any.",
   "raw": [
-    {"firm": "Farm", "output": "rations", "tfp": 2, "factors": [["labor", 0.6]]},
-    {"firm": "Ice mine", "output": "water", "tfp": 2.5, "factors": [["labor", 0.6]]},
+    {"firm": "Smallholding", "output": "rations", "tfp": 0.45, "factors": [["labor", 0.6]]},
+    {"firm": "Well", "output": "water", "tfp": 0.55, "factors": [["labor", 0.6]]},
+    {"firm": "Agrifactory", "output": "rations", "tfp": 4, "factors": [["labor", 0.3], ["water", 0.2], ["appliances", 0.15]]},
+    {"firm": "Ice refinery", "output": "water", "tfp": 4, "factors": [["labor", 0.3], ["appliances", 0.2]]},
     {"firm": "Fiber farm", "output": "fiber", "tfp": 1.5, "factors": [["labor", 0.6]]},
     {"firm": "Ore mine", "output": "ore", "tfp": 1.5, "factors": [["labor", 0.6]]},
     {"firm": "Orchard", "output": "fruit", "tfp": 1.5, "factors": [["labor", 0.6]]},
-    {"firm": "Aether well", "output": "aether", "tfp": 1.5, "factors": [["labor", 0.6]]},
-    {"firm": "Water recycler", "output": "water", "tfp": 1, "factors": [["labor", 0.6]]},
-    {"firm": "Hydroponics", "output": "rations", "tfp": 1, "factors": [["labor", 0.6]]}
+    {"firm": "Aether well", "output": "aether", "tfp": 1.5, "factors": [["labor", 0.6]]}
   ],
   "processing": [
     {"firm": "Weavery", "output": "textiles", "tfp": 1.5, "factors": [["labor", 0.3], ["fiber", 0.4]]},
