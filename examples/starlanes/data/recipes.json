@@ -1,0 +1,20 @@
+{
+  "about": "Production: each firm makes its output with a Cobb-Douglas recipe, q = tfp * levels^(1-sum of exponents) * product of factor^exponent. raw: producers bound to a world, placed by terrain (terrains.json). processing: firms every system has. Freight, the transport between systems, burns aether: a system with none can receive goods but can't send any.",
+  "raw": [
+    {"firm": "Farm", "output": "rations", "tfp": 2, "factors": [["labor", 0.6]]},
+    {"firm": "Ice mine", "output": "water", "tfp": 2.5, "factors": [["labor", 0.6]]},
+    {"firm": "Fiber farm", "output": "fiber", "tfp": 1.5, "factors": [["labor", 0.6]]},
+    {"firm": "Ore mine", "output": "ore", "tfp": 1.5, "factors": [["labor", 0.6]]},
+    {"firm": "Orchard", "output": "fruit", "tfp": 1.5, "factors": [["labor", 0.6]]},
+    {"firm": "Aether well", "output": "aether", "tfp": 1.5, "factors": [["labor", 0.6]]}
+  ],
+  "processing": [
+    {"firm": "Weavery", "output": "textiles", "tfp": 1.5, "factors": [["labor", 0.3], ["fiber", 0.4]]},
+    {"firm": "Smelter", "output": "alloy", "tfp": 1.2, "factors": [["labor", 0.3], ["ore", 0.4]]},
+    {"firm": "Workshop", "output": "appliances", "tfp": 1.2, "factors": [["labor", 0.3], ["alloy", 0.4]]},
+    {"firm": "Distillery", "output": "spirits", "tfp": 1.2, "factors": [["labor", 0.3], ["fruit", 0.4]]},
+    {"firm": "Freight", "output": "transport", "tfp": 3, "factors": [["labor", 0.4], ["aether", 0.2]], "sector": "service"},
+    {"firm": "Construction", "output": "construction", "tfp": 1.5, "factors": [["labor", 0.5], ["alloy", 0.2]], "sector": "service"}
+  ],
+  "methods": []
+}

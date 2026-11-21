@@ -21,9 +21,9 @@ type Recipe struct {
 // The recipes (data/recipes.json).
 var (
 	// RawRecipes are land-bound producers; terrain decides where they exist.
-	RawRecipes = recipes(recipesData.Raw)
+	RawRecipes []Recipe
 	// ProcessingRecipes can be set up anywhere.
-	ProcessingRecipes = recipes(recipesData.Processing)
+	ProcessingRecipes []Recipe
 )
 
 // MethodRecipe is a later way of making what a firm makes, usually
@@ -43,16 +43,18 @@ type MethodRecipe struct {
 }
 
 // MethodRecipes are every firm's later methods (data/recipes.json).
-var MethodRecipes = func() []MethodRecipe {
+var MethodRecipes []MethodRecipe
+
+func makeMethodRecipes() []MethodRecipe {
 	var out []MethodRecipe
 	for _, d := range recipesData.Methods {
 		out = append(out, MethodRecipe{d.Base, d.recipe(), d.Cap})
 	}
 	return out
-}()
+}
 
 // RawMaxLevels caps building levels of land-bound producers (land is scarce).
-var RawMaxLevels = terrainsData.RawMaxLevels
+var RawMaxLevels int
 
 // Bonus is a raw producer available on a terrain, with a TFP multiplier.
 type Bonus struct {
@@ -69,7 +71,9 @@ type Terrain struct {
 }
 
 // Terrains are the tile types (data/terrains.json).
-var Terrains = func() []Terrain {
+var Terrains []Terrain
+
+func makeTerrains() []Terrain {
 	var out []Terrain
 	for _, t := range terrainsData.Terrains {
 		if len(t.Symbol) != 1 {
@@ -78,14 +82,14 @@ var Terrains = func() []Terrain {
 		out = append(out, Terrain{t.Name, t.Symbol[0], t.Move, bonuses(t.Raw)})
 	}
 	return out
-}()
+}
 
 // The ocean surrounds the map. A tile on the map's edge is coastal whatever
 // its terrain: it has the coast's producers (CoastRaw), and ships carry
 // goods past it cheaply (CoastMove, scaled by the tile's SeaTransportMult).
 var (
-	CoastMove = terrainsData.Coast.Move
-	CoastRaw  = bonuses(terrainsData.Coast.Raw)
+	CoastMove float64
+	CoastRaw  []Bonus
 )
 
 // TerrainBySymbol looks a terrain up by its map symbol.
@@ -273,7 +277,7 @@ func buildWorld(transportCost float64, gameMap []string, names []string) (*World
 			}
 			hop := (a.MoveCost() + b.MoveCost()) / 2
 			if a.ID < b.ID {
-				links = append(links, Link{a.ID, b.ID, hop})
+				links = append(links, Link{A: a.ID, B: b.ID, Hop: hop})
 			}
 			if !math.IsInf(transportCost, 1) {
 				for _, g := range Tradable {
@@ -284,6 +288,85 @@ func buildWorld(transportCost float64, gameMap []string, names []string) (*World
 	}
 	w := NewWorld(rows, cols, regions, traders, links)
 	w.Plan = Plan{Map: gameMap, Names: names, TransportCost: transportCost}
+	return w, nil
+}
+
+// Place is a tile of a map given as a graph (BuildGraphWorld): its name
+// and its terrain's name.
+type Place struct {
+	Name, Terrain string
+}
+
+// Lane joins places A and B of a graph map (indices into its places), at a
+// distance: the transport a unit of bulk takes over it, and what spoils on
+// the way, scale with it (a hop between hex neighbours on open land is 1).
+type Lane struct {
+	A, B     int
+	Distance float64
+}
+
+// BuildGraphWorld builds a world whose tiles are any places joined by any
+// lanes: star systems and the lanes between them, ports and their sea
+// routes, market towns and the tracks between them. Merchants trade, and
+// people move, only along the lanes, each at its own fixed distance; there
+// is no sea and no coast. Every tile starts as BuildWorld's do: its terrain's firms and every
+// tile's, a hundred people of whom a few are owners. transportCost scales
+// every lane; +Inf means autarky (no trade).
+func BuildGraphWorld(transportCost float64, places []Place, lanes []Lane) (*World, error) {
+	if math.IsNaN(transportCost) || transportCost < 0 {
+		return nil, fmt.Errorf("transport cost must be a non-negative number")
+	}
+	if len(places) == 0 {
+		return nil, fmt.Errorf("no places")
+	}
+	var regions []*Region
+	for i, p := range places {
+		var t *Terrain
+		for k := range Terrains {
+			if Terrains[k].Name == p.Terrain {
+				t = &Terrains[k]
+			}
+		}
+		if t == nil {
+			return nil, fmt.Errorf("place %s: unknown terrain %q", p.Name, p.Terrain)
+		}
+		reg := NewRegion(i, p.Name, makeFirms(*t, false), 1, 100, 1000/spendShare)
+		addOwnerClasses(reg)
+		reg.Terrain, reg.BaseMove = t.Name, t.MoveCost
+		regions = append(regions, reg)
+	}
+	var traders []*Trader
+	var links []Link
+	seen := map[[2]int]bool{}
+	for _, l := range lanes {
+		if l.A < 0 || l.B < 0 || l.A >= len(places) || l.B >= len(places) || l.A == l.B {
+			return nil, fmt.Errorf("lane %d-%d: not two of the %d places", l.A, l.B, len(places))
+		}
+		if !(l.Distance > 0) || math.IsInf(l.Distance, 1) {
+			return nil, fmt.Errorf("lane %d-%d: distance must be positive", l.A, l.B)
+		}
+		key := [2]int{min(l.A, l.B), max(l.A, l.B)}
+		if seen[key] {
+			return nil, fmt.Errorf("lane %d-%d given twice", l.A, l.B)
+		}
+		seen[key] = true
+		a, b := regions[key[0]], regions[key[1]]
+		links = append(links, Link{a.ID, b.ID, l.Distance, true})
+		if !math.IsInf(transportCost, 1) {
+			for _, g := range Tradable {
+				for _, ends := range [][2]*Region{{a, b}, {b, a}} {
+					t := NewTrader(g, ends[0], ends[1], l.Distance, transportCost)
+					t.FixedDistance = true // a lane's length is its own, not the tiles' move costs
+					traders = append(traders, t)
+				}
+			}
+		}
+	}
+	w := NewWorld(0, 0, regions, traders, links)
+	w.Plan = Plan{Places: places, Lanes: lanes, TransportCost: transportCost}
+	for _, r := range w.Regions {
+		r.UpdateAgglomeration()
+	}
 	return w, nil
 }
 

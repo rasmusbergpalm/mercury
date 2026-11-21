@@ -20,24 +20,28 @@ type Good struct {
 
 // Goods lists every good (data/goods.json). The order is part of the
 // simulation's definition.
-var Goods = func() []Good {
+var Goods []Good
+
+func makeGoods() []Good {
 	out := make([]Good, len(goodsData.Goods))
 	for i, g := range goodsData.Goods {
 		out[i] = Good{g.Name, g.Bulk, g.Spoilage, g.Service}
 	}
 	return out
-}()
+}
 
 // NumGoods is len(Goods).
-var NumGoods = len(Goods)
+var NumGoods int
 
-var goodIndex = func() map[string]GoodID {
+var goodIndex map[string]GoodID
+
+func makeGoodIndex() map[string]GoodID {
 	m := make(map[string]GoodID, len(Goods))
 	for i, g := range Goods {
 		m[g.Name] = GoodID(i)
 	}
 	return m
-}()
+}
 
 // G looks a good up by name and panics if it doesn't exist.
 func G(name string) GoodID {
@@ -48,12 +52,14 @@ func G(name string) GoodID {
 	return id
 }
 
-// Transport is the transport service good.
-var Transport = G("transport")
+// Transport is the transport service good: every economy has one, which
+// merchants buy to carry goods.
+var Transport GoodID
 
 // Construction is building work: owners buy it to build and maintain
-// their works, and outside buyers for whatever they build.
-var Construction = G("construction")
+// their works, and outside buyers for whatever they build. Every economy
+// has it.
+var Construction GoodID
 
 // IsService reports whether a good is a local service that can't be shipped.
 func IsService(g GoodID) bool {
@@ -61,7 +67,9 @@ func IsService(g GoodID) bool {
 }
 
 // Tradable lists the goods merchants ship: every good but the services.
-var Tradable = func() []GoodID {
+var Tradable []GoodID
+
+func makeTradable() []GoodID {
 	var out []GoodID
 	for i := range Goods {
 		if !IsService(GoodID(i)) {
@@ -69,7 +77,7 @@ var Tradable = func() []GoodID {
 		}
 	}
 	return out
-}()
+}
 
 // Composite is a set of substitutable production inputs, e.g. fuel = wood or coal.
 type Composite struct {
@@ -79,7 +87,9 @@ type Composite struct {
 }
 
 // Composites are the substitutable inputs firms can use (data/goods.json).
-var Composites = func() []Composite {
+var Composites []Composite
+
+func makeComposites() []Composite {
 	var out []Composite
 	for _, c := range goodsData.Composites {
 		var gs []GoodID
@@ -89,7 +99,7 @@ var Composites = func() []Composite {
 		out = append(out, Composite{c.Name, gs, c.Sigma})
 	}
 	return out
-}()
+}
 
 func compositeIndex(name string) int {
 	for i, c := range Composites {

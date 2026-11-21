@@ -31,10 +31,12 @@ type World struct {
 }
 
 // Link is a pair of neighbouring regions and the cost of one hop between them:
-// the average of the two tiles' movement costs.
+// the average of the two tiles' movement costs, or, if Fixed, its own (a
+// lane of a graph map).
 type Link struct {
-	A, B int
-	Hop  float64
+	A, B  int
+	Hop   float64
+	Fixed bool `json:",omitempty"`
 }
 
 // Each tile's trading house starts with this much cash per route.
@@ -58,7 +60,9 @@ func NewWorld(rows, cols int, regions []*Region, traders []*Trader, links []Link
 		w.grid[i] = -1
 	}
 	for _, r := range regions {
-		w.grid[r.Row*cols+r.Col] = r.ID
+		if len(w.grid) > 0 { // a graph map (BuildGraphWorld) has no grid
+			w.grid[r.Row*cols+r.Col] = r.ID
+		}
 	}
 	w.adj = make([][][2]int, len(regions))
 	for i, l := range links {
@@ -334,7 +338,9 @@ func (w *World) Population() float64 {
 func (w *World) RefreshHops() {
 	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
 	for i, l := range w.Links {
-		w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
+		if !l.Fixed {
+			w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
+		}
 	}
 	for _, t := range w.Traders {
 		if !t.FixedDistance {
@@ -347,7 +353,7 @@ func (w *World) RefreshHops() {
 func (w *World) RefreshHopsAt(r *Region) {
 	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
 	for i, l := range w.Links {
-		if l.A == r.ID || l.B == r.ID {
+		if !l.Fixed && (l.A == r.ID || l.B == r.ID) {
 			w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
 		}
 	}

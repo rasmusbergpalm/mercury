@@ -8,7 +8,7 @@ import (
 // publicSlot is the extra entry after the goods in a GDPChain's vectors:
 // the work of outside employers (Buyer.Hire), which nobody buys, counted at
 // cost (their staff's wages).
-var publicSlot = NumGoods
+var publicSlot int
 
 // settledMove is how far a good's price may move in a month for it to count
 // towards that month's growth.

@@ -102,8 +102,8 @@ The engine doesn't fix what is made or where. The goods, needs, recipes and
 terrains are JSON files in [`economy/data/`](economy/data), and a map is a
 list of rows of terrain letters. What comes with Mercury is an example
 economy, Europe around 1820, and an example map (`DefaultMap`, 36 tiles).
-Each data file starts with a note on what its fields mean. Edit them to
-model another economy.
+Each data file starts with a note on what its fields mean. Edit them, or
+give `economy.LoadData` another set, to model another economy.
 
 | File | What it holds |
 |---|---|
@@ -114,7 +114,31 @@ model another economy.
 
 `BuildWorld` builds a world from the data and a map: every good and firm,
 with the later production methods switched off, and workers and owners in
-every tile.
+every tile. `BuildGraphWorld` builds one whose tiles are any places joined
+by any lanes, each of its own length: market towns and the tracks between them, ports and
+their sea routes, star systems.
+
+### Another economy: star lanes
+
+[`examples/starlanes`](examples/starlanes) is about as far from 1820 as an
+economy gets, on the same engine. Twelve star systems are joined by a
+sparse web of lanes, and every ship between them burns *aether*, a fuel
+found in only one barren system, Cinder. Freight, the transport merchants
+buy, is made from labour and aether, so a system with no aether can
+receive goods but can't send any. It has its own data files (goods, needs,
+recipes and kinds of system) and a graph map, and nothing in the engine
+changes:
+
+```bash
+go run ./examples/starlanes
+```
+
+Aether costs 10 at Cinder and about 25 four lanes away, and the systems
+nearest it trade most. Blockade Cinder and within three years every
+system's aether is gone, freight costs ten to twenty times as much, trade
+between the systems stops entirely, and living standards fall by up to a
+third, most in the systems that lived by trade and in Cinder itself, which
+can no longer import its food.
 
 ### Levers, accounts and steps
 
@@ -174,6 +198,7 @@ go run ./cmd/server    # then open http://localhost:8080
 | `internal/server/`, `cmd/server/` | The game's HTTP server |
 | `web/` | The web client and the economy page |
 | `experiments/` | The economy page's experiments, each a `go generate` target, and their results |
+| `examples/` | Other economies on the engine: star lanes |
 | `tools/` | Plotting and data tools, and the economy page's build (`tools/explainer/build.sh`) |
 
 ## Testing and experiments

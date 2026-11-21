@@ -4,23 +4,80 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 )
 
 // The economy's calibration (its goods, needs, recipes and terrains) is
-// data, in the JSON files of data/, built into the package. Edit them to
-// model another economy; each file says what its fields mean.
+// data, in the JSON files of data/, built into the package: the example
+// economy. Edit them, or give LoadData another set, to model another
+// economy; each file says what its fields mean.
 //
 //go:embed data/*.json
 var dataFiles embed.FS
 
+// dataFS is the set of data files in use.
+var dataFS fs.FS
+
 func loadJSON(name string, v any) {
-	b, err := dataFiles.ReadFile("data/" + name)
+	b, err := fs.ReadFile(dataFS, name)
 	if err != nil {
 		panic(err)
 	}
 	if err := json.Unmarshal(b, v); err != nil {
-		panic(fmt.Sprintf("data/%s: %v", name, err))
+		panic(fmt.Sprintf("%s: %v", name, err))
 	}
+}
+
+func init() {
+	sub, err := fs.Sub(dataFiles, "data")
+	if err == nil {
+		err = useData(sub)
+	}
+	if err != nil {
+		panic(err)
+	}
+}
+
+// LoadData makes the economy the one described by another set of data
+// files: goods.json, needs.json, recipes.json and terrains.json, in the
+// format of data/ (each file's "about" says what its fields mean). Every
+// economy has goods named "transport" and "construction". It replaces the
+// example economy for the whole program, so call it before building any
+// world: one built before it no longer fits the goods.
+func LoadData(fsys fs.FS) error { return useData(fsys) }
+
+// useData reads a set of data files and sets everything that follows from
+// them.
+func useData(fsys fs.FS) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("economy data: %v", r)
+		}
+	}()
+	dataFS = fsys
+	goodsData, recipesData, terrainsData = makeGoodsData(), makeRecipesData(), makeTerrainsData()
+	Goods = makeGoods()
+	NumGoods = len(Goods)
+	goodIndex = makeGoodIndex()
+	Transport, Construction = G("transport"), G("construction")
+	Tradable = makeTradable()
+	Composites = makeComposites()
+	Needs = makeNeeds()
+	if len(Needs) > maxNeeds {
+		return fmt.Errorf("economy data: %d needs, at most %d", len(Needs), maxNeeds)
+	}
+	for _, n := range Needs {
+		if len(n.Goods) > maxNeedGoods {
+			return fmt.Errorf("economy data: need %s has %d goods, at most %d", n.Name, len(n.Goods), maxNeedGoods)
+		}
+	}
+	ConsumerGoods, TierOf = makeConsumerGoods(), makeTierOf()
+	RawRecipes, ProcessingRecipes, MethodRecipes = recipes(recipesData.Raw), recipes(recipesData.Processing), makeMethodRecipes()
+	RawMaxLevels = terrainsData.RawMaxLevels
+	Terrains = makeTerrains()
+	CoastMove, CoastRaw = terrainsData.Coast.Move, bonuses(terrainsData.Coast.Raw)
+	publicSlot = NumGoods
+	return nil
 }
 
 type goodsFile struct {
@@ -36,11 +93,13 @@ type goodsFile struct {
 	}
 }
 
-var goodsData = func() goodsFile {
+var goodsData goodsFile
+
+func makeGoodsData() goodsFile {
 	var f goodsFile
 	loadJSON("goods.json", &f)
 	return f
-}()
+}
 
 type needsFile struct {
 	Needs []struct {
@@ -88,11 +147,13 @@ type recipesFile struct {
 	Methods         []recipeData
 }
 
-var recipesData = func() recipesFile {
+var recipesData recipesFile
+
+func makeRecipesData() recipesFile {
 	var f recipesFile
 	loadJSON("recipes.json", &f)
 	return f
-}()
+}
 
 func recipes(ds []recipeData) []Recipe {
 	out := make([]Recipe, len(ds))
@@ -115,11 +176,13 @@ type terrainsFile struct {
 	RawMaxLevels int `json:"raw_max_levels"`
 }
 
-var terrainsData = func() terrainsFile {
+var terrainsData terrainsFile
+
+func makeTerrainsData() terrainsFile {
 	var f terrainsFile
 	loadJSON("terrains.json", &f)
 	return f
-}()
+}
 
 func bonuses(xs [][2]any) []Bonus {
 	var out []Bonus

@@ -52,7 +52,9 @@ func goods(names ...string) []GoodID {
 }
 
 // Needs are the need groups every pop has (data/needs.json).
-var Needs = func() []Need {
+var Needs []Need
+
+func makeNeeds() []Need {
 	var f needsFile
 	loadJSON("needs.json", &f)
 	var out []Need
@@ -69,19 +71,23 @@ var Needs = func() []Need {
 		out = append(out, Need{n.Name, t, goods(n.Goods...), n.Sigma, n.Weight, n.Requirement})
 	}
 	return out
-}()
+}
 
 // ConsumerGoods lists the goods pops consume, in Needs order.
-var ConsumerGoods = func() []GoodID {
+var ConsumerGoods []GoodID
+
+func makeConsumerGoods() []GoodID {
 	var out []GoodID
 	for _, n := range Needs {
 		out = append(out, n.Goods...)
 	}
 	return out
-}()
+}
 
 // TierOf maps a good to the tier of the need it satisfies, or -1 if pops don't consume it.
-var TierOf = func() []Tier {
+var TierOf []Tier
+
+func makeTierOf() []Tier {
 	out := make([]Tier, NumGoods)
 	for i := range out {
 		out[i] = -1
@@ -92,7 +98,7 @@ var TierOf = func() []Tier {
 		}
 	}
 	return out
-}()
+}
 
 // maxNeeds bounds len(Needs), so Demand can keep its scratch on the stack.
 const maxNeeds = 16

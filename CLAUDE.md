@@ -21,6 +21,9 @@ is an example of using the economy, not part of Mercury:
   builds `web/static/economy.html` from those results (published to
   GitHub Pages). After a change to the economy, rerun them all and
   rebuild the page.
+- `examples/`: other economies on the engine, each with its own data files
+  (`examples/starlanes`: star systems on a graph map, trade fuelled by a
+  single source of aether).
 - `internal/server/` and `cmd/server/`: the server; `web/`: the web client.
 
 Keep the split: nothing in `economy/` may refer to the game. A game rule

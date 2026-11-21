@@ -9,8 +9,10 @@ import (
 // symbols, the tiles' names (row by row, skipping the sea; none: by row and
 // column), and the cost of transport.
 type Plan struct {
-	Map           []string
+	Map           []string `json:",omitempty"`
 	Names         []string `json:",omitempty"`
+	Places        []Place  `json:",omitempty"` // a graph map (BuildGraphWorld)
+	Lanes         []Lane   `json:",omitempty"`
 	TransportCost float64
 }
 
@@ -139,7 +141,13 @@ func (w *World) Snapshot() *Snapshot {
 // Restore builds the world a snapshot was taken of, and gives it the
 // snapshot's state.
 func Restore(s *Snapshot) (*World, error) {
-	w, err := BuildWorld(s.Plan.TransportCost, s.Plan.Map, s.Plan.Names)
+	var w *World
+	var err error
+	if s.Plan.Places != nil {
+		w, err = BuildGraphWorld(s.Plan.TransportCost, s.Plan.Places, s.Plan.Lanes)
+	} else {
+		w, err = BuildWorld(s.Plan.TransportCost, s.Plan.Map, s.Plan.Names)
+	}
 	if err != nil {
 		return nil, err
 	}
