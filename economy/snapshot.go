@@ -21,7 +21,7 @@ type Snapshot struct {
 	Plan                                        Plan
 	Tick                                        int
 	Investment, Migration, Demography, TrackGDP bool
-	Starvation                                bool `json:",omitempty"`
+	Starvation                                  bool `json:",omitempty"`
 	Seed                                        int64
 	Regions                                     []RegionState
 	Traders                                     []TraderState
