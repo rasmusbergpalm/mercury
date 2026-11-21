@@ -13,7 +13,7 @@
     {"firm": "Smelter", "output": "alloy", "tfp": 1.2, "factors": [["labor", 0.3], ["ore", 0.4]]},
     {"firm": "Workshop", "output": "appliances", "tfp": 1.2, "factors": [["labor", 0.3], ["alloy", 0.4]]},
     {"firm": "Distillery", "output": "spirits", "tfp": 1.2, "factors": [["labor", 0.3], ["fruit", 0.4]]},
-    {"firm": "Freight", "output": "transport", "tfp": 3, "factors": [["labor", 0.4], ["aether", 0.2]], "sector": "service"},
+    {"firm": "Freight", "output": "transport", "tfp": 3, "factors": [["labor", 0.25], ["aether", 0.45]], "sector": "service"},
     {"firm": "Construction", "output": "construction", "tfp": 1.5, "factors": [["labor", 0.5], ["alloy", 0.2]], "sector": "service"}
   ],
   "methods": []

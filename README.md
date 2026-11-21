@@ -142,13 +142,15 @@ go run ./examples/starlanes/run
 ```
 
 Aether takes almost no room and never spoils, so it costs nearly the same
-everywhere.
-Then riots on Cinder cut its wells' productivity by 85% for two years.
-Aether settles at about eight times its price in every system, freight
-costs half as much again, and trade shrinks on the long chains far from
-Cinder, where goods pay the dearer freight at every hop, while it holds up
-next to it; living standards move by a few percent at most, as the price
-sends the scarce fuel where it is worth most. The economy page shows it as its last experiment.
+everywhere, and the worlds are specialised (garden worlds have no water,
+ice and ocean worlds little food, forge worlds only ore), so every system
+lives by trade. Then riots on Cinder cut its wells' productivity by 85%
+for two years. In the first weeks, before prices move, the stocks of
+aether run out and living standards drop by up to a third; then aether
+settles at about ten times its price, freight at three times, trade
+shrinks on the long chains far from Cinder and grows next to it, and the
+systems settle 4–14% below where they would be, Cinder's own output down
+by half. The economy page shows it as its last experiment.
 
 ### Levers, accounts and steps
 

@@ -1,11 +1,11 @@
 {
   "about": "Kinds of system, by their main world. symbol: a letter (unused on a graph map). move: the cost of moving through it (on a graph map, each lane has its own length instead). raw: the producers it has, with how well it suits them (a multiplier on their tfp). coast: unused (a graph map has no sea). raw_max_levels: the most building levels a world-bound producer may have.",
   "terrains": [
-    {"name": "garden", "symbol": "G", "move": 1, "raw": [["Farm", 1.5], ["Fiber farm", 1.3], ["Orchard", 1.3], ["Ice mine", 0.6]]},
-    {"name": "ocean", "symbol": "O", "move": 1, "raw": [["Ice mine", 1.6], ["Farm", 1], ["Orchard", 0.8]]},
-    {"name": "ice", "symbol": "I", "move": 1, "raw": [["Ice mine", 1.8], ["Ore mine", 0.6]]},
-    {"name": "forge", "symbol": "F", "move": 1, "raw": [["Ore mine", 1.6], ["Ice mine", 0.4], ["Farm", 0.3]]},
-    {"name": "barren", "symbol": "B", "move": 1, "raw": [["Aether well", 1.6], ["Ore mine", 0.4]]}
+    {"name": "garden", "symbol": "G", "move": 1, "raw": [["Farm", 1.6], ["Fiber farm", 1.5], ["Orchard", 1.5]]},
+    {"name": "ocean", "symbol": "O", "move": 1, "raw": [["Ice mine", 1.8], ["Farm", 0.4]]},
+    {"name": "ice", "symbol": "I", "move": 1, "raw": [["Ice mine", 2], ["Ore mine", 0.5]]},
+    {"name": "forge", "symbol": "F", "move": 1, "raw": [["Ore mine", 1.8]]},
+    {"name": "barren", "symbol": "B", "move": 1, "raw": [["Aether well", 1.6]]}
   ],
   "coast": {"move": 1, "raw": []},
   "raw_max_levels": 4
