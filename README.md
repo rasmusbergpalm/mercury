@@ -131,22 +131,24 @@ them, ports and their sea routes, star systems.
 [`examples/starlanes`](examples/starlanes) is about as far from 1820 as an
 economy gets, on the same engine. Twelve star systems are joined by a
 sparse web of lanes, and every ship between them burns *aether*, a fuel
-found in only one barren system, Cinder. Freight, the transport merchants
+found on only one barren world, Cinder. Freight, the transport merchants
 buy, is made from labour and aether, so a system with no aether can
 receive goods but can't send any. It has its own data files (goods, needs,
 recipes and kinds of system) and a graph map, and nothing in the engine
 changes. Its ticks are days, from 2300:
 
 ```bash
-go run ./examples/starlanes
+go run ./examples/starlanes/run
 ```
 
-Aether costs 10 at Cinder and about 25 four lanes away, and the systems
-nearest it trade most. Blockade Cinder and within three years every
-system's aether is gone, freight costs ten to twenty times as much, trade
-between the systems stops entirely, and living standards fall by up to a
-third, most in the systems that lived by trade and in Cinder itself, which
-can no longer import its food.
+Aether takes almost no room and never spoils, so it costs nearly the same
+everywhere.
+Then riots on Cinder cut its wells' productivity by 85% for two years.
+Aether settles at about eight times its price in every system, freight
+costs half as much again, and trade shrinks on the long chains far from
+Cinder, where goods pay the dearer freight at every hop, while it holds up
+next to it; living standards move by a few percent at most, as the price
+sends the scarce fuel where it is worth most. The economy page shows it as its last experiment.
 
 ### Levers, accounts and steps
 

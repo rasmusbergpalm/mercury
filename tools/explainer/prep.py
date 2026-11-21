@@ -123,5 +123,11 @@ out["brexit"] = {"britain": bx["britain"], "runs": {r["Name"]: {"months": r["Mon
 # a monopoly brewer
 mn = json.load(open(f"{S}/monopoly.json"))
 out["monopoly"] = {"tile": mn["tile"], "elasticity": mn["elasticity"], "runs": [{k: (round(v, 5) if isinstance(v, float) else v) for k, v in r.items()} for r in mn["runs"]]}
+# another economy: star lanes, and riots on the one aether world
+sl = json.load(open(f"{S}/starlanes.json"))
+r3 = lambda xs: [round(x, 3) for x in xs]
+out["starlanes"] = {k: sl[k] for k in ("systems", "lanes", "start", "riotFrom", "riotTo", "riot")}
+for run in ("control", "riots"):
+    out["starlanes"][run] = {k: ([r3(x) for x in v] if k != "Output" else r3(v)) for k, v in sl[run].items()}
 json.dump(out, open(OUT, "w"), separators=(",", ":"))
 print(f"{len(json.dumps(out))} bytes of data; goods {goods}")

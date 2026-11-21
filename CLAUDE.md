@@ -23,7 +23,7 @@ is an example of using the economy, not part of Mercury:
   rebuild the page.
 - `examples/`: other economies on the engine, each with its own data files
   (`examples/starlanes`: star systems on a graph map, trade fuelled by a
-  single source of aether).
+  single source of aether; the economy page's last experiment runs it).
 - `internal/server/` and `cmd/server/`: the server; `web/`: the web client.
 
 Keep the split: nothing in `economy/` may refer to the game. A game rule

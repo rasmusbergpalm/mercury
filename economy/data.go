@@ -28,12 +28,18 @@ func loadJSON(name string, v any) {
 	}
 }
 
-func init() {
+// ExampleData is the example economy's data files (data/), the economy in
+// use unless LoadData gives another: LoadData(ExampleData) brings it back.
+var ExampleData = func() fs.FS {
 	sub, err := fs.Sub(dataFiles, "data")
-	if err == nil {
-		err = useData(sub)
-	}
 	if err != nil {
+		panic(err)
+	}
+	return sub
+}()
+
+func init() {
+	if err := useData(ExampleData); err != nil {
 		panic(err)
 	}
 }
