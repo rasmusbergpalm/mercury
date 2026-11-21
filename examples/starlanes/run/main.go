@@ -1,6 +1,6 @@
 // Run runs the star-lanes economy (package starlanes) for ten years, then
 // riots on Cinder, the one system with aether wells, cut the wells'
-// productivity by 85% for two years: what happens to the price of the fuel
+// productivity by 98% for two years: what happens to the price of the fuel
 // all trade runs on, to the trade, and to the systems that live by it.
 //
 //	go run ./examples/starlanes/run
@@ -50,7 +50,7 @@ func run(years, riot int) (before, during []system, err error) {
 		return nil, nil, err
 	}
 	before = observe(w, years)
-	starlanes.Riot(w, 0.15)
+	starlanes.Riot(w, 0.02)
 	during = observe(w, riot)
 	return before, during, nil
 }

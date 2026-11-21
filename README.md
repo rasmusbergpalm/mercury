@@ -141,16 +141,14 @@ changes. Its ticks are days, from 2300:
 go run ./examples/starlanes/run
 ```
 
-Aether takes almost no room and never spoils, so it costs nearly the same
-everywhere, and the worlds are specialised (garden worlds have no water,
-ice and ocean worlds little food, forge worlds only ore), so every system
-lives by trade. Then riots on Cinder cut its wells' productivity by 85%
-for two years. In the first weeks, before prices move, the stocks of
-aether run out and living standards drop by up to a third; then aether
-settles at about ten times its price, freight at three times, trade
-shrinks on the long chains far from Cinder and grows next to it, and the
-systems settle 4–14% below where they would be, Cinder's own output down
-by half. The economy page shows it as its last experiment.
+Aether takes almost no room and never spoils, and the worlds are
+specialised (garden worlds have no water, ice and ocean worlds little
+food, forge worlds only ore), so the twelve systems are one economy, held
+together by trade. Then riots on Cinder stop all but 2% of its aether for
+two years, and the empire comes apart: aether costs fifty to a hundred
+times as much, nine tenths of the trade is gone, each world falls back on
+what it can make itself, and living standards fall by 13–28%. When the
+riots end, it is whole again within a year. The economy page shows it as its last experiment.
 
 ### Levers, accounts and steps
 

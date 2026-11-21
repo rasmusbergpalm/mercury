@@ -11,8 +11,8 @@ is an example of using the economy, not part of Mercury:
   transport, migration, investment, demography, real GDP). Its calibration
   (goods, needs, recipes, terrains) is JSON in `economy/data/`. It knows
   nothing of nations and never calls out: anything above it sets its
-  levers and reads its accounts (`economy/levers.go`), and runs its day's
-  steps itself when it must act within a day.
+  levers and reads its accounts (`economy/levers.go`), and runs its tick's
+  steps itself when it must act within a tick.
 - `game/`: the game on the economy: nations, techs, public services,
   armies, wars, alliances and the computer player.
 - `experiments/`: the economy page's experiments, on the economy alone,
@@ -28,7 +28,7 @@ is an example of using the economy, not part of Mercury:
 
 Keep the split: nothing in `economy/` may refer to the game. A game rule
 that changes the economy sets a lever (add one, in economic terms, if
-none fits) or acts between the day's steps. `TestEconomyKnowsNothingOfTheGame`
+none fits) or acts between the tick's steps. `TestEconomyKnowsNothingOfTheGame`
 guards it.
 
 ## Changing the economy

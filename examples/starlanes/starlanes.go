@@ -95,7 +95,7 @@ func Build() (*economy.World, error) {
 }
 
 // Riot sets the productivity of Cinder's aether wells to mult of what it
-// was (riots: 0.15 is 85% less; 1 when they end).
+// was (riots: 0.02 is 98% less; 1 when they end).
 func Riot(w *economy.World, mult float64) {
 	for _, f := range w.Regions[Source].Firms {
 		if f.Output == economy.G("aether") {

@@ -13,14 +13,14 @@ func init() {
 // 1820 one: twelve star systems on a sparse graph of lanes, whose freight
 // burns aether from a single system, Cinder. The map settles for Settle
 // years; then, after a year, riots on Cinder cut its aether wells'
-// productivity by 85% for two years, against a run without them, and both
+// productivity by 98% for two years, against a run without them, and both
 // go on for two more years. Each month: every system's prices of aether
 // and freight, its people, living standard and real GDP a head (what its
 // firms made less what they used up, valued at its prices when the map had
 // settled: a fixed base, since aether's price jumps eightfold and back, and
 // an index chained through that drifts); every
-// lane's trade (the value shipped along it, both ways, at the origins'
-// prices); Cinder's aether output.
+// lane's trade (what is shipped along it, both ways, valued at the
+// origins' prices before the riots); Cinder's aether output.
 func runStarlanes(o *Out) {
 	if err := starlanes.Load(); err != nil {
 		panic(err)
@@ -35,7 +35,7 @@ func runStarlanes(o *Out) {
 		riotFrom = 1 * year // ticks after the map settles
 		riotTo   = 3 * year
 		length   = 5 * year
-		riot     = 0.15 // the wells' productivity in the riots
+		riot     = 0.02 // the wells' productivity in the riots
 	)
 	w, err := starlanes.Build()
 	if err != nil {
@@ -102,7 +102,7 @@ func runStarlanes(o *Out) {
 				s.Living[i][m] += r.Utility()
 			}
 			for _, t := range w.Traders {
-				s.Trade[lane[[2]int{t.Origin.ID, t.Dest.ID}]][m] += t.Shipped * t.Origin.Markets[t.Good].Price
+				s.Trade[lane[[2]int{t.Origin.ID, t.Dest.ID}]][m] += t.Shipped * base[t.Origin.ID][t.Good]
 			}
 			s.Output[m] += wells.LastOutput
 			for i, r := range w.Regions {
