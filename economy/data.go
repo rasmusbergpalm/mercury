@@ -113,6 +113,7 @@ type needsFile struct {
 		Tier                       string
 		Goods                      []string
 		Sigma, Weight, Requirement float64
+		Subsistence                float64
 	}
 }
 

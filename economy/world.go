@@ -186,9 +186,13 @@ func (w *World) EndTick() {
 		w.Migrate()
 	}
 	w.Tick++
+	starving := hasSubsistence()
 	w.eachRegion(func(r *Region) {
 		if w.Demography {
 			r.grow()
+		}
+		if starving {
+			r.starve()
 		}
 		if w.TrackGDP {
 			r.accumulateGDP()

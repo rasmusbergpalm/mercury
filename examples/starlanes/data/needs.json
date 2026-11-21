@@ -1,8 +1,8 @@
 {
-  "about": "What people want: need groups in three tiers (basic, intermediate, luxury). A group's goods substitute for each other with elasticity sigma. Utility per person is the sum over groups of weight * log(1 + Q / requirement), Q being the CES composite of the group's goods.",
+  "about": "What people want: need groups in three tiers (basic, intermediate, luxury). A group's goods substitute for each other with elasticity sigma. Utility per person is the sum over groups of weight * log(1 + Q / requirement), Q being the CES composite of the group's goods. subsistence: a quantity a person needs a tick to live; below it the whole of their utility is scaled down by Q / subsistence, and people starve (food and water here).",
   "needs": [
-    {"name": "food", "tier": "basic", "goods": ["rations", "fruit"], "sigma": 3, "weight": 1, "requirement": 0.025},
-    {"name": "water", "tier": "basic", "goods": ["water"], "sigma": 2, "weight": 1, "requirement": 0.025},
+    {"name": "food", "tier": "basic", "goods": ["rations", "fruit"], "sigma": 3, "weight": 1, "requirement": 0.025, "subsistence": 0.05},
+    {"name": "water", "tier": "basic", "goods": ["water"], "sigma": 2, "weight": 1, "requirement": 0.025, "subsistence": 0.05},
     {"name": "clothing", "tier": "basic", "goods": ["textiles"], "sigma": 2, "weight": 1, "requirement": 0.025},
     {"name": "home", "tier": "intermediate", "goods": ["appliances"], "sigma": 2, "weight": 2, "requirement": 0.015},
     {"name": "drink", "tier": "luxury", "goods": ["spirits"], "sigma": 2, "weight": 3, "requirement": 0.3}

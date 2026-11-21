@@ -52,6 +52,7 @@ type PopState struct {
 	Size, Cash float64
 	Jobs       []Job
 	Consumed   []float64
+	Want       float64 `json:",omitempty"`
 }
 
 // FirmState is a firm's state in a Snapshot.
@@ -102,7 +103,7 @@ func (w *World) Snapshot() *Snapshot {
 		}
 		for _, p := range r.Pops {
 			rs.Pops = append(rs.Pops, PopState{p.Class, p.Size, p.Cash, append([]Job(nil), p.Jobs...),
-				append([]float64(nil), p.Consumed...)})
+				append([]float64(nil), p.Consumed...), p.Want})
 		}
 		for _, f := range r.Firms {
 			fs := FirmState{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
@@ -193,7 +194,7 @@ func (w *World) SetState(s *Snapshot) error {
 			if len(ps.Consumed) != NumGoods || ps.Class != p.Class {
 				return bad("people in " + r.Name)
 			}
-			p.Size, p.Cash, p.Jobs = ps.Size, ps.Cash, append([]Job(nil), ps.Jobs...) // (copies: one snapshot may restore many worlds)
+			p.Size, p.Cash, p.Jobs, p.Want = ps.Size, ps.Cash, append([]Job(nil), ps.Jobs...), ps.Want // (copies: one snapshot may restore many worlds)
 			copy(p.Consumed, ps.Consumed)
 		}
 		for j, fs := range rs.Firms {

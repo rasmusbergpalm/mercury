@@ -13,6 +13,14 @@ import (
 //	r_k  the 'requirement' that scales the group
 //	w_k  weight
 //
+// A group may have a subsistence level s_k, a quantity below which a person
+// can't live well however much else they have (food, water): then U is
+// multiplied by min(1, Q_k / s_k), so that someone with no food gets
+// nothing from their furniture. This is the idea of Stone-Geary
+// preferences, where utility collapses below subsistence. It changes what
+// a living is worth, not what people buy: they already meet their basic
+// needs first (see Demand). Groups without one (s_k = 0) leave U alone.
+//
 // The marginal utility of a group at zero is w_k / r_k, so a pop only starts
 // spending on a group once its budget is big enough. Basic needs have small
 // requirements (high value at first, quickly satisfied), luxuries large ones
@@ -41,6 +49,7 @@ type Need struct {
 	Sigma       float64 // elasticity of substitution between the goods (≠ 1)
 	Weight      float64
 	Requirement float64
+	Subsistence float64 // per person per tick; below it every need is worth less (0: none)
 }
 
 func goods(names ...string) []GoodID {
@@ -68,7 +77,7 @@ func makeNeeds() []Need {
 		if t < 0 {
 			panic(fmt.Sprintf("data/needs.json: %s: unknown tier %q", n.Name, n.Tier))
 		}
-		out = append(out, Need{n.Name, t, goods(n.Goods...), n.Sigma, n.Weight, n.Requirement})
+		out = append(out, Need{n.Name, t, goods(n.Goods...), n.Sigma, n.Weight, n.Requirement, n.Subsistence})
 	}
 	return out
 }
@@ -194,5 +203,72 @@ func Utility(consumed []float64) float64 {
 	for _, nd := range Needs {
 		u += nd.Weight * math.Log1p(Aggregate(consumed, nd.Goods, nd.Sigma)/nd.Requirement)
 	}
-	return u
+	return u * SubsistenceMet(consumed)
+}
+
+// SubsistenceMet is how far one person consuming consumed meets the needs
+// that have a subsistence level: the product over them of min(1, Q / s),
+// 1 when every one is met (or none has a level), 0 when one is wholly
+// unmet.
+func SubsistenceMet(consumed []float64) float64 {
+	met := 1.0
+	for _, nd := range Needs {
+		if nd.Subsistence <= 0 {
+			continue
+		}
+		if q := Aggregate(consumed, nd.Goods, nd.Sigma); q < nd.Subsistence {
+			met *= q / nd.Subsistence
+		}
+	}
+	return met
+}
+
+// hasSubsistence: some need has a subsistence level, so people can starve.
+func hasSubsistence() bool {
+	for _, nd := range Needs {
+		if nd.Subsistence > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// StarvationRate is the share of a group of people who die a tick when
+// they have been wholly without their subsistence needs for a while;
+// short of that, the share is StarvationRate * Want^2 (Pop.Want, the
+// running average of 1 - SubsistenceMet), so a slight shortfall kills few
+// and a famine many. At a tick a day, with nothing at all, about half die
+// in two months, as in the worst famines; nobody starves in an economy
+// whose needs have no subsistence level.
+const StarvationRate = 0.01
+
+// wantTicks is about how many ticks of want Pop.Want averages over: people
+// get through a bad day or week on what they have put by, not through a
+// month (at a tick a day).
+const wantTicks = 30.0
+
+// starve applies a tick of deaths from want, whether or not the people
+// otherwise grow (World.Demography): a tile never empties below
+// MinPopulation. The dead's savings stay with the living.
+func (r *Region) starve() {
+	deaths := make([]float64, len(r.Pops))
+	total := 0.0
+	for i, p := range r.Pops {
+		if p.Size <= 0 {
+			continue
+		}
+		for g, q := range p.Consumed {
+			p.perPerson[g] = q / p.Size
+		}
+		p.Want += (1 - SubsistenceMet(p.perPerson) - p.Want) / wantTicks
+		deaths[i] = p.Size * StarvationRate * p.Want * p.Want
+		total += deaths[i]
+	}
+	if total <= 0 {
+		return
+	}
+	scale := math.Min(1, math.Max(0, r.Population()-MinPopulation)/total)
+	for i, p := range r.Pops {
+		p.Size -= deaths[i] * scale
+	}
 }

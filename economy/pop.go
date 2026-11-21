@@ -30,6 +30,10 @@ type Pop struct {
 	Jobs     []Job
 	Consumed []float64 // this tick, whole pop, indexed by good
 	Income   float64   // this tick, after tax: wages and dividends
+	// Want is how far short of their subsistence needs the people have been
+	// lately (0: fed; 1: wholly without), a running average over about
+	// wantTicks: what starves people is a month of want, not one bad day
+	Want float64
 
 	perPerson []float64 // scratch
 }

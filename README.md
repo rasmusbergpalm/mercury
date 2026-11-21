@@ -142,13 +142,15 @@ go run ./examples/starlanes/run
 ```
 
 Aether takes almost no room and never spoils, and the worlds are
-specialised (garden worlds have no water, ice and ocean worlds little
+specialised (garden worlds have little water, ice and ocean worlds little
 food, forge worlds only ore), so the twelve systems are one economy, held
-together by trade. Then riots on Cinder stop all but 2% of its aether for
-two years, and the empire comes apart: aether costs fifty to a hundred
-times as much, nine tenths of the trade is gone, each world falls back on
-what it can make itself, and living standards fall by 13–28%. When the
-riots end, it is whole again within a year. The economy page shows it as its last experiment.
+together by trade; food and water have a subsistence level, below which
+people starve. Then riots on Cinder stop all but 2% of its aether for two
+years, and the empire comes apart: aether costs a hundred times as much,
+nine tenths of the trade is gone, each world falls back on what it can
+make itself, and nearly half the empire's people starve. When the riots
+end, the survivors are richer than they would have been, as after the
+Black Death, but the trade never comes back in full. The economy page shows it as its last experiment.
 
 ### Levers, accounts and steps
 

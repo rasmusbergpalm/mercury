@@ -6,7 +6,9 @@
     {"firm": "Fiber farm", "output": "fiber", "tfp": 1.5, "factors": [["labor", 0.6]]},
     {"firm": "Ore mine", "output": "ore", "tfp": 1.5, "factors": [["labor", 0.6]]},
     {"firm": "Orchard", "output": "fruit", "tfp": 1.5, "factors": [["labor", 0.6]]},
-    {"firm": "Aether well", "output": "aether", "tfp": 1.5, "factors": [["labor", 0.6]]}
+    {"firm": "Aether well", "output": "aether", "tfp": 1.5, "factors": [["labor", 0.6]]},
+    {"firm": "Water recycler", "output": "water", "tfp": 1, "factors": [["labor", 0.6]]},
+    {"firm": "Hydroponics", "output": "rations", "tfp": 1, "factors": [["labor", 0.6]]}
   ],
   "processing": [
     {"firm": "Weavery", "output": "textiles", "tfp": 1.5, "factors": [["labor", 0.3], ["fiber", 0.4]]},
