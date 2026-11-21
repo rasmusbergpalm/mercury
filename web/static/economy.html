@@ -1165,7 +1165,8 @@ function drawStarlanes() {
   // systems the riots cut off: no trade at all along their lanes by the riots' end
   const laneTrade = (run, i) => S.lanes.reduce((t, l, k) => t + (l.A === i || l.B === i ? run.Trade[k][m] : 0), 0);
   const cutOff = S.systems.map((p, i) => i).filter((i) => laneTrade(R, i) < 0.005 * laneTrade(C, i));
-  const far = S.systems.map((p, i) => i).filter((i) => S.systems[i].Hops === 4 && !cutOff.includes(i));
+  const reached = S.systems.map((p, i) => i).filter((i) => S.systems[i].Hops === 4 && !cutOff.includes(i));
+  const far = reached.length ? reached : S.systems.map((p, i) => i).filter((i) => S.systems[i].Hops === 4);
   const avg = (rows, is, i) => is.reduce((t, k) => t + rows[k][i], 0) / is.length;
   const ts = (rows, is) => Array.from({ length: months }, (_, i) => [x(i), avg(rows, is, i)]);
   const cfg = { xTicks: [0, 1, 2, 3, 4, 5], xFmt: (v) => `${S.start + v}`, xLabel: "year", w: 480, h: 320,
