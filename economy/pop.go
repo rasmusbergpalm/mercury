@@ -57,11 +57,11 @@ func (p *Pop) Demand(prices []float64, out []float64) {
 	p.demand(&d, out)
 }
 
-// People spend spendShare of their cash a day and keep the rest: savings
-// carry them through a bad month, so a dip in wages or a jump in prices
-// moves what they buy by a twentieth as much on the day, and a market's
+// People spend spendShare of their cash a tick and keep the rest: savings
+// carry them through a bad spell, so a dip in wages or a jump in prices
+// moves what they buy by a twentieth as much on the tick, and a market's
 // demand doesn't swing with every wage. (Spending it all, they turned every
-// day's wage straight into the next day's demand.)
+// tick's wage straight into the next tick's demand.)
 const spendShare = 1.0 / 20
 
 // demand is Demand at prices already prepared.

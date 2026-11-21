@@ -101,7 +101,7 @@ func (w *World) Step() {
 	w.runAI()
 	w.setLevers()
 	e := w.World
-	e.BeginDay()
+	e.BeginTick()
 	e.PlanTrade()
 	w.planDay()
 	e.Markets()
@@ -112,7 +112,7 @@ func (w *World) Step() {
 	w.collect()
 	w.settleDay()
 	w.setPolicies() // (what techs learned today do to today's growth)
-	e.EndDay()
+	e.EndTick()
 	if w.Spec != nil && w.Tick%HistoryEvery == 0 {
 		w.record()
 	}

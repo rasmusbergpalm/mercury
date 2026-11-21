@@ -18,7 +18,7 @@ func TestRealGDPCountsGoodsNotPounds(t *testing.T) {
 		if coalQty > 0 {
 			c.AccNet[coal], c.AccValue[coal], c.AccVolume[coal] = 30*coalQty, 30*coalQty*coalPrice, 30*coalQty
 		}
-		c.Days = 30
+		c.Ticks = 30
 		r.warm = true
 		r.linkGDP()
 	}

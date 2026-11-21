@@ -5,14 +5,14 @@ import (
 	"sync"
 )
 
-// Parallel days: the tiles' own work (firms planning, the labour and goods
+// Parallel ticks: the tiles' own work (firms planning, the labour and goods
 // markets, merchants planning and shipping, production, dividends) runs on
 // every core at once. Each tile touches only its own state while it does;
 // what it owes others (merchants' sales on behalf of another tile's
 // trading house) is written into ledgers that are settled one by one, in a
 // fixed order, afterwards; what it collects in taxes and duties stays in
 // its own accounts.
-// So a day's result doesn't depend on how the work was shared out, and the
+// So a tick's result doesn't depend on how the work was shared out, and the
 // simulation stays deterministic.
 
 // ParallelMin is the fewest tiles worth spreading over several cores.

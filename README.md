@@ -7,8 +7,8 @@ Merchants carry goods between neighbouring tiles and pay for the transport
 it takes. Firms hire workers and buy inputs, and owners build more capacity
 where it pays. People spend their income on what they need most and move to
 where they live better. Nothing is solved for: prices, wages, trade routes,
-specialisation and where people live all come out of these choices, day by
-day.
+specialisation and where people live all come out of these choices, tick by
+tick.
 
 Most trade models treat transport as an “iceberg”, where a fixed share of each shipment melts away on the way, or as a cost set from outside the model. In Mercury, carriage is made by firms like any other good and bought by merchants at a market price. So the cost of trade is an outcome of the model, not a parameter. It rises with wages and with demand for carriage, and falls with better methods of transport and better roads. When trade booms, carters compete with every other trade for workers.
 
@@ -41,13 +41,17 @@ import (
 )
 
 func main() {
-	// the example economy on its 6×6 example map, transport at its normal cost
-	w, err := economy.BuildWorld(1, economy.DefaultMap, nil)
+	// the example economy on its 6×6 example hex map, transport at its normal cost
+	g, err := economy.HexGraph(economy.DefaultMap, nil)
+	if err != nil {
+		panic(err)
+	}
+	w, err := economy.BuildWorld(1, g)
 	if err != nil {
 		panic(err)
 	}
 	w.Investment, w.Migration = true, true // owners invest, people move
-	for day := 0; day < 2*economy.TicksPerYear; day++ {
+	for tick := 0; tick < 2*365; tick++ { // two years: the example economy's tick is a day
 		w.Step()
 	}
 	bread := economy.G("bread")
@@ -58,7 +62,9 @@ func main() {
 }
 ```
 
-The same world stepped the same number of days always gives bit-identical
+The engine counts time in ticks and leaves their meaning to whoever runs
+it: the example economy's tick is a day, from 1820. The same world stepped
+the same number of ticks always gives bit-identical
 state. Random choices are hashes of the seed and stable keys. The tiles'
 own work runs in parallel and settles what it owes other tiles in a fixed
 order afterwards. So an experiment compares like with like: two runs differ
@@ -66,7 +72,7 @@ by the change you made, not by luck.
 
 ## The model
 
-Each day, on every tile:
+Each tick, on every tile:
 
 - **Firms** plan with a Cobb–Douglas recipe,
   `q = TFP · levels^(1−s) · Π inputᵢ^aᵢ`, where `levels` is the firm's
@@ -91,17 +97,19 @@ Each day, on every tile:
   `τ = cost × distance × bulk` is the transport a unit needs. Transport is
   a service like any other, made by carters and bought in the market.
   Perishable goods lose some of their quantity on every hop.
-- **People** move a little each day towards the neighbouring tiles where
+- **People** move a little each tick towards the neighbouring tiles where
   they live better, and their numbers grow when they eat well.
-- **Real GDP** is chained monthly with a Fisher index, so growth is
-  measured in quantities, not pounds.
+- **Real GDP** is chained with a Fisher index, linking each period (as
+  long as the caller likes: the game links it monthly) to the last, so
+  growth is measured in quantities, not pounds.
 
 ### The economy is data; 1820 is an example
 
 The engine doesn't fix what is made or where. The goods, needs, recipes and
 terrains are JSON files in [`economy/data/`](economy/data), and a map is a
-list of rows of terrain letters. What comes with Mercury is an example
-economy, Europe around 1820, and an example map (`DefaultMap`, 36 tiles).
+graph of places joined by lanes. What comes with Mercury is an example
+economy, Europe around 1820, and an example hex map (`DefaultMap`, 36
+tiles, rows of terrain letters that `HexGraph` turns into a graph).
 Each data file starts with a note on what its fields mean. Edit them, or
 give `economy.LoadData` another set, to model another economy.
 
@@ -114,9 +122,9 @@ give `economy.LoadData` another set, to model another economy.
 
 `BuildWorld` builds a world from the data and a map: every good and firm,
 with the later production methods switched off, and workers and owners in
-every tile. `BuildGraphWorld` builds one whose tiles are any places joined
-by any lanes, each of its own length: market towns and the tracks between them, ports and
-their sea routes, star systems.
+every tile. A map's places can be anything joined by lanes, each of its
+own length: the cells of a hex grid, market towns and the tracks between
+them, ports and their sea routes, star systems.
 
 ### Another economy: star lanes
 
@@ -127,7 +135,7 @@ found in only one barren system, Cinder. Freight, the transport merchants
 buy, is made from labour and aether, so a system with no aether can
 receive goods but can't send any. It has its own data files (goods, needs,
 recipes and kinds of system) and a graph map, and nothing in the engine
-changes:
+changes. Its ticks are days, from 2300:
 
 ```bash
 go run ./examples/starlanes
@@ -145,8 +153,8 @@ can no longer import its food.
 The economy knows nothing of states, and never calls out. Anything outside
 it, such as a model of policy or the game below, acts on it in three
 ways. It sets plain levers, it reads the accounts where what the economy
-collects piles up, and, if it needs to act during the day, it runs the
-day's steps itself. [`economy/levers.go`](economy/levers.go) lists them
+collects piles up, and, if it needs to act during a tick, it runs the
+tick's steps itself. [`economy/levers.go`](economy/levers.go) lists them
 all:
 
 | Where | Levers | Accounts |
@@ -156,8 +164,8 @@ all:
 | a route (`Trader`) | `Tariff`, `Closed` (an embargo) | |
 | a firm | `Mult` (productivity), `Enabled` and each method's `Enabled` (which recipes it may use) and `TFP`, an `Expansion` paid from outside, `Monopoly` | |
 
-The day's steps are `BeginDay`, `PlanTrade`, `Markets`, `Ship`, `Produce`
-and `EndDay`; `Step` runs them in turn.
+A tick's steps are `BeginTick`, `PlanTrade`, `Markets`, `Ship`, `Produce`
+and `EndTick`; `Step` runs them in turn.
 
 A customs border down the middle of the map takes a few lines (from
 `Example_tariff` in [`economy/example_test.go`](economy/example_test.go)):
@@ -231,7 +239,7 @@ Each experiment on the economy page is a file in
 [`experiments/`](experiments): the corridor, the coal boom, money's
 neutrality, the Corn Laws, and the rest. They use nothing but the
 `economy` package. An experiment can also record the whole economy as it
-runs, as a snapshot every so many days, to read out afterwards whatever it
+runs, as a snapshot every so many ticks, to read out afterwards whatever it
 didn't measure:
 
 ```bash

@@ -7,7 +7,7 @@ import (
 
 func newTestWorld(t *testing.T, cost float64) *World {
 	t.Helper()
-	w, err := BuildWorld(cost, DefaultMap, nil)
+	w, err := hexWorld(cost, DefaultMap, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,13 +152,13 @@ func TestCoastIsCheapToCross(t *testing.T) {
 }
 
 func TestBuildWorldRejectsBadMaps(t *testing.T) {
-	if _, err := BuildWorld(1, []string{"PX"}, nil); err == nil {
+	if _, err := hexWorld(1, []string{"PX"}, nil); err == nil {
 		t.Error("unknown terrain symbol accepted")
 	}
-	if _, err := BuildWorld(1, []string{"PP", "P"}, nil); err == nil {
+	if _, err := hexWorld(1, []string{"PP", "P"}, nil); err == nil {
 		t.Error("ragged map accepted")
 	}
-	w, err := BuildWorld(math.Inf(1), DefaultMap, nil)
+	w, err := hexWorld(math.Inf(1), DefaultMap, nil)
 	if err != nil || len(w.Traders) != 0 {
 		t.Errorf("autarky world should have no traders (err %v)", err)
 	}
@@ -199,7 +199,7 @@ func TestTransportCostShapesTrade(t *testing.T) {
 }
 
 func BenchmarkStep(b *testing.B) {
-	w, _ := BuildWorld(1, DefaultMap, nil)
+	w, _ := hexWorld(1, DefaultMap, nil)
 	for i := 0; i < 200; i++ {
 		w.Step()
 	}
@@ -207,4 +207,13 @@ func BenchmarkStep(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		w.Step()
 	}
+}
+
+// hexWorld builds a world on a hex map (HexGraph).
+func hexWorld(cost float64, rows, names []string) (*World, error) {
+	g, err := HexGraph(rows, names)
+	if err != nil {
+		return nil, err
+	}
+	return BuildWorld(cost, g)
 }

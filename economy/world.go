@@ -30,13 +30,12 @@ type World struct {
 	grid []int      // per cell of the map (row*Cols+col): its region, or -1 for sea
 }
 
-// Link is a pair of neighbouring regions and the cost of one hop between them:
-// the average of the two tiles' movement costs, or, if Fixed, its own (a
-// lane of a graph map).
+// Link is a lane between two regions and the cost of one hop along it: the
+// lane's length times the average of the two tiles' movement costs.
 type Link struct {
-	A, B  int
-	Hop   float64
-	Fixed bool `json:",omitempty"`
+	A, B   int
+	Hop    float64
+	Length float64
 }
 
 // Each tile's trading house starts with this much cash per route.
@@ -113,23 +112,23 @@ func (w *World) Money() float64 {
 	return s
 }
 
-// Step advances the world one day: BeginDay, PlanTrade, Markets, Ship,
-// Produce and EndDay, in turn. A caller that acts within the day (to buy in
-// the markets, or to collect what the day's work owes it) runs the steps
+// Step advances the world one tick: BeginTick, PlanTrade, Markets, Ship,
+// Produce and EndTick, in turn. A caller that acts within the tick (to buy in
+// the markets, or to collect what the tick's work owes it) runs the steps
 // itself and acts between them. The tiles' own work runs in parallel (see
 // eachRegion); what they owe each other is settled in order after.
 func (w *World) Step() {
-	w.BeginDay()
+	w.BeginTick()
 	w.PlanTrade()
 	w.Markets()
 	w.Ship()
 	w.Produce()
-	w.EndDay()
+	w.EndTick()
 }
 
-// BeginDay opens the day: the goods in play are noted, prices recorded,
+// BeginTick opens the tick: the goods in play are noted, prices recorded,
 // and firms and owners plan.
-func (w *World) BeginDay() {
+func (w *World) BeginTick() {
 	w.refreshMade()
 	w.eachRegion(func(r *Region) {
 		copy(w.TradePrices[r.ID], r.refreshPrices())
@@ -177,9 +176,9 @@ func (w *World) Produce() {
 	w.settleHouses()
 }
 
-// EndDay closes the day: owners settle their projects, people move and
-// multiply, and the day advances.
-func (w *World) EndDay() {
+// EndTick closes the tick: owners settle their projects, people move and
+// multiply, and the tick advances.
+func (w *World) EndTick() {
 	if w.Investment {
 		w.eachRegion((*Region).settleFirms)
 	}
@@ -235,15 +234,16 @@ func (r *Region) shipAll() {
 // Migration rules (when World.Migration is on).
 const (
 	// share of a tile's people who move per tick per unit of relative utility
-	// gap: a 10% gap draws about 7% of a tile's people a year (with a hop of
-	// 0). Ten times faster, a building boom on a tile emptied its
-	// neighbours in months, and the people left again when it ended.
+	// gap: a 10% gap draws about 7% of a tile's people in 365 ticks (with a
+	// hop of 0; at a tick a day, a year). Ten times faster, a building boom
+	// on a tile emptied its neighbours in a few dozen ticks, and the people
+	// left again when it ended.
 	MigrationRate  = 0.002
 	migrationStart = 50 // ticks before anyone moves (utility records need to settle)
 	MinPopulation  = 20 // a tile never empties below this
 )
 
-// MigrationShare is the share of from's people who move to to in a day,
+// MigrationShare is the share of from's people who move to to in a tick,
 // for a relative gap in living standards and the hop between them. A border
 // holds no one back: in the nineteenth century some fifty million Europeans
 // left for the Americas and elsewhere, and millions more crossed into the
@@ -338,13 +338,11 @@ func (w *World) Population() float64 {
 func (w *World) RefreshHops() {
 	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
 	for i, l := range w.Links {
-		if !l.Fixed {
-			w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
-		}
+		w.Links[i].Hop = l.Length * hop(w.Regions[l.A], w.Regions[l.B])
 	}
 	for _, t := range w.Traders {
 		if !t.FixedDistance {
-			t.SetDistance(hop(t.Origin, t.Dest))
+			t.SetDistance(t.length * hop(t.Origin, t.Dest))
 		}
 	}
 }
@@ -353,13 +351,13 @@ func (w *World) RefreshHops() {
 func (w *World) RefreshHopsAt(r *Region) {
 	hop := func(a, b *Region) float64 { return (a.MoveCost() + b.MoveCost()) / 2 }
 	for i, l := range w.Links {
-		if !l.Fixed && (l.A == r.ID || l.B == r.ID) {
-			w.Links[i].Hop = hop(w.Regions[l.A], w.Regions[l.B])
+		if l.A == r.ID || l.B == r.ID {
+			w.Links[i].Hop = l.Length * hop(w.Regions[l.A], w.Regions[l.B])
 		}
 	}
 	for _, t := range w.Traders {
 		if !t.FixedDistance && (t.Origin == r || t.Dest == r) {
-			t.SetDistance(hop(t.Origin, t.Dest))
+			t.SetDistance(t.length * hop(t.Origin, t.Dest))
 		}
 	}
 }

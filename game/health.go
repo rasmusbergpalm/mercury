@@ -47,13 +47,14 @@ func (r *Region) HealthGrowth() float64 {
 }
 
 // growthBonus is what the game adds to the tile's natural growth (the
-// economy's GrowthBonus): its nation's medicine and its public health move
-// growth within the natural limits (people can't multiply faster than they
-// can), and schooling lowers it beyond them.
+// economy's GrowthBonus, a tick's): its nation's medicine and its public
+// health move growth within the natural limits (people can't multiply
+// faster than they can), and schooling lowers it beyond them. tech, the
+// health and schooling figures are a year's.
 func (r *Region) growthBonus(tech float64) float64 {
 	clamp := func(g float64) float64 { return math.Max(PopGrowthMin, math.Min(PopGrowthMax, g)) }
-	nat := r.NaturalGrowth()
-	return clamp(nat+r.HealthGrowth()+tech) - clamp(nat) - SchooledBirths*r.Educated
+	nat := r.NaturalGrowth() * TicksPerYear
+	return (clamp(nat+r.HealthGrowth()+tech) - clamp(nat) - SchooledBirths*r.Educated) / TicksPerYear
 }
 
 // eduMult is what the tile's schooling does to a firm's productivity:

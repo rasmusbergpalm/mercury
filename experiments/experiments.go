@@ -43,6 +43,10 @@ const (
 	Years  = 5
 )
 
+// TicksPerYear: the economy counts ticks, and the 1820 economy's tick is a
+// day.
+const TicksPerYear = 365.0
+
 var (
 	days   = int(TicksPerYear)
 	settle = Settle * days // the day each experiment starts
@@ -153,7 +157,11 @@ var (
 // worldAt is the full world on the map at a transport cost, with owners
 // investing and people free to move, and no population growth.
 func worldAt(cost float64) *World {
-	w, err := BuildWorld(cost, theMap, theNames)
+	g, err := HexGraph(theMap, theNames)
+	if err != nil {
+		panic(err)
+	}
+	w, err := BuildWorld(cost, g)
 	if err != nil {
 		panic(err)
 	}

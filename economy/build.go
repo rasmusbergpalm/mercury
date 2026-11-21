@@ -3,6 +3,7 @@ package economy
 import (
 	"fmt"
 	"math"
+	"sort"
 )
 
 // Recipe is a firm template: output, base TFP and Cobb-Douglas factors.
@@ -180,147 +181,48 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 	return firms
 }
 
-// BuildWorld builds the world for a hex map: a tile for every land cell,
-// with its terrain's firms and every tile's (the recipes that start off
-// switched off), a hundred people of whom a few are owners, and
-// routes for every good to every neighbour. transportCost scales every hop;
-// +Inf means autarky (no trade). names, if given, names the tiles in order
-// (row by row, skipping the sea); otherwise a tile is named by its row and
-// column.
-func BuildWorld(transportCost float64, gameMap, names []string) (*World, error) {
-	if math.IsNaN(transportCost) || transportCost < 0 {
-		return nil, fmt.Errorf("transport cost must be a non-negative number")
-	}
-	w, err := buildWorld(transportCost, gameMap, names)
-	if err != nil {
-		return nil, err
-	}
-	for _, r := range w.Regions {
-		r.UpdateAgglomeration()
-	}
-	return w, nil
+// Graph is a map: places joined by lanes. Rows and Cols, if set, are the
+// grid the places sit on (a hex map's, from HexGraph), so that a tile can
+// be found by its cell (World.RegionAt).
+type Graph struct {
+	Places     []Place
+	Lanes      []Lane
+	Rows, Cols int `json:",omitempty"`
 }
 
-// Sea marks a map cell with no tile: open water. Tiles next to it (or to
-// the map's edge) are coast.
-const Sea = '~'
-
-// The cost of a hop between neighbouring tiles is the average of the two
-// tiles' movement costs (land 1, coastal 1/4, less with infrastructure). Traders
-// only run between neighbours; longer trade happens by re-export along a chain
-// of tiles.
-// names, if given, names the tiles in order (row by row, skipping the sea);
-// otherwise a tile is named by its row and column.
-func buildWorld(transportCost float64, gameMap []string, names []string) (*World, error) {
-	if len(gameMap) == 0 {
-		return nil, fmt.Errorf("empty map")
-	}
-	rows, cols := len(gameMap), len(gameMap[0])
-	for r, row := range gameMap {
-		if len(row) != cols {
-			return nil, fmt.Errorf("map row %d has %d columns, want %d", r, len(row), cols)
-		}
-	}
-	grid := make([][]*Region, rows)
-	var regions []*Region
-	for r := 0; r < rows; r++ {
-		if len(gameMap[r]) != cols {
-			return nil, fmt.Errorf("map row %d has %d columns, want %d", r, len(gameMap[r]), cols)
-		}
-		grid[r] = make([]*Region, cols)
-		for c := 0; c < cols; c++ {
-			if gameMap[r][c] == Sea {
-				continue
-			}
-			t, err := TerrainBySymbol(gameMap[r][c])
-			if err != nil {
-				return nil, err
-			}
-			land := 0
-			for _, nb := range HexNeighbors(r, c, rows, cols) {
-				if gameMap[nb[0]][nb[1]] != Sea {
-					land++
-				}
-			}
-			coastal := land < 6
-			name := fmt.Sprintf("%d%d", r, c)
-			if names != nil {
-				if len(regions) >= len(names) {
-					return nil, fmt.Errorf("the map has more tiles than names")
-				}
-				name = names[len(regions)]
-			}
-			// a hundred people, who start with 10 a head of spending a day, in
-			// savings of a twentieth (spendShare): one group of workers, a few
-			// of whom are made owners
-			reg := NewRegion(len(regions), name, makeFirms(t, coastal), 1, 100, 1000/spendShare)
-			addOwnerClasses(reg)
-			reg.Row, reg.Col, reg.Terrain, reg.BaseMove, reg.Coastal = r, c, t.Name, t.MoveCost, coastal
-			grid[r][c] = reg
-			regions = append(regions, reg)
-		}
-	}
-
-	if len(regions) == 0 {
-		return nil, fmt.Errorf("the map has no land")
-	}
-	if names != nil && len(names) != len(regions) {
-		return nil, fmt.Errorf("the map has %d tiles but %d names", len(regions), len(names))
-	}
-	var traders []*Trader
-	var links []Link
-	for _, a := range regions {
-		for _, nb := range HexNeighbors(a.Row, a.Col, rows, cols) {
-			b := grid[nb[0]][nb[1]]
-			if b == nil {
-				continue // sea
-			}
-			hop := (a.MoveCost() + b.MoveCost()) / 2
-			if a.ID < b.ID {
-				links = append(links, Link{A: a.ID, B: b.ID, Hop: hop})
-			}
-			if !math.IsInf(transportCost, 1) {
-				for _, g := range Tradable {
-					traders = append(traders, NewTrader(g, a, b, hop, transportCost))
-				}
-			}
-		}
-	}
-	w := NewWorld(rows, cols, regions, traders, links)
-	w.Plan = Plan{Map: gameMap, Names: names, TransportCost: transportCost}
-	return w, nil
-}
-
-// Place is a tile of a map given as a graph (BuildGraphWorld): its name
-// and its terrain's name.
+// Place is a tile of a map: its name, its terrain's name, whether it is on
+// the coast (it then has the coast's producers, CoastRaw, and goods pass it
+// by sea at CoastMove), and, on a grid, its cell.
 type Place struct {
 	Name, Terrain string
+	Coastal       bool `json:",omitempty"`
+	Row, Col      int  `json:",omitempty"`
 }
 
-// Lane joins places A and B of a graph map (indices into its places), at a
-// distance: the transport a unit of bulk takes over it, and what spoils on
-// the way, scale with it (a hop between hex neighbours on open land is 1).
+// Lane joins places A and B (indices into the places). A hop along it
+// takes Length times the average of its two tiles' movement costs (see
+// Region.MoveCost): on a hex map every lane has length 1; on a map of star
+// systems, ports or towns, each its own.
 type Lane struct {
-	A, B     int
-	Distance float64
+	A, B   int
+	Length float64
 }
 
-// BuildGraphWorld builds a world whose tiles are any places joined by any
-// lanes: star systems and the lanes between them, ports and their sea
-// routes, market towns and the tracks between them. Merchants trade, and
-// people move, only along the lanes, each at its own fixed distance; there
-// is no sea and no coast. Every tile starts as BuildWorld's do: its terrain's firms and every
-// tile's, a hundred people of whom a few are owners. transportCost scales
-// every lane; +Inf means autarky (no trade).
-func BuildGraphWorld(transportCost float64, places []Place, lanes []Lane) (*World, error) {
+// BuildWorld builds a world on a map: a tile for every place, with its
+// terrain's firms and every tile's (the recipes that start off switched
+// off) and a hundred people of whom a few are owners, and routes for every
+// good both ways along every lane. Merchants trade, and people move, only
+// along the lanes; longer trade happens by re-export along a chain of
+// tiles. transportCost scales every hop; +Inf means autarky (no trade).
+func BuildWorld(transportCost float64, g Graph) (*World, error) {
 	if math.IsNaN(transportCost) || transportCost < 0 {
 		return nil, fmt.Errorf("transport cost must be a non-negative number")
 	}
-	if len(places) == 0 {
-		return nil, fmt.Errorf("no places")
+	if len(g.Places) == 0 {
+		return nil, fmt.Errorf("the map has no places")
 	}
-	var regions []*Region
-	for i, p := range places {
+	regions := make([]*Region, len(g.Places))
+	for i, p := range g.Places {
 		var t *Terrain
 		for k := range Terrains {
 			if Terrains[k].Name == p.Terrain {
@@ -330,44 +232,132 @@ func BuildGraphWorld(transportCost float64, places []Place, lanes []Lane) (*Worl
 		if t == nil {
 			return nil, fmt.Errorf("place %s: unknown terrain %q", p.Name, p.Terrain)
 		}
-		reg := NewRegion(i, p.Name, makeFirms(*t, false), 1, 100, 1000/spendShare)
-		addOwnerClasses(reg)
-		reg.Terrain, reg.BaseMove = t.Name, t.MoveCost
-		regions = append(regions, reg)
-	}
-	var traders []*Trader
-	var links []Link
-	seen := map[[2]int]bool{}
-	for _, l := range lanes {
-		if l.A < 0 || l.B < 0 || l.A >= len(places) || l.B >= len(places) || l.A == l.B {
-			return nil, fmt.Errorf("lane %d-%d: not two of the %d places", l.A, l.B, len(places))
+		if g.Rows > 0 && (p.Row < 0 || p.Row >= g.Rows || p.Col < 0 || p.Col >= g.Cols) {
+			return nil, fmt.Errorf("place %s: cell (%d, %d) is off the %d×%d grid", p.Name, p.Row, p.Col, g.Rows, g.Cols)
 		}
-		if !(l.Distance > 0) || math.IsInf(l.Distance, 1) {
-			return nil, fmt.Errorf("lane %d-%d: distance must be positive", l.A, l.B)
+		// a hundred people, who start with 10 a head of spending a tick, in
+		// savings of a twentieth (spendShare): one group of workers, a few
+		// of whom are made owners
+		reg := NewRegion(i, p.Name, makeFirms(*t, p.Coastal), 1, 100, 1000/spendShare)
+		addOwnerClasses(reg)
+		reg.Row, reg.Col, reg.Terrain, reg.BaseMove, reg.Coastal = p.Row, p.Col, t.Name, t.MoveCost, p.Coastal
+		regions[i] = reg
+	}
+	// each tile's lanes, in order of the tile at their other end
+	incident := make([][]int, len(regions))
+	seen := map[[2]int]bool{}
+	for k, l := range g.Lanes {
+		if l.A < 0 || l.B < 0 || l.A >= len(regions) || l.B >= len(regions) || l.A == l.B {
+			return nil, fmt.Errorf("lane %d-%d: not two of the %d places", l.A, l.B, len(regions))
+		}
+		if !(l.Length > 0) || math.IsInf(l.Length, 1) {
+			return nil, fmt.Errorf("lane %d-%d: length must be positive", l.A, l.B)
 		}
 		key := [2]int{min(l.A, l.B), max(l.A, l.B)}
 		if seen[key] {
 			return nil, fmt.Errorf("lane %d-%d given twice", l.A, l.B)
 		}
 		seen[key] = true
-		a, b := regions[key[0]], regions[key[1]]
-		links = append(links, Link{a.ID, b.ID, l.Distance, true})
-		if !math.IsInf(transportCost, 1) {
-			for _, g := range Tradable {
-				for _, ends := range [][2]*Region{{a, b}, {b, a}} {
-					t := NewTrader(g, ends[0], ends[1], l.Distance, transportCost)
-					t.FixedDistance = true // a lane's length is its own, not the tiles' move costs
-					traders = append(traders, t)
-				}
+		incident[l.A], incident[l.B] = append(incident[l.A], k), append(incident[l.B], k)
+	}
+	other := func(l Lane, a int) int {
+		if l.A == a {
+			return l.B
+		}
+		return l.A
+	}
+	links := make([]Link, len(g.Lanes))
+	for k, l := range g.Lanes {
+		links[k] = Link{A: l.A, B: l.B, Length: l.Length}
+	}
+	var traders []*Trader
+	for a := range regions {
+		ks := incident[a]
+		sort.SliceStable(ks, func(i, j int) bool { return other(g.Lanes[ks[i]], a) < other(g.Lanes[ks[j]], a) })
+		if math.IsInf(transportCost, 1) {
+			continue
+		}
+		for _, k := range ks {
+			b := regions[other(g.Lanes[k], a)]
+			for _, good := range Tradable {
+				t := NewTrader(good, regions[a], b, 0, transportCost)
+				t.length = g.Lanes[k].Length
+				traders = append(traders, t)
 			}
 		}
 	}
-	w := NewWorld(0, 0, regions, traders, links)
-	w.Plan = Plan{Places: places, Lanes: lanes, TransportCost: transportCost}
+	w := NewWorld(g.Rows, g.Cols, regions, traders, links)
+	w.Plan = Plan{Graph: g, TransportCost: transportCost}
+	w.RefreshHops()
 	for _, r := range w.Regions {
 		r.UpdateAgglomeration()
 	}
 	return w, nil
+}
+
+// Sea marks a cell of a hex map with no tile: open water. Tiles next to it
+// (or to the map's edge) are coast.
+const Sea = '~'
+
+// HexGraph makes the map of a hex grid, given as rows of terrain symbols
+// (Sea for open water): a place for every land cell, coastal if it is next
+// to the sea or the grid's edge, and a lane of length 1 to each
+// neighbouring land cell. names, if given, names the places in order (row
+// by row, skipping the sea); otherwise a place is named by its row and
+// column.
+func HexGraph(rows []string, names []string) (Graph, error) {
+	if len(rows) == 0 {
+		return Graph{}, fmt.Errorf("empty map")
+	}
+	nr, nc := len(rows), len(rows[0])
+	for r, row := range rows {
+		if len(row) != nc {
+			return Graph{}, fmt.Errorf("map row %d has %d columns, want %d", r, len(row), nc)
+		}
+	}
+	g := Graph{Rows: nr, Cols: nc}
+	id := make([]int, nr*nc)
+	for r := 0; r < nr; r++ {
+		for c := 0; c < nc; c++ {
+			id[r*nc+c] = -1
+			if rows[r][c] == Sea {
+				continue
+			}
+			t, err := TerrainBySymbol(rows[r][c])
+			if err != nil {
+				return Graph{}, err
+			}
+			land := 0
+			for _, nb := range HexNeighbors(r, c, nr, nc) {
+				if rows[nb[0]][nb[1]] != Sea {
+					land++
+				}
+			}
+			name := fmt.Sprintf("%d%d", r, c)
+			if names != nil {
+				if len(g.Places) >= len(names) {
+					return Graph{}, fmt.Errorf("the map has more tiles than names")
+				}
+				name = names[len(g.Places)]
+			}
+			id[r*nc+c] = len(g.Places)
+			g.Places = append(g.Places, Place{Name: name, Terrain: t.Name, Coastal: land < 6, Row: r, Col: c})
+		}
+	}
+	if len(g.Places) == 0 {
+		return Graph{}, fmt.Errorf("the map has no land")
+	}
+	if names != nil && len(names) != len(g.Places) {
+		return Graph{}, fmt.Errorf("the map has %d tiles but %d names", len(g.Places), len(names))
+	}
+	for a, p := range g.Places {
+		for _, nb := range HexNeighbors(p.Row, p.Col, nr, nc) {
+			if b := id[nb[0]*nc+nb[1]]; b > a {
+				g.Lanes = append(g.Lanes, Lane{A: a, B: b, Length: 1})
+			}
+		}
+	}
+	return g, nil
 }
 
 // Owner classes: each is this share of a tile's people and

@@ -5,12 +5,12 @@ import (
 	"testing"
 )
 
-// A graph map: three places in a line. Trade and migration run along the
+// A map of three places in a line, with lanes of their own lengths. Trade and migration run along the
 // lanes only, and a restored world goes on exactly as the original.
 func TestGraphWorld(t *testing.T) {
-	places := []Place{{"A", "plains"}, {"B", "hills"}, {"C", "forest"}}
+	places := []Place{{Name: "A", Terrain: "plains"}, {Name: "B", Terrain: "hills"}, {Name: "C", Terrain: "forest"}}
 	lanes := []Lane{{0, 1, 2}, {1, 2, 0.5}}
-	w, err := BuildGraphWorld(1, places, lanes)
+	w, err := BuildWorld(1, Graph{Places: places, Lanes: lanes})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,10 +39,10 @@ func TestGraphWorld(t *testing.T) {
 	if string(a) != string(b) {
 		t.Error("a restored graph world plays differently")
 	}
-	if _, err := BuildGraphWorld(1, places, []Lane{{0, 0, 1}}); err == nil {
+	if _, err := BuildWorld(1, Graph{Places: places, Lanes: []Lane{{0, 0, 1}}}); err == nil {
 		t.Error("a lane from a place to itself was accepted")
 	}
-	if _, err := BuildGraphWorld(1, []Place{{"X", "moon"}}, nil); err == nil {
+	if _, err := BuildWorld(1, Graph{Places: []Place{{Name: "X", Terrain: "moon"}}}); err == nil {
 		t.Error("an unknown terrain was accepted")
 	}
 }

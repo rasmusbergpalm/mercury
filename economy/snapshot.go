@@ -5,22 +5,18 @@ import (
 	"fmt"
 )
 
-// Plan is what a world is built from (BuildWorld): a hex map of terrain
-// symbols, the tiles' names (row by row, skipping the sea; none: by row and
-// column), and the cost of transport.
+// Plan is what a world is built from (BuildWorld): its map and the cost of
+// transport.
 type Plan struct {
-	Map           []string `json:",omitempty"`
-	Names         []string `json:",omitempty"`
-	Places        []Place  `json:",omitempty"` // a graph map (BuildGraphWorld)
-	Lanes         []Lane   `json:",omitempty"`
+	Graph         Graph
 	TransportCost float64
 }
 
-// Snapshot is everything about an economy that carries from one day to the
+// Snapshot is everything about an economy that carries from one tick to the
 // next, its levers and accounts among them: restoring it gives a world that
 // goes on exactly as the original would have. It is plain data, made to be
-// written as JSON: a series of them is a record of an experiment, day by
-// day.
+// written as JSON: a series of them is a record of an experiment, tick by
+// tick.
 type Snapshot struct {
 	Plan                                        Plan
 	Tick                                        int
@@ -141,13 +137,7 @@ func (w *World) Snapshot() *Snapshot {
 // Restore builds the world a snapshot was taken of, and gives it the
 // snapshot's state.
 func Restore(s *Snapshot) (*World, error) {
-	var w *World
-	var err error
-	if s.Plan.Places != nil {
-		w, err = BuildGraphWorld(s.Plan.TransportCost, s.Plan.Places, s.Plan.Lanes)
-	} else {
-		w, err = BuildWorld(s.Plan.TransportCost, s.Plan.Map, s.Plan.Names)
-	}
+	w, err := BuildWorld(s.Plan.TransportCost, s.Plan.Graph)
 	if err != nil {
 		return nil, err
 	}

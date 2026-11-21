@@ -155,7 +155,7 @@ type Firm struct {
 	ProfitEMA             float64
 	LossTicks, Age        int     // ticks of losses in a row; ticks alive
 	Wear                  float64 // levels worn out and not yet made good by upkeep (see depreciation)
-	Urge                  float64 // the owners' urge to start the next project (see investDecideDays)
+	Urge                  float64 // the owners' urge to start the next project (see investDecideTicks)
 	Projects              int     // projects they have started
 	TickRevenue, TickCost float64
 	tickInputs            float64   // what the goods it used up cost this tick
@@ -189,8 +189,9 @@ func (e *Expansion) Cost() float64 {
 
 // LevelCost is the construction units one building level costs. A level is
 // the firm's capital (its buildings and machines; for farms and mines, its
-// land too), priced so that a tile's capital is worth about three to four
-// years of its output, as Europe's was in the 19th century.
+// land too), priced so that a tile's capital is worth about 1100 to 1500
+// ticks of its output (at a tick a day, three to four years, as Europe's
+// was in the 19th century).
 const LevelCost = 1200.0
 
 // MethodLevels is the levels the firm runs on its i-th method.
@@ -367,7 +368,7 @@ func (f *Firm) unitCost(fc Factor, prices []float64, wage float64) float64 {
 	}
 }
 
-// LevelProfit is what one level of the firm's i-th method would earn a day
+// LevelProfit is what one level of the firm's i-th method would earn a tick
 // at these prices, working at its best: with constant returns, a level's
 // share of revenue, one less the exponents. Owners compare methods by it.
 func (f *Firm) LevelProfit(i int, prices []float64, wage float64) float64 {
@@ -452,7 +453,7 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 		total += pl.q
 		plans = append(plans, pl)
 	}
-	// Stock beyond a day's output is stock it failed to sell (when it
+	// Stock beyond a tick's output is stock it failed to sell (when it
 	// plans, its stock still holds yesterday's output, not yet offered): it
 	// makes what it wants to sell less that excess, so goods nobody buys
 	// stop being made instead of piling up. Scaling a method's every factor

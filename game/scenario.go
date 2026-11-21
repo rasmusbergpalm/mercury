@@ -71,7 +71,11 @@ func BuildGameProgress(spec GameSpec, progress func(done, total int)) (*World, e
 // baseGameWorld builds a game's map, the economy's full world with the
 // public services on every tile, before any nation or settling.
 func baseGameWorld(spec GameSpec) (*World, error) {
-	e, err := economy.BuildWorld(spec.TransportCost, spec.Map, spec.Names)
+	g, err := economy.HexGraph(spec.Map, spec.Names)
+	if err != nil {
+		return nil, err
+	}
+	e, err := economy.BuildWorld(spec.TransportCost, g)
 	if err != nil {
 		return nil, err
 	}

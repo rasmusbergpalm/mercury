@@ -10,40 +10,40 @@ import (
 // cost (their staff's wages).
 var publicSlot int
 
-// settledMove is how far a good's price may move in a month for it to count
-// towards that month's growth.
+// settledMove is how far a good's price may move in a period for it to count
+// towards that period's growth.
 const settledMove = 2.0
 
-// gdpWarmup is how many days the chain waits before it starts: every price
-// starts at £1, and the first months' prices are the markets finding their
-// feet, not prices to measure by. Until then real GDP is the month's pounds.
+// gdpWarmup is how many ticks the chain waits before it starts: every price
+// starts at £1, and the first periods' prices are the markets finding their
+// feet, not prices to measure by. Until then real GDP is the period's pounds.
 const gdpWarmup = 90
 
 // GDPChain measures a tile's real GDP: its value added at constant prices,
-// in pounds of the first month. Each day it adds up the tile's net output
+// in pounds of the first period. Each tick it adds up the tile's net output
 // (what its firms made less the goods they and its merchants used up, plus
-// the work of outside employers) and what the goods traded for; each month it links the month's
+// the work of outside employers) and what the goods traded for; each period it links the period's
 // average to the last one with a Fisher index, so the quantities are valued
-// at both months' prices and the result does not drift as relative prices
+// at both periods' prices and the result does not drift as relative prices
 // change. Money only changes hands, so with a fixed money stock it is
 // quantities, not pounds, that show growth.
 //
 // Only prices goods actually traded at count: a good nobody sells has a
-// price that means nothing. A good counts towards a month's growth only if
-// it traded in that month and the one before, and its price moved less than
+// price that means nothing. A good counts towards a period's growth only if
+// it traded in that period and the one before, and its price moved less than
 // settledMove-fold against the typical good's.
 type GDPChain struct {
-	Level     float64   // real GDP per day, in pounds of the first month
-	PrevNet   []float64 `json:",omitempty"` // last month's average net output, per good
+	Level     float64   // real GDP per tick, in pounds of the first period
+	PrevNet   []float64 `json:",omitempty"` // last period's average net output, per good
 	PrevPrice []float64 `json:",omitempty"` // and its average traded prices (0: not traded)
-	AccNet    []float64 `json:",omitempty"` // this month so far: summed daily net output
+	AccNet    []float64 `json:",omitempty"` // this period so far: summed per-tick net output
 	AccValue  []float64 `json:",omitempty"` // summed value traded
 	AccVolume []float64 `json:",omitempty"` // summed volume traded
-	Days      int
+	Ticks     int
 	Group     int // the group that held the tile at the last link, plus one (0: none)
 }
 
-// accumulateGDP adds today's net output and trade to the month's sums.
+// accumulateGDP adds today's net output and trade to the period's sums.
 func (r *Region) accumulateGDP() {
 	c := &r.Real
 	if c.AccNet == nil {
@@ -73,37 +73,37 @@ func (r *Region) accumulateGDP() {
 			c.AccVolume[g] += v
 		}
 	}
-	c.Days++
+	c.Ticks++
 }
 
-// gdpLink is one tile's part in a month's link: its net output valued at
-// last month's and this month's prices, both months' quantities (settled
-// goods only), and this month's value at its own prices.
+// gdpLink is one tile's part in a period's link: its net output valued at
+// last period's and this period's prices, both periods' quantities (settled
+// goods only), and this period's value at its own prices.
 type gdpLink struct {
 	l0, l1, q0, q1, now float64
 }
 
-// linkGDP closes the month: it links the month's average net output to the
-// last month's, starts a new month, and returns the tile's part in the link
+// linkGDP closes the period: it links the period's average net output to the
+// last period's, starts a new period, and returns the tile's part in the link
 // for its group's chain (see LinkGDP).
 func (r *Region) linkGDP() gdpLink {
 	c := &r.Real
-	if c.Days == 0 {
-		r.accumulateGDP() // a sample before the first day ends: use today
+	if c.Ticks == 0 {
+		r.accumulateGDP() // a sample before the first tick ends: use today
 	}
 	net, price := make([]float64, NumGoods+1), make([]float64, NumGoods+1)
 	for g := range net {
-		net[g] = c.AccNet[g] / float64(c.Days)
+		net[g] = c.AccNet[g] / float64(c.Ticks)
 		if c.AccVolume[g] > 0 {
 			price[g] = c.AccValue[g] / c.AccVolume[g]
 		}
 	}
 	k := gdpLink{now: math.Max(0, value(price, net))}
 	if c.PrevNet != nil {
-		// only goods that traded in both months at settled prices link the
+		// only goods that traded in both periods at settled prices link the
 		// chain: a new good's first prices are wild (it had drifted while
 		// nobody sold any) and fall fast as it comes in, so it joins once
-		// its price moves by less than settledMove-fold in a month against
+		// its price moves by less than settledMove-fold in a period against
 		// the typical good's (so a general inflation or deflation doesn't
 		// unsettle every good at once)
 		var moves []float64
@@ -133,15 +133,15 @@ func (r *Region) linkGDP() gdpLink {
 	for g := range c.AccNet {
 		c.AccNet[g], c.AccValue[g], c.AccVolume[g] = 0, 0, 0
 	}
-	c.Days = 0
+	c.Ticks = 0
 	return k
 }
 
-// chain moves a real GDP level on by a month: by the Fisher index, the
-// geometric mean of Laspeyres (last month's prices) and Paasche (this
-// month's) growth. With nothing to chain from it starts at this month's
-// pounds; a month that can't be measured (net output worth nothing at one
-// month's prices) leaves it where it was.
+// chain moves a real GDP level on by a period: by the Fisher index, the
+// geometric mean of Laspeyres (last period's prices) and Paasche (this
+// period's) growth. With nothing to chain from it starts at this period's
+// pounds; a period that can't be measured (net output worth nothing at one
+// period's prices) leaves it where it was.
 func chain(level float64, k gdpLink) float64 {
 	switch {
 	case level <= 0:
@@ -153,13 +153,13 @@ func chain(level float64, k gdpLink) float64 {
 	}
 }
 
-// LinkGDP closes the month in every tile (see GDPChain) and links the real
+// LinkGDP closes the period in every tile (see GDPChain) and links the real
 // GDP of groups of tiles (countries, say): group(r) is the tile's group
 // plus one (0: none), and levels[k] is group k's real GDP, moved on in
 // place. A group's tiles' values are added up before the index is taken,
 // so each tile weighs by its share of the group's output: a tile with a
-// little oil at a wild price can't run away with the total. Last month's
-// values come from the tiles the group held then, this month's from those
+// little oil at a wild price can't run away with the total. Last period's
+// values come from the tiles the group held then, this period's from those
 // it holds now, so gaining a tile grows the group's GDP.
 func (w *World) LinkGDP(group func(r *Region) int, levels []float64) {
 	links := make([]gdpLink, len(w.Regions))
@@ -215,7 +215,7 @@ func value(p, q []float64) float64 {
 
 func (c GDPChain) Clone() GDPChain {
 	cp := func(x []float64) []float64 { return append([]float64(nil), x...) }
-	return GDPChain{c.Level, cp(c.PrevNet), cp(c.PrevPrice), cp(c.AccNet), cp(c.AccValue), cp(c.AccVolume), c.Days, c.Group}
+	return GDPChain{c.Level, cp(c.PrevNet), cp(c.PrevPrice), cp(c.AccNet), cp(c.AccValue), cp(c.AccVolume), c.Ticks, c.Group}
 }
 
 // valid says whether a restored chain fits this build's goods.
@@ -226,5 +226,5 @@ func (c GDPChain) Valid() bool {
 		}
 	}
 	return (c.PrevNet == nil) == (c.PrevPrice == nil) && (c.AccNet == nil) == (c.AccValue == nil) &&
-		(c.AccNet == nil) == (c.AccVolume == nil) && c.Days >= 0 && c.Level >= 0
+		(c.AccNet == nil) == (c.AccVolume == nil) && c.Ticks >= 0 && c.Level >= 0
 }

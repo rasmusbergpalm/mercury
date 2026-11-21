@@ -445,7 +445,7 @@ func regionState(w *game.World, i int, cities float64) RegionState {
 	}
 	st := RegionState{ID: r.ID, Wage: r.Wage, Utility: r.Utility(), Population: r.Population(),
 		Employed: employed, TierSpend: ts[:], Prices: r.Prices(), Nation: -1, Infra: r.Infra,
-		MoveCost: r.MoveCost(), Port: r.Port, City: r.Population() >= cities, CityBonus: r.SizeBonus(), Growth: r.GrowthRate(),
+		MoveCost: r.MoveCost(), Port: r.Port, City: r.Population() >= cities, CityBonus: r.SizeBonus(), Growth: r.GrowthRate() * game.TicksPerYear,
 		Battle: r.Battle}
 	if r.Nation != nil {
 		st.Nation = r.Nation.ID

@@ -29,7 +29,6 @@ type (
 )
 
 const (
-	TicksPerYear  = economy.TicksPerYear
 	Sea           = economy.Sea
 	NumClasses    = economy.NumClasses
 	Workers       = economy.Workers
@@ -39,10 +38,7 @@ const (
 	Service       = economy.Service
 	Basic         = economy.Basic
 	NumTiers      = economy.NumTiers
-	PopGrowthMin  = economy.PopGrowthMin
-	PopGrowthMax  = economy.PopGrowthMax
 	Luxury        = economy.Luxury
-	StartYear     = economy.StartYear
 	LevelCost     = economy.LevelCost
 	MinPopulation = economy.MinPopulation
 	minPopulation = economy.MinPopulation
@@ -51,7 +47,6 @@ const (
 var (
 	Goods           = economy.Goods
 	TierOf          = economy.TierOf
-	Date            = economy.Date
 	NumGoods        = economy.NumGoods
 	Transport       = economy.Transport
 	Construction    = economy.Construction

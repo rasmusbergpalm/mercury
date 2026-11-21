@@ -15,9 +15,9 @@ package economy
 //     (wages and dividends), into Withheld;
 //   - Buyers: outside buyers in its markets;
 //   - Duties: the import duties collected on sales there (see Trader.Tariff);
-//   - PaybackMult: scales the years of profit owners ask a new level to
+//   - PaybackMult: scales the ticks of profit owners ask a new level to
 //     repay (below 1: they build sooner, as with cheaper credit);
-//   - GrowthBonus: added to its people's growth a year, beyond their
+//   - GrowthBonus: added to its people's growth a tick, beyond their
 //     natural growth;
 //   - LandTransportMult and SeaTransportMult: scale the transport it takes
 //     to cross it over land and to pass it by sea;
@@ -32,7 +32,7 @@ package economy
 
 // Buyer is someone outside a tile's markets who buys in them: a state, a
 // foreign merchant, an aid agency, or an employer from outside the tile's
-// firms. Each day it bids for goods (Bid, by good)
+// firms. Each tick it bids for goods (Bid, by good)
 // and for workers (Hire); the markets charge its Account, which may run
 // negative until its owner settles it, and note what it got (Got, Hired).
 // Workers are hired after the firms, at the same wage.

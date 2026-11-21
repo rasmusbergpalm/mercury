@@ -8,7 +8,7 @@ import (
 // A world restored from a snapshot (written as JSON and read back) goes on
 // exactly as the original does.
 func TestSnapshotRestoresExactly(t *testing.T) {
-	w, err := BuildWorld(1, DefaultMap, nil)
+	w, err := hexWorld(1, DefaultMap, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestSnapshotRestoresExactly(t *testing.T) {
 // Worlds restored from one snapshot share nothing: run side by side, they
 // stay identical.
 func TestSnapshotRestoresIndependentWorlds(t *testing.T) {
-	w, err := BuildWorld(1, DefaultMap, nil)
+	w, err := hexWorld(1, DefaultMap, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

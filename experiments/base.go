@@ -115,7 +115,7 @@ func runBase(o *Out) {
 	var tiles []tileRow
 	for _, r := range w.Regions {
 		tr := tileRow{ID: r.ID, Row: r.Row, Col: r.Col, Name: r.Name, Terrain: r.Terrain, Coastal: r.Coastal,
-			People: r.Population(), Wage: r.Wage, Utility: r.Utility(), Growth: r.GrowthRate()}
+			People: r.Population(), Wage: r.Wage, Utility: r.Utility(), Growth: r.GrowthRate() * TicksPerYear}
 		for _, f := range r.Firms {
 			if f.Labor < 1e-6 && f.LastOutput < 1e-6 {
 				continue

@@ -1,12 +1,23 @@
-package economy
+package game
 
-import "time"
+import (
+	"time"
 
-// The calendar: one tick is one day, and the economy starts on 1 January 1820.
-// Years have 365 days (no leap days), so a year is always TicksPerYear ticks.
+	"github.com/rasmusbergpalm/mercury/economy"
+)
+
+// The game's calendar: the economy counts ticks, and in the game a tick is
+// a day, from 1 January 1820. Years have 365 days (no leap days), so a year
+// is always TicksPerYear ticks.
 const (
 	TicksPerYear = 365.0
 	StartYear    = 1820
+)
+
+// Population growth's limits a year (the economy's are a tick's).
+const (
+	PopGrowthMin = economy.PopGrowthMin * TicksPerYear
+	PopGrowthMax = economy.PopGrowthMax * TicksPerYear
 )
 
 // Date is the calendar date of a tick.

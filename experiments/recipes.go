@@ -63,7 +63,7 @@ func runRecipes(o *Out) {
 	}
 	o.Write("recipes.json", map[string]any{
 		"firms":     firms,
-		"growth":    map[string]float64{"slope": PopGrowthSlope, "neutral": PopGrowthNeutral, "min": PopGrowthMin, "max": PopGrowthMax},
+		"growth":    map[string]float64{"slope": PopGrowthSlope * TicksPerYear, "neutral": PopGrowthNeutral, "min": PopGrowthMin * TicksPerYear, "max": PopGrowthMax * TicksPerYear}, // a year's
 		"migration": map[string]float64{"rate": MigrationRate, "minPopulation": MinPopulation},
 		"settle":    map[string]int{"years": Settle, "experimentYears": Years},
 	})

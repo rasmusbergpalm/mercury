@@ -11,7 +11,7 @@ import (
 type TradingHouse struct {
 	Region *Region
 	Routes []*Trader
-	// busy are the routes it plans every day (see idle), in route order;
+	// busy are the routes it plans every tick (see idle), in route order;
 	// today those it plans today
 	busy, today  []*Trader
 	busyKnown    bool
@@ -28,15 +28,15 @@ type TradingHouse struct {
 // the house places is paid for.
 //
 // Idle routes (see idle), most of them on a big map, are planned in turn,
-// a tenth of them a day, rather than every day: a route that turns
-// profitable starts buying within idleEvery days. They place no orders and
+// a tenth of them a tick, rather than every tick: a route that turns
+// profitable starts buying within idleEvery ticks. They place no orders and
 // ship nothing in between, so the markets and shipping skip them too.
 func (h *TradingHouse) Plan(tick int) {
 	h.plan(tick)
 	h.Region.listBidders(h.today)
 }
 
-// idleEvery is how many days apart an idle route is looked at.
+// idleEvery is how many ticks apart an idle route is looked at.
 const idleEvery = 10
 
 // idle reports whether a route is doing nothing: not buying (its order at
@@ -48,8 +48,8 @@ func (t *Trader) idle() bool {
 }
 
 // idleMargin: a route this close to paying (its margin as a share of the
-// price where it sells) is planned every day, not in turn, so that it
-// doesn't miss the days it pays.
+// price where it sells) is planned every tick, not in turn, so that it
+// doesn't miss the ticks it pays.
 const idleMargin = 0.05
 
 // planToday lists the routes to plan today, in route order: those that
@@ -143,7 +143,7 @@ func (h *TradingHouse) plan(tick int) {
 //
 //	p_dest * arriving - p_origin - tau * p_transport_origin
 type Trader struct {
-	// the fields the markets read every day come first, to share a cache line
+	// the fields the markets read every tick come first, to share a cache line
 	Good        GoodID
 	Active      bool    // false: at the floor with no margin, so don't buy at all
 	Q           float64 // target purchase per tick
@@ -160,7 +160,8 @@ type Trader struct {
 
 	Origin, Dest  *Region
 	TransportCost float64 // multiplier on every hop
-	FixedDistance bool    // its distance is its own, not the land hops' (a sea route between ports)
+	FixedDistance bool    // its distance is its own, not its lane's hop (a sea route between ports, say)
+	length        float64 // its lane's length (see Lane)
 	Distance      float64
 	Tariff        float64 // import duty, a share of the price, paid where it sells (into the destination's Duties)
 	Closed        bool    // embargoed: it may not trade
@@ -180,16 +181,16 @@ type Trader struct {
 	spoilage      float64
 }
 
-// backlogDays is how many days a trader takes to work off stock unsold at
-// its destination, by buying that much less each day.
-const backlogDays = 5.0
+// backlogTicks is how many ticks a trader takes to work off stock unsold at
+// its destination, by buying that much less each tick.
+const backlogTicks = 5.0
 
 // NewTrader makes a trader.
 func NewTrader(good GoodID, origin, dest *Region, distance, transportCost float64) *Trader {
 	t := &Trader{
 		Good: good, Origin: origin, Dest: dest, TransportCost: transportCost,
 		Speed: 0.1, Damping: 10, QMin: 0.02, Q: 0.02,
-		spoilage: Goods[good].Spoilage,
+		spoilage: Goods[good].Spoilage, length: 1,
 	}
 	t.SetDistance(distance)
 	return t
@@ -247,10 +248,10 @@ func (t *Trader) Plan() {
 	if t.Active {
 		// stock still unsold at the destination (beyond what arrives today) is
 		// stock it failed to sell: it buys less, working the backlog off over
-		// backlogDays, so goods stop piling up there instead of the route
+		// backlogTicks, so goods stop piling up there instead of the route
 		// swinging between gluts and shortages
 		backlog := math.Max(0, t.StockDest-t.Shipped*t.Arriving)
-		q = math.Max(0, t.Q-backlog/backlogDays)
+		q = math.Max(0, t.Q-backlog/backlogTicks)
 	}
 	t.buy = q
 	t.carry = t.StockOrigin * t.Tau * pT

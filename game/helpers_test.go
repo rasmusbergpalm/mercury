@@ -12,11 +12,20 @@ func relDiff(a, b float64) float64 {
 	return math.Abs(a-b) / math.Max(math.Max(math.Abs(a), math.Abs(b)), 1e-6)
 }
 
+// BuildWorld builds the economy's world on a hex map (economy.HexGraph).
+func BuildWorld(cost float64, rows, names []string) (*economy.World, error) {
+	g, err := economy.HexGraph(rows, names)
+	if err != nil {
+		return nil, err
+	}
+	return economy.BuildWorld(cost, g)
+}
+
 // newTestWorld is the economy's world (economy.BuildWorld) as a game without
 // nations.
 func newTestWorld(t *testing.T, cost float64) *World {
 	t.Helper()
-	e, err := economy.BuildWorld(cost, DefaultMap, nil)
+	e, err := BuildWorld(cost, DefaultMap, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +74,6 @@ var (
 	Composites        = economy.Composites
 	RawRecipes        = economy.RawRecipes
 	ProcessingRecipes = economy.ProcessingRecipes
-	BuildWorld        = economy.BuildWorld
 )
 
 func MovePeople(from, to *Region, n float64) { economy.MovePeople(from.Region, to.Region, n) }

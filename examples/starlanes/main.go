@@ -3,7 +3,7 @@
 // which every ship between systems burns aether, a fuel found in only one
 // of them. Nothing in the engine changes; the goods, needs, recipes and
 // kinds of system are this directory's data files, and the map is a graph
-// (economy.BuildGraphWorld) rather than a hex grid.
+// (economy.BuildWorld) rather than a hex grid.
 //
 // Freight, the transport merchants buy, is made from labour and aether.
 // A system with no aether can still receive goods but can't send any, so
@@ -45,17 +45,26 @@ var (
 		{Name: "Isk", Terrain: "ocean"},
 	}
 	lanes = []economy.Lane{
-		{A: 0, B: 1, Distance: 1.5}, {A: 0, B: 3, Distance: 2},
-		{A: 1, B: 2, Distance: 1}, {A: 1, B: 5, Distance: 2},
-		{A: 2, B: 4, Distance: 1.5}, {A: 3, B: 6, Distance: 1},
-		{A: 5, B: 6, Distance: 1.5}, {A: 5, B: 7, Distance: 1},
-		{A: 4, B: 8, Distance: 2}, {A: 7, B: 9, Distance: 1.5},
-		{A: 8, B: 9, Distance: 1}, {A: 9, B: 10, Distance: 2},
-		{A: 6, B: 10, Distance: 2.5}, {A: 10, B: 11, Distance: 1.5},
+		{A: 0, B: 1, Length: 1.5}, {A: 0, B: 3, Length: 2},
+		{A: 1, B: 2, Length: 1}, {A: 1, B: 5, Length: 2},
+		{A: 2, B: 4, Length: 1.5}, {A: 3, B: 6, Length: 1},
+		{A: 5, B: 6, Length: 1.5}, {A: 5, B: 7, Length: 1},
+		{A: 4, B: 8, Length: 2}, {A: 7, B: 9, Length: 1.5},
+		{A: 8, B: 9, Length: 1}, {A: 9, B: 10, Length: 2},
+		{A: 6, B: 10, Length: 2.5}, {A: 10, B: 11, Length: 1.5},
 	}
 )
 
 const source = 0 // Cinder
+
+// The economy counts ticks. Its people and owners are calibrated for a
+// tick of a day (they spend a twentieth of their savings a tick, and take
+// 90 ticks to build), so here too a tick is a standard day, and the
+// economy starts on the first day of 2300.
+const (
+	ticksPerYear = 365
+	startYear    = 2300
+)
 
 // system is what a system looks like, averaged over a year.
 type system struct {
@@ -75,9 +84,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	fmt.Printf("After %d years (a year's averages):\n", *years)
+	fmt.Printf("%d, after %d years (a year's averages):\n", startYear+*years, *years)
 	print(before, nil)
-	fmt.Printf("\nAfter %d years of Cinder blockaded, against before:\n", *cut)
+	fmt.Printf("\n%d, after %d years of Cinder blockaded, against %d:\n", startYear+*years+*cut, *cut, startYear+*years)
 	print(after, before)
 }
 
@@ -92,7 +101,7 @@ func run(years, cut int) (before, after []system, err error) {
 	if err := economy.LoadData(sub); err != nil {
 		return nil, nil, err
 	}
-	w, err := economy.BuildGraphWorld(1, systems, lanes)
+	w, err := economy.BuildWorld(1, economy.Graph{Places: systems, Lanes: lanes})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -112,7 +121,7 @@ func observe(w *economy.World, years int) []system {
 	aether, freight := economy.G("aether"), economy.Transport
 	hops := hopsFrom(source, len(w.Regions))
 	out := make([]system, len(w.Regions))
-	days := int(economy.TicksPerYear)
+	days := int(ticksPerYear)
 	for d := 0; d < years*days; d++ {
 		w.Step()
 		if d < (years-1)*days {

@@ -1,8 +1,10 @@
-// Package economy is a deterministic, spatial, agent-based economy: a hex
-// map of tiles, each with its own people, firms and markets, linked by
-// merchants who pay to carry goods from tile to tile.
+// Package economy is a deterministic, spatial, agent-based economy: a map
+// of tiles, each with its own people, firms and markets, linked by
+// merchants who pay to carry goods from tile to tile. It counts time in
+// ticks and gives them no meaning; whoever runs it says what a tick is (the
+// example economy's is a day, from 1820).
 //
-// Each day, on every tile:
+// Each tick, on every tile:
 //
 //   - firms plan with Cobb-Douglas recipes, hiring labour and buying inputs
 //     up to where they pay (a firm's wage bill is its labour exponent times
@@ -21,26 +23,25 @@
 //     out; people move towards the tiles where they live better, and grow
 //     in number when they eat well.
 //
-// The same world stepped the same number of days gives bit-identical
+// The same world stepped the same number of ticks gives bit-identical
 // state: random choices are hashes of the seed and stable keys, and the
 // tiles' own work, which runs in parallel, settles what it owes others in a
 // fixed order afterwards.
 //
 // What the economy makes and where is not the engine's: the goods, needs,
 // recipes and terrains are data, in the JSON files of data/, and a map is
-// a list of rows of terrain symbols. The data that comes with the package
+// a Graph of places joined by lanes. The data that comes with the package
 // is an example economy, Europe around 1820, and DefaultMap a small example
-// map; LoadData replaces them with another set. BuildWorld builds a world
-// from them: every good and firm, with later production methods switched
-// off until whoever runs it switches them on, and workers and owners in
-// every tile. BuildGraphWorld builds one on a graph instead: any places,
-// joined by lanes of any length.
+// hex map (HexGraph makes it a graph); LoadData replaces the data with
+// another set. BuildWorld builds a world from them: every good and firm,
+// with later production methods switched off until whoever runs it
+// switches them on, and workers and owners in every tile.
 //
 // Anything outside the economy (a model of policy, a strategy game) acts
 // on it by setting its levers (see levers.go: taxes, tariffs and embargoes,
 // outside buyers and employers, the cost of capital, productivity, the cost
 // of transport, which recipes firms may use) and by reading the
 // accounts where what it collects piles up. A caller that acts within a
-// day runs its steps (BeginDay, PlanTrade, Markets, Ship, Produce, EndDay)
+// tick runs its steps (BeginTick, PlanTrade, Markets, Ship, Produce, EndTick)
 // itself and acts between them. The economy never calls out.
 package economy

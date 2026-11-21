@@ -17,7 +17,7 @@ type Region struct {
 	WageSpeed float64
 
 	BaseMove float64  // terrain's movement cost
-	Real     GDPChain // real GDP, linked monthly
+	Real     GDPChain // real GDP, linked each period (LinkGDP)
 	warm     bool     // past the real GDP chain's warm-up (set at each link)
 
 	UtilityEMA float64 // smoothed utility per person; migration follows it
@@ -28,7 +28,7 @@ type Region struct {
 	Duties            float64  // import duties collected here, until someone takes them
 	Buyers            []*Buyer // outside buyers in its markets
 	PaybackMult       float64  // scales the payback owners ask of a new level (1: as is)
-	GrowthBonus       float64  // added to its people's growth a year, beyond their natural growth
+	GrowthBonus       float64  // added to its people's growth a tick, beyond their natural growth
 	LandTransportMult float64  // scales the transport it takes to cross the tile over land (1: its terrain's)
 	SeaTransportMult  float64  // scales the transport it takes to pass it by sea (1: CoastMove)
 	SpoilageMult      float64  // scales the spoilage of goods shipped from it (1: as is)
@@ -111,39 +111,41 @@ func (r *Region) Plan() {
 	}
 }
 
-// Investment rules (when World.Investment is on).
+// Investment rules (when World.Investment is on). The engine counts ticks;
+// these are calibrated for a tick of a day, as in the example economy.
 const (
-	// a new level must repay its cost in ten years of profit: a return of
-	// 10% a year, about what 19th-century firms asked of new works
-	investPayback = 10 * TicksPerYear
+	// a new level must repay its cost in 3650 ticks of profit: at a tick a
+	// day, ten years, a return of 10% a year, about what 19th-century firms
+	// asked of new works
+	investPayback = 3650.0
 	investMinAge  = 100 // ticks before a firm's profit record counts
-	buildDays     = 90  // a private level (or a refit) takes this long to build, at the quickest
+	buildTicks    = 90  // a private level (or a refit) takes this long to build, at the quickest
 	disinvestAt   = 100 // ticks of losses before a firm closes a level
-	// capital wears out: each year 2% of a firm's levels must be made good
-	// with construction (its upkeep, a cost like any other), or the firm
-	// loses them
-	depreciation = 0.02
+	// capital wears out: each tick this share of a firm's levels must be
+	// made good with construction (its upkeep, a cost like any other), or
+	// the firm loses them (at a tick a day, 2% a year)
+	depreciation = 0.02 / 365
 )
 
-// investDecideDays is how long owners take, on average, to start a project
-// that pays twice what they ask: each day a project that pays starts with a
+// investDecideTicks is how long owners take, on average, to start a project
+// that pays twice what they ask: each tick a project that pays starts with a
 // chance in proportion to how far it beats their hurdle, so the clear winners
-// are taken up within months and the marginal ones slowly, owner by owner,
-// rather than every owner on the map the same day.
+// are taken up soon and the marginal ones slowly, owner by owner, rather
+// than every owner on the map at once.
 //
-// The chance is drawn once a project, not once a day: each owner has a
+// The chance is drawn once a project, not once a tick: each owner has a
 // resolve for its next project (an exponential draw keyed by the world's
 // seed, the tile, the firm and how many projects it has started), and each
-// day the project pays its urge grows by that day's chance; it starts when
-// the urge reaches the resolve. The odds are a daily draw's, but a change
-// that moves a project by a day moves only that project: no later draw is
-// re-rolled, so two versions of the economy stay comparable.
-const investDecideDays = 180.0
+// tick the project pays its urge grows by that tick's chance; it starts
+// when the urge reaches the resolve. The odds are a per-tick draw's, but a
+// change that moves a project by a tick moves only that project: no later
+// draw is re-rolled, so two versions of the economy stay comparable.
+const investDecideTicks = 180.0
 
-// refitDecideDays is the same for refitting a working level to another
+// refitDecideTicks is the same for refitting a working level to another
 // method: owners are slower to tear out machinery that still runs than to
-// build anew, so a better method spreads over years, works one by one.
-const refitDecideDays = 365.0
+// build anew, so a better method spreads slowly, works one by one.
+const refitDecideTicks = 365.0
 
 // planInvestment starts private expansions where a level would repay itself,
 // and sets what each firm buys this tick: its upkeep, and the next part of
@@ -181,14 +183,14 @@ func (r *Region) planInvestment(seed int64) {
 			build := perLevel * payback / (LevelCost * price)
 			var refitUrge, buildUrge float64
 			if refit > 1 {
-				refitUrge = math.Min(1, refit-1) / refitDecideDays
+				refitUrge = math.Min(1, refit-1) / refitDecideTicks
 			}
 			if !full && build > 1 {
-				buildUrge = math.Min(1, build-1) / investDecideDays
+				buildUrge = math.Min(1, build-1) / investDecideTicks
 			}
 			f.Urge += refitUrge + buildUrge
-			// the urge built up over the days a project paid; it is acted on
-			// only on a day one still does, for the one that pays better then
+			// the urge built up over the ticks a project paid; it is acted on
+			// only on a tick one still does, for the one that pays better then
 			if refitUrge+buildUrge > 0 && f.Urge >= investResolve(seed, r.ID, i, f.Projects) {
 				f.Urge = 0
 				f.Projects++
@@ -201,7 +203,7 @@ func (r *Region) planInvestment(seed int64) {
 		}
 		upkeep := 0.0
 		if f.Enabled && f.ProfitEMA > 0 { // capital that loses money is left to wear out
-			upkeep = depreciation * float64(f.Levels) * LevelCost / TicksPerYear
+			upkeep = depreciation * float64(f.Levels) * LevelCost
 		}
 		want := upkeep
 		if e := f.Expansion; e != nil && !e.External {
@@ -210,7 +212,7 @@ func (r *Region) planInvestment(seed int64) {
 				gain = f.LevelProfit(e.Method, r.prices, r.Wage) - f.LevelProfit(e.From, r.prices, r.Wage)
 			}
 			if gain*payback >= (e.Cost()-e.Delivered)*price {
-				want += math.Min(e.Cost()/buildDays, e.Cost()-e.Delivered) // a refit takes as long to put in
+				want += math.Min(e.Cost()/buildTicks, e.Cost()-e.Delivered) // a refit takes as long to put in
 			}
 		}
 		if want <= 0 {
@@ -233,7 +235,7 @@ func (r *Region) settleFirms() {
 		f.Age++
 		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.TickRevenue-f.TickCost)
 		if f.Levels > 1 { // wear, less today's upkeep (made good at the market)
-			f.Wear += depreciation * float64(f.Levels) / TicksPerYear
+			f.Wear += depreciation * float64(f.Levels)
 			if f.Wear >= 1 {
 				f.dropLevel(r)
 				f.Wear--
@@ -543,7 +545,7 @@ func (r *Region) GoodsMarkets() {
 // build up a price that means nothing, which the first producer and
 // merchants would then take at face value. Likewise a good no one wants for
 // now (war materiel in peacetime) doesn't sink to nothing, and needn't take
-// months to climb back once buyers return.
+// a long time to climb back once buyers return.
 const UnsuppliedPriceCap = 10.0
 
 // capUnsuppliedPrices holds the price of goods with no supply here to at most
@@ -658,16 +660,17 @@ func (r *Region) UpdateAgglomeration() {
 	}
 }
 
-// Population growth per year: well-fed people multiply, hungry ones don't.
+// Population growth per tick: well-fed people multiply, hungry ones don't.
 // Natural growth is PopGrowthSlope * (basic needs met - PopGrowthNeutral),
-// within [PopGrowthMin, PopGrowthMax]: about 1.4% a year where people eat
-// well, as in 1820. Anything else that moves births and deaths (medicine,
-// sanitation) comes from outside as GrowthBonus.
+// within [PopGrowthMin, PopGrowthMax]: at a tick a day, as in the example
+// economy, about 1.4% a year where people eat well, as in 1820. Anything
+// else that moves births and deaths (medicine, sanitation) comes from
+// outside as GrowthBonus.
 const (
-	PopGrowthSlope   = 0.035
+	PopGrowthSlope   = 0.035 / 365
 	PopGrowthNeutral = 0.5
-	PopGrowthMin     = -0.03
-	PopGrowthMax     = 0.02
+	PopGrowthMin     = -0.03 / 365
+	PopGrowthMax     = 0.02 / 365
 )
 
 // BasicNeedsMet is how far the tile's people satisfy their basic needs, on
@@ -690,21 +693,21 @@ func (r *Region) BasicNeedsMet() float64 {
 	return s / float64(n)
 }
 
-// NaturalGrowth is the tile's population growth per year at current
+// NaturalGrowth is the tile's population growth per tick at current
 // consumption before its limits: what eating well or badly does.
 func (r *Region) NaturalGrowth() float64 {
 	return PopGrowthSlope * (r.BasicNeedsMet() - PopGrowthNeutral)
 }
 
-// GrowthRate is the tile's population growth per year: its natural growth
+// GrowthRate is the tile's population growth per tick: its natural growth
 // within its limits, and GrowthBonus.
 func (r *Region) GrowthRate() float64 {
 	return math.Max(PopGrowthMin, math.Min(PopGrowthMax, r.NaturalGrowth())) + r.GrowthBonus
 }
 
-// grow applies a day of population growth. Newborns bring no cash.
+// grow applies a tick of population growth. Newborns bring no cash.
 func (r *Region) grow() {
-	f := 1 + r.GrowthRate()/TicksPerYear
+	f := 1 + r.GrowthRate()
 	for _, p := range r.Pops {
 		p.Size *= f
 	}
