@@ -126,7 +126,7 @@ out["monopoly"] = {"tile": mn["tile"], "elasticity": mn["elasticity"], "runs": [
 # another economy: star lanes, and riots on the one aether world
 sl = json.load(open(f"{S}/starlanes.json"))
 r3 = lambda xs: [round(x, 3) for x in xs]
-out["starlanes"] = {k: sl[k] for k in ("systems", "lanes", "start", "riotFrom", "riotTo", "riot")}
+out["starlanes"] = {k: sl[k] for k in ("systems", "lanes", "start", "riotFrom", "riotTo", "riot", "peopleUnit")}
 for run in ("control", "riots"):
     out["starlanes"][run] = {k: ([r3(x) for x in v] if k != "Output" else r3(v)) for k, v in sl[run].items()}
 json.dump(out, open(OUT, "w"), separators=(",", ":"))

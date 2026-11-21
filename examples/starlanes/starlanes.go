@@ -43,6 +43,12 @@ const (
 	StartYear    = 2300
 )
 
+// PeopleUnit is how many people one of the economy's people stands for.
+// The engine's unit of people is arbitrary (one supplies a unit of labour),
+// and the economy on top says what it is, as it says what a tick is: here,
+// ten million, so that each system holds billions.
+const PeopleUnit = 1e7
+
 // Systems are the star systems, and Lanes the lanes between them (a lane's
 // length scales the aether it takes to cross). Cinder, a barren world, has
 // the only aether wells.
@@ -95,7 +101,7 @@ func Build() (*economy.World, error) {
 }
 
 // Riot sets the productivity of Cinder's aether wells to mult of what it
-// was (riots: 0.02 is 98% less; 1 when they end).
+// was (riots: 0.15 is 85% less; 1 when they end).
 func Riot(w *economy.World, mult float64) {
 	for _, f := range w.Regions[Source].Firms {
 		if f.Output == economy.G("aether") {

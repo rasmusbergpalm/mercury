@@ -1,6 +1,6 @@
 // Run runs the star-lanes economy (package starlanes) for ten years, then
 // riots on Cinder, the one system with aether wells, cut the wells'
-// productivity by 98% for two years: what happens to the price of the fuel
+// productivity by 85% for two years: what happens to the price of the fuel
 // all trade runs on, to the trade, and to the systems that live by it.
 //
 //	go run ./examples/starlanes/run
@@ -50,7 +50,7 @@ func run(years, riot int) (before, during []system, err error) {
 		return nil, nil, err
 	}
 	before = observe(w, years)
-	starlanes.Riot(w, 0.02)
+	starlanes.Riot(w, 0.15)
 	during = observe(w, riot)
 	return before, during, nil
 }
@@ -89,10 +89,10 @@ func observe(w *economy.World, years int) []system {
 }
 
 func print(ss, base []system) {
-	fmt.Printf("%-10s %4s %8s %8s %8s %7s %6s %7s\n", "system", "hops", "aether", "freight", "exports", "people", "wage", "living")
+	fmt.Printf("%-10s %4s %8s %8s %8s %7s %6s %7s\n", "system", "hops", "aether", "freight", "exports", "billion", "wage", "living")
 	for i, s := range ss {
 		if base == nil {
-			fmt.Printf("%-10s %4d %8.2f %8.2f %8.1f %7.0f %6.2f %7.2f\n", s.Name, s.Hops, s.Aether, s.Freight, s.Exports, s.People, s.Wage, s.Living)
+			fmt.Printf("%-10s %4d %8.2f %8.2f %8.1f %7.2f %6.2f %7.2f\n", s.Name, s.Hops, s.Aether, s.Freight, s.Exports, s.People*starlanes.PeopleUnit/1e9, s.Wage, s.Living)
 			continue
 		}
 		b := base[i]

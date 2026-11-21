@@ -13,11 +13,11 @@ func init() {
 // 1820 one: twelve star systems on a sparse graph of lanes, whose freight
 // burns aether from a single system, Cinder. The map settles for Settle
 // years; then, after a year, riots on Cinder cut its aether wells'
-// productivity by 98% for two years, against a run without them, and both
+// productivity by 85% for two years, against a run without them, and both
 // go on for two more years. Each month: every system's prices of aether
-// and freight, its people, living standard and real GDP a head (what its
-// firms made less what they used up, valued at its prices when the map had
-// settled: a fixed base, since aether's price jumps eightfold and back, and
+// and freight, its people, living standard and real GDP (what its firms
+// made less what they used up, valued at its prices when the map had
+// settled: a fixed base, since aether's price jumps manyfold and back, and
 // an index chained through that drifts); every
 // lane's trade (what is shipped along it, both ways, valued at the
 // origins' prices before the riots); Cinder's aether output.
@@ -35,7 +35,7 @@ func runStarlanes(o *Out) {
 		riotFrom = 1 * year // ticks after the map settles
 		riotTo   = 3 * year
 		length   = 5 * year
-		riot     = 0.02 // the wells' productivity in the riots
+		riot     = 0.15 // the wells' productivity in the riots
 	)
 	w, err := starlanes.Build()
 	if err != nil {
@@ -48,7 +48,7 @@ func runStarlanes(o *Out) {
 	aether := G("aether")
 	type series struct {
 		Aether, Freight, People, Living [][]float64 // [system][month]
-		GDP                             [][]float64 // real GDP a head, [system][month]
+		GDP                             [][]float64 // real GDP a day, [system][month]
 		Trade                           [][]float64 // [lane][month]
 		Output                          []float64   // Cinder's aether output a day, [month]
 	}
@@ -113,7 +113,7 @@ func runStarlanes(o *Out) {
 						net -= q * base[i][g]
 					}
 				}
-				s.GDP[i][m] += net / r.Population()
+				s.GDP[i][m] += net
 			}
 		}
 		for m, n := range perMonth {
@@ -139,7 +139,7 @@ func runStarlanes(o *Out) {
 		systems = append(systems, system{p.Name, p.Terrain, starlanes.Layout[i][0], starlanes.Layout[i][1], hops[i]})
 	}
 	o.Write("starlanes.json", map[string]any{
-		"systems": systems, "lanes": starlanes.Lanes, "start": starlanes.StartYear + Settle,
+		"peopleUnit": starlanes.PeopleUnit, "systems": systems, "lanes": starlanes.Lanes, "start": starlanes.StartYear + Settle,
 		"riotFrom": riotFrom * 12 / year, "riotTo": riotTo * 12 / year, "riot": riot,
 		"control": control, "riots": riots,
 	})
