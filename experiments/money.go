@@ -12,7 +12,7 @@ func init() {
 // goods would be made and traded at twice the pounds. In the short run a
 // change in money moves output too, while prices catch up.
 //
-// A year after the map has settled, every pound held by its people, firms
+// Once the map has settled, every pound held by its people, firms
 // and merchants is multiplied by a factor: 2 and 1/2, against a run where
 // nothing happens. Month by month: the price level (the cost of the basket
 // the map's people bought the day before), the average wage, real output
@@ -25,7 +25,7 @@ func init() {
 // again: the extra money spreads over the map, raising every price a
 // little.
 func runMoney(o *Out) {
-	shockDay := settle + days
+	shockDay := settle
 	type series struct {
 		Factor       float64
 		Tile         int // the one tile whose money changed (-1: all)
@@ -146,5 +146,5 @@ func runMoney(o *Out) {
 			runs[k].Real[m] /= runs[0].Real[m]
 		}
 	}
-	o.Write("money.json", map[string]any{"changeMonth": 12, "humeTile": humeTile, "runs": runs})
+	o.Write("money.json", map[string]any{"humeTile": humeTile, "runs": runs})
 }
