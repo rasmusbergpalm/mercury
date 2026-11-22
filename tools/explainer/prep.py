@@ -126,6 +126,9 @@ out["doubling"] = {k: [round(x, 4) for x in v] for k, v in db.items()}
 # people spend twice as fast
 vl = json.load(open(f"{S}/velocity.json"))
 out["velocity"] = {k: [round(x, 4) for x in v] for k, v in vl.items()}
+# every firm twice as productive
+pr = json.load(open(f"{S}/productivity.json"))
+out["productivity"] = {k: [round(x, 4) for x in v] for k, v in pr.items()}
 # a monopoly brewer
 mn = json.load(open(f"{S}/monopoly.json"))
 out["monopoly"] = {"tile": mn["tile"], "elasticity": mn["elasticity"], "runs": [{k: (round(v, 5) if isinstance(v, float) else v) for k, v in r.items()} for r in mn["runs"]]}

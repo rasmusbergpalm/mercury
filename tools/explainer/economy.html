@@ -325,7 +325,7 @@ __STYLE__</style>
 <p>M is the stock of money; V its velocity, how many times each pound is spent in a period; P the price level; and Y real output, the goods those pounds buy. As written it is true by definition: the pounds spent equal the goods bought times their prices. The quantity theory adds that V and Y are set by real things, by habits of spending and by what land, labour and capital can make, so M sets P.</p>
 <p>In Mercury the equation is a rule of behaviour. Each day people spend a share s of the cash they hold, a twentieth in this economy, so</p>
 <p class="eq">P · Y = s · M</p>
-<p>where M is the money people hold, s its velocity, Y the goods they buy a day and P their prices. The money on the map only changes hands, and the land, labour and recipes set Y, so M and s set P. Firms and merchants hold money too, so M is the people's part of it, and that part can shift. Three experiments test the equation: doubling every price and wage, which breaks it; doubling or halving the money, M; and doubling how fast it is spent, s.</p>
+<p>where M is the money people hold, s its velocity, Y the goods they buy a day and P their prices. The money on the map only changes hands, and the land, labour and recipes set Y, so M and s set P. Firms and merchants hold money too, so M is the people's part of it, and that part can shift. Four experiments test the equation: doubling every price and wage, which breaks it; doubling or halving the money, M; doubling how fast it is spent, s; and doubling what the economy can make, Y.</p>
 <p>The first doubles every price and every wage on the map on one day, the money left as it was, against a twin where nothing happens. If the equation holds, the same pounds buy half as much, and the markets bring prices back down. <span class="ref" data-fig="doubling"></span> follows it.</p>
 </div>
 
@@ -372,6 +372,21 @@ __STYLE__</style>
 
 <div class="col">
 <p id="txt-velocity"></p>
+<p>The fourth changes Y: from one day every firm on the map is twice as productive, against a twin where nothing changes. If the equation holds, twice the goods sell for the same pounds, so prices halve. <span class="ref" data-fig="productivity"></span> follows it for three years.</p>
+</div>
+
+<div class="figure" id="fig-productivity">
+  <div class="head"><span class="plate"></span><h3>Make twice as much, and prices halve</h3></div>
+  <div class="grid2">
+    <svg class="chart" id="chart-productivity-prices" role="img" aria-label="Price level, wage and the people's share of the money after every firm becomes twice as productive, against a twin"></svg>
+    <svg class="chart" id="chart-productivity-real" role="img" aria-label="Real output and living standard after every firm becomes twice as productive, against a twin"></svg>
+  </div>
+  <div class="legend" id="legend-productivity"></div>
+  <p class="cap" id="cap-productivity"></p>
+</div>
+
+<div class="col">
+<p id="txt-productivity"></p>
 <p>Money flows across the map; so does grain, unless something stops it. From 1815 Britain's Corn Laws kept out foreign grain unless the price at home was high, until their repeal in 1846. Ricardo argued that they raised the price of bread, and with it the rents of those who owned the land that grew grain, at the expense of the workers who ate the bread and of the manufacturers who paid the workers. To test it, the map's two northern rows play Britain: hills and mountains with coal, iron and sheep, and a few plains. The rest of the map is the Continent. A duty is laid on grain entering Britain, at rates from none to an embargo, and what it raises goes back to Britain's people. <span class="ref" data-fig="cornlaws"></span> shows Britain five years on.</p>
 </div>
 
@@ -907,6 +922,22 @@ function drawVelocity() {
   document.getElementById("txt-velocity").textContent = `Prices and wages rise together, smoothly this time, and in ${Math.round(near / 30)} month${Math.round(near / 30) === 1 ? "" : "s"} settle at about ×${avg("Prices").toFixed(2)}, while real output and the living standard don't move (×${avg("Real").toFixed(2)} and ×${avg("Living").toFixed(2)} over the second year). Nobody is short of cash, so there is no slump: on the first day people even live ${Math.round(100 * (B.Living[1] - 1))}% better, buying more before prices have risen. Prices don't quite double because M moves too. Spending faster, people hold less of the map's money, ${Math.round(100 * (1 - avg("Held")))}% less, and firms and merchants the rest: s doubles, the people's M falls to ×${avg("Held").toFixed(2)}, and s·M rises ×${(2 * avg("Held")).toFixed(2)}, close to what prices do.`;
 }
 
+// ---- the productivity plate: every firm twice as productive -------------------------------------
+function drawProductivity() {
+  const B = D.productivity, N = B.Prices.length - 1, day = (k) => B[k].map((v, d) => [d, v]);
+  const cfg = { xTicks: [0, 182, 365, 547, 730, 912, 1095], xFmt: (v) => (v ? `${+(v / 365).toFixed(1)}` : "0"), xLabel: "years after the change", w: 480, h: 320 };
+  lineChart(document.getElementById("chart-productivity-prices"), { ...cfg, title: "Prices, wages and money held, against the twin", yMin: 0, yMax: 1.5, yFmt: (v) => "×" + v.toFixed(1), series: [
+      { pts: day("Wage"), color: "--s3", end: "wages" }, { pts: day("Held"), color: "--s5", end: "people's share of the money", below: true },
+      { pts: day("Prices"), color: "--s1", end: "prices", below: true }] });
+  lineChart(document.getElementById("chart-productivity-real"), { ...cfg, title: "Output and living standard, against the twin", yMin: 0.8, yFmt: (v) => "×" + v.toFixed(1), series: [
+      { pts: day("Real"), color: "--s2", end: "real output" }, { pts: day("Living"), color: "--s4", end: "living standard", below: true }] });
+  legend(document.getElementById("legend-productivity"), [["--s1", "price level"], ["--s3", "average wage"], ["--s5", "the share of the map's money people hold"], ["--s2", "real output"], ["--s4", "living standard"]]);
+  const yr = (k, y) => B[k].slice(365 * (y - 1) + 1, 365 * y + 1).reduce((a, v) => a + v, 0) / 365;
+  const near = B.Prices.findIndex((v, d) => d > 0 && v < 1.05 * yr("Prices", 1));
+  document.getElementById("cap-productivity").textContent = `Each against a twin where nothing changes, day by day for three years. Real output is net output at the prices before the change; the price level is the basket people bought the day before, at today's prices.`;
+  document.getElementById("txt-productivity").textContent = `Prices fall to ×${yr("Prices", 1).toFixed(2)} within ${Math.max(1, Math.round(near / 30))} month${Math.round(near / 30) > 1 ? "s" : ""}, while money wages barely move (×${yr("Wage", 1).toFixed(2)} over the first year), so a day's wage buys more than twice as much. Real output rises at once, to ×${yr("Real", 1).toFixed(1)} over the first year, and keeps rising, to ×${yr("Real", 3).toFixed(1)} in the third, as owners build on the higher profits. It more than doubles because a firm's inputs are other firms' goods, now cheaper to make too. The living standard rises by less, to ×${yr("Living", 3).toFixed(2)} in the third year: each need is met with diminishing returns, so twice the goods are worth less than twice as much. The people's share of the money hardly moves (×${yr("Held", 3).toFixed(2)}), so prices times real output stay about where s·M holds them: ${yr("Prices", 1).toFixed(2)} × ${yr("Real", 1).toFixed(1)} ≈ ${(yr("Prices", 1) * yr("Real", 1)).toFixed(1)} over the first year, against 1 before.`;
+}
+
 // ---- the Corn Laws plate ------------------------------------------------------------------
 function drawCornLaws() {
   const C = D.cornlaws, runs = C.runs.filter((r) => r.Duty >= 0).sort((a, b) => a.Duty - b.Duty), free = runs[0];
@@ -1088,7 +1119,7 @@ const roman = (n) => [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]].reduc
 document.querySelectorAll(".figure").forEach((f, i) => { const p = f.querySelector(".plate"); if (p) p.textContent = `Plate ${roman(i + 1)}`; });
 document.querySelectorAll(".ref").forEach((r) => { const f = document.getElementById(`fig-${r.dataset.fig}`); r.textContent = f ? f.querySelector(".plate").textContent : "a plate below"; });
 
-function drawAll() { drawWorld(); drawFirm(); drawMonopoly(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); drawMoney(); drawDoubling(); drawVelocity(); drawCornLaws(); drawBrexit(); drawStarlanes(); }
+function drawAll() { drawWorld(); drawFirm(); drawMonopoly(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); drawMoney(); drawDoubling(); drawVelocity(); drawProductivity(); drawCornLaws(); drawBrexit(); drawStarlanes(); }
 inspect(picked);
 drawAll();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);

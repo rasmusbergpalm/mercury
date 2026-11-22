@@ -16,6 +16,7 @@ package experiments
 //go:generate go run ./run -out data money
 //go:generate go run ./run -out data doubling
 //go:generate go run ./run -out data velocity
+//go:generate go run ./run -out data productivity
 //go:generate go run ./run -out data cornlaws
 //go:generate go run ./run -out data brexit
 //go:generate go run ./run -out data monopoly
