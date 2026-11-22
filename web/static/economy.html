@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mercury: an economy engine</title>
+<title>Mercury</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IM+Fell+English+SC&display=swap">
 <style>
@@ -44,15 +44,10 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 19px/1.55 var(
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .col { max-width: 680px; margin: 0 auto; }
 header.title { text-align: center; padding-block: 8px 28px; border-bottom: 3px double var(--rule); margin-bottom: 36px; }
-.kicker a.back { color: inherit; }
+.kicker a.back, h1 a.back { color: inherit; text-decoration: none; }
 .kicker { font-family: var(--display); letter-spacing: .14em; color: var(--brass); font-size: 15px; margin: 0; }
 h1 { font-family: var(--display); font-weight: 400; font-size: clamp(40px, 7vw, 68px); line-height: 1.02; margin: 10px 0 14px; text-wrap: balance; }
 .lede { font-size: 21px; font-style: italic; color: var(--muted); max-width: 680px; margin: 0 auto; text-wrap: balance; }
-.tenets { list-style: none; padding: 0; margin: 22px auto 0; max-width: 860px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 20px;
-  font-family: var(--display); letter-spacing: .05em; font-size: 15px; color: var(--ink); }
-.tenets li { white-space: nowrap; flex: none; }
-.tenets li::before { content: "◆"; color: var(--brass); font-size: 9px; margin-right: 8px; vertical-align: 2px; }
-.links { margin: 16px 0 0; font-size: 16px; color: var(--muted); }
 h2 { font-family: var(--display); font-weight: 400; font-size: 32px; line-height: 1.1; margin: 0 0 6px; text-wrap: balance; }
 h2 .no { color: var(--brass); margin-right: 10px; }
 section { margin-top: 56px; }
@@ -116,18 +111,8 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
 <body>
 <div class="page">
 <header class="title">
-  <p class="kicker"><a href="./" class="back">Mercury</a> · An open-source economy engine</p>
-  <h1>Economies from the bottom up</h1>
+  <h1><a href="./" class="back">Mercury</a></h1>
   <p class="lede">A deterministic, spatial, agent-based economy, where transport is a good like any other: produced by workers and bought by merchants. Nothing is solved for: prices, wages, trade and where people live come out of what firms, owners, merchants and people choose, tick by tick. This page runs it on two example economies, Europe in 1820 and an empire of star systems, and puts textbook economics to the test.</p>
-  <ul class="tenets">
-    <li>Agents, not equations</li>
-    <li>Transport is made, not assumed</li>
-    <li>Nothing solved for</li>
-    <li>Bit-for-bit deterministic</li>
-    <li>Economies as data</li>
-    <li>Go, MIT licence</li>
-  </ul>
-  <p class="links"><a href="https://github.com/rasmusbergpalm/mercury">The source</a> · <a href="#firms">Europe, 1820</a> (I–VI) · <a href="#starlanes">An empire of star systems</a> (VII) · <a href="#engine">Under the bonnet</a> (VIII)</p>
 </header>
 
 <div class="col">
