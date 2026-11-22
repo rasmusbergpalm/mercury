@@ -97,3 +97,5 @@ and write why next to it.
   every choice after it).
 - No backwards compatibility for saves or old code paths: the game is in
   development.
+- Writing (docs, comments, the economy page): say what things are. Stop
+  writing what they are not.
