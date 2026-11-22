@@ -337,6 +337,21 @@ __STYLE__</style>
 <div class="col">
 <p>Halving the money costs output for a while, and doubling it doesn't, because a firm's cash is its working capital. When the money is halved, firms can't pay for the workers and materials they planned on until prices and wages have come down to match. Output falls until they have. Contemporaries saw the same after the Napoleonic wars, when Britain went back to gold at the old parity and prices fell for years. When the money is doubled nobody is short of cash, and prices simply rise.</p>
 <p>The right-hand chart is Hume's own experiment, his price-specie flow. Double the money in one country alone and its prices rise above its neighbours'. It buys from them and sells to them less, and money flows out until prices are even again. In the end the extra money is spread over the whole map, and every price is a little higher.</p>
+<p>The stock of money is what holds prices where they are. People spend a twentieth of their cash a day, and the money only changes hands, so the pounds spent across the map each day are fixed: if every price and wage doubled for no reason, the same pounds would buy half as much. <span class="ref" data-fig="doubling"></span> tries it. On one day every price and every wage on the map is doubled, the money left as it was, against a twin where nothing happens.</p>
+</div>
+
+<div class="figure" id="fig-doubling">
+  <div class="head"><span class="plate"></span><h3>Double every price and wage, and the economy undoes it</h3></div>
+  <div class="grid2">
+    <svg class="chart" id="chart-doubling-prices" role="img" aria-label="Price level and wage after every price and wage is doubled, against a twin"></svg>
+    <svg class="chart" id="chart-doubling-real" role="img" aria-label="Real output and living standard after every price and wage is doubled, against a twin"></svg>
+  </div>
+  <div class="legend" id="legend-doubling"></div>
+  <p class="cap" id="cap-doubling"></p>
+</div>
+
+<div class="col">
+<p id="txt-doubling"></p>
 <p>Money flows across the map; so does grain, unless something stops it. From 1815 Britain's Corn Laws kept out foreign grain unless the price at home was high, until their repeal in 1846. Ricardo argued that they raised the price of bread, and with it the rents of those who owned the land that grew grain, at the expense of the workers who ate the bread and of the manufacturers who paid the workers. To test it, the map's two northern rows play Britain: hills and mountains with coal, iron and sheep, and a few plains. The rest of the map is the Continent. A duty is laid on grain entering Britain, at rates from none to an embargo, and what it raises goes back to Britain's people. <span class="ref" data-fig="cornlaws"></span> shows Britain five years on.</p>
 </div>
 
@@ -841,6 +856,21 @@ function drawMoney() {
   document.getElementById("cap-money").textContent = `Left: log scales, each against a run where nothing changed. With the money doubled, prices reach ×${at(up, "prices", 2).toFixed(2)} within two months and stay there (×${last(up, "prices").toFixed(2)} after four years), wages ×${last(up, "wage").toFixed(2)}, and real output doesn't move (×${last(up, "real").toFixed(3)}). With it halved, prices end at ×${last(down, "prices").toFixed(2)}, but output first falls by ${(100 * (1 - minOut)).toFixed(0)}% and takes about six months to recover. Right: the tile's prices jump ${pct(hume.tilePrices[1])} in the first month while its neighbours' rise ${pct(hume.nearPrices[1])}; its extra money is gone within six months (its share of the map's money ×${hume.tileMoney[6].toFixed(2)} of what it was), spread over the map.`;
 }
 
+// ---- the doubling plate: every price and wage doubled, the money unchanged ----------------------
+function drawDoubling() {
+  const B = D.doubling, n = 180, day = (k) => B[k].slice(0, n + 1).map((v, d) => [d, v]);
+  const cfg = { xTicks: [0, 30, 60, 90, 120, 150, 180], xLabel: "days after the change", w: 480, h: 320, yFmt: (v) => "×" + v.toFixed(1) };
+  lineChart(document.getElementById("chart-doubling-prices"), { ...cfg, title: "Prices and wages, against the twin", yMin: 0.8, series: [
+      { pts: day("Prices"), color: "--s1", end: "prices" }, { pts: day("Wage"), color: "--s3", end: "wages", below: true }] });
+  lineChart(document.getElementById("chart-doubling-real"), { ...cfg, title: "Output and living standard, against the twin", yMin: 0.5, yMax: 1.1, yFmt: (v) => "×" + v.toFixed(2), series: [
+      { pts: day("Real"), color: "--s2", end: "real output" }, { pts: day("Living"), color: "--s4", end: "living standard", below: true }] });
+  legend(document.getElementById("legend-doubling"), [["--s1", "price level"], ["--s3", "average wage"], ["--s2", "real output"], ["--s4", "living standard"]]);
+  const first = (k, f) => B[k].findIndex(f), worst = (k) => { let w = 0; B[k].forEach((v, d) => { if (v < B[k][w]) w = d; }); return w; };
+  const back = first("Prices", (v, d) => d > 0 && v < 1.05), lowOut = worst("Real"), lowLiv = worst("Living");
+  document.getElementById("cap-doubling").textContent = `Each against a twin where nothing happens, day by day for the first six months. Real output is net output at the prices before the change; the price level is the basket people bought the day before, at today's prices. The money on the map is the same in both runs throughout.`;
+  document.getElementById("txt-doubling").textContent = `The economy undoes it in about ${Math.round(back / 30)} months, and it hurts while it does. On the first day the same pounds buy half as much, and the living standard falls by ${Math.round(100 * (1 - B.Living[1]))}%. Demand falls short in every market, and prices start down. Firms, which can only spend the cash they have, can afford half the workers at twice the wage, so output falls too, by ${Math.round(100 * (1 - B.Real[lowOut]))}% at worst on day ${lowOut}. With so many out of work, wages fall faster than prices: a month on, wages are ×${B.Wage[30].toFixed(2)} and prices still ×${B.Prices[30].toFixed(2)}, so workers' pay buys less until prices catch up. By day ${back} prices are within 5% of the twin's, and within the year everything is back where it would have been: prices ×${B.Prices[365].toFixed(2)}, output ×${B.Real[365].toFixed(2)}. Doubling every price does to what money buys what halving the money does, and the economy answers it the same way as the halved money above: a dip in output while prices come down.`;
+}
+
 // ---- the Corn Laws plate ------------------------------------------------------------------
 function drawCornLaws() {
   const C = D.cornlaws, runs = C.runs.filter((r) => r.Duty >= 0).sort((a, b) => a.Duty - b.Duty), free = runs[0];
@@ -1022,7 +1052,7 @@ const roman = (n) => [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]].reduc
 document.querySelectorAll(".figure").forEach((f, i) => { const p = f.querySelector(".plate"); if (p) p.textContent = `Plate ${roman(i + 1)}`; });
 document.querySelectorAll(".ref").forEach((r) => { const f = document.getElementById(`fig-${r.dataset.fig}`); r.textContent = f ? f.querySelector(".plate").textContent : "a plate below"; });
 
-function drawAll() { drawWorld(); drawFirm(); drawMonopoly(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); drawMoney(); drawCornLaws(); drawBrexit(); drawStarlanes(); }
+function drawAll() { drawWorld(); drawFirm(); drawMonopoly(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); drawMoney(); drawDoubling(); drawCornLaws(); drawBrexit(); drawStarlanes(); }
 inspect(picked);
 drawAll();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);

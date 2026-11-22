@@ -120,6 +120,9 @@ r4 = lambda xs: [round(x, 4) for x in xs]
 out["brexit"] = {"britain": bx["britain"], "runs": {r["Name"]: {"months": r["Months"],
                  "britain": {k: r4(v) for k, v in r["Britain"].items()}, "continent": {k: r4(v) for k, v in r["Continent"].items()},
                  "trade": r4(r["Trade"]), "jobs": {k: round(v, 2) for k, v in r["Jobs"].items()}} for r in bx["runs"]}}
+# every price and wage doubled overnight, the money unchanged
+db = json.load(open(f"{S}/doubling.json"))
+out["doubling"] = {k: [round(x, 4) for x in v] for k, v in db.items()}
 # a monopoly brewer
 mn = json.load(open(f"{S}/monopoly.json"))
 out["monopoly"] = {"tile": mn["tile"], "elasticity": mn["elasticity"], "runs": [{k: (round(v, 5) if isinstance(v, float) else v) for k, v in r.items()} for r in mn["runs"]]}
