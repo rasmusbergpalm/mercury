@@ -116,7 +116,7 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
 </header>
 
 <div class="col">
-<p>Mercury runs an economy on a map of tiles. Each tile has its own people, its own firms, and its own markets for labour and goods. Merchants carry goods between neighbouring tiles and pay for the transport it takes. Firms hire workers and buy inputs, and owners build more capacity where it pays. People spend their income on what they need most, and move to where they live better.</p>
+<p>Mercury runs an economy on a set of connected regions: a graph, whose regions are its nodes and whose connections are the routes between them. Each region has its own people, its own firms, and its own markets for labour and goods. Merchants carry goods along the connections and pay for the transport it takes. Firms hire workers and buy inputs, and owners build more capacity where it pays. People spend their income on what they need most, and move to where they live better.</p>
 <p>Most models of trade treat transport as an "iceberg", where a fixed share of each shipment melts away on the way, or as a cost set from outside the model. In Mercury, carriage is made by carters, horses and boats, a trade like any other that hires its workers in each tile's labour market. Merchants buy it at the market price, in proportion to how far they ship and how bulky the good is. So the cost of trade is an outcome, not a parameter. It rises with wages and with the demand for carriage, and falls with better ways of carrying. When trade booms, carters compete with every other trade for workers.</p>
 <p>Nothing in this economy is solved for. Four kinds of agent each want something simple, and act on it every day at the prices in front of them. The prices, the wages, the trade between tiles, what each tile specialises in and where people live all come out of what they do.</p>
 <div class="table-wrap"><table class="agents">
@@ -124,7 +124,7 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
 <tr><td><b>Firms</b></td><td>the most profit at today's prices</td><td>how many workers to hire and how much of each input to buy</td><td>I</td></tr>
 <tr><td><b>Owners</b></td><td>a return on their capital</td><td>whether to build a new level, refit one to a better method, or let a losing one go</td><td>II</td></tr>
 <tr><td><b>Merchants</b></td><td>to buy cheap and sell dear</td><td>how much of each good to buy for each neighbouring tile</td><td>III</td></tr>
-<tr><td><b>People</b></td><td>the best living they can afford</td><td>what to buy with their income, and whether to move to a neighbouring tile</td><td>II, V</td></tr>
+<tr><td><b>Workers</b></td><td>the best living they can afford</td><td>what to buy with their income, and whether to move to a neighbouring tile</td><td>II, V</td></tr>
 </table></div>
 <p>The agents meet in markets: every tile has one for labour and one for each good. The markets collect everyone's orders, and move prices a little each day towards where supply meets demand. Prices are in pounds, from a fixed stock of money that only changes hands.</p>
 <p>The engine operates on a set of goods, needs, production recipes and a set of regions and their connections. Together these constitute an economy, and they're all defined in data files. Most experiments in this page use a simple example economy that resembles Europe ca. 1820, but the engine is not tied to this economy as the last example shows.</p>
@@ -193,11 +193,11 @@ table.agents td { border-bottom: 1px dotted var(--border); padding: 6px 8px 6px 
 <section id="people">
 <div class="col">
 <h2><span class="no">II.</span>People: workers and owners</h2>
-<div class="agent"><h4>The people</h4><dl>
+<div class="agent"><h4>The workers</h4><dl>
 <dt>want</dt><dd>the best living they can afford: the most utility for what they spend, utility being the sum over their needs of weight × log(1 + what they have of it ÷ what they need of it)</dd>
 <dt>know</dt><dd>their tile's prices and their own cash, and how well people live in the neighbouring tiles</dd>
 <dt>decide</dt><dd>how to spend a twentieth of their cash each day (the rest is savings that carry them through a bad month), across all their needs and the goods that meet each; and whether to move: a few move each day towards a neighbour where people live better, more when the gap is wide and the journey cheap</dd>
-<dt>work</dt><dd>every worker works, at the going wage, for whichever firms hire. The wage rises when firms want more hands than there are, and falls when there are more hands than work</dd>
+<dt>work</dt><dd>at the going wage, for whichever firms hire. The wage rises when firms want more hands than there are, and falls when there are more hands than work</dd>
 </dl></div>
 <div class="agent"><h4>The owners</h4><dl>
 <dt>want</dt><dd>a return on their capital: a new level must repay its cost within ten years of profit, about 10% a year, what nineteenth-century firms asked of new works</dd>
