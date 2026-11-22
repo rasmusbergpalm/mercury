@@ -165,7 +165,7 @@ all:
 
 | Where | Levers | Accounts |
 |---|---|---|
-| a tile (`Region`) | `IncomeTax`, `PaybackMult` (cost of capital), `GrowthBonus`, `LandTransportMult` and `SeaTransportMult` (the cost of transport), `SpoilageMult` | `Withheld` (taxes), `Duties` |
+| a tile (`Region`) | `IncomeTax`, `PaybackMult` (cost of capital), `GrowthBonus`, `LandTransportMult` and `SeaTransportMult` (the cost of transport), `SpoilageMult`, `SpendShare` (how fast people spend their cash) | `Withheld` (taxes), `Duties` |
 | a tile's markets | `Buyers`: outside buyers and employers, with their own bids for goods and workers | each buyer's `Account`, `Got` and `Hired` |
 | a route (`Trader`) | `Tariff`, `Closed` (an embargo) | |
 | a firm | `Mult` (productivity), `Enabled` and each method's `Enabled` (which recipes it may use) and `TFP`, an `Expansion` paid from outside, `Monopoly` | |

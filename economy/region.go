@@ -32,6 +32,7 @@ type Region struct {
 	LandTransportMult float64  // scales the transport it takes to cross the tile over land (1: its terrain's)
 	SeaTransportMult  float64  // scales the transport it takes to pass it by sea (1: CoastMove)
 	SpoilageMult      float64  // scales the spoilage of goods shipped from it (1: as is)
+	SpendShare        float64  // the share of their cash its people spend a tick (DefaultSpendShare)
 
 	House    *TradingHouse // the tile's merchants
 	outbound [][]*Trader   // routes buying here, by good (transport: all of them)
@@ -51,7 +52,7 @@ type Region struct {
 func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash float64) *Region {
 	r := &Region{ID: id, Name: name, Firms: firms, Wage: 1, WageSpeed: 0.1, BaseMove: 1, LandTransportMult: 1,
 		outbound: make([][]*Trader, NumGoods), inbound: make([][]*Trader, NumGoods), bidders: make([][]*Trader, NumGoods),
-		prices: make([]float64, NumGoods), PaybackMult: 1, SeaTransportMult: 1, SpoilageMult: 1}
+		prices: make([]float64, NumGoods), PaybackMult: 1, SeaTransportMult: 1, SpoilageMult: 1, SpendShare: DefaultSpendShare}
 	for i := 0; i < nPops; i++ {
 		r.Pops = append(r.Pops, NewPop(popSize, popCash))
 		r.popDemand = append(r.popDemand, make([]float64, NumGoods))
@@ -408,7 +409,7 @@ func (r *Region) GoodsMarkets() {
 	var plan demandPlan // the same prices for every pop here
 	plan.prepare(prices)
 	for i, p := range r.Pops {
-		p.demand(&plan, r.popDemand[i])
+		p.demand(&plan, r.SpendShare, r.popDemand[i])
 		for g := range p.Consumed {
 			p.Consumed[g] = 0
 		}

@@ -23,6 +23,8 @@ package economy
 //     to cross it over land and to pass it by sea;
 //   - SpoilageMult: scales how much of a perishable good shipped from it is
 //     lost on the way;
+//   - SpendShare: the share of their cash its people spend a tick, the
+//     velocity of their money (DefaultSpendShare);
 //
 // On a route (Trader): Tariff and Closed. On a firm: Mult (its
 // productivity), Enabled and each method's Enabled (which recipes it may

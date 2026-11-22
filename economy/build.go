@@ -237,13 +237,13 @@ func BuildWorld(transportCost float64, g Graph) (*World, error) {
 			return nil, fmt.Errorf("place %s: cell (%d, %d) is off the %d×%d grid", p.Name, p.Row, p.Col, g.Rows, g.Cols)
 		}
 		// a hundred people (or the place's own number), who start with 10 a
-		// head of spending a tick, in savings of a twentieth (spendShare):
+		// head of spending a tick, in savings of a twentieth (DefaultSpendShare):
 		// one group of workers, a few of whom are made owners
 		people := 100.0
 		if p.People > 0 {
 			people = p.People
 		}
-		reg := NewRegion(i, p.Name, makeFirms(*t, p.Coastal), 1, people, 10*people/spendShare)
+		reg := NewRegion(i, p.Name, makeFirms(*t, p.Coastal), 1, people, 10*people/DefaultSpendShare)
 		addOwnerClasses(reg)
 		reg.Row, reg.Col, reg.Terrain, reg.BaseMove, reg.Coastal = p.Row, p.Col, t.Name, t.MoveCost, p.Coastal
 		regions[i] = reg

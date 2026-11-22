@@ -34,6 +34,7 @@ type RegionState struct {
 	// levers and accounts
 	IncomeTax, PaybackMult, GrowthBonus               float64
 	LandTransportMult, SeaTransportMult, SpoilageMult float64
+	SpendShare                                        float64
 	Withheld, Duties                                  float64
 	Buyers                                            []BuyerState `json:",omitempty"`
 	Markets                                           []MarketState
@@ -94,7 +95,7 @@ func (w *World) Snapshot() *Snapshot {
 		Demography: w.Demography, TrackGDP: w.TrackGDP, Starvation: w.Starvation, Seed: w.Seed}
 	for _, r := range w.Regions {
 		rs := RegionState{Wage: r.Wage, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, IncomeTax: r.IncomeTax, PaybackMult: r.PaybackMult,
-			GrowthBonus: r.GrowthBonus, LandTransportMult: r.LandTransportMult, SeaTransportMult: r.SeaTransportMult, SpoilageMult: r.SpoilageMult,
+			GrowthBonus: r.GrowthBonus, LandTransportMult: r.LandTransportMult, SeaTransportMult: r.SeaTransportMult, SpoilageMult: r.SpoilageMult, SpendShare: r.SpendShare,
 			Withheld: r.Withheld, Duties: r.Duties, Real: r.Real.Clone()}
 		for _, b := range r.Buyers {
 			rs.Buyers = append(rs.Buyers, BuyerState{append([]float64(nil), b.Bid...), append([]float64(nil), b.Got...), b.Hire, b.Hired, b.Account})
@@ -174,6 +175,7 @@ func (w *World) SetState(s *Snapshot) error {
 		r.Wage, r.UtilityEMA, r.House.Cash = rs.Wage, rs.UtilityEMA, rs.HouseCash
 		r.IncomeTax, r.PaybackMult, r.GrowthBonus = rs.IncomeTax, rs.PaybackMult, rs.GrowthBonus
 		r.LandTransportMult, r.SeaTransportMult, r.SpoilageMult = rs.LandTransportMult, rs.SeaTransportMult, rs.SpoilageMult
+		r.SpendShare = rs.SpendShare
 		r.Withheld, r.Duties = rs.Withheld, rs.Duties
 		for j, bs := range rs.Buyers {
 			b := r.Buyers[j]

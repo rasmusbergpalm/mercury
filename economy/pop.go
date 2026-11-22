@@ -54,23 +54,27 @@ func (p *Pop) Employed() float64 {
 }
 
 // Demand writes the pop's purchases into out: every member spends an equal
-// share of spendShare of the pop's cash (see Demand).
+// share of DefaultSpendShare of the pop's cash (see Demand).
 func (p *Pop) Demand(prices []float64, out []float64) {
 	var d demandPlan
 	d.prepare(prices)
-	p.demand(&d, out)
+	p.demand(&d, DefaultSpendShare, out)
 }
 
-// People spend spendShare of their cash a tick and keep the rest: savings
-// carry them through a bad spell, so a dip in wages or a jump in prices
-// moves what they buy by a twentieth as much on the tick, and a market's
-// demand doesn't swing with every wage. (Spending it all, they turned every
-// tick's wage straight into the next tick's demand.)
-const spendShare = 1.0 / 20
+// DefaultSpendShare is the share of their cash people spend a tick unless
+// their tile says otherwise (Region.SpendShare); they keep the rest. Their
+// savings carry them through a bad spell, so a dip in wages or a jump in
+// prices moves what they buy by a twentieth as much on the tick, and a
+// market's demand doesn't swing with every wage. (Spending it all, they
+// turned every tick's wage straight into the next tick's demand.) It is
+// the velocity of the money people hold: with the money fixed, it sets
+// the price level, P·Y = share · M.
+const DefaultSpendShare = 1.0 / 20
 
-// demand is Demand at prices already prepared.
-func (p *Pop) demand(d *demandPlan, out []float64) {
-	d.demand(spendShare*p.Cash/p.Size, out)
+// demand is Demand at prices already prepared, spending share of the
+// pop's cash.
+func (p *Pop) demand(d *demandPlan, share float64, out []float64) {
+	d.demand(share*p.Cash/p.Size, out)
 	for i := range out {
 		out[i] *= p.Size
 	}
