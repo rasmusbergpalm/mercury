@@ -2,6 +2,7 @@ package economy
 
 import (
 	"encoding/json"
+	"math"
 	"testing"
 )
 
@@ -75,5 +76,29 @@ func TestSubsistence(t *testing.T) {
 	}
 	if u := Utility(half); u != 0 {
 		t.Errorf("utility %v with no %s at all, want 0", u, Needs[food].Name)
+	}
+}
+
+// A land-bound firm may build beyond its good land, onto poorer land: each
+// level there less productive, so the average quality falls, and the next
+// level adds less than its average level earns.
+func TestPoorerLand(t *testing.T) {
+	f := NewFirm("Farm", G("grain"), 2, []Factor{Labor(0.6)}, 50)
+	f.MaxLevels = 4
+	f.Levels = 4
+	if q := f.LandQuality(); q != 1 || f.marginalLevel() >= 1 {
+		t.Fatalf("on its good land: quality %v, next level %v", q, f.marginalLevel())
+	}
+	f.Levels = 8
+	r := math.Pow(0.5, 0.25) // each level beyond yields this much of the one before
+	if q := f.LandQuality(); math.Abs(q-(4+r*(1-0.5)/(1-r))/8) > 1e-9 {
+		t.Errorf("twice its good land: quality %v", q)
+	}
+	if f.AtCap() {
+		t.Error("full at twice its good land")
+	}
+	f.Levels = 12
+	if !f.AtCap() {
+		t.Error("room beyond three times its good land")
 	}
 }

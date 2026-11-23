@@ -173,6 +173,9 @@ type Firm struct {
 	investWant []float64 // capital goods to buy this tick, by good: upkeep, and a private expansion
 	upkeepWant []float64 // ...of which upkeep
 	levelValue float64   // what an average level of it is worth at today's prices
+	// landMult's cache: for this many levels and good land, this average
+	landLevels, landCapAt int
+	landM                 float64
 }
 
 // Stock is a quantity of a good.
@@ -392,7 +395,7 @@ func (f *Firm) refit(from, to int) {
 	f.addLevel(to)
 }
 
-// methodCap is the most levels method i may run.
+// methodCap is the good land method i may work (0: no cap).
 func (f *Firm) methodCap(i int) int {
 	if c := f.Methods[i].Cap; c > 0 {
 		return c
@@ -400,8 +403,8 @@ func (f *Firm) methodCap(i int) int {
 	return f.MaxLevels
 }
 
-// landCap is the most levels the firm may have: the most any of its working
-// methods may run (0: no cap).
+// landCap is the levels the firm's good land holds: the most any of its
+// working methods may work (0: no cap).
 func (f *Firm) landCap() int {
 	if f.MaxLevels == 0 {
 		return 0
@@ -422,7 +425,60 @@ func (f *Firm) effectiveTFP(i int) float64 {
 	if m.powLevels != l || m.levelsPow == 0 {
 		m.powLevels, m.levelsPow = l, math.Pow(float64(l), 1-m.exponentSum())
 	}
-	return m.TFP * m.levelsPow * f.Agglom * f.Mult
+	return m.TFP * m.levelsPow * f.Agglom * f.Mult * f.landMult(f.Levels)
+}
+
+// Land: a land-bound firm's good land holds landCap levels. It may build
+// beyond it, onto poorer land (Ricardo's margin: worse soils, thinner and
+// deeper seams), each level there less productive than the one before:
+// every further landCap levels yield half as much (marginalLand). Its
+// output reflects the average quality of the land it works, and owners
+// build there as long as the last level pays, so capital takes the place
+// of land: drainage, marling and deeper shafts.
+const (
+	marginalLand = 0.5 // what a level landCap beyond the good land yields, against one on it
+	landReach    = 3   // the most levels a firm may work, in landCaps
+)
+
+// landMult is the average quality of the land the firm's levels work if it
+// has levels of them (1 on its good land).
+func (f *Firm) landMult(levels int) float64 {
+	c := f.landCap()
+	if c == 0 || levels <= c {
+		return 1
+	}
+	if f.landLevels != levels || f.landCapAt != c {
+		e := float64(c)
+		for k := 1; k <= levels-c; k++ {
+			e += math.Pow(marginalLand, float64(k)/float64(c))
+		}
+		f.landLevels, f.landCapAt, f.landM = levels, c, e/float64(levels)
+	}
+	return f.landM
+}
+
+// LandQuality is the average quality of the land the firm works (1: all
+// of it good land).
+func (f *Firm) LandQuality() float64 { return f.landMult(f.Levels) }
+
+// Reach is the most levels the firm may have (0: no cap).
+func (f *Firm) Reach() int { return landReach * f.landCap() }
+
+// marginalLevel is what one more level would add to the firm's profit,
+// against what each of its levels earns now: 1 on good land, less beyond
+// it, where the new level is poorer and lowers the average. (With its
+// variable factors bought as they pay, a Cobb-Douglas firm's profit is
+// its levels times its productivity to the power 1/(1-s).)
+func (f *Firm) marginalLevel() float64 {
+	c := f.landCap()
+	if c == 0 || f.Levels < c {
+		return 1
+	}
+	g := 1 / (1 - f.Methods[f.Main()].exponentSum())
+	n := float64(f.Levels)
+	now := math.Pow(f.landMult(f.Levels), g)
+	next := math.Pow(f.landMult(f.Levels+1), g)
+	return ((n+1)*next - n*now) / now
 }
 
 // main is the method that runs most of the firm's levels (its first, at
@@ -465,7 +521,7 @@ func (f *Firm) factors() []Factor {
 // AtCap reports whether the firm can have no more levels.
 func (f *Firm) AtCap() bool {
 	c := f.landCap()
-	return c > 0 && f.Levels >= c
+	return c > 0 && f.Levels >= landReach*c
 }
 
 // BestMethod is the working method a level would earn most on at today's
@@ -474,7 +530,7 @@ func (f *Firm) AtCap() bool {
 func (f *Firm) BestMethod(prices []float64, wage float64) (int, float64) {
 	best, top := -1, 0.0
 	for i, m := range f.Methods {
-		if !m.Runs() || (f.methodCap(i) > 0 && f.MethodLevels(i) >= f.methodCap(i)) {
+		if !m.Runs() || (f.methodCap(i) > 0 && f.MethodLevels(i) >= landReach*f.methodCap(i)) {
 			continue
 		}
 		if p := f.LevelProfit(i, prices, wage); best < 0 || p > top {
@@ -733,13 +789,20 @@ func (f *Firm) Produce() float64 {
 	return q
 }
 
-// NextLevelMult is how much one more building level would multiply the
-// firm's output from the same workers and inputs: ((n+1)/n)^(1-s). Output is
-// constant-returns in levels and the variable factors together, so the gain
-// depends only on the number of levels.
-func (f *Firm) NextLevelMult() float64 {
+// CrowdingMult is how much one more level would multiply the firm's
+// output from the same workers and inputs on land as good as its own:
+// ((n+1)/n)^(1-s). Output is constant-returns in levels and the variable
+// factors together, so the gain depends only on the number of levels.
+func (f *Firm) CrowdingMult() float64 {
 	n := float64(max(f.Levels, 1))
 	return math.Pow((n+1)/n, 1-f.Methods[f.Main()].exponentSum())
+}
+
+// NextLevelMult is how much one more level would multiply the firm's
+// output from the same workers and inputs: CrowdingMult, and beyond its
+// good land the poorer land the new level works.
+func (f *Firm) NextLevelMult() float64 {
+	return f.CrowdingMult() * f.landMult(f.Levels+1) / f.landMult(f.Levels)
 }
 
 // ValueAdded is what the firm added today: its output at the given price,
