@@ -128,11 +128,10 @@ type recipeData struct {
 	Base         string
 	Cap          int
 	Capital      [][2]any
-	Land         float64
 }
 
 func (d recipeData) recipe() Recipe {
-	r := Recipe{Firm: d.Firm, Output: d.Output, TFP: d.TFP, Land: d.Land, StartsOff: d.Enabled != nil && !*d.Enabled, Service: d.Sector == "service"}
+	r := Recipe{Firm: d.Firm, Output: d.Output, TFP: d.TFP, StartsOff: d.Enabled != nil && !*d.Enabled, Service: d.Sector == "service"}
 	for _, f := range d.Factors {
 		name, _ := f[0].(string)
 		exp, ok := f[1].(float64)
@@ -142,6 +141,8 @@ func (d recipeData) recipe() Recipe {
 		switch {
 		case name == "labor":
 			r.Factors = append(r.Factors, Labor(exp))
+		case name == "land": // fixed, not bought: see Method.Land
+			r.Land = exp
 		case compositeIndex(name) >= 0:
 			r.Factors = append(r.Factors, Comp(name, exp))
 		default:

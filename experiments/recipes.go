@@ -40,10 +40,17 @@ func runRecipes(o *Out) {
 	}
 	var firms []firm
 	addFirm := func(rc Recipe) {
-		f := firm{Name: rc.Firm, Good: rc.Output, Methods: []method{{rc.Firm, rc.TFP, facs(rc.Factors)}}, Sites: map[string]float64{}}
+		withLand := func(r Recipe) []factor {
+			out := facs(r.Factors)
+			if r.Land > 0 {
+				out = append(out, factor{"land", r.Land})
+			}
+			return out
+		}
+		f := firm{Name: rc.Firm, Good: rc.Output, Methods: []method{{rc.Firm, rc.TFP, withLand(rc)}}, Sites: map[string]float64{}}
 		for _, mr := range MethodRecipes {
 			if mr.Base == rc.Firm {
-				f.Methods = append(f.Methods, method{mr.Firm, mr.TFP, facs(mr.Factors)})
+				f.Methods = append(f.Methods, method{mr.Firm, mr.TFP, withLand(mr.Recipe)})
 			}
 		}
 		for _, tn := range Terrains {

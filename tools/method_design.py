@@ -207,10 +207,9 @@ def main(alltech, paths):
         t, rest, machines = as_capital(firm, tfp, f, P[era])
         rc["tfp"] = round(t, 3)
         rc["factors"] = [["labor" if g == "L" else NAMES.get(g, g), a] for g, a in rest.items()]
-        rc.pop("land", None)
         if firm in LAND:  # the base's share of value added, of this method's
             materials = lambda d: sum(a for g, a in d.items() if g != "L" and g not in EQUIP)
-            rc["land"] = round(LAND[firm] / (1 - materials(F[firm][0][1])) * (1 - materials(f)), 3)
+            rc["factors"].append(["land", round(LAND[firm] / (1 - materials(F[firm][0][1])) * (1 - materials(f)), 3)])
         rc.pop("capital", None)
         if machines:
             rc["capital"] = [["construction", LEVEL]] + [[g, round(q, 1)] for g, q in machines.items()]
