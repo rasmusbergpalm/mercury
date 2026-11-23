@@ -141,7 +141,7 @@ var Techs = []Tech{
 		Effect: "Construction +25%; projects can take twice as much per day; officials administer 30% more", BuildRate: 2,
 		FirmTFP: firms("Construction", 1.25), AdminMult: 1.3},
 	{Name: "Joint-stock banks", Branch: BranchPolitics, Era: 1, Cost: era2, Requires: []string{"Civil service reform"},
-		Effect: "Firms invest more readily (payback horizon +50%)", InvestPayback: 1.5},
+		Effect: "Firms invest more readily (payback horizon +20%, over five years)", InvestPayback: 1.2},
 	{Name: "Research universities", Branch: BranchScience, Era: 1, Cost: era2, Requires: []string{"Steam printing"},
 		Effect: "Universities +30%", ResearchMult: 1.3},
 	{Name: "Public education", Branch: BranchScience, Era: 1, Cost: era2, Requires: []string{"Research universities"},
@@ -184,9 +184,9 @@ var Techs = []Tech{
 	{Name: "Public health", Branch: BranchPolitics, Era: 2, Cost: era3, Requires: []string{"Civil service reform"},
 		Effect: "Population growth +0.6% a year; public health staff cover 60% more", PopGrowth: 0.006, HealthMult: 1.6},
 	{Name: "Social insurance", Branch: BranchPolitics, Era: 2, Cost: era3, Requires: []string{"Public health"},
-		Effect: "Population growth +0.4% a year; firms invest more readily; public health staff cover 30% more", PopGrowth: 0.004, InvestPayback: 1.2, HealthMult: 1.3},
+		Effect: "Population growth +0.4% a year; public health staff cover 30% more", PopGrowth: 0.004, HealthMult: 1.3},
 	{Name: "Central bank", Branch: BranchPolitics, Era: 2, Cost: era3, Requires: []string{"Joint-stock banks"},
-		Effect: "Firms invest more readily (payback horizon +30%)", InvestPayback: 1.3},
+		Effect: "Firms invest more readily (payback horizon +15%, over five years)", InvestPayback: 1.15},
 	{Name: "Research laboratories", Branch: BranchScience, Era: 2, Cost: era3, EnableFirms: []string{"Pasteurizing winery"}, Requires: []string{"Public education"},
 		Effect: "Universities +40%", ResearchMult: 1.4},
 	{Name: "Engineering", Branch: BranchScience, Era: 2, Cost: era3, Requires: []string{"Public education", "Locomotives"},
@@ -436,8 +436,18 @@ func (n *Nation) supplyTransportMult() float64 {
 func (n *Nation) buildRateMult() float64 {
 	return n.techProduct(func(t *Tech) float64 { return t.BuildRate })
 }
+// paybackMult is how much longer owners will wait for a level to pay off:
+// each finance tech's effect as far as it has been adopted. Banks and their
+// branches spread over years, and with them the credit that let owners
+// look further ahead.
 func (n *Nation) paybackMult() float64 {
-	return n.techProduct(func(t *Tech) float64 { return t.InvestPayback })
+	m := 1.0
+	for i := range Techs {
+		if x := Techs[i].InvestPayback; x != 0 && n.Known[i] {
+			m *= 1 + (x-1)*n.Adoption(i)
+		}
+	}
+	return m
 }
 func (n *Nation) diffusionMult() float64 {
 	return n.techProduct(func(t *Tech) float64 { return t.Diffusion })
