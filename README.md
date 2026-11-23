@@ -68,7 +68,7 @@ the same number of ticks always gives bit-identical
 state: nothing in the economy is random. The tiles'
 own work runs in parallel and settles what it owes other tiles in a fixed
 order afterwards. So an experiment compares like with like: two runs differ
-by the change you made, not by luck.
+by exactly the change you made.
 
 ## The model
 
