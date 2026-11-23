@@ -21,6 +21,9 @@ type Recipe struct {
 	// (construction) and the machines in them. None given: LevelCost of
 	// construction.
 	Capital []Stock
+	// Land is land's share of what it makes, for a land-bound producer (its
+	// rent); its land is RawMaxLevels levels' worth (Cap for a method).
+	Land float64
 }
 
 // The recipes (data/recipes.json).
@@ -143,7 +146,7 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 			for _, b := range bonuses {
 				if b.Firm == rc.Firm {
 					f := NewFirm(rc.Firm, G(rc.Output), rc.TFP*b.Mult, rc.Factors, 50)
-					f.Methods[0].Capital = levelOf(rc.Capital)
+					f.Methods[0].Capital, f.Methods[0].Land = levelOf(rc.Capital), rc.Land
 					f.MaxLevels, f.Sector = RawMaxLevels, Primary
 					f.Site, f.SiteMult = site, b.Mult
 					f.Enabled = !rc.StartsOff
@@ -177,7 +180,7 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 				site = f.SiteMult
 			}
 			m := newMethod(mr.Firm, mr.TFP*site, mr.Factors)
-			m.Capital = levelOf(mr.Capital)
+			m.Capital, m.Land = levelOf(mr.Capital), mr.Land
 			m.Enabled = !mr.StartsOff
 			if f.Sector == Primary {
 				m.Cap = max(RawMaxLevels, mr.Cap)

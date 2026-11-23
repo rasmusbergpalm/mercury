@@ -46,8 +46,8 @@ func FirmBonuses(r *Region, f *Firm) []Modifier {
 	if m := r.eduMult(f); m != 1 {
 		out = append(out, Modifier{"Schooling", m, "the tile's educated share", false})
 	}
-	if q := f.LandQuality(); q < 1 {
-		out = append(out, Modifier{"Poorer land", q, "levels beyond its good land work poorer soil or deeper seams", false})
+	if m := f.LandMult(); m != 1 {
+		out = append(out, Modifier{"Land", m, fmt.Sprintf("its land, %d levels' worth, shared over %d", f.LandLevels(), f.Levels), false})
 	}
 	if f.Levels > 0 {
 		m := f.CrowdingMult()

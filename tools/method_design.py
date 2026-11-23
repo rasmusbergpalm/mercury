@@ -17,14 +17,15 @@ least FLOOR times as productive per level as the one it replaces: motor
 trucks and tractors didn't make haulage or farms less productive, they made
 them more productive with fewer hands.
 
-Every method keeps the share of its value added (what it makes less the
-materials and fuel it uses) that its firm's 1820 method pays its workers:
+Every method keeps the shares of its value added (what it makes less the
+materials and fuel it uses) that its firm's 1820 method pays its workers
+and, for a land-bound firm, its land (LAND):
 across the nineteenth century labour's share of income held near
 three-fifths (Kaldor's stylised fact; Matthews, Feinstein and
 Odling-Smee for Britain), machines saving labour by making each worker
 more productive, which raised wages, not by taking labour's share. Its
-machines take at most three-fifths of the rest, so every level keeps a
-building.
+machines take at most three-fifths of what is left for capital, so every
+level keeps a building.
 
 A method's machines (tools, steam engines, vehicles) are capital: the
 design gives them as cost shares, like its other factors, and the recipe
@@ -59,6 +60,12 @@ NAMES = dict(L="wage", steam="steam engines", fert="fertilizer", elec="electrici
              ore="iron ore", cane="sugar cane")
 COMPOSITES = {"fuel": ("wood", "coal"), "fiber": ("wool", "cotton")}
 SIGMA = 3
+# land's share of what a land-bound firm's 1820 method makes: its rent
+# (English farm rents were about a quarter of farm output in the 1820s;
+# mining royalties an eighth to a tenth; Clark, Turner)
+LAND = {"Farm": .25, "Potato farm": .25, "Ranch": .25, "Sheep farm": .25, "Cotton plantation": .2, "Tea plantation": .2,
+        "Sugar plantation": .2, "Vineyard": .2, "Silk farm": .2, "Forestry": .2, "Coal mine": .12, "Iron mine": .12,
+        "Clay pit": .1, "Fishery": .1, "Oil well": .15}
 COLS = dict(L="wage", tools="price tools", steam="price steam engines", coal="price coal", iron="price iron", wood="price wood",
             grain="price grain", fuel="price coal", clay="price clay", fert="price fertilizer", elec="price electricity",
             expl="price explosives", veh="price vehicles", oil="price oil")
@@ -98,21 +105,21 @@ def term(f, prices):
 
 # firm: its 1820 method (tfp, factors), then its later ones: (name, era, tech, factors)
 F = {
- 'Farm': ((2.0, dict(L=.6,tools=.04)), [('Seed-drill farm',2,'Seed drill',dict(L=.6,tools=.16)),('Fertilized farm',3,'Fertilizers',dict(L=.492,tools=.1,fert=.18)),('Tractor farm',4,'Mechanized agriculture',dict(L=.468,veh=.187,oil=.1,fert=.12))]),
- 'Potato farm': ((2.5, dict(L=.6,tools=.04)), [('Horse-hoe potato farm',2,'Seed drill',dict(L=.6,tools=.12)),('Fertilized potato farm',3,'Fertilizers',dict(L=.504,fert=.16,tools=.08)),('Motorized potato farm',4,'Mechanized agriculture',dict(L=.456,fert=.14,veh=.12,oil=.1))]),
- 'Ranch': ((1.2, dict(L=.6,tools=.04)), [('Fodder ranch',2,'Seed drill',dict(L=.516,grain=.14,tools=.08)),('Fenced ranch',3,'Steel',dict(L=.468,grain=.14,iron=.08,tools=.08)),('Motorized ranch',4,'Mechanized agriculture',dict(L=.456,grain=.14,veh=.14,oil=.1))]),
- 'Fishery': ((1.5, dict(L=.6,tools=.03)), [('Ice-packed fishery',2,'Railways',dict(L=.6,tools=.1)),('Steam trawler',3,'Steel',dict(L=.528,steam=.18,coal=.12)),('Motor trawler',4,'Internal combustion',dict(L=.492,veh=.197,oil=.18))]),
- 'Forestry': ((2.0, dict(L=.6,tools=.03)), [('Steam sawmill',2,'Steam power',dict(L=.528,steam=.16,coal=.12)),('Band-saw mill',3,'Steel',dict(L=.54,steam=.116,coal=.1,tools=.1)),('Motor logging',4,'Internal combustion',dict(L=.528,veh=.127,oil=.12,tools=.084))]),
- 'Coal mine': ((2.0, dict(L=.6,tools=.03)), [('Steam coal mine',2,'Steam power',dict(L=.57,steam=.1,coal=.05)),('Mechanized coal mine',3,'Electricity',dict(L=.528,steam=.08,elec=.12,tools=.08)),('Conveyor coal mine',4,'Mass production',dict(L=.492,elec=.18,tools=.098,steam=.098))]),
+ 'Farm': ((2.0, dict(L=.6,tools=.04)), [('Seed-drill farm',2,'Seed drill',dict(L=.6,tools=.09)),('Fertilized farm',3,'Fertilizers',dict(L=.492,tools=.074,fert=.18)),('Tractor farm',4,'Mechanized agriculture',dict(L=.468,veh=.07,oil=.1,fert=.12))]),
+ 'Potato farm': ((2.5, dict(L=.6,tools=.04)), [('Horse-hoe potato farm',2,'Seed drill',dict(L=.6,tools=.09)),('Fertilized potato farm',3,'Fertilizers',dict(L=.504,fert=.16,tools=.076)),('Motorized potato farm',4,'Mechanized agriculture',dict(L=.456,fert=.14,veh=.068,oil=.1))]),
+ 'Ranch': ((1.2, dict(L=.6,tools=.04)), [('Fodder ranch',2,'Seed drill',dict(L=.516,grain=.14,tools=.077)),('Fenced ranch',3,'Steel',dict(L=.468,grain=.14,iron=.08,tools=.07)),('Motorized ranch',4,'Mechanized agriculture',dict(L=.456,grain=.14,veh=.068,oil=.1))]),
+ 'Fishery': ((1.5, dict(L=.6,tools=.03)), [('Ice-packed fishery',2,'Railways',dict(L=.6,tools=.1)),('Steam trawler',3,'Steel',dict(L=.528,steam=.158,coal=.12)),('Motor trawler',4,'Internal combustion',dict(L=.492,veh=.148,oil=.18))]),
+ 'Forestry': ((2.0, dict(L=.6,tools=.03)), [('Steam sawmill',2,'Steam power',dict(L=.528,steam=.106,coal=.12)),('Band-saw mill',3,'Steel',dict(L=.54,steam=.058,coal=.1,tools=.05)),('Motor logging',4,'Internal combustion',dict(L=.528,veh=.063,oil=.12,tools=.042))]),
+ 'Coal mine': ((2.0, dict(L=.6,tools=.03)), [('Steam coal mine',2,'Steam power',dict(L=.57,steam=.1,coal=.05)),('Mechanized coal mine',3,'Electricity',dict(L=.528,steam=.074,elec=.12,tools=.074)),('Conveyor coal mine',4,'Mass production',dict(L=.492,elec=.18,tools=.069,steam=.069))]),
  'Iron mine': ((1.5, dict(L=.6,tools=.03)), [('Steam iron mine',2,'Steam power',dict(L=.57,steam=.1,coal=.05)),('Blasting iron mine',3,'Industrial chemistry',dict(L=.528,expl=.12,steam=.08)),('Motor ore mine',4,'Internal combustion',dict(L=.468,expl=.12,veh=.12,oil=.1))]),
- 'Sheep farm': ((1.5, dict(L=.6,tools=.04)), [('Bred-flock sheep farm',2,'Seed drill',dict(L=.528,grain=.12)),('Machine-shorn sheep farm',3,'Steel',dict(L=.528,grain=.12,tools=.1)),('Motorized sheep station',4,'Mechanized agriculture',dict(L=.48,grain=.12,veh=.12,oil=.08))]),
- 'Cotton plantation': ((1.5, dict(L=.6,tools=.04)), [('Steam-gin plantation',2,'Steam power',dict(L=.564,steam=.08,coal=.06)),('Fertilized cotton plantation',3,'Fertilizers',dict(L=.504,steam=.08,coal=.06,fert=.1)),('Mechanized cotton plantation',4,'Mechanized agriculture',dict(L=.468,fert=.1,veh=.14,oil=.12))]),
- 'Tea plantation': ((1.0, dict(L=.6,tools=.04)), [('Estate tea garden',2,'Seed drill',dict(L=.6,tools=.12)),('Tea estate with rollers',3,'Steel',dict(L=.564,steam=.12,coal=.06,tools=.06)),('Mechanized tea estate',4,'Mechanized agriculture',dict(L=.54,veh=.126,oil=.1,tools=.09))]),
- 'Sugar plantation': ((2.0, dict(L=.6,tools=.04)), [('Steam-mill plantation',2,'Steam power',dict(L=.516,steam=.12,coal=.14)),('Fertilized cane plantation',3,'Fertilizers',dict(L=.468,steam=.1,coal=.1,fert=.12)),('Mechanized cane plantation',4,'Mechanized agriculture',dict(L=.456,fert=.12,veh=.16,oil=.12))]),
- 'Vineyard': ((1.5, dict(L=.6,tools=.04)), [('Trellised vineyard',2,'Seed drill',dict(L=.6,tools=.1)),('Grafted vineyard',3,'Industrial chemistry',dict(L=.552,tools=.1,fert=.08)),('Motorized vineyard',4,'Mechanized agriculture',dict(L=.528,tools=.1,fert=.08,veh=.08,oil=.04))]),
- 'Silk farm': ((0.8, dict(L=.6,tools=.04)), [('Steam filature',2,'Steam filatures',dict(L=.564,steam=.08,coal=.06)),('Selected-egg silk farm',3,'Industrial chemistry',dict(L=.528,steam=.08,coal=.06,fert=.06)),('Electric filature',4,'Mass production',dict(L=.48,elec=.14,tools=.1,fert=.06))]),
- 'Clay pit': ((2.0, dict(L=.6,tools=.03)), [('Steam clay works',2,'Steam power',dict(L=.564,steam=.08,coal=.06)),('Blasted clay pit',3,'Industrial chemistry',dict(L=.54,expl=.1,steam=.12)),('Excavator clay pit',4,'Internal combustion',dict(L=.492,veh=.16,oil=.1,expl=.08))]),
- 'Oil well': ((1.5, dict(L=.6,tools=.03)), [('Rotary-drilled well',4,'Internal combustion',dict(L=.6,steam=.1,tools=.1))]),
+ 'Sheep farm': ((1.5, dict(L=.6,tools=.04)), [('Bred-flock sheep farm',2,'Seed drill',dict(L=.528,grain=.12)),('Machine-shorn sheep farm',3,'Steel',dict(L=.528,grain=.12,tools=.079)),('Motorized sheep station',4,'Mechanized agriculture',dict(L=.48,grain=.12,veh=.072,oil=.08))]),
+ 'Cotton plantation': ((1.5, dict(L=.6,tools=.04)), [('Steam-gin plantation',2,'Steam power',dict(L=.564,steam=.08,coal=.06)),('Fertilized cotton plantation',3,'Fertilizers',dict(L=.504,steam=.08,coal=.06,fert=.1)),('Mechanized cotton plantation',4,'Mechanized agriculture',dict(L=.468,fert=.1,veh=.094,oil=.12))]),
+ 'Tea plantation': ((1.0, dict(L=.6,tools=.04)), [('Estate tea garden',2,'Seed drill',dict(L=.6,tools=.12)),('Tea estate with rollers',3,'Steel',dict(L=.564,steam=.075,coal=.06,tools=.038)),('Mechanized tea estate',4,'Mechanized agriculture',dict(L=.54,veh=.063,oil=.1,tools=.045))]),
+ 'Sugar plantation': ((2.0, dict(L=.6,tools=.04)), [('Steam-mill plantation',2,'Steam power',dict(L=.516,steam=.103,coal=.14)),('Fertilized cane plantation',3,'Fertilizers',dict(L=.468,steam=.094,coal=.1,fert=.12)),('Mechanized cane plantation',4,'Mechanized agriculture',dict(L=.456,fert=.12,veh=.091,oil=.12))]),
+ 'Vineyard': ((1.5, dict(L=.6,tools=.04)), [('Trellised vineyard',2,'Seed drill',dict(L=.6,tools=.1)),('Grafted vineyard',3,'Industrial chemistry',dict(L=.552,tools=.1,fert=.08)),('Motorized vineyard',4,'Mechanized agriculture',dict(L=.528,tools=.059,fert=.08,veh=.047,oil=.04))]),
+ 'Silk farm': ((0.8, dict(L=.6,tools=.04)), [('Steam filature',2,'Steam filatures',dict(L=.564,steam=.08,coal=.06)),('Selected-egg silk farm',3,'Industrial chemistry',dict(L=.528,steam=.08,coal=.06,fert=.06)),('Electric filature',4,'Mass production',dict(L=.48,elec=.14,tools=.096,fert=.06))]),
+ 'Clay pit': ((2.0, dict(L=.6,tools=.03)), [('Steam clay works',2,'Steam power',dict(L=.564,steam=.08,coal=.06)),('Blasted clay pit',3,'Industrial chemistry',dict(L=.54,expl=.1,steam=.12)),('Excavator clay pit',4,'Internal combustion',dict(L=.492,veh=.148,oil=.1,expl=.08))]),
+ 'Oil well': ((1.5, dict(L=.6,tools=.03)), [('Rotary-drilled well',4,'Internal combustion',dict(L=.6,steam=.075,tools=.075))]),
  'Bakery': ((2.0, dict(L=.3,grain=.4,fuel=.1,tools=.04)), [('Steam bakery',2,'Steam power',dict(L=.288,grain=.4,coal=.12,steam=.06)),('Electric bakery',3,'Electricity',dict(L=.24,grain=.4,elec=.1,tools=.04,coal=.1)),('Industrial bakery',4,'Mass production',dict(L=.216,grain=.4,elec=.16,tools=.06,coal=.08))]),
  'Brewery': ((1.5, dict(L=.3,grain=.4,tools=.04)), [('Steam brewery',2,'Steam power',dict(L=.265,grain=.4,coal=.07,steam=.05)),('Refrigerated brewery',3,'Refrigeration',dict(L=.24,grain=.4,coal=.06,steam=.04,elec=.06)),('Bottling brewery',4,'Mass production',dict(L=.23,grain=.4,elec=.1,tools=.06,coal=.04))]),
  'Mill': ((1.5, dict(L=.3,fiber=.4,tools=.04)), [('Textile factory',2,'Mechanized textiles',dict(L=.25,fiber=.4,coal=.1,steam=.05)),('Ring-spinning mill',3,'Electricity',dict(L=.25,fiber=.4,elec=.1,tools=.08)),('Automatic-loom mill',4,'Assembly line',dict(L=.23,fiber=.4,elec=.14,tools=.08))]),
@@ -132,7 +139,7 @@ F = {
  'Engine works': ((0.8, dict(L=.3,iron=.3,coal=.1,tools=.1)), [('Compound-engine works',3,'Steel',dict(L=.27,iron=.3,coal=.1,tools=.14,elec=.06)),('Engine assembly line',4,'Assembly line',dict(L=.24,iron=.3,tools=.144,elec=.16,coal=.06))]),
  'Chemical works': ((1.0, dict(L=.3,coal=.2,clay=.1,tools=.04)), [('Electrochemical works',4,'Mass production',dict(L=.249,coal=.14,clay=.1,elec=.18))]),
  'Fertilizer works': ((1.2, dict(L=.3,coal=.15,clay=.15,tools=.04)), [('Haber-process plant',4,'Mass production',dict(L=.24,coal=.2,clay=.06,elec=.18))]),
- 'Power station': ((2.0, dict(L=.2,coal=.3,steam=.1,tools=.04)), [('Turbine power station',4,'Mass production',dict(L=.194,coal=.32,steam=.14,tools=.04))]),
+ 'Power station': ((2.0, dict(L=.2,coal=.3,steam=.1)), [('Turbine power station',4,'Mass production',dict(L=.194,coal=.32,steam=.14,tools=.04))]),
  'Munitions plant': ((1.5, dict(L=.3,iron=.2,coal=.2,tools=.04)), [('Shell production line',4,'Mass production',dict(L=.23,iron=.22,coal=.16,elec=.16))]),
  'Motor works': ((0.8, dict(L=.3,iron=.3,coal=.1,tools=.04)), [('Assembly-line works',4,'Assembly line',dict(L=.24,iron=.3,coal=.05,elec=.17))]),
 }
@@ -200,6 +207,10 @@ def main(alltech, paths):
         t, rest, machines = as_capital(firm, tfp, f, P[era])
         rc["tfp"] = round(t, 3)
         rc["factors"] = [["labor" if g == "L" else NAMES.get(g, g), a] for g, a in rest.items()]
+        rc.pop("land", None)
+        if firm in LAND:  # the base's share of value added, of this method's
+            materials = lambda d: sum(a for g, a in d.items() if g != "L" and g not in EQUIP)
+            rc["land"] = round(LAND[firm] / (1 - materials(F[firm][0][1])) * (1 - materials(f)), 3)
         rc.pop("capital", None)
         if machines:
             rc["capital"] = [["construction", LEVEL]] + [[g, round(q, 1)] for g, q in machines.items()]

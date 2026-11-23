@@ -128,10 +128,11 @@ type recipeData struct {
 	Base         string
 	Cap          int
 	Capital      [][2]any
+	Land         float64
 }
 
 func (d recipeData) recipe() Recipe {
-	r := Recipe{Firm: d.Firm, Output: d.Output, TFP: d.TFP, StartsOff: d.Enabled != nil && !*d.Enabled, Service: d.Sector == "service"}
+	r := Recipe{Firm: d.Firm, Output: d.Output, TFP: d.TFP, Land: d.Land, StartsOff: d.Enabled != nil && !*d.Enabled, Service: d.Sector == "service"}
 	for _, f := range d.Factors {
 		name, _ := f[0].(string)
 		exp, ok := f[1].(float64)

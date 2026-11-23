@@ -79,26 +79,27 @@ func TestSubsistence(t *testing.T) {
 	}
 }
 
-// A land-bound firm may build beyond its good land, onto poorer land: each
-// level there less productive, so the average quality falls, and the next
-// level adds less than its average level earns.
-func TestPoorerLand(t *testing.T) {
+// A land-bound firm's land is fixed: its levels share it, so more levels
+// on it each make less, and the next adds less than each earns.
+func TestLandIsFixed(t *testing.T) {
 	f := NewFirm("Farm", G("grain"), 2, []Factor{Labor(0.6)}, 50)
-	f.MaxLevels = 4
-	f.Levels = 4
-	if q := f.LandQuality(); q != 1 || f.marginalLevel() >= 1 {
-		t.Fatalf("on its good land: quality %v, next level %v", q, f.marginalLevel())
+	f.Methods[0].Land = 0.25
+	f.MaxLevels, f.Levels = 4, 4
+	if m := f.LandMult(); m != 1 {
+		t.Errorf("on as many levels as its land holds: %v", m)
 	}
 	f.Levels = 8
-	r := math.Pow(0.5, 0.25) // each level beyond yields this much of the one before
-	if q := f.LandQuality(); math.Abs(q-(4+r*(1-0.5)/(1-r))/8) > 1e-9 {
-		t.Errorf("twice its good land: quality %v", q)
+	if m := f.LandMult(); math.Abs(m-math.Pow(0.5, 0.25)) > 1e-12 {
+		t.Errorf("on twice as many: %v, want 0.5^0.25", m)
+	}
+	if m := f.marginalLevel(); math.Abs(m-0.15/0.4) > 1e-12 {
+		t.Errorf("the next level adds %v of what each earns, want (1-0.6-0.25)/(1-0.6)", m)
 	}
 	if f.AtCap() {
-		t.Error("full at twice its good land")
+		t.Error("full at twice its land")
 	}
-	f.Levels = 12
+	f.Levels = 16
 	if !f.AtCap() {
-		t.Error("room beyond three times its good land")
+		t.Error("room beyond four times its land")
 	}
 }
