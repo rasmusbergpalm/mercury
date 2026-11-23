@@ -57,6 +57,9 @@ var (
 	Terrains        = economy.Terrains
 	RawMaxLevels    = economy.RawMaxLevels
 	G               = economy.G
+	NewLevel        = economy.NewLevel
+	NewRefit        = economy.NewRefit
+	NewBuilding     = economy.NewBuilding
 	NameTiles       = economy.NameTiles
 	Labor           = economy.Labor
 	Input           = economy.Input

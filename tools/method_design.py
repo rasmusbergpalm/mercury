@@ -15,11 +15,20 @@ least FLOOR times as productive per level as the one it replaces: motor
 trucks and tractors didn't make haulage or farms less productive, they made
 them more productive with fewer hands.
 
-    python3 tools/method_design.py <all-tech CSV> <century CSV>...   # rewrites the TFPs in economy/data/recipes.json
+A method's machines (tools, steam engines, vehicles) are capital: the
+design gives them as cost shares, like its other factors, and the recipe
+holds them in its level. A level of the method carries the stock whose
+cost to own (the hurdle return and its wear) is that share of what the
+level makes at its era's prices, and the method's productivity is set so
+that a level of it makes as much, and earns as much, as it would buying
+those machines' services by the day.
+
+    python3 tools/method_design.py <all-tech CSV> <century CSV>...   # rewrites the methods in economy/data/recipes.json
 
 (The century CSVs come from CENTURY_OUT=... go test ./game -run TestCentury.)
 """
 import csv
+import json
 import math
 import re
 import sys
@@ -27,13 +36,32 @@ import sys
 ADV = 1.10
 FLOOR = 1.05
 ERAS = {2: (1840, 1860), 3: (1870, 1890)}  # the years whose prices the steam age's and steel's methods are set at
+# machines, held as capital: the good, and the share of it worn out a year
+EQUIP = {"tools": ("tools", 0.10), "steam": ("steam engines", 0.06), "veh": ("vehicles", 0.12)}
+HURDLE = 0.10  # the return owners ask of a level (economy: investPayback)
+YEAR = 365     # ticks a year
+LEVEL, BUILDING_WEAR = 1200, 0.02  # the construction in a level, and its wear a year
+BASE_ERA = {"Engine works": 2, "Power station": 3}  # 1820 firms that open later, with machines
+# the design's names for goods (the rest are the goods' own names)
+NAMES = dict(L="wage", steam="steam engines", fert="fertilizer", elec="electricity", expl="explosives", veh="vehicles",
+             ore="iron ore", cane="sugar cane")
+COMPOSITES = {"fuel": ("wood", "coal"), "fiber": ("wool", "cotton")}
+SIGMA = 3
 COLS = dict(L="wage", tools="price tools", steam="price steam engines", coal="price coal", iron="price iron", wood="price wood",
             grain="price grain", fuel="price coal", clay="price clay", fert="price fertilizer", elec="price electricity",
             expl="price explosives", veh="price vehicles", oil="price oil")
 
 
 def era_prices(alltech, paths):
-    mean = lambda sel: {k: sum(float(r[c]) for r in sel) / len(sel) for k, c in COLS.items()}
+    def mean(sel):
+        out = {k: sum(float(r[c]) for r in sel) / len(sel) for k, c in COLS.items()}
+        for c in sel[0]:
+            if c.startswith("p "):
+                out[c[2:]] = sum(float(r[c]) for r in sel) / len(sel)
+        out["wage"] = sum(float(r["wage"]) for r in sel) / len(sel)
+        for k, (a, b) in COMPOSITES.items():  # a CES composite of two, half each
+            out[k] = (0.5 * out[a] ** (1 - SIGMA) + 0.5 * out[b] ** (1 - SIGMA)) ** (1 / (1 - SIGMA))
+        return out
     rows = [r for p in paths for r in csv.DictReader(open(p))]
     P = {}
     for era, (a, b) in ERAS.items():
@@ -92,23 +120,65 @@ F = {
 }
 
 
+def price(P, k):
+    return P[NAMES.get(k, k)]
+
+
+def revenue(f, P):
+    # what a level makes a day where owners have built as many as pay: its
+    # share of what it makes (one less the factors' shares) earns the
+    # hurdle and the building's wear on the building
+    return (HURDLE + BUILDING_WEAR) * LEVEL * P["construction"] / YEAR / (1 - sum(f.values()))
+
+
+def as_capital(tfp, f, P):
+    """A method designed with its machines bought by the day, made into one
+    that holds them in its level: (tfp, the factors left, the machines a
+    level holds)."""
+    R = revenue(f, P)
+    rest = {g: a for g, a in f.items() if g not in EQUIP}
+    machines = {}
+    for g, a in f.items():
+        if g in EQUIP:
+            good, wear = EQUIP[g]
+            p = price(P, good)
+            # a stock whose cost to own a day is the share a of what the level makes
+            machines[good] = a * R * YEAR / (HURDLE + wear) / p
+            # the level makes as much without buying them: tfp takes on
+            # what the day's machines added, (a R / p)^a
+            tfp *= (a * R / p) ** a
+    return tfp, rest, machines
+
+
 def main(alltech, paths):
     P = era_prices(alltech, paths)
-    tfps = {}
+    path = "economy/data/recipes.json"
+    src = open(path, encoding="utf-8").read()
+    designs = {}  # name: (tfp, design factors, era)
     for firm, (base, meths) in F.items():
         prev_t, prev_f = base
+        if any(g in EQUIP for g in prev_f):
+            designs[firm] = (prev_t, prev_f, BASE_ERA[firm])
         prev_f = {("coal" if k == "fuel" else k): v for k, v in prev_f.items()}
         for name, era, tech, f in meths:
             calc = prev_t * math.exp(term(prev_f, P[era]) - term(f, P[era])) * ADV
             tfp = round(max(calc, prev_t * FLOOR), 2)
             print(f"{firm:18s} {name:30s} era {era}  tfp {tfp:5.2f}  (a tenth more profitable: {calc:5.2f})")
-            tfps[name] = tfp
+            designs[name] = (tfp, f, era)
             prev_t, prev_f = tfp, f
-    path = "economy/data/recipes.json"
-    src = open(path, encoding="utf-8").read()
-    for name, tfp in tfps.items():
-        src, n = re.subn(r'(\{"firm": "' + re.escape(name) + r'", "output": "[^"]+", "tfp": )[0-9.]+', lambda m: m.group(1) + f"{tfp:g}", src)
-        assert n == 1, name
+    for name, (tfp, f, era) in designs.items():
+        line = re.search(r'^( *)(\{"firm": "' + re.escape(name) + r'", .*\})(,?)$', src, re.M)
+        assert line, name
+        rc = json.loads(line.group(2))
+        t, rest, machines = as_capital(tfp, f, P[era])
+        rc["tfp"] = round(t, 3)
+        rc["factors"] = [x for x in rc["factors"] if x[0] not in {g for g, _ in EQUIP.values()}]
+        rc.pop("capital", None)
+        if machines:
+            rc["capital"] = [["construction", LEVEL]] + [[g, round(q, 1)] for g, q in machines.items()]
+            print(f"{name:30s} tfp {tfp:5.2f} -> {t:6.3f}  a level holds " + ", ".join(f"{q:.0f} {g}" for g, q in machines.items()))
+        out = json.dumps(rc, ensure_ascii=False)
+        src = src[:line.start(2)] + out + src[line.end(2):]
     open(path, "w", encoding="utf-8").write(src)
 
 if __name__ == "__main__":

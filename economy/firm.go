@@ -60,6 +60,10 @@ type Method struct {
 	// Cap is the most levels it may run (0: the firm's MaxLevels): steam
 	// pumps and blasting reach seams the old mines couldn't.
 	Cap int
+	// Capital is what one of its levels is made of: the building
+	// (construction) and the machines in it (engines, tools, vehicles).
+	// Owners buy it to build a level and make good its wear (Good.Wear).
+	Capital []Stock
 	// levels it runs; the firm's first method runs the levels the others
 	// don't (see MethodLevels)
 	Levels int
@@ -71,11 +75,15 @@ type Method struct {
 	levelsPow        float64 // L^(1-s), cached
 }
 
-// checkInputs marks the method short when some input of it is out of play.
+// checkInputs marks the method short when some input of it, or a good its
+// levels are made of, is out of play.
 func (m *Method) checkInputs(made []bool) {
 	m.short = false
 	if made == nil {
 		return
+	}
+	for _, s := range m.Capital {
+		m.short = m.short || !made[s.Good]
 	}
 	for _, fc := range m.Factors {
 		switch fc.Kind {
@@ -154,44 +162,197 @@ type Firm struct {
 	// ProfitEMA is a moving average of profit per tick; it drives investment.
 	ProfitEMA             float64
 	LossTicks, Age        int     // ticks of losses in a row; ticks alive
-	Wear                  float64 // levels worn out and not yet made good by upkeep (see depreciation)
+	Wear                  float64 // levels worn out and not yet made good by upkeep (see Good.Wear)
 	Urge                  float64 // the owners' urge to start the next project (see investDecideTicks)
 	TickRevenue, TickCost float64
 	tickInputs            float64   // what the goods it used up cost this tick
 	Used                  []float64 // goods it used up producing this tick, by good
-	investWant            float64   // construction to buy this tick: upkeep, and a private expansion
-	upkeepWant            float64   // ...of which upkeep
+	// CapitalIn is what its owners bought for its capital this tick, by
+	// good: upkeep, and their expansion.
+	CapitalIn  []float64
+	investWant []float64 // capital goods to buy this tick, by good: upkeep, and a private expansion
+	upkeepWant []float64 // ...of which upkeep
+	levelValue float64   // what an average level of it is worth at today's prices
 }
 
-// Expansion is a building level under construction for a firm, run by its
-// method Method: a new one, or, with Refit, one of method From's refitted
-// (the building stays; the machinery is new), at refitShare of the cost.
+// Stock is a quantity of a good.
+type Stock struct {
+	Good GoodID
+	Qty  float64
+}
+
+// Expansion is a level under construction for a firm, run by its method
+// Method: a new one, or, with Refit, one of method From's refitted. Need is
+// what it takes, Got what has been delivered of each.
 type Expansion struct {
-	Delivered float64 // construction units delivered so far
-	External  bool    // paid for from outside (else by the firm's owners)
-	Method    int     `json:",omitempty"`
-	Refit     bool    `json:",omitempty"`
-	From      int     `json:",omitempty"`
+	Need     []Stock
+	Got      []float64
+	External bool // paid for from outside (else by the firm's owners)
+	Method   int  `json:",omitempty"`
+	Refit    bool `json:",omitempty"`
+	From     int  `json:",omitempty"`
 }
 
-// refitShare is what refitting a level to another method costs, against
-// building a new one: the machinery, not the building.
+// refitShare is the share of a level's building work a refit takes: the
+// building stays, the new machines are put in.
 const refitShare = 0.4
 
-// Cost is the construction the expansion needs.
-func (e *Expansion) Cost() float64 {
-	if e.Refit {
-		return refitShare * LevelCost
-	}
-	return LevelCost
+// NewLevel is an expansion that builds a level of the firm's method-th
+// method: all it is made of.
+func NewLevel(f *Firm, method int, external bool) *Expansion {
+	return newExpansion(f.Methods[method].Capital, external, method)
 }
 
-// LevelCost is the construction units one building level costs. A level is
-// the firm's capital (its buildings and machines; for farms and mines, its
-// land too), priced so that a tile's capital is worth about 1100 to 1500
-// ticks of its output (at a tick a day, three to four years, as Europe's
-// was in the 19th century).
+// NewRefit is an expansion that refits one of the firm's levels from its
+// method from to its method to: the machines the new method has more of
+// than the old, and refitShare of its building work.
+func NewRefit(f *Firm, from, to int, external bool) *Expansion {
+	old, new := f.Methods[from].Capital, f.Methods[to].Capital
+	var need []Stock
+	for _, s := range new {
+		q := s.Qty
+		if s.Good == Construction {
+			q *= refitShare
+		} else {
+			for _, o := range old {
+				if o.Good == s.Good {
+					q -= o.Qty
+				}
+			}
+		}
+		if q > 0 {
+			need = append(need, Stock{s.Good, q})
+		}
+	}
+	if len(need) == 0 {
+		need = []Stock{{Construction, refitShare * LevelCost}}
+	}
+	e := newExpansion(need, external, to)
+	e.Refit, e.From = true, from
+	return e
+}
+
+// NewBuilding is an expansion that takes qty of construction alone.
+func NewBuilding(qty float64, external bool) *Expansion {
+	return newExpansion([]Stock{{Construction, qty}}, external, 0)
+}
+
+func newExpansion(need []Stock, external bool, method int) *Expansion {
+	return &Expansion{Need: append([]Stock(nil), need...), Got: make([]float64, len(need)), External: external, Method: method}
+}
+
+// Copy is a copy of the expansion that shares nothing with it.
+func (e *Expansion) Copy() *Expansion {
+	c := *e
+	c.Need, c.Got = append([]Stock(nil), e.Need...), append([]float64(nil), e.Got...)
+	return &c
+}
+
+// Left is how much of good g the expansion still needs.
+func (e *Expansion) Left(g GoodID) float64 {
+	for i, s := range e.Need {
+		if s.Good == g {
+			return math.Max(0, s.Qty-e.Got[i])
+		}
+	}
+	return 0
+}
+
+// Deliver puts qty of good g into the expansion.
+func (e *Expansion) Deliver(g GoodID, qty float64) {
+	for i, s := range e.Need {
+		if s.Good == g {
+			e.Got[i] += qty
+			return
+		}
+	}
+}
+
+// Done reports whether everything the expansion needs has been delivered.
+func (e *Expansion) Done() bool {
+	for i, s := range e.Need {
+		if e.Got[i] < s.Qty-1e-9 {
+			return false
+		}
+	}
+	return true
+}
+
+// Progress is the share of what it needs delivered, each good alike.
+func (e *Expansion) Progress() float64 {
+	p := 0.0
+	for i, s := range e.Need {
+		p += math.Min(1, e.Got[i]/s.Qty) / float64(len(e.Need))
+	}
+	return p
+}
+
+// Value is what is still to be delivered, at prices.
+func (e *Expansion) Value(prices []float64) float64 {
+	v := 0.0
+	for i, s := range e.Need {
+		v += math.Max(0, s.Qty-e.Got[i]) * prices[s.Good]
+	}
+	return v
+}
+
+// LevelCost is the construction a level takes where its recipe names no
+// capital: priced so that a tile's capital is worth about three to four
+// years of its output, as Europe's was in the 19th century.
 const LevelCost = 1200.0
+
+// levelOf is a recipe's capital, or LevelCost of construction if it names
+// none.
+func levelOf(c []Stock) []Stock {
+	if len(c) == 0 {
+		return []Stock{{Construction, LevelCost}}
+	}
+	return c
+}
+
+// LevelValue is what a level of the method is made of, at prices.
+func (m *Method) LevelValue(prices []float64) float64 {
+	v := 0.0
+	for _, s := range m.Capital {
+		v += s.Qty * prices[s.Good]
+	}
+	return v
+}
+
+// CapitalValue is what the firm's levels are made of, at prices.
+func (f *Firm) CapitalValue(prices []float64) float64 {
+	v := 0.0
+	for i, m := range f.Methods {
+		if l := f.MethodLevels(i); l > 0 {
+			v += float64(l) * m.LevelValue(prices)
+		}
+	}
+	return v
+}
+
+// wear is what the firm's levels wear out in a tick, at prices.
+func (f *Firm) wear(prices []float64) float64 {
+	v := 0.0
+	for i, m := range f.Methods {
+		if l := f.MethodLevels(i); l > 0 {
+			for _, s := range m.Capital {
+				v += float64(l) * s.Qty * Goods[s.Good].Wear * prices[s.Good]
+			}
+		}
+	}
+	return v
+}
+
+// capitalStock adds up the goods the firm's levels are made of, by good.
+func (f *Firm) capitalStock(out []float64) {
+	for i, m := range f.Methods {
+		if l := f.MethodLevels(i); l > 0 {
+			for _, s := range m.Capital {
+				out[s.Good] += float64(l) * s.Qty
+			}
+		}
+	}
+}
 
 // MethodLevels is the levels the firm runs on its i-th method.
 func (f *Firm) MethodLevels(i int) int {
@@ -344,12 +505,13 @@ func NewFirm(name string, output GoodID, tfp float64, factors []Factor, cash flo
 	return &Firm{Name: name, Output: output, Cash: cash,
 		Methods: []*Method{newMethod(name, tfp, factors)},
 		Levels:  1, Enabled: true, Agglom: 1, Mult: 1,
-		CashBuffer: 20, Inputs: make([]float64, NumGoods),
+		CashBuffer: 20, Inputs: make([]float64, NumGoods), CapitalIn: make([]float64, NumGoods),
+		investWant: make([]float64, NumGoods), upkeepWant: make([]float64, NumGoods),
 		PlanQty: make([]float64, NumGoods), PlanHas: make([]bool, NumGoods)}
 }
 
 func newMethod(name string, tfp float64, factors []Factor) *Method {
-	return &Method{Name: name, Enabled: true, Factors: factors, TFP: tfp, BaseTFP: tfp, planQty: make([]float64, NumGoods)}
+	return &Method{Name: name, Enabled: true, Factors: factors, TFP: tfp, BaseTFP: tfp, Capital: levelOf(nil), planQty: make([]float64, NumGoods)}
 }
 
 // TFP is the productivity per level of the firm's first method.

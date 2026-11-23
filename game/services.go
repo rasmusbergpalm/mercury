@@ -267,7 +267,7 @@ func (n *Nation) settleServices() {
 func (w *World) buildServices() {
 	for _, r := range w.Regions {
 		for _, sv := range r.Services {
-			if sv == nil || sv.Expansion == nil || sv.Expansion.Delivered < sv.Expansion.Cost()-1e-9 {
+			if sv == nil || sv.Expansion == nil || !sv.Expansion.Done() {
 				continue
 			}
 			sv.Expansion = nil
@@ -393,7 +393,7 @@ func (w *World) ExpandService(region int, s Public) error {
 	case sv.Levels >= sv.MaxLevels:
 		return ErrFirmMax
 	}
-	sv.Expansion = &Expansion{External: true}
+	sv.Expansion = NewBuilding(LevelCost, true)
 	return nil
 }
 

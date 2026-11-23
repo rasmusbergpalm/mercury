@@ -1,5 +1,5 @@
 {
-  "about": "A small economy of star systems, to show that Mercury is not tied to its 1820 example. Every good, in the order the simulation indexes them. bulk: transport needed per unit shipped per unit of a lane's length. spoilage: share of unsold stock lost a day, and per unit of length in transit. service: made and used where it is, never shipped (every economy needs transport, which merchants buy, and construction, which owners buy). Aether is the fuel every ship burns between systems, so the transport that carries any good is made from it; it takes almost no room and never spoils, so it travels for next to nothing.",
+  "about": "A small economy of star systems, to show that Mercury is not tied to its 1820 example. Every good, in the order the simulation indexes them. bulk: transport needed per unit shipped per unit of a lane's length. spoilage: share of unsold stock lost a day, and per unit of length in transit. service: made and used where it is, never shipped. wear: share of it, held in a firm's levels as capital, worn out a day (made good with the same good) (every economy needs transport, which merchants buy, and construction, which owners buy). Aether is the fuel every ship burns between systems, so the transport that carries any good is made from it; it takes almost no room and never spoils, so it travels for next to nothing.",
   "goods": [
     {"name": "rations", "bulk": 0.3, "spoilage": 0.05},
     {"name": "water", "bulk": 0.5, "spoilage": 0},
@@ -12,7 +12,7 @@
     {"name": "spirits", "bulk": 0.1, "spoilage": 0},
     {"name": "aether", "bulk": 0.01, "spoilage": 0},
     {"name": "transport", "bulk": 0, "spoilage": 1, "service": true},
-    {"name": "construction", "bulk": 0, "spoilage": 1, "service": true}
+    {"name": "construction", "bulk": 0, "spoilage": 1, "service": true, "wear": 5.479452054794521e-05}
   ],
   "composites": []
 }

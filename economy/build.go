@@ -17,6 +17,10 @@ type Recipe struct {
 	// economy switches it on.
 	StartsOff bool
 	Service   bool // in the service sector (else industry, or primary if land-bound)
+	// Capital is what a level of it is made of: its buildings
+	// (construction) and the machines in them. None given: LevelCost of
+	// construction.
+	Capital []Stock
 }
 
 // The recipes (data/recipes.json).
@@ -139,6 +143,7 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 			for _, b := range bonuses {
 				if b.Firm == rc.Firm {
 					f := NewFirm(rc.Firm, G(rc.Output), rc.TFP*b.Mult, rc.Factors, 50)
+					f.Methods[0].Capital = levelOf(rc.Capital)
 					f.MaxLevels, f.Sector = RawMaxLevels, Primary
 					f.Site, f.SiteMult = site, b.Mult
 					f.Enabled = !rc.StartsOff
@@ -153,6 +158,7 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 	}
 	for _, rc := range ProcessingRecipes {
 		f := NewFirm(rc.Firm, G(rc.Output), rc.TFP, rc.Factors, 50)
+		f.Methods[0].Capital = levelOf(rc.Capital)
 		if rc.Service {
 			f.Sector = Service
 		}
@@ -171,6 +177,7 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 				site = f.SiteMult
 			}
 			m := newMethod(mr.Firm, mr.TFP*site, mr.Factors)
+			m.Capital = levelOf(mr.Capital)
 			m.Enabled = !mr.StartsOff
 			if f.Sector == Primary {
 				m.Cap = max(RawMaxLevels, mr.Cap)

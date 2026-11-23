@@ -1,8 +1,12 @@
 package server
 
 import (
-	"github.com/rasmusbergpalm/mercury/game"
+	"fmt"
 	"slices"
+	"strings"
+
+	"github.com/rasmusbergpalm/mercury/economy"
+	"github.com/rasmusbergpalm/mercury/game"
 )
 
 // JSON views of a world.
@@ -287,11 +291,11 @@ type PopState struct {
 }
 
 type Expansion struct {
-	Delivered float64 `json:"delivered"`
-	Public    bool    `json:"public"`
-	Cost      float64 `json:"cost"`             // construction it needs
-	Method    string  `json:"method,omitempty"` // the method the level will run
-	Refit     string  `json:"refit,omitempty"`  // for a refit: the method the level ran
+	Progress float64 `json:"progress"` // share of what it needs delivered
+	Public   bool    `json:"public"`
+	Need     string  `json:"need"`             // what it needs, as "1200 construction, 40 tools"
+	Method   string  `json:"method,omitempty"` // the method the level will run
+	Refit    string  `json:"refit,omitempty"`  // for a refit: the method the level ran
 }
 
 // MethodState is one of a firm's methods: a way of making its good.
@@ -303,6 +307,7 @@ type MethodState struct {
 	Requires    string  `json:"requires,omitempty"` // the technology it needs
 	Produced    float64 `json:"produced"`           // made today
 	LevelProfit float64 `json:"level_profit"`       // what a level would earn on it a day, at today's prices
+	Level       string  `json:"level"`              // what a level of it is made of
 }
 
 type FirmState struct {
@@ -324,6 +329,7 @@ type FirmState struct {
 	PerWorker float64         `json:"per_worker"`        // profit per worker today: value added per worker less the wage
 	LevelGain float64         `json:"level_gain"`        // extra output value a day one more level would bring, same workers and inputs
 	Methods   []MethodState   `json:"methods,omitempty"` // when it has more than one
+	Level     string          `json:"level"`             // what a new level of it is made of (its best method's)
 }
 
 type MarketState struct {
@@ -462,7 +468,7 @@ func regionState(w *game.World, i int, cities float64) RegionState {
 		sv := &ServiceState{Levels: f.Levels, Funded: f.Funded, MaxLevels: f.MaxLevels, Staff: ss.Staff, Need: ss.Need,
 			Coverage: ss.Coverage, Research: ss.Research, PerLevel: ss.PerLevel, Cost: ss.Cost}
 		if e := f.Expansion; e != nil {
-			p := e.Delivered / e.Cost()
+			p := e.Progress()
 			sv.Building = &p
 		}
 		st.Services = append(st.Services, sv)
@@ -608,8 +614,13 @@ func regionDetail(w *game.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, game.FirmTech[f.Name], f.Sector.String(), game.FirmBonuses(r, f), 0, 0, 0, nil}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, game.FirmTech[f.Name], f.Sector.String(), game.FirmBonuses(r, f), 0, 0, 0, nil, ""}
 		fs.Wanted = f.PlanLabor
+		if best, _ := f.BestMethod(r.Prices(), r.Wage); best >= 0 {
+			fs.Level = stocks(f.Methods[best].Capital)
+		} else {
+			fs.Level = stocks(f.Methods[0].Capital)
+		}
 		if !f.AtCap() {
 			fs.LevelGain = f.LastOutput * r.Markets[f.Output].Price * (f.NextLevelMult() - 1)
 		}
@@ -617,14 +628,14 @@ func regionDetail(w *game.World, i int) RegionDetail {
 			fs.PerWorker = f.ValueAdded(r.Markets[f.Output].Price)/f.Labor - r.Wage
 		}
 		if e := f.Expansion; e != nil {
-			fs.Expansion = &Expansion{Delivered: e.Delivered, Public: e.External, Cost: e.Cost(), Method: f.Methods[e.Method].Name}
+			fs.Expansion = &Expansion{Progress: e.Progress(), Public: e.External, Need: stocks(e.Need), Method: f.Methods[e.Method].Name}
 			if e.Refit {
 				fs.Expansion.Refit = f.Methods[e.From].Name
 			}
 		}
 		if len(f.Methods) > 1 {
 			for k, m := range f.Methods {
-				ms := MethodState{Name: m.Name, Levels: f.MethodLevels(k), Known: m.Enabled, Runs: m.Runs(), Requires: game.FirmTech[m.Name], Produced: m.Output}
+				ms := MethodState{Name: m.Name, Levels: f.MethodLevels(k), Known: m.Enabled, Runs: m.Runs(), Requires: game.FirmTech[m.Name], Produced: m.Output, Level: stocks(m.Capital)}
 				if m.Runs() {
 					ms.LevelProfit = f.LevelProfit(k, r.Prices(), r.Wage)
 				}
@@ -654,6 +665,15 @@ func regionDetail(w *game.World, i int) RegionDetail {
 		}
 	}
 	return d
+}
+
+// stocks writes quantities of goods as "1200 construction, 40 tools".
+func stocks(ss []economy.Stock) string {
+	var parts []string
+	for _, s := range ss {
+		parts = append(parts, fmt.Sprintf("%.0f %s", s.Qty, game.Goods[s.Good].Name))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func bestDoctrine(n *game.Nation) int {

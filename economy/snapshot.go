@@ -118,8 +118,7 @@ func (w *World) Snapshot() *Snapshot {
 				}
 			}
 			if f.Expansion != nil {
-				e := *f.Expansion
-				fs.Expansion = &e
+				fs.Expansion = f.Expansion.Copy()
 			}
 			rs.Firms = append(rs.Firms, fs)
 		}
@@ -213,8 +212,7 @@ func (w *World) SetState(s *Snapshot) error {
 			}
 			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, nil
 			if fs.Expansion != nil {
-				e := *fs.Expansion
-				f.Expansion = &e
+				f.Expansion = fs.Expansion.Copy()
 			}
 			f.Wear, f.Urge, f.Mult = fs.Wear, fs.Urge, fs.Mult
 			f.Enabled = fs.Enabled

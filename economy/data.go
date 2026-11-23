@@ -88,9 +88,9 @@ func useData(fsys fs.FS) (err error) {
 
 type goodsFile struct {
 	Goods []struct {
-		Name           string
-		Bulk, Spoilage float64
-		Service        bool
+		Name                 string
+		Bulk, Spoilage, Wear float64
+		Service              bool
 	}
 	Composites []struct {
 		Name  string
@@ -127,6 +127,7 @@ type recipeData struct {
 	Enabled      *bool
 	Base         string
 	Cap          int
+	Capital      [][2]any
 }
 
 func (d recipeData) recipe() Recipe {
@@ -145,6 +146,14 @@ func (d recipeData) recipe() Recipe {
 		default:
 			r.Factors = append(r.Factors, Input(name, exp))
 		}
+	}
+	for _, c := range d.Capital {
+		name, _ := c[0].(string)
+		qty, ok := c[1].(float64)
+		if !ok {
+			panic(fmt.Sprintf("data/recipes.json: %s: a capital good's quantity must be a number", d.Firm))
+		}
+		r.Capital = append(r.Capital, Stock{G(name), qty})
 	}
 	return r
 }

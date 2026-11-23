@@ -44,6 +44,7 @@ type Region struct {
 	prices, demandBuf []float64 // scratch
 	// firms by the goods they may buy and the good they make (built once)
 	firmsBuying, firmsMaking [][]int
+	investBuying             [][]int // per good, the firms buying it for their capital this tick
 	mkt                      marketScratch
 	popDemand                [][]float64
 }
@@ -102,7 +103,10 @@ func (r *Region) Plan() {
 	r.UpdateAgglomeration()
 	prices := r.refreshPrices()
 	for _, f := range r.Firms {
-		f.TickRevenue, f.TickCost, f.tickInputs, f.investWant = 0, 0, 0, 0
+		f.TickRevenue, f.TickCost, f.tickInputs = 0, 0, 0
+		for g := range f.CapitalIn {
+			f.CapitalIn[g], f.investWant[g], f.upkeepWant[g] = 0, 0, 0
+		}
 		if len(f.Methods) > 1 {
 			for _, m := range f.Methods {
 				m.checkInputs(r.made)
@@ -122,10 +126,6 @@ const (
 	investMinAge  = 100 // ticks before a firm's profit record counts
 	buildTicks    = 90  // a private level (or a refit) takes this long to build, at the quickest
 	disinvestAt   = 100 // ticks of losses before a firm closes a level
-	// capital wears out: each tick this share of a firm's levels must be
-	// made good with construction (its upkeep, a cost like any other), or
-	// the firm loses them (at a tick a day, 2% a year)
-	depreciation = 0.02 / 365
 )
 
 // investDecideTicks is how long owners take to start a project that pays
@@ -144,18 +144,24 @@ const investDecideTicks = 180.0
 const refitDecideTicks = 365.0
 
 // planInvestment starts private expansions where a level would repay itself,
-// and sets what each firm buys this tick: its upkeep, and the next part of
-// its expansion while what is left of it still pays at today's construction
-// price (when building costs rise, projects wait, as real ones did).
+// and sets what each firm buys this tick for its capital: its upkeep (each
+// good its levels are made of wears at its own rate, Good.Wear), and the
+// next part of its expansion while what is left of it still pays at
+// today's prices (when building costs rise, projects wait, as real ones did).
 func (r *Region) planInvestment() {
-	price := r.Markets[Construction].Price
 	payback := float64(investPayback)
 	payback *= r.PaybackMult
-	for _, f := range r.Firms {
-		f.upkeepWant = 0
+	if r.investBuying == nil {
+		r.investBuying = make([][]int, NumGoods)
+	}
+	for g := range r.investBuying {
+		r.investBuying[g] = r.investBuying[g][:0]
+	}
+	for i, f := range r.Firms {
 		if f.Levels < 1 {
 			continue
 		}
+		f.levelValue = f.CapitalValue(r.prices) / float64(f.Levels)
 		perLevel := f.ProfitEMA / float64(f.Levels)
 		// the method a level would earn most on, and the one whose levels
 		// earn least: refitting one of the second to the first adds the
@@ -175,8 +181,13 @@ func (r *Region) planInvestment() {
 		if f.Expansion == nil && f.Enabled && f.Age > investMinAge && best >= 0 {
 			full := f.AtCap()
 			// how many times over each project repays its cost within the payback
-			refit := refitGain * payback / (refitShare * LevelCost * price)
-			build := perLevel * payback / (LevelCost * price)
+			var refit, build float64
+			if refitGain > 0 {
+				refit = refitGain * payback / NewRefit(f, worst, best, false).Value(r.prices)
+			}
+			if v := f.Methods[best].LevelValue(r.prices); v > 0 {
+				build = perLevel * payback / v
+			}
 			var refitUrge, buildUrge float64
 			if refit > 1 {
 				refitUrge = math.Min(1, refit-1) / refitDecideTicks
@@ -190,36 +201,53 @@ func (r *Region) planInvestment() {
 			if refitUrge+buildUrge > 0 && f.Urge >= 1 {
 				f.Urge = 0
 				if refitUrge >= buildUrge {
-					f.Expansion = &Expansion{Refit: true, Method: best, From: worst}
+					f.Expansion = NewRefit(f, worst, best, false)
 				} else {
-					f.Expansion = &Expansion{Method: best}
+					f.Expansion = NewLevel(f, best, false)
 				}
 			}
 		}
-		upkeep := 0.0
+		want := f.investWant              // reset each tick in Plan
 		if f.Enabled && f.ProfitEMA > 0 { // capital that loses money is left to wear out
-			upkeep = depreciation * float64(f.Levels) * LevelCost
+			f.capitalStock(want)
+			for g := range want {
+				want[g] *= Goods[g].Wear
+				f.upkeepWant[g] = want[g]
+			}
 		}
-		want := upkeep
 		if e := f.Expansion; e != nil && !e.External {
 			gain := perLevel
 			if e.Refit { // what it still adds at today's prices
 				gain = f.LevelProfit(e.Method, r.prices, r.Wage) - f.LevelProfit(e.From, r.prices, r.Wage)
 			}
-			if gain*payback >= (e.Cost()-e.Delivered)*price {
-				want += math.Min(e.Cost()/buildTicks, e.Cost()-e.Delivered) // a refit takes as long to put in
+			if gain*payback >= e.Value(r.prices) {
+				for k, s := range e.Need { // each good over buildTicks at the quickest (a refit takes as long to put in)
+					want[s.Good] += math.Min(s.Qty/buildTicks, math.Max(0, s.Qty-e.Got[k]))
+				}
 			}
 		}
-		if want <= 0 {
+		cost := 0.0
+		for g, q := range want {
+			cost += q * r.prices[g]
+		}
+		if cost <= 0 {
 			continue
 		}
-		f.DesiredSpend += want * price
+		f.DesiredSpend += cost
 		planned := f.PlanLabor * r.Wage
 		for g, q := range f.PlanQty {
 			planned += q * r.prices[g]
 		}
-		f.investWant = math.Max(0, math.Min(want, (0.9*f.Cash-planned)/price))
-		f.upkeepWant = math.Min(upkeep, f.investWant)
+		k := math.Max(0, math.Min(1, (0.9*f.Cash-planned)/cost)) // as far as its cash goes
+		for g, q := range want {
+			if q > 0 {
+				want[g] = k * q
+				f.upkeepWant[g] = math.Min(f.upkeepWant[g], want[g])
+				if want[g] > 0 {
+					r.investBuying[g] = append(r.investBuying[g], i)
+				}
+			}
+		}
 	}
 }
 
@@ -229,14 +257,16 @@ func (r *Region) settleFirms() {
 	for _, f := range r.Firms {
 		f.Age++
 		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.TickRevenue-f.TickCost)
-		if f.Levels > 1 { // wear, less today's upkeep (made good at the market)
-			f.Wear += depreciation * float64(f.Levels)
+		if f.Levels > 1 { // wear, less today's upkeep (made good at the market), in levels
+			if v := f.CapitalValue(r.prices); v > 0 {
+				f.Wear += f.wear(r.prices) * float64(f.Levels) / v
+			}
 			if f.Wear >= 1 {
 				f.dropLevel(r)
 				f.Wear--
 			}
 		}
-		if e := f.Expansion; e != nil && e.Delivered >= e.Cost()-1e-9 {
+		if e := f.Expansion; e != nil && e.Done() {
 			f.Expansion = nil
 			if e.Refit {
 				f.refit(e.From, e.Method)
@@ -439,12 +469,11 @@ func (r *Region) GoodsMarkets() {
 				bidRefs = append(bidRefs, agentRef{traderAgent, i})
 			}
 		}
-		if gid == Construction {
-			for i, f := range r.Firms {
-				if f.investWant > 0 {
-					bids = append(bids, Order{&f.Cash, f.investWant})
-					bidRefs = append(bidRefs, agentRef{investAgent, i})
-				}
+		if r.investBuying != nil {
+			for _, i := range r.investBuying[g] {
+				f := r.Firms[i]
+				bids = append(bids, Order{&f.Cash, f.investWant[g]})
+				bidRefs = append(bidRefs, agentRef{investAgent, i})
 			}
 		}
 		for i, b := range r.Buyers {
@@ -504,11 +533,14 @@ func (r *Region) GoodsMarkets() {
 				r.Buyers[ref.idx].Got[g] = got
 			case investAgent: // upkeep first, then the expansion
 				f := r.Firms[ref.idx]
-				upkeep := math.Min(got, f.upkeepWant)
-				f.Wear = math.Max(0, f.Wear-upkeep/LevelCost)
+				f.CapitalIn[g] += got
+				upkeep := math.Min(got, f.upkeepWant[g])
+				if f.levelValue > 0 {
+					f.Wear = math.Max(0, f.Wear-upkeep*price/f.levelValue)
+				}
 				f.TickCost += upkeep * price
 				if e := f.Expansion; e != nil && !e.External {
-					e.Delivered += got - upkeep
+					e.Deliver(gid, got-upkeep)
 				}
 			}
 		}

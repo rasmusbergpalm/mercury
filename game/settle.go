@@ -187,8 +187,7 @@ func (w *World) settleFrom(b *World) {
 				m.Levels = bf.Methods[k].Levels
 			}
 			if bf.Expansion != nil {
-				e := *bf.Expansion
-				f.Expansion = &e
+				f.Expansion = bf.Expansion.Copy()
 			}
 		}
 		copy(w.TradePrices[i], b.TradePrices[i])

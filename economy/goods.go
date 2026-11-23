@@ -16,6 +16,10 @@ type Good struct {
 	// Service marks a good made and used where it is (transport, building
 	// work): it is never shipped.
 	Service bool
+	// Wear is the share of it, held as a firm's capital, worn out per tick:
+	// buildings slowly, machines and vehicles faster. The owners make it
+	// good with the same good, or lose capital.
+	Wear float64
 }
 
 // Goods lists every good (data/goods.json). The order is part of the
@@ -25,7 +29,7 @@ var Goods []Good
 func makeGoods() []Good {
 	out := make([]Good, len(goodsData.Goods))
 	for i, g := range goodsData.Goods {
-		out[i] = Good{g.Name, g.Bulk, g.Spoilage, g.Service}
+		out[i] = Good{g.Name, g.Bulk, g.Spoilage, g.Service, g.Wear}
 	}
 	return out
 }

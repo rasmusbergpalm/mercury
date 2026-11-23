@@ -158,6 +158,9 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 	for _, g := range machinery {
 		cols = append(cols, "price "+g)
 	}
+	for _, g := range Goods { // every good's price (the methods' design reads them: tools/method_design.py)
+		cols = append(cols, "p "+g.Name)
+	}
 	cols = append(cols, "wage")
 	fmt.Fprintln(out, strings.Join(cols, ","))
 
@@ -165,26 +168,34 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 	var ni, wages, constr, constrPriv, profit, shipped float64
 	made := map[string]float64{}
 	for d := 1; d <= years*days; d++ {
-		building := map[*Firm][2]float64{} // private expansions under way: what they had, and need
+		// expansions under way: what they had
+		type project struct {
+			r   *Region
+			e   *Expansion
+			was []float64
+		}
+		var building []project
 		for _, r := range w.Regions {
 			for _, f := range r.Firms {
-				if e := f.Expansion; e != nil && !e.External {
-					building[f] = [2]float64{e.Delivered, e.Cost()}
+				if e := f.Expansion; e != nil {
+					building = append(building, project{r, e, append([]float64(nil), e.Got...)})
 				}
 			}
 		}
 		w.Step()
 		for _, r := range w.Regions {
+			// investment: all building work bought (firms', the state's
+			// roads and services), and the machines put into firms' levels
 			m := r.Markets[Construction]
 			constr += math.Min(m.Supply, m.Demand) * m.Price
 			for _, f := range r.Firms {
-				if was, ok := building[f]; ok {
-					got := was[1] - was[0] // finished today
-					if f.Expansion != nil {
-						got = f.Expansion.Delivered - was[0]
+				for g, q := range f.CapitalIn {
+					if GoodID(g) != Construction {
+						constr += q * r.Markets[g].Price
 					}
-					constrPriv += math.Max(0, got) * m.Price
 				}
+			}
+			for _, f := range r.Firms {
 				profit += f.TickRevenue - f.TickCost
 				wages += f.Labor * r.Wage
 				for _, m := range f.Methods {
@@ -196,6 +207,16 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			}
 			for _, p := range r.Pops {
 				ni += p.Income
+			}
+		}
+		for _, p := range building { // what went into expansions today
+			for k, s := range p.e.Need {
+				v := math.Max(0, p.e.Got[k]-p.was[k]) * p.r.Markets[s.Good].Price
+				if !p.e.External {
+					constrPriv += v
+				} else if s.Good != Construction { // (the state's building work is counted in the market)
+					constr += v
+				}
 			}
 		}
 		closeRoutes()
@@ -211,7 +232,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		small := math.Inf(1)
 		for _, r := range w.Regions {
 			for _, f := range r.Firms {
-				k += float64(f.Levels) * LevelCost * r.Markets[Construction].Price
+				k += f.CapitalValue(r.Prices())
 				levels += float64(f.Levels)
 				sector := f.Sector
 				if sector == Primary && mined[f.Output] {
@@ -286,6 +307,13 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			p := 0.0
 			for _, r := range w.Regions {
 				p += r.Markets[G(g)].Price / float64(len(w.Regions))
+			}
+			row = append(row, f4(p))
+		}
+		for g := range Goods {
+			p := 0.0
+			for _, r := range w.Regions {
+				p += r.Markets[g].Price / float64(len(w.Regions))
 			}
 			row = append(row, f4(p))
 		}

@@ -478,15 +478,23 @@ func (n *Nation) plan(w *World) {
 				add(claim{kind: materialClaim, good: g, qty: math.Min(rate, need)})
 			}
 		}
+		// an expansion takes each good it needs in step: its building work
+		// at the rate, and its machines as fast as a level's share of them
+		expand := func(e *Expansion) {
+			for k, s := range e.Need {
+				if left := s.Qty - e.Got[k]; left > 0 {
+					add(claim{kind: expansionClaim, good: s.Good, exp: e, qty: math.Min(rate*s.Qty/LevelCost, left)})
+				}
+			}
+		}
 		for _, f := range r.Firms {
 			if e := f.Expansion; e != nil && e.External {
-				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(rate, e.Cost()-e.Delivered)})
+				expand(e)
 			}
 		}
 		for _, sv := range r.Services {
 			if sv != nil && sv.Expansion != nil {
-				e := sv.Expansion
-				add(claim{kind: expansionClaim, good: Construction, exp: e, qty: math.Min(rate, e.Cost()-e.Delivered)})
+				expand(sv.Expansion)
 			}
 		}
 	}
@@ -605,7 +613,7 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 			case materialClaim:
 				r.Project.Materials[c.good] += got
 			case expansionClaim:
-				c.exp.Delivered += got
+				c.exp.Deliver(c.good, got)
 			case armyClaim:
 				c.army.spent[c.good] += got * w.TradePrices[r.ID][c.good]
 				if c.good == Transport {

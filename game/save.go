@@ -104,8 +104,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 		for _, sv := range r.Services {
 			ss := ServiceSnap{Levels: sv.Levels, MaxLevels: sv.MaxLevels, Funded: sv.Funded, LastOutput: sv.LastOutput}
 			if sv.Expansion != nil {
-				e := *sv.Expansion
-				ss.Expansion = &e
+				ss.Expansion = sv.Expansion.Copy()
 			}
 			rs.Services = append(rs.Services, ss)
 		}
@@ -188,6 +187,9 @@ func Restore(s *Snapshot) (*World, error) {
 		for k, ss := range rs.Services {
 			sv := r.Services[k]
 			sv.Levels, sv.MaxLevels, sv.Funded, sv.Expansion, sv.LastOutput = ss.Levels, ss.MaxLevels, ss.Funded, ss.Expansion, ss.LastOutput
+			if ss.Expansion != nil {
+				sv.Expansion = ss.Expansion.Copy()
+			}
 		}
 		r.setInfra(rs.Infra)
 		r.setNation(nil)

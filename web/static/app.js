@@ -1375,8 +1375,6 @@ function tilePanel() {
   const total = s.tier_spend.reduce((a, b) => a + b, 0) || 1, tc = TIER_COLORS();
   html += `<h3>What people buy</h3><div class="bar-stack">${world.tiers.map((t, i) => `<span style="width:${(100 * s.tier_spend[i] / total).toFixed(1)}%;background:${tc[i]}"></span>`).join("")}</div>
     <div class="legend-inline">${world.tiers.map((t, i) => `<span><span class="swatch" style="background:${tc[i]}"></span>${t} ${pct(s.tier_spend[i] / total)}</span>`).join("")}</div>`;
-  const cons = world.goods.findIndex((g) => g.name === "construction");
-  const levelPrice = world.level_cost * ((d.markets.find((x) => x.good === cons) || { price: 0 }).price);
   // idle firms (nobody wants what they make here yet, or it doesn't pay)
   // are listed last, so they can still be expanded
   const busy = (f) => f.labor > 0.05 || f.produced > 0.05 || f.levels > 1 || f.expansion;
@@ -1384,8 +1382,8 @@ function tilePanel() {
     .sort((a, b) => (b.enabled - a.enabled) || (b.state - a.state) || (!!busy(b) - !!busy(a)) || (b.labor - a.labor)).map((f) => {
       if (!f.enabled) return `<tr class="dim"><td>${esc(f.name)}</td><td>${G[f.output].name}</td><td colspan="4">locked: needs ${esc(f.requires)}</td></tr>`;
       let grow = "";
-      if (f.expansion) grow = `<span title="${f.expansion.refit ? `refitting a ${esc(f.expansion.refit)} level to ${esc(f.expansion.method)}` : `a new level${f.expansion.method && f.methods ? `, ${esc(f.expansion.method)}` : ""}`}">${pct(f.expansion.delivered / f.expansion.cost)}${f.expansion.refit ? " ⟳" : ""}${f.expansion.public ? " ★" : ""}</span>`;
-      else if (mine && !f.state && !(f.max_levels > 0 && f.levels >= f.max_levels)) grow = `<button data-cmd="/regions/${selected}/firms/${f.i}/expand" title="Your nation pays ${world.level_cost} construction for a level">+1</button>`;
+      if (f.expansion) grow = `<span title="${f.expansion.refit ? `refitting a ${esc(f.expansion.refit)} level to ${esc(f.expansion.method)}` : `a new level${f.expansion.method && f.methods ? `, ${esc(f.expansion.method)}` : ""}`}: ${esc(f.expansion.need)}">${pct(f.expansion.progress)}${f.expansion.refit ? " ⟳" : ""}${f.expansion.public ? " ★" : ""}</span>`;
+      else if (mine && !f.state && !(f.max_levels > 0 && f.levels >= f.max_levels)) grow = `<button data-cmd="/regions/${selected}/firms/${f.i}/expand" title="Your nation pays for a level: ${esc(f.level)}">+1</button>`;
       // productivity bonuses: everything but the recipe's base, as ×factors
       const bon = (f.bonuses || []).slice(1).map((m) => `${esc(m.name.toLowerCase())} ×${m.value.toFixed(2)}`).join(" · ");
       const total = (f.bonuses || []).reduce((t, m) => t * m.value, 1);
@@ -1610,7 +1608,7 @@ function methodsLine(f, mine) {
     if (!m.known) return null;
     if (!m.runs) return `<span class="dim" title="an input it needs is not made anywhere yet">${esc(m.name)}${m.levels ? ` ${m.levels}` : ""}: no inputs yet</span>`;
     const others = f.methods.some((o, j) => j !== k && o.levels > 0);
-    const refit = mine && !f.expansion && others ? ` <button data-cmd="/regions/${selected}/firms/${f.i}/methods/${k}/refit" title="Your nation pays ${fmt(world.level_cost * 0.4, 0)} construction to refit the firm's least profitable level of another method to ${esc(m.name)}">⟳</button>` : "";
+    const refit = mine && !f.expansion && others ? ` <button data-cmd="/regions/${selected}/firms/${f.i}/methods/${k}/refit" title="Your nation pays to refit the firm's least profitable level of another method to ${esc(m.name)}: the machines it has more of, and 40% of its building work (a level of it is ${esc(m.level)})">⟳</button>` : "";
     const vs = m === main ? "" : ` · ×${rel(m).toFixed(2)}`;
     return `<span title="${m === main ? "the method most of its levels run" : `at today's prices a level on it would earn ${rel(m).toFixed(2)} times what one on ${esc(main.name)} does`}; it made ${fmt(m.produced, 1)} today">${esc(m.name)} <b>${m.levels}</b>${vs}${refit}</span>`;
   });

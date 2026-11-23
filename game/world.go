@@ -355,7 +355,7 @@ func (w *World) Expand(region, firm int) error {
 	if best < 0 {
 		return ErrFirmMax
 	}
-	f.Expansion = &Expansion{External: true, Method: best}
+	f.Expansion = NewLevel(f, best, true)
 	return nil
 }
 
@@ -390,7 +390,7 @@ func (w *World) Refit(region, firm, method int) error {
 	if from < 0 {
 		return ErrNoRefit
 	}
-	f.Expansion = &Expansion{External: true, Refit: true, Method: method, From: from}
+	f.Expansion = NewRefit(f, from, method, true)
 	return nil
 }
 
