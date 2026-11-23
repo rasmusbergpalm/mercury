@@ -76,14 +76,17 @@ Each tick, on every tile:
 
 - **Firms** plan with a Cobb–Douglas recipe,
   `q = TFP · levels^(1−s) · Π inputᵢ^aᵢ`, where `levels` is the firm's
-  buildings and `s = Σ aᵢ`. A firm hires workers and buys inputs up to
+  capital and `s = Σ aᵢ`. A level is a building (construction) and the
+  machines in it (steam engines, tools, vehicles), as its recipe says. A firm hires workers and buys inputs up to
   where they pay, so its wage bill is its labour exponent times its sales.
   Land-bound producers (farms, mines) have a site that suits them more or
   less, and their levels are capped because land is scarce.
 - **Owners** build a new level where it would repay its cost within
   ten years of profit, and refit levels to newer production methods when
-  the difference pays. Levels wear out unless maintained, and are closed
-  when they keep losing money.
+  the difference pays: the new machines and some building work. Each good
+  in a level wears at its own rate (buildings slowly, machines faster);
+  owners make it good with the same goods, or the level goes. Levels that
+  keep losing money are closed.
 - **People** spend on needs in three tiers (basic, intermediate, luxury).
   Each need group is a CES composite of its goods: bread and potatoes for
   staples, meat and fish for protein. The utility a person gets is
