@@ -115,7 +115,7 @@ func buildGame(spec GameSpec, settle bool, progress func(done, total int)) (*Wor
 	}
 	w.Investment, w.Migration, w.Demography = true, true, true
 	w.Spec = &spec
-	w.TrackGDP, w.World.Seed = true, spec.Seed
+	w.TrackGDP = true
 	bySymbol := map[byte]*Nation{}
 	for i, ns := range spec.Nations {
 		n := newNation(i, ns.Name, ns.Color, len(spec.Nations), spec.TaxRate)

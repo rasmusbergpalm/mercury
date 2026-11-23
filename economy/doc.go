@@ -24,7 +24,7 @@
 //     in number when they eat well.
 //
 // The same world stepped the same number of ticks gives bit-identical
-// state: random choices are hashes of the seed and stable keys, and the
+// state: nothing in it is random, and the
 // tiles' own work, which runs in parallel, settles what it owes others in a
 // fixed order afterwards.
 //

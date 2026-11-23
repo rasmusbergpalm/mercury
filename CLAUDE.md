@@ -55,7 +55,7 @@ small bug or tidying code, work in rounds:
    last methods work and where the whole tree settles, but not a stand-in
    for the century (which ends with a few techs still unknown, and with
    richer people). The same seed gives the same game, and
-   the computer's random choices (its research, owners' investment) are
+   the computer's random choices (its research, its whims) are
    keyed so that a change elsewhere doesn't re-roll them: before and after
    differ by the change, not by luck.
 3. **Look at all the numbers**, not just the one the change was for: the
@@ -92,8 +92,8 @@ and write why next to it.
 ## Conventions
 
 - The engine is deterministic: the same scenario stepped the same number
-  of times gives bit-identical state. Random choices are hashes of the
-  seed and stable keys (not the day, where a shifted day would re-roll
+  of times gives bit-identical state. Nothing in the economy is random;
+  the game's random choices are hashes of the seed and stable keys (not the day, where a shifted day would re-roll
   every choice after it).
 - No backwards compatibility for saves or old code paths: the game is in
   development.

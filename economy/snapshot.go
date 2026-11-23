@@ -22,7 +22,6 @@ type Snapshot struct {
 	Tick                                        int
 	Investment, Migration, Demography, TrackGDP bool
 	Starvation                                  bool `json:",omitempty"`
-	Seed                                        int64
 	Regions                                     []RegionState
 	Traders                                     []TraderState
 	TradePrices                                 [][]float64
@@ -65,7 +64,6 @@ type FirmState struct {
 	Wear, Urge, Mult                              float64
 	Monopoly                                      bool    `json:",omitempty"`
 	Elasticity, Share                             float64 `json:",omitempty"`
-	Projects                                      int
 	Enabled                                       bool
 	// per method: productivity, whether it works, and the levels it runs
 	// (the first method's are the rest)
@@ -92,7 +90,7 @@ type BuyerState struct {
 // Snapshot captures the economy's state.
 func (w *World) Snapshot() *Snapshot {
 	s := &Snapshot{Plan: w.Plan, Tick: w.Tick, Investment: w.Investment, Migration: w.Migration,
-		Demography: w.Demography, TrackGDP: w.TrackGDP, Starvation: w.Starvation, Seed: w.Seed}
+		Demography: w.Demography, TrackGDP: w.TrackGDP, Starvation: w.Starvation}
 	for _, r := range w.Regions {
 		rs := RegionState{Wage: r.Wage, UtilityEMA: r.UtilityEMA, HouseCash: r.House.Cash, IncomeTax: r.IncomeTax, PaybackMult: r.PaybackMult,
 			GrowthBonus: r.GrowthBonus, LandTransportMult: r.LandTransportMult, SeaTransportMult: r.SeaTransportMult, SpoilageMult: r.SpoilageMult, SpendShare: r.SpendShare,
@@ -110,7 +108,7 @@ func (w *World) Snapshot() *Snapshot {
 		for _, f := range r.Firms {
 			fs := FirmState{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
 				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age,
-				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Projects: f.Projects, Enabled: f.Enabled,
+				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Enabled: f.Enabled,
 				Monopoly: f.Monopoly, Elasticity: f.Elasticity, Share: f.share}
 			for i, m := range f.Methods {
 				fs.TFP = append(fs.TFP, m.TFP)
@@ -165,7 +163,7 @@ func (w *World) SetState(s *Snapshot) error {
 	if len(s.Regions) != len(w.Regions) || len(s.TradePrices) != len(w.Regions) || len(s.Traders) != len(w.Traders) {
 		return bad("counts")
 	}
-	w.Tick, w.Investment, w.Migration, w.Demography, w.TrackGDP, w.Seed = s.Tick, s.Investment, s.Migration, s.Demography, s.TrackGDP, s.Seed
+	w.Tick, w.Investment, w.Migration, w.Demography, w.TrackGDP = s.Tick, s.Investment, s.Migration, s.Demography, s.TrackGDP
 	w.Starvation = s.Starvation
 	for i, rs := range s.Regions {
 		r := w.Regions[i]
@@ -218,7 +216,7 @@ func (w *World) SetState(s *Snapshot) error {
 				e := *fs.Expansion
 				f.Expansion = &e
 			}
-			f.Wear, f.Urge, f.Mult, f.Projects = fs.Wear, fs.Urge, fs.Mult, fs.Projects
+			f.Wear, f.Urge, f.Mult = fs.Wear, fs.Urge, fs.Mult
 			f.Enabled = fs.Enabled
 			f.Monopoly, f.Elasticity, f.share = fs.Monopoly, fs.Elasticity, fs.Share
 		}

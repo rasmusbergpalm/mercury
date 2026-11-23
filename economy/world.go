@@ -20,9 +20,6 @@ type World struct {
 	Starvation bool
 	// TrackGDP keeps every tile's real GDP chain (Region.Real).
 	TrackGDP bool
-	// Seed keys the economy's random draws (owners' resolve to invest), so
-	// that the same seed gives the same history.
-	Seed int64
 	// Plan is what the world was built from (BuildWorld), so
 	// that a snapshot can rebuild it.
 	Plan Plan
@@ -137,7 +134,7 @@ func (w *World) BeginTick() {
 		copy(w.TradePrices[r.ID], r.refreshPrices())
 		r.Plan()
 		if w.Investment {
-			r.planInvestment(w.Seed)
+			r.planInvestment()
 		}
 	})
 }

@@ -128,19 +128,14 @@ const (
 	depreciation = 0.02 / 365
 )
 
-// investDecideTicks is how long owners take, on average, to start a project
-// that pays twice what they ask: each tick a project that pays starts with a
-// chance in proportion to how far it beats their hurdle, so the clear winners
-// are taken up soon and the marginal ones slowly, owner by owner, rather
-// than every owner on the map at once.
-//
-// The chance is drawn once a project, not once a tick: each owner has a
-// resolve for its next project (an exponential draw keyed by the world's
-// seed, the tile, the firm and how many projects it has started), and each
-// tick the project pays its urge grows by that tick's chance; it starts
-// when the urge reaches the resolve. The odds are a per-tick draw's, but a
-// change that moves a project by a tick moves only that project: no later
-// draw is re-rolled, so two versions of the economy stay comparable.
+// investDecideTicks is how long owners take to start a project that pays
+// twice what they ask. Owners close the gap between the capital they have
+// and the capital that would pay a little at a time, faster the more it
+// pays (the flexible accelerator of Clark and of Koyck): each tick a project
+// pays, the owners' urge grows in proportion to how far it beats their
+// hurdle, and the project starts when the urge reaches one. The clear
+// winners are taken up soon and the marginal ones slowly, each firm by its
+// own profits and prices, rather than every owner on the map at once.
 const investDecideTicks = 180.0
 
 // refitDecideTicks is the same for refitting a working level to another
@@ -152,11 +147,11 @@ const refitDecideTicks = 365.0
 // and sets what each firm buys this tick: its upkeep, and the next part of
 // its expansion while what is left of it still pays at today's construction
 // price (when building costs rise, projects wait, as real ones did).
-func (r *Region) planInvestment(seed int64) {
+func (r *Region) planInvestment() {
 	price := r.Markets[Construction].Price
 	payback := float64(investPayback)
 	payback *= r.PaybackMult
-	for i, f := range r.Firms {
+	for _, f := range r.Firms {
 		f.upkeepWant = 0
 		if f.Levels < 1 {
 			continue
@@ -192,9 +187,8 @@ func (r *Region) planInvestment(seed int64) {
 			f.Urge += refitUrge + buildUrge
 			// the urge built up over the ticks a project paid; it is acted on
 			// only on a tick one still does, for the one that pays better then
-			if refitUrge+buildUrge > 0 && f.Urge >= investResolve(seed, r.ID, i, f.Projects) {
+			if refitUrge+buildUrge > 0 && f.Urge >= 1 {
 				f.Urge = 0
-				f.Projects++
 				if refitUrge >= buildUrge {
 					f.Expansion = &Expansion{Refit: true, Method: best, From: worst}
 				} else {
@@ -769,16 +763,4 @@ func (r *Region) TierSpend(prices []float64) [NumTiers]float64 {
 		}
 	}
 	return out
-}
-
-// investResolve is a firm's resolve for its next project: an exponential
-// draw (mean 1), deterministic in the world's seed, the tile, the firm and
-// how many projects the firm has started.
-func investResolve(seed int64, region, firm, projects int) float64 {
-	x := uint64(seed)*0x9E3779B97F4A7C15 ^ uint64(region+1)*0xBF58476D1CE4E5B9 ^ uint64(firm+1)*0x94D049BB133111EB ^ uint64(projects+1)*0xD6E8FEB86659FD93
-	x ^= x >> 31
-	x *= 0x9E3779B97F4A7C15
-	x ^= x >> 29
-	u := (float64(x>>11) + 0.5) / float64(1<<53) // in (0, 1)
-	return -math.Log(u)
 }

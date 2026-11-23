@@ -65,7 +65,7 @@ func main() {
 The engine counts time in ticks and leaves their meaning to whoever runs
 it: the example economy's tick is a day, from 1820. The same world stepped
 the same number of ticks always gives bit-identical
-state. Random choices are hashes of the seed and stable keys. The tiles'
+state: nothing in the economy is random. The tiles'
 own work runs in parallel and settles what it owes other tiles in a fixed
 order afterwards. So an experiment compares like with like: two runs differ
 by the change you made, not by luck.
