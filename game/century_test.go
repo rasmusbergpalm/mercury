@@ -6,8 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/rasmusbergpalm/mercury/economy"
 )
 
 // TestCentury runs the reference experiment for changes to the economy: one
@@ -160,6 +163,13 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 	}
 	for _, g := range Goods { // every good's price (the methods' design reads them: tools/method_design.py)
 		cols = append(cols, "p "+g.Name)
+	}
+	var firms []string // and what a level of each firm makes a day
+	for _, rc := range append(append([]Recipe(nil), economy.RawRecipes...), economy.ProcessingRecipes...) {
+		if !slices.Contains(firms, rc.Firm) {
+			firms = append(firms, rc.Firm)
+			cols = append(cols, "rev "+rc.Firm)
+		}
 	}
 	cols = append(cols, "wage")
 	fmt.Fprintln(out, strings.Join(cols, ","))
@@ -316,6 +326,18 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 				p += r.Markets[g].Price / float64(len(w.Regions))
 			}
 			row = append(row, f4(p))
+		}
+		for _, name := range firms {
+			rev, lv := 0.0, 0.0
+			for _, r := range w.Regions {
+				for _, f := range r.Firms {
+					if f.Name == name && f.Enabled && f.LastOutput > 0 {
+						rev += f.LastOutput * r.Markets[f.Output].Price
+						lv += float64(f.Levels)
+					}
+				}
+			}
+			row = append(row, f4(rev/math.Max(lv, 1)))
 		}
 		wl, l := 0.0, 0.0 // the wage, averaged over the workers
 		for _, r := range w.Regions {

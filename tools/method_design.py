@@ -58,6 +58,8 @@ def era_prices(alltech, paths):
         for c in sel[0]:
             if c.startswith("p "):
                 out[c[2:]] = sum(float(r[c]) for r in sel) / len(sel)
+            elif c.startswith("rev "):
+                out[c] = sum(float(r[c]) for r in sel) / len(sel)
         out["wage"] = sum(float(r["wage"]) for r in sel) / len(sel)
         for k, (a, b) in COMPOSITES.items():  # a CES composite of two, half each
             out[k] = (0.5 * out[a] ** (1 - SIGMA) + 0.5 * out[b] ** (1 - SIGMA)) ** (1 / (1 - SIGMA))
@@ -124,18 +126,21 @@ def price(P, k):
     return P[NAMES.get(k, k)]
 
 
-def revenue(f, P):
-    # what a level makes a day where owners have built as many as pay: its
-    # share of what it makes (one less the factors' shares) earns the
-    # hurdle and the building's wear on the building
+def revenue(firm, f, P):
+    # what a level of the firm makes a day in its era (century runs); where
+    # it didn't run then, where owners have built as many as pay: its share
+    # of what it makes (one less the factors' shares) earns the hurdle and
+    # the building's wear on the building
+    if P.get("rev " + firm, 0) > 0:
+        return P["rev " + firm]
     return (HURDLE + BUILDING_WEAR) * LEVEL * P["construction"] / YEAR / (1 - sum(f.values()))
 
 
-def as_capital(tfp, f, P):
+def as_capital(firm, tfp, f, P):
     """A method designed with its machines bought by the day, made into one
     that holds them in its level: (tfp, the factors left, the machines a
     level holds)."""
-    R = revenue(f, P)
+    R = revenue(firm, f, P)
     rest = {g: a for g, a in f.items() if g not in EQUIP}
     machines = {}
     for g, a in f.items():
@@ -154,23 +159,23 @@ def main(alltech, paths):
     P = era_prices(alltech, paths)
     path = "economy/data/recipes.json"
     src = open(path, encoding="utf-8").read()
-    designs = {}  # name: (tfp, design factors, era)
+    designs = {}  # name: (firm, tfp, design factors, era)
     for firm, (base, meths) in F.items():
         prev_t, prev_f = base
         if any(g in EQUIP for g in prev_f):
-            designs[firm] = (prev_t, prev_f, BASE_ERA[firm])
+            designs[firm] = (firm, prev_t, prev_f, BASE_ERA[firm])
         prev_f = {("coal" if k == "fuel" else k): v for k, v in prev_f.items()}
         for name, era, tech, f in meths:
             calc = prev_t * math.exp(term(prev_f, P[era]) - term(f, P[era])) * ADV
             tfp = round(max(calc, prev_t * FLOOR), 2)
             print(f"{firm:18s} {name:30s} era {era}  tfp {tfp:5.2f}  (a tenth more profitable: {calc:5.2f})")
-            designs[name] = (tfp, f, era)
+            designs[name] = (firm, tfp, f, era)
             prev_t, prev_f = tfp, f
-    for name, (tfp, f, era) in designs.items():
+    for name, (firm, tfp, f, era) in designs.items():
         line = re.search(r'^( *)(\{"firm": "' + re.escape(name) + r'", .*\})(,?)$', src, re.M)
         assert line, name
         rc = json.loads(line.group(2))
-        t, rest, machines = as_capital(tfp, f, P[era])
+        t, rest, machines = as_capital(firm, tfp, f, P[era])
         rc["tfp"] = round(t, 3)
         rc["factors"] = [x for x in rc["factors"] if x[0] not in {g for g, _ in EQUIP.values()}]
         rc.pop("capital", None)
