@@ -175,7 +175,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 	fmt.Fprintln(out, strings.Join(cols, ","))
 
 	days := int(TicksPerYear)
-	var ni, wages, constr, constrPriv, profit, landProfit, shipped, mach, spent, spentHousing float64
+	var ni, wages, constr, constrPriv, profit, landRent, shipped, mach, spent, spentHousing float64
 	housing := G("housing")
 	made := map[string]float64{}
 	for d := 1; d <= years*days; d++ {
@@ -208,9 +208,10 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 				}
 			}
 			for _, f := range r.Firms {
-				if f.MaxLevels > 0 { // land-bound: its profit is rent and a return on its buildings and machines
-					landProfit += f.TickRevenue - f.TickCost
-				} else {
+				for _, m := range f.Methods { // land's share of what it makes: its rent
+					landRent += m.Land * m.Output * r.Markets[f.Output].Price
+				}
+				if f.MaxLevels == 0 { // the return on capital is measured where no land shares the profit
 					profit += f.TickRevenue - f.TickCost
 				}
 				wages += f.Labor * r.Wage
@@ -333,7 +334,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			f4(labor[Primary] / lt), f4(labor[Industry] / lt), f4(labor[Service] / lt), f0(levels), fmt.Sprint(techs),
 			f4(n.TaxRate), f4(big / people), f0(small),
 			f4(shipped / ni), f4(transportJobs / lt), f4(spread / math.Max(1, float64(goods))), f4(infra),
-			f4(machK / k), f4(mach / ni), f4(constrJobs / lt), f4(math.Max(0, landProfit-0.10*kLand) / ni), f4(kHouses / k), f4(spentHousing / math.Max(spent, 1e-12))}
+			f4(machK / k), f4(mach / ni), f4(constrJobs / lt), f4(landRent / ni), f4(kHouses / k), f4(spentHousing / math.Max(spent, 1e-12))}
 		for _, b := range order {
 			total := 0.0
 			for _, m := range groups[b] {
@@ -378,7 +379,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		}
 		row = append(row, f4(wl/math.Max(l, 1e-12)))
 		fmt.Fprintln(out, strings.Join(row, ","))
-		ni, wages, constr, constrPriv, profit, landProfit, shipped, mach, spent, spentHousing = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+		ni, wages, constr, constrPriv, profit, landRent, shipped, mach, spent, spentHousing = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 		made = map[string]float64{}
 	}
 	if os.Getenv("CENTURY_FIRMS") != "" { // each firm's return on its capital at the end

@@ -38,7 +38,7 @@ __STYLE__</style>
 <section id="firms">
 <div class="col">
 <h2><span class="no">I.</span>Firms make things</h2>
-<p>Every tile has a set of firms: farms, mines and forests that only work where the land allows, and mills, smithies, tailors and breweries that can work anywhere. A firm hires labour from the tile's people, buys its inputs in the tile's market, and sells what it makes there. Its output follows a Cobb–Douglas production function:</p>
+<p>Every tile has a set of firms: farms, mines and forests that only work where the land allows, mills, smithies, tailors and breweries that can work anywhere, and its houses, which let shelter to its people. A firm hires labour from the tile's people, buys its inputs in the tile's market, and sells what it makes there. Its output follows a Cobb–Douglas production function:</p>
 <p class="eq">output = TFP × levels<sup>1−s</sup> × labour<sup>a</sup> × input₁<sup>b</sup> × input₂<sup>c</sup> …, with a + b + c + … = s &lt; 1</p>
 <p>TFP is the recipe's productivity; <em>levels</em> are the firm's buildings, its capital; and each exponent is how much its factor counts.</p>
 <div class="agent"><h4>The firm</h4><dl>
@@ -63,6 +63,7 @@ __STYLE__</style>
 
 <div class="col">
 <p>Land matters too. A farm on rich plains is half again as productive as the recipe says, and one in the tropics only six tenths. Mines need hills and mountains, and fishing needs the coast. <span class="ref" data-fig="sites"></span> gives these site multipliers for the land-bound firms that drive the map's trade.</p>
+<p>Land is also a factor of production in its own right, fixed in each tile, so a farm that builds more on the same land gets less from each level, and land's share of what it makes is its rent. A tile's surface is shared by its farms, forests and houses, each holding land in proportion to the rent it pays, so a growing town builds over its fields within a few years. Mines, clay pits, wells and fisheries work deposits of their own.</p>
 </div>
 
 <div class="figure" id="fig-sites">
@@ -100,7 +101,7 @@ __STYLE__</style>
 <dt>decide</dt><dd>to build a level where it would pay, to refit one to a better method where the difference pays, or to let a level that keeps losing money go. Each owner acts in its own time, so the clear winners are taken up within months and the marginal ones over years</dd>
 <dt>and</dt><dd>they take the firms' and merchants' cash beyond what those need as dividends, put cash in when a firm runs short, and spend what they receive like everyone else (one person in twenty-five is an owner)</dd>
 </dl></div>
-<p>Each tile's people are of two kinds: workers, who work for its firms at the going wage, and owners, who own the firms and live off their profits. Both spend their income on needs in three tiers: basic needs (food, clothing and heat), then comforts, then luxuries. How well they meet those needs is their <em>living standard</em>, their utility per person. Within a need, goods substitute for each other: bread and potatoes both meet the need for staples, meat and fish for protein, wood and coal for heat. People spend each day to get the most out of their income at today's prices. (People also multiply when they eat well; on this page that is switched off, so that the experiments compare like with like.)</p>
+<p>Each tile's people are of two kinds: workers, who work for its firms at the going wage, and owners, who own the firms and live off their profits. Both spend their income on needs in three tiers: basic needs (food, clothing, heat and shelter), then comforts, then luxuries. How well they meet those needs is their <em>living standard</em>, their utility per person. Within a need, goods substitute for each other: bread and potatoes both meet the need for staples, meat and fish for protein, wood and coal for heat; shelter is a tile's own houses, let at a rent. People spend each day to get the most out of their income at today's prices. (People also multiply when they eat well; on this page that is switched off, so that the experiments compare like with like.)</p>
 <p>So when one good gets dear, people buy its substitute. To see it, a blight was let loose on the map's potatoes: every potato farm makes half what it did, as in the potato blight of the 1840s. <span class="ref" data-fig="blight"></span> compares it with a run without the blight.</p>
 </div>
 
@@ -268,7 +269,7 @@ __STYLE__</style>
 </div>
 
 <div class="col">
-<p>Migration is what evens out living standards between places, and it works through the markets. The newcomers compete for jobs, so the windfall tile's wages stop rising as fast as its output. They also need food, clothing and heat, so local demand rises, and with it the prices of what they buy. Higher prices and the extra mouths eat into the windfall's gains until the gap with the neighbours is no longer worth the move. <span class="ref" data-fig="even"></span> runs the windfall twice more to show it: once as above, and once with nobody allowed to move, so that only trade can spread the windfall's gains.</p>
+<p>Migration is what evens out living standards between places, and it works through the markets. The newcomers compete for jobs, so the windfall tile's wages stop rising as fast as its output. They also need food, clothing, heat and houses, so local demand rises, and with it the prices of what they buy. Higher prices and the extra mouths eat into the windfall's gains until the gap with the neighbours is no longer worth the move. <span class="ref" data-fig="even"></span> runs the windfall twice more to show it: once as above, and once with nobody allowed to move, so that only trade can spread the windfall's gains.</p>
 </div>
 
 <div class="figure" id="fig-even">

@@ -98,9 +98,9 @@ func TestLandIsFixed(t *testing.T) {
 	if f.AtCap() {
 		t.Error("full at twice its land")
 	}
-	f.Levels = 16
+	f.Levels = 4 * landReach
 	if !f.AtCap() {
-		t.Error("room beyond four times its land")
+		t.Errorf("room beyond %d times its land", landReach)
 	}
 }
 

@@ -79,19 +79,24 @@ Each tick, on every tile:
   capital and `s = Σ aᵢ`. A level is a building (construction) and the
   machines in it (steam engines, tools, vehicles), as its recipe says. A firm hires workers and buys inputs up to
   where they pay, so its wage bill is its labour exponent times its sales.
-  Land-bound producers (farms, mines) have a site that suits them more or
-  less, and land as a factor of their own: fixed, shared by their levels,
-  so each more level on it adds less (`land` in the recipe is its share,
-  the rent).
+  Land-bound producers (farms, mines, houses) have land as a factor of
+  their own: fixed, shared by their levels, so each more level on it adds
+  less; its exponent is its share, the rent. A tile's surface `land` is
+  shared by its farms, forests and houses in proportion to the rent each
+  pays, shifting over years, so a growing town takes farmland; a
+  `deposit` (seams, wells, fishing grounds) is a firm's own. Farms and
+  mines also have a site that suits them more or less.
 - **Owners** build a new level where it would repay its cost within
-  ten years of profit, and refit levels to newer production methods when
+  ten years of profit (twenty for houses, a safe asset), a twentieth of
+  an industry's levels at a time, and refit levels to newer production methods when
   the difference pays: the new machines and some building work. Each good
   in a level wears at its own rate (buildings slowly, machines faster);
   owners make it good with the same goods, or the level goes. Levels that
   keep losing money are closed.
 - **People** spend on needs in three tiers (basic, intermediate, luxury).
   Each need group is a CES composite of its goods: bread and potatoes for
-  staples, meat and fish for protein. The utility a person gets is
+  staples, meat and fish for protein, housing for shelter (made where it
+  is used, by each tile's houses). The utility a person gets is
   `Σ wₖ · log(1 + Qₖ / rₖ)`. Basic needs are met first, and luxuries are
   never sated.
 - **Markets** clear for every good and for labour, and prices move with
