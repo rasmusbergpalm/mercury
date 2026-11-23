@@ -127,6 +127,16 @@ type Firm struct {
 	// grow while a level pays for itself).
 	Levels, MaxLevels int
 	Expansion         *Expansion // a level under construction, or nil
+	// Payback multiplies the ticks of profit its owners accept a new level
+	// to repay (0: as any other firm's): houses were a safe, long-lived
+	// asset, bought for a lower return than a works.
+	Payback float64
+	// Surface: its land is a share of the tile's surface, Area levels'
+	// worth, which its farms, forests and houses share by the rent they
+	// pay (Region.allocateLand); else its land is a deposit of its own
+	// (seams, wells, fishing grounds: MaxLevels, or a method's Cap).
+	Surface bool
+	Area    float64
 	// Enabled: the firm works at all (one whose recipe StartsOff doesn't
 	// until it is switched on).
 	Enabled bool
@@ -190,6 +200,7 @@ type Expansion struct {
 	Need     []Stock
 	Got      []float64
 	External bool // paid for from outside (else by the firm's owners)
+	Levels   int  `json:",omitempty"` // the levels it builds (0: one)
 	Method   int  `json:",omitempty"`
 	Refit    bool `json:",omitempty"`
 	From     int  `json:",omitempty"`
@@ -202,7 +213,36 @@ const refitShare = 0.4
 // NewLevel is an expansion that builds a level of the firm's method-th
 // method: all it is made of.
 func NewLevel(f *Firm, method int, external bool) *Expansion {
-	return newExpansion(f.Methods[method].Capital, external, method)
+	return NewLevels(f, method, 1, external)
+}
+
+// NewLevels is an expansion that builds n levels of the firm's method-th
+// method at once.
+func NewLevels(f *Firm, method, n int, external bool) *Expansion {
+	need := make([]Stock, len(f.Methods[method].Capital))
+	for i, s := range f.Methods[method].Capital {
+		need[i] = Stock{s.Good, s.Qty * float64(n)}
+	}
+	e := newExpansion(need, external, method)
+	if n > 1 {
+		e.Levels = n
+	}
+	return e
+}
+
+// projectShare is the share of its levels a firm's owners build in one
+// project. A tile's firm is a whole industry, many works and builders: it
+// adds capacity in proportion to its size, not a works at a time.
+const projectShare = 0.05
+
+// projectLevels is how many levels the firm's owners build at once: a
+// projectShare of what it has, at least one, as far as its land reaches.
+func (f *Firm) projectLevels() int {
+	n := max(1, int(projectShare*float64(f.Levels)))
+	if r := f.Reach(); r > 0 {
+		n = max(1, min(n, r-f.Levels))
+	}
+	return n
 }
 
 // NewRefit is an expansion that refits one of the firm's levels from its
@@ -435,16 +475,25 @@ func (f *Firm) effectiveTFP(i int) float64 {
 // on the same land, more workers and inputs with them, each add less
 // (Ricardo's intensive margin: drainage, marling, deeper shafts), and
 // owners build while the next level pays.
-const landReach = 4 // the most levels a land-bound firm may have, in landCaps
+const landReach = 50 // the most levels a land-bound firm may have, in levels of its land: a safety (land already makes each more level add less; towns built dense)
+
+// land is the firm's land, in levels' worth: its share of the tile's
+// surface (Area), or its own deposit (landCap).
+func (f *Firm) land() float64 {
+	if f.Surface {
+		return f.Area
+	}
+	return float64(f.landCap())
+}
 
 // landMult is method i's share of the firm's land, against a level's
-// worth: (landCap/L)^Land.
+// worth: (land/L)^Land.
 func (f *Firm) landMult(i int) float64 {
-	m, c := f.Methods[i], f.landCap()
+	m, c := f.Methods[i], f.land()
 	if m.Land == 0 || c == 0 || f.Levels == 0 {
 		return 1
 	}
-	return math.Pow(float64(c)/float64(f.Levels), m.Land)
+	return math.Pow(c/float64(f.Levels), m.Land)
 }
 
 // marginalLevel is what one more level would add to the firm's profit,
@@ -454,7 +503,7 @@ func (f *Firm) landMult(i int) float64 {
 // power 1/(1-s).)
 func (f *Firm) marginalLevel() float64 {
 	m := f.Methods[f.Main()]
-	if m.Land == 0 || f.landCap() == 0 {
+	if m.Land == 0 || f.land() == 0 {
 		return 1
 	}
 	s := m.exponentSum()
@@ -465,11 +514,16 @@ func (f *Firm) marginalLevel() float64 {
 // above 1 on fewer levels than its land holds, below on more.
 func (f *Firm) LandMult() float64 { return f.landMult(f.Main()) }
 
-// LandLevels is the firm's land, in levels' worth (0: it has none).
-func (f *Firm) LandLevels() int { return f.landCap() }
+// LandArea is the firm's land, in levels' worth (0: it has none).
+func (f *Firm) LandArea() float64 { return f.land() }
 
 // Reach is the most levels the firm may have (0: no cap).
-func (f *Firm) Reach() int { return landReach * f.landCap() }
+func (f *Firm) Reach() int {
+	if f.MaxLevels == 0 {
+		return 0
+	}
+	return max(1, int(landReach*f.land()))
+}
 
 // main is the method that runs most of the firm's levels (its first, at
 // a tie): what its productivity breakdown describes.
@@ -510,8 +564,8 @@ func (f *Firm) factors() []Factor {
 
 // AtCap reports whether the firm can have no more levels.
 func (f *Firm) AtCap() bool {
-	c := f.landCap()
-	return c > 0 && f.Levels >= landReach*c
+	c := f.Reach()
+	return c > 0 && f.Levels >= c
 }
 
 // BestMethod is the working method a level would earn most on at today's
@@ -520,7 +574,7 @@ func (f *Firm) AtCap() bool {
 func (f *Firm) BestMethod(prices []float64, wage float64) (int, float64) {
 	best, top := -1, 0.0
 	for i, m := range f.Methods {
-		if !m.Runs() || (f.methodCap(i) > 0 && f.MethodLevels(i) >= landReach*f.methodCap(i)) {
+		if !m.Runs() || (!f.Surface && f.methodCap(i) > 0 && f.MethodLevels(i) >= landReach*f.methodCap(i)) || f.AtCap() {
 			continue
 		}
 		if p := f.LevelProfit(i, prices, wage); best < 0 || p > top {

@@ -163,6 +163,10 @@ func (r *Region) planInvestment() {
 		}
 		f.levelValue = f.CapitalValue(r.prices) / float64(f.Levels)
 		perLevel := f.ProfitEMA / float64(f.Levels)
+		payback := payback
+		if f.Payback > 0 {
+			payback *= f.Payback
+		}
 		// the method a level would earn most on, and the one whose levels
 		// earn least: refitting one of the second to the first adds the
 		// difference
@@ -203,7 +207,7 @@ func (r *Region) planInvestment() {
 				if refitUrge >= buildUrge {
 					f.Expansion = NewRefit(f, worst, best, false)
 				} else {
-					f.Expansion = NewLevel(f, best, false)
+					f.Expansion = NewLevels(f, best, f.projectLevels(), false)
 				}
 			}
 		}
@@ -216,7 +220,7 @@ func (r *Region) planInvestment() {
 			}
 		}
 		if e := f.Expansion; e != nil && !e.External {
-			gain := perLevel
+			gain := perLevel * float64(max(1, e.Levels))
 			if e.Refit { // what it still adds at today's prices
 				gain = f.LevelProfit(e.Method, r.prices, r.Wage) - f.LevelProfit(e.From, r.prices, r.Wage)
 			}
@@ -254,6 +258,7 @@ func (r *Region) planInvestment() {
 // settleFirms updates profit records, finishes expansions and closes levels
 // that keep losing money.
 func (r *Region) settleFirms() {
+	defer r.allocateLand()
 	for _, f := range r.Firms {
 		f.Age++
 		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.TickRevenue-f.TickCost)
@@ -271,9 +276,11 @@ func (r *Region) settleFirms() {
 			if e.Refit {
 				f.refit(e.From, e.Method)
 			} else {
-				f.addLevel(e.Method)
+				for range max(1, e.Levels) {
+					f.addLevel(e.Method)
+				}
 			}
-			if c := f.landCap(); c > 0 && f.Levels > landReach*c {
+			for c := f.Reach(); c > 0 && f.Levels > c; {
 				f.dropLevel(r) // on all the land it can reach, the new method takes over the old one's
 			}
 		}
@@ -285,6 +292,56 @@ func (r *Region) settleFirms() {
 			}
 		} else {
 			f.LossTicks = 0
+		}
+	}
+}
+
+// landTicks is how long a tile's land takes to go most of the way to the
+// uses that pay most for it: fields enclosed, a farm sold for building,
+// woods cleared. At a tick a day, about five years.
+const landTicks = 5 * 365.0
+
+// allocateLand moves the tile's surface land towards the uses that pay
+// most for it. A Cobb-Douglas firm pays its land its exponent times what
+// it makes: that is its rent, and at one rent across the tile each use
+// holds land in proportion to it. The farms, forests and houses of a
+// growing town bid land from one another, and the houses win it as the
+// town grows. A use keeps at least a quarter of a level's worth, so that
+// one that stops paying can come back.
+func (r *Region) allocateLand() {
+	total, rent := 0.0, 0.0
+	for _, f := range r.Firms {
+		if f.Surface {
+			total += f.Area
+			if f.Enabled && f.Levels > 0 {
+				rent += f.Methods[f.Main()].Land * f.LastOutput * r.prices[f.Output]
+			}
+		}
+	}
+	if rent <= 0 {
+		return
+	}
+	for _, f := range r.Firms {
+		if !f.Surface {
+			continue
+		}
+		pays := 0.0
+		if f.Enabled && f.Levels > 0 {
+			pays = f.Methods[f.Main()].Land * f.LastOutput * r.prices[f.Output]
+		}
+		f.Area += (total*pays/rent - f.Area) / landTicks
+		f.Area = math.Max(f.Area, 0.25)
+	}
+	// what the floor added comes back from the others, in proportion
+	sum := 0.0
+	for _, f := range r.Firms {
+		if f.Surface {
+			sum += f.Area
+		}
+	}
+	for _, f := range r.Firms {
+		if f.Surface {
+			f.Area *= total / sum
 		}
 	}
 }

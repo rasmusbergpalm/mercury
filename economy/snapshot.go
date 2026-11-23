@@ -60,6 +60,7 @@ type PopState struct {
 type FirmState struct {
 	Cash, Inventory, Labor, LastOutput, ProfitEMA float64
 	Levels, MaxLevels, LossTicks, Age             int
+	Area                                          float64 `json:",omitempty"`
 	Expansion                                     *Expansion
 	Wear, Urge, Mult                              float64
 	Monopoly                                      bool    `json:",omitempty"`
@@ -107,7 +108,7 @@ func (w *World) Snapshot() *Snapshot {
 		}
 		for _, f := range r.Firms {
 			fs := FirmState{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
-				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age,
+				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age, Area: f.Area,
 				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Enabled: f.Enabled,
 				Monopoly: f.Monopoly, Elasticity: f.Elasticity, Share: f.share}
 			for i, m := range f.Methods {
@@ -210,7 +211,7 @@ func (w *World) SetState(s *Snapshot) error {
 					m.Levels = fs.MethodLevels[k-1]
 				}
 			}
-			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, nil
+			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion, f.Area = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, nil, fs.Area
 			if fs.Expansion != nil {
 				f.Expansion = fs.Expansion.Copy()
 			}

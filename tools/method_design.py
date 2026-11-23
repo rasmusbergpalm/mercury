@@ -66,6 +66,9 @@ SIGMA = 3
 LAND = {"Farm": .25, "Potato farm": .25, "Ranch": .25, "Sheep farm": .25, "Cotton plantation": .2, "Tea plantation": .2,
         "Sugar plantation": .2, "Vineyard": .2, "Silk farm": .2, "Forestry": .2, "Coal mine": .12, "Iron mine": .12,
         "Clay pit": .1, "Fishery": .1, "Oil well": .15}
+# those whose land is a deposit of their own (seams, wells, fishing
+# grounds); the rest share the tile's surface with its houses
+DEPOSIT = {"Coal mine", "Iron mine", "Clay pit", "Fishery", "Oil well"}
 COLS = dict(L="wage", tools="price tools", steam="price steam engines", coal="price coal", iron="price iron", wood="price wood",
             grain="price grain", fuel="price coal", clay="price clay", fert="price fertilizer", elec="price electricity",
             expl="price explosives", veh="price vehicles", oil="price oil")
@@ -209,7 +212,7 @@ def main(alltech, paths):
         rc["factors"] = [["labor" if g == "L" else NAMES.get(g, g), a] for g, a in rest.items()]
         if firm in LAND:  # the base's share of value added, of this method's
             materials = lambda d: sum(a for g, a in d.items() if g != "L" and g not in EQUIP)
-            rc["factors"].append(["land", round(LAND[firm] / (1 - materials(F[firm][0][1])) * (1 - materials(f)), 3)])
+            rc["factors"].append(["deposit" if firm in DEPOSIT else "land", round(LAND[firm] / (1 - materials(F[firm][0][1])) * (1 - materials(f)), 3)])
         rc.pop("capital", None)
         if machines:
             rc["capital"] = [["construction", LEVEL]] + [[g, round(q, 1)] for g, q in machines.items()]

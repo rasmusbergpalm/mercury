@@ -39,7 +39,8 @@
     {"name": "steam engines", "bulk": 2, "spoilage": 0, "wear": 0.00010958904109589041},
     {"name": "explosives", "bulk": 1, "spoilage": 0},
     {"name": "fertilizer", "bulk": 1.5, "spoilage": 0.02},
-    {"name": "electricity", "bulk": 0, "spoilage": 1, "service": true}
+    {"name": "electricity", "bulk": 0, "spoilage": 1, "service": true},
+    {"name": "housing", "bulk": 0, "spoilage": 1, "service": true}
   ],
   "composites": [
     {"name": "fuel", "goods": ["wood", "coal"], "sigma": 3},

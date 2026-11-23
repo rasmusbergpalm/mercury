@@ -181,7 +181,7 @@ func (w *World) settleFrom(b *World) {
 		for j, bf := range br.Firms {
 			f := r.Firms[j]
 			f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = bf.Cash, bf.Inventory, bf.Labor, bf.LastOutput, bf.ProfitEMA
-			f.Levels, f.Age, f.Wear, f.Expansion = bf.Levels, bf.Age, bf.Wear, nil
+			f.Levels, f.Age, f.Wear, f.Expansion, f.Area = bf.Levels, bf.Age, bf.Wear, nil, bf.Area
 			f.Urge = bf.Urge
 			for k, m := range f.Methods {
 				m.Levels = bf.Methods[k].Levels

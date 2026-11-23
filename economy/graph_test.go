@@ -103,3 +103,49 @@ func TestLandIsFixed(t *testing.T) {
 		t.Error("room beyond four times its land")
 	}
 }
+
+// A tile's surface land goes, over the years, to the uses that pay most
+// rent for it; the tile's land stays the same.
+func TestLandGoesToTheRent(t *testing.T) {
+	w, err := BuildWorld(1, Graph{Places: []Place{{Name: "A", Terrain: "plains"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 30 {
+		w.Step()
+	}
+	r := w.Regions[0]
+	var houses, farm *Firm
+	total := 0.0
+	for _, f := range r.Firms {
+		if f.Surface {
+			total += f.Area
+			switch f.Name {
+			case "Houses":
+				houses = f
+			case "Farm":
+				farm = f
+			}
+		}
+	}
+	if houses == nil || farm == nil {
+		t.Fatal("no houses or farm on the plains")
+	}
+	before := houses.Area
+	for range 2 * 365 {
+		houses.LastOutput = 100 * farm.LastOutput // a town that pays far more for its land
+		r.allocateLand()
+	}
+	after := 0.0
+	for _, f := range r.Firms {
+		if f.Surface {
+			after += f.Area
+		}
+	}
+	if houses.Area <= before {
+		t.Errorf("houses' land %v -> %v, paying far more rent", before, houses.Area)
+	}
+	if math.Abs(after-total) > 1e-9*total {
+		t.Errorf("the tile's land %v -> %v", total, after)
+	}
+}

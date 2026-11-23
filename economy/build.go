@@ -24,6 +24,13 @@ type Recipe struct {
 	// Land is land's share of what it makes, for a land-bound producer (its
 	// rent); its land is RawMaxLevels levels' worth (Cap for a method).
 	Land float64
+	// Payback multiplies the ticks of profit its owners accept a new level
+	// to repay (0: as any other).
+	Payback float64
+	// Surface: its land (factor "land") is a share of the tile's surface,
+	// which its land users share by the rent they pay; a "deposit" is its
+	// own.
+	Surface bool
 }
 
 // The recipes (data/recipes.json).
@@ -149,6 +156,9 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 					f := NewFirm(rc.Firm, G(rc.Output), rc.TFP*b.Mult, rc.Factors, 50)
 					f.Methods[0].Capital, f.Methods[0].Land = levelOf(rc.Capital), rc.Land
 					f.MaxLevels, f.Sector = RawMaxLevels, Primary
+					if rc.Surface {
+						f.Surface, f.Area = true, float64(RawMaxLevels)
+					}
 					f.Site, f.SiteMult = site, b.Mult
 					f.Enabled = !rc.StartsOff
 					firms = append(firms, f)
@@ -162,7 +172,14 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 	}
 	for _, rc := range ProcessingRecipes {
 		f := NewFirm(rc.Firm, G(rc.Output), rc.TFP, rc.Factors, 50)
-		f.Methods[0].Capital = levelOf(rc.Capital)
+		f.Methods[0].Capital, f.Methods[0].Land = levelOf(rc.Capital), rc.Land
+		if rc.Land > 0 { // its land, as much as a land-bound producer's, built up from the start: a town's houses
+			f.MaxLevels, f.Levels = RawMaxLevels, RawMaxLevels
+			if rc.Surface {
+				f.Surface, f.Area = true, float64(RawMaxLevels)
+			}
+		}
+		f.Payback = rc.Payback
 		if rc.Service {
 			f.Sector = Service
 		}
