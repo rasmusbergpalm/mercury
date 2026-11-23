@@ -61,7 +61,8 @@ func makeMethodRecipes() []MethodRecipe {
 	return out
 }
 
-// RawMaxLevels caps building levels of land-bound producers (land is scarce).
+// RawMaxLevels is a land-bound producer's land, in levels' worth (see
+// Method.Land).
 var RawMaxLevels int
 
 // Bonus is a raw producer available on a terrain, with a TFP multiplier.

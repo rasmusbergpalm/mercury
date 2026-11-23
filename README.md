@@ -80,7 +80,9 @@ Each tick, on every tile:
   machines in it (steam engines, tools, vehicles), as its recipe says. A firm hires workers and buys inputs up to
   where they pay, so its wage bill is its labour exponent times its sales.
   Land-bound producers (farms, mines) have a site that suits them more or
-  less, and their levels are capped because land is scarce.
+  less, and land as a factor of their own: fixed, shared by their levels,
+  so each more level on it adds less (`land` in the recipe is its share,
+  the rent).
 - **Owners** build a new level where it would repay its cost within
   ten years of profit, and refit levels to newer production methods when
   the difference pays: the new machines and some building work. Each good
