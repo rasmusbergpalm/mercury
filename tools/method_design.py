@@ -42,7 +42,7 @@ import math
 import re
 import sys
 
-ADV = 1.05
+ADV = 1.0
 FLOOR = 1.05
 ERAS = {2: (1840, 1860), 3: (1870, 1890)}  # the years whose prices the steam age's and steel's methods are set at
 # machines, held as capital: the good, and the share of it worn out a year
