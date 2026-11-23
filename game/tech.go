@@ -274,15 +274,113 @@ func (n *Nation) Adoption(i int) float64 {
 	return math.Max(0, math.Min(1, float64(n.now-n.LearnedAt[i])/techAdoptDays))
 }
 
-// adopting reports whether any known tech is still coming in (including
-// the day it is complete, so its last step is applied).
-func (n *Nation) adopting() bool {
+// adopting reports whether any known tech is still spreading or coming in
+// (including the day it is complete, so its last step is applied).
+func (n *Nation) adopting(w *World) bool {
 	for i := range Techs {
-		if n.Known[i] && n.LearnedAt[i] > 0 && n.now-n.LearnedAt[i] <= techAdoptDays {
+		if n.Known[i] && n.LearnedAt[i] > 0 && n.now-n.LearnedAt[i] <= techAdoptDays+n.spreadTicks(w, i) {
 			return true
 		}
 	}
 	return false
+}
+
+// techSpreadTicks is how long a new technique takes to reach the next tile
+// (half a year). An invention starts where it was made and spreads from
+// there: engineers, journals and the first machines travelled from the
+// works that had them to the next town and the next valley. Steam power
+// took a generation to cross Britain (Musson and Robinson); the railway,
+// fifteen years to cross Europe from Belgium to Russia.
+const techSpreadTicks = 182
+
+// researchOrigin is the tile a nation's new technique starts in: the one
+// whose university found the most today (where there is none, its most
+// populous tile).
+func (w *World) researchOrigin(n *Nation) int {
+	best, most := -1, 0.0
+	for _, r := range n.Regions {
+		if u := r.University(); u != nil && u.LastOutput > most {
+			best, most = r.ID, u.LastOutput
+		}
+	}
+	if best >= 0 {
+		return best
+	}
+	for _, r := range n.Regions {
+		if p := r.Population(); best < 0 || p > most {
+			best, most = r.ID, p
+		}
+	}
+	return best
+}
+
+// hopsFrom is how many tiles away each tile is from tile o, along the
+// links between tiles.
+func (w *World) hopsFrom(o int) []int {
+	if d, ok := w.ideaHops[o]; ok {
+		return d
+	}
+	d := make([]int, len(w.Regions))
+	for i := range d {
+		d[i] = -1
+	}
+	d[o] = 0
+	queue := []int{o}
+	for len(queue) > 0 {
+		a := queue[0]
+		queue = queue[1:]
+		for _, x := range w.World.Adjacent(a) {
+			if b := x[0]; d[b] < 0 {
+				d[b] = d[a] + 1
+				queue = append(queue, b)
+			}
+		}
+	}
+	for i := range d {
+		if d[i] < 0 { // cut off: as far as the farthest tile
+			d[i] = len(w.Regions)
+		}
+	}
+	if w.ideaHops == nil {
+		w.ideaHops = map[int][]int{}
+	}
+	w.ideaHops[o] = d
+	return d
+}
+
+// arrival is the tick tech i reaches tile r of the nation (0: always
+// there).
+func (n *Nation) arrival(w *World, i int, r *Region) int {
+	if n.LearnedAt[i] <= 0 || n.TechOrigin[i] < 0 {
+		return 0
+	}
+	return n.LearnedAt[i] + techSpreadTicks*w.hopsFrom(n.TechOrigin[i])[r.ID]
+}
+
+// spreadTicks is how long tech i takes to reach the nation's farthest tile.
+func (n *Nation) spreadTicks(w *World, i int) int {
+	t := 0
+	for _, r := range n.Regions {
+		t = max(t, n.arrival(w, i, r)-n.LearnedAt[i])
+	}
+	return t
+}
+
+// reached reports whether tech i is known in tile r of the nation.
+func (n *Nation) reached(w *World, i int, r *Region) bool {
+	return n.Known[i] && n.now >= n.arrival(w, i, r)
+}
+
+// adoptionIn is how far tile r has taken up tech i's productivity bonuses:
+// from 0 the day it reaches the tile to 1 after techAdoptDays.
+func (n *Nation) adoptionIn(w *World, i int, r *Region) float64 {
+	if !n.Known[i] {
+		return 0
+	}
+	if n.LearnedAt[i] <= 0 {
+		return 1
+	}
+	return math.Max(0, math.Min(1, float64(n.now-n.arrival(w, i, r))/techAdoptDays))
 }
 
 // techFirmMult is a tech's full multiplier on a firm's productivity.
@@ -303,12 +401,13 @@ func techFirmMult(t *Tech, f *Firm, me *Method) float64 {
 }
 
 // methodMult is the technology multiplier on a firm's method's
-// productivity, each tech's bonus as far as it has been adopted.
-func (n *Nation) methodMult(f *Firm, me *Method) float64 {
+// productivity in tile r, each tech's bonus as far as the tile has adopted
+// it.
+func (n *Nation) methodMult(w *World, f *Firm, me *Method, r *Region) float64 {
 	m := 1.0
 	for i := range Techs {
 		if n.Known[i] {
-			m *= 1 + (techFirmMult(&Techs[i], f, me)-1)*n.Adoption(i)
+			m *= 1 + (techFirmMult(&Techs[i], f, me)-1)*n.adoptionIn(w, i, r)
 		}
 	}
 	return m
@@ -422,13 +521,13 @@ func (n *Nation) CanBuildPorts() bool {
 // free land, only the methods that need none, at base productivity). The
 // first method is the firm's own recipe, on whenever the firm is
 // (firmEnabled).
-func applyMethods(f *Firm, owner *Nation) {
+func applyMethods(w *World, f *Firm, owner *Nation, r *Region) {
 	for k, m := range f.Methods {
 		m.TFP = m.BaseTFP
 		if owner != nil {
-			m.TFP *= owner.methodMult(f, m)
+			m.TFP *= owner.methodMult(w, f, m, r)
 		}
-		m.Enabled = k == 0 || owner.allows(m.Name)
+		m.Enabled = k == 0 || owner.allowsIn(w, m.Name, r)
 	}
 }
 
@@ -452,4 +551,11 @@ var FirmTech = func() map[string]string {
 func (n *Nation) allows(name string) bool {
 	t, ok := FirmTech[name]
 	return !ok || (n != nil && n.Has(t))
+}
+
+// allowsIn reports whether a firm or method works for this owner in tile
+// r: the tech it needs has reached the tile.
+func (n *Nation) allowsIn(w *World, name string, r *Region) bool {
+	t, ok := FirmTech[name]
+	return !ok || (n != nil && n.reached(w, TechID(t), r))
 }

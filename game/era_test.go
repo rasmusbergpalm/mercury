@@ -98,7 +98,7 @@ func TestIndustrializationMovesLabor(t *testing.T) {
 				for i := range Techs {
 					n.Known[i] = true
 				}
-				n.applyTech()
+				n.applyTech(w)
 			}
 			w.refreshAllHops()
 		}

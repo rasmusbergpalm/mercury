@@ -81,6 +81,7 @@ type NationSnap struct {
 	Coalition                              int `json:",omitempty"`
 	AllianceSince                          int `json:",omitempty"`
 	LearnedAt                              []int
+	TechOrigin                             []int
 	Queue                                  []int
 	TradeWith                              []float64
 	AtWar, PeaceOffer                      []bool
@@ -125,7 +126,7 @@ func (w *World) Snapshot() (*Snapshot, error) {
 		ns := NationSnap{Treasury: n.Treasury, TaxRate: n.TaxRate, SpendEMA: n.SpendEMA, BuildRate: n.MaxBuildRate,
 			Tariff: append([]float64(nil), n.Tariff...), Embargo: append([]bool(nil), n.Embargo...),
 			AutoBuild: n.AutoBuild, AutoTax: n.AutoTax, Pension: n.Pension, PayScale: n.payScale, Standing: n.Standing, IncomeEMA: n.IncomeEMA, ResearchPoints: n.ResearchPoints, CopyPoints: n.CopyPoints, Copying: n.Copying, RealGDP: n.RealGDP,
-			Researching: n.Researching, Known: append([]bool(nil), n.Known...), Coalition: n.Coalition, AllianceSince: n.AllianceSince, LearnedAt: append([]int(nil), n.LearnedAt...), AI: n.AI, ChooseResearch: n.ChooseResearch,
+			Researching: n.Researching, Known: append([]bool(nil), n.Known...), Coalition: n.Coalition, AllianceSince: n.AllianceSince, LearnedAt: append([]int(nil), n.LearnedAt...), TechOrigin: append([]int(nil), n.TechOrigin...), AI: n.AI, ChooseResearch: n.ChooseResearch,
 			Queue: append([]int(nil), n.Queue...), TradeWith: append([]float64(nil), n.TradeWith...),
 			AtWar: append([]bool(nil), n.AtWar...), WarSince: append([]int(nil), n.WarSince...),
 			PeaceOffer: append([]bool(nil), n.PeaceOffer...),
@@ -219,6 +220,10 @@ func Restore(s *Snapshot) (*World, error) {
 			return bad("nation " + n.Name)
 		}
 		copy(n.LearnedAt, ns.LearnedAt)
+		if len(ns.TechOrigin) != len(Techs) {
+			return bad("nation " + n.Name)
+		}
+		copy(n.TechOrigin, ns.TechOrigin)
 		if len(ns.TradeWith) != len(w.Nations) || len(ns.AtWar) != len(w.Nations) || len(ns.WarSince) != len(w.Nations) ||
 			len(ns.PeaceOffer) != len(w.Nations) {
 			return bad("nation " + n.Name)
@@ -291,12 +296,12 @@ func Restore(s *Snapshot) (*World, error) {
 		if r.Nation == nil {
 			for _, f := range r.Firms {
 				f.Enabled = firmEnabled(f, nil)
-				applyMethods(f, nil)
+				applyMethods(w, f, nil, r)
 			}
 		}
 	}
 	for _, n := range w.Nations {
-		n.applyTech()
+		n.applyTech(w)
 		for _, r := range n.Regions { // TFP exactly as saved
 			for j, f := range r.Firms {
 				for k, m := range f.Methods {

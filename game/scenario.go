@@ -144,7 +144,7 @@ func buildGame(spec GameSpec, settle bool, progress func(done, total int)) (*Wor
 		n.Regions = append(n.Regions, r)
 	}
 	for _, n := range w.Nations {
-		n.applyTech()
+		n.applyTech(w)
 	}
 	w.initLoyalties()
 	w.refreshAllHops()

@@ -37,10 +37,10 @@ ADV = 1.10
 FLOOR = 1.05
 ERAS = {2: (1840, 1860), 3: (1870, 1890)}  # the years whose prices the steam age's and steel's methods are set at
 # machines, held as capital: the good, and the share of it worn out a year
-EQUIP = {"tools": ("tools", 0.10), "steam": ("steam engines", 0.06), "veh": ("vehicles", 0.12)}
+EQUIP = {"tools": ("tools", 0.08), "steam": ("steam engines", 0.04), "veh": ("vehicles", 0.10)}  # (as goods.json)
 HURDLE = 0.10  # the return owners ask of a level (economy: investPayback)
 YEAR = 365     # ticks a year
-LEVEL, BUILDING_WEAR = 1200, 0.02  # the construction in a level, and its wear a year
+LEVEL, BUILDING_WEAR = 1200, 0.015  # the construction in a level, and its wear a year
 BASE_ERA = {"Engine works": 2, "Power station": 3}  # 1820 firms that open later, with machines
 # the design's names for goods (the rest are the goods' own names)
 NAMES = dict(L="wage", steam="steam engines", fert="fertilizer", elec="electricity", expl="explosives", veh="vehicles",

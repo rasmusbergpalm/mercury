@@ -12,7 +12,7 @@
     {"name": "spirits", "bulk": 0.1, "spoilage": 0},
     {"name": "aether", "bulk": 0.01, "spoilage": 0},
     {"name": "transport", "bulk": 0, "spoilage": 1, "service": true},
-    {"name": "construction", "bulk": 0, "spoilage": 1, "service": true, "wear": 5.479452054794521e-05}
+    {"name": "construction", "bulk": 0, "spoilage": 1, "service": true, "wear": 4.1095890410958905e-05}
   ],
   "composites": []
 }

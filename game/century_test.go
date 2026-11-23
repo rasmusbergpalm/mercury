@@ -152,7 +152,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		"grain", "wood", "clay"}
 	cols := []string{"year", "pop", "gdp", "gdpHead", "living", "nominal", "invest", "investPriv", "KY", "ret", "laborShare",
 		"primary", "industry", "service", "levels", "techs", "tax", "bigShare", "smallest",
-		"traded", "transportJobs", "priceSpread", "infra"}
+		"traded", "transportJobs", "priceSpread", "infra", "machinesK", "machinesInvest", "constructionJobs"}
 	for _, b := range order {
 		for _, f := range groups[b] {
 			cols = append(cols, "share "+b+"|"+f)
@@ -175,7 +175,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 	fmt.Fprintln(out, strings.Join(cols, ","))
 
 	days := int(TicksPerYear)
-	var ni, wages, constr, constrPriv, profit, shipped float64
+	var ni, wages, constr, constrPriv, profit, shipped, mach float64
 	made := map[string]float64{}
 	for d := 1; d <= years*days; d++ {
 		// expansions under way: what they had
@@ -202,6 +202,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 				for g, q := range f.CapitalIn {
 					if GoodID(g) != Construction {
 						constr += q * r.Markets[g].Price
+						mach += q * r.Markets[g].Price
 					}
 				}
 			}
@@ -226,6 +227,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 					constrPriv += v
 				} else if s.Good != Construction { // (the state's building work is counted in the market)
 					constr += v
+					mach += v
 				}
 			}
 		}
@@ -237,12 +239,22 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		if d%days != 0 {
 			continue
 		}
-		var k, levels, big, people, util float64
+		var k, levels, big, people, util, machK, constrJobs float64
 		var labor [3]float64
 		small := math.Inf(1)
 		for _, r := range w.Regions {
 			for _, f := range r.Firms {
 				k += f.CapitalValue(r.Prices())
+				for i, m := range f.Methods {
+					for _, s := range m.Capital {
+						if s.Good != Construction {
+							machK += float64(f.MethodLevels(i)) * s.Qty * r.Markets[s.Good].Price
+						}
+					}
+				}
+				if f.Output == Construction {
+					constrJobs += f.Labor
+				}
 				levels += float64(f.Levels)
 				sector := f.Sector
 				if sector == Primary && mined[f.Output] {
@@ -303,7 +315,8 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			f4(constr / ni), f4(constrPriv / ni), f4(k / ni), f4(profit / k), f4(wages / ni),
 			f4(labor[Primary] / lt), f4(labor[Industry] / lt), f4(labor[Service] / lt), f0(levels), fmt.Sprint(techs),
 			f4(n.TaxRate), f4(big / people), f0(small),
-			f4(shipped / ni), f4(transportJobs / lt), f4(spread / math.Max(1, float64(goods))), f4(infra)}
+			f4(shipped / ni), f4(transportJobs / lt), f4(spread / math.Max(1, float64(goods))), f4(infra),
+			f4(machK / k), f4(mach / ni), f4(constrJobs / lt)}
 		for _, b := range order {
 			total := 0.0
 			for _, m := range groups[b] {
@@ -348,7 +361,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		}
 		row = append(row, f4(wl/math.Max(l, 1e-12)))
 		fmt.Fprintln(out, strings.Join(row, ","))
-		ni, wages, constr, constrPriv, profit, shipped = 0, 0, 0, 0, 0, 0
+		ni, wages, constr, constrPriv, profit, shipped, mach = 0, 0, 0, 0, 0, 0, 0
 		made = map[string]float64{}
 	}
 }

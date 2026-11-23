@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 )
 
 // InfraLevel is a grade of infrastructure on a tile. Better infrastructure
@@ -117,7 +118,10 @@ type Nation struct {
 	// LearnedAt is the tick each known tech was learned (0: always known, or
 	// granted outright: fully adopted); see Adoption.
 	LearnedAt []int
-	now       int // today's tick, for Adoption
+	// TechOrigin is the tile each tech was learned in, where it starts
+	// (-1: everywhere at once); see reached.
+	TechOrigin []int
+	now        int // today's tick, for Adoption
 	// TradeWith is, per nation, a moving average of the value of goods
 	// shipped between the two; ideas travel with trade.
 	TradeWith []float64
@@ -186,7 +190,7 @@ func newNation(id int, name, color string, nNations int, taxRate float64) *Natio
 	return &Nation{ID: id, Name: name, Color: color, TaxRate: taxRate,
 		MaxBuildRate: 5,
 		Tariff:       make([]float64, NumGoods), Embargo: make([]bool, nNations),
-		Standing: DefaultStanding, payScale: 1, Researching: -1, Copying: -1, Known: make([]bool, len(Techs)), LearnedAt: make([]int, len(Techs)),
+		Standing: DefaultStanding, payScale: 1, Researching: -1, Copying: -1, Known: make([]bool, len(Techs)), LearnedAt: make([]int, len(Techs)), TechOrigin: slices.Repeat([]int{-1}, len(Techs)),
 		TradeWith: make([]float64, nNations), AtWar: make([]bool, nNations), WarSince: make([]int, nNations),
 		PeaceOffer: make([]bool, nNations)}
 }
@@ -679,10 +683,10 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 	}
 	if learned {
 		n.pickCopy(w)
-		n.applyTech()
+		n.applyTech(w)
 		hopsChanged = true
-	} else if n.adopting() { // bonuses still coming in
-		n.applyTech()
+	} else if n.adopting(w) { // still spreading, its bonuses still coming in
+		n.applyTech(w)
 	}
 	return hopsChanged
 }
@@ -692,6 +696,7 @@ func (n *Nation) settle(w *World) (hopsChanged bool) {
 func (n *Nation) learn(w *World, i int) {
 	n.Known[i] = true
 	n.LearnedAt[i] = max(1, w.Tick)
+	n.TechOrigin[i] = w.researchOrigin(n)
 	if n.Researching == i {
 		n.Researching = -1
 	}
@@ -792,12 +797,13 @@ func (n *Nation) pickResearch(w *World) {
 	}
 }
 
-// applyTech brings the nation's firms up to its technology.
-func (n *Nation) applyTech() {
+// applyTech brings the nation's firms up to its technology, as far as each
+// technique has reached their tile.
+func (n *Nation) applyTech(w *World) {
 	for _, r := range n.Regions {
 		for _, f := range r.Firms {
-			f.Enabled = firmEnabled(f, n)
-			applyMethods(f, n)
+			f.Enabled = n.allowsIn(w, f.Name, r)
+			applyMethods(w, f, n, r)
 		}
 	}
 }

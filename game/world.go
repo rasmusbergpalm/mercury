@@ -13,6 +13,9 @@ type World struct {
 	Regions []*Region // the economy's tiles, with what the game knows of them
 	Nations []*Nation
 	burning bool // in the burn-in before a game starts (settle.go)
+	// ideaHops caches, per tile a technique starts in, how many tiles away
+	// each tile is (see Nation.reached)
+	ideaHops map[int][]int
 	// Spec is the scenario a game world was built from (nil for a bare map).
 	Spec *GameSpec
 	// Ports lists tiles with ports in the order they opened (which fixes the
@@ -585,7 +588,7 @@ func (w *World) transfer(r *Region, n *Nation) {
 	r.setNation(n)
 	n.Regions = append(n.Regions, r)
 	r.applyAllegiance() // its people's loyalties stay as they were: to the old owner, or to the new one if it had it before
-	n.applyTech()
+	n.applyTech(w)
 	w.refreshAllHops()
 }
 
@@ -612,7 +615,7 @@ func (w *World) SetInfra(region, level int) {
 func (w *World) GrantTech(nation int, tech string) {
 	n := w.Nations[nation]
 	n.Known[TechID(tech)] = true
-	n.applyTech()
+	n.applyTech(w)
 	w.refreshAllHops()
 }
 

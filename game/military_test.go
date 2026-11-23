@@ -465,7 +465,7 @@ func TestDoctrinePhasesIn(t *testing.T) {
 	}
 	i := TechID("Mass conscription")
 	m.Known[i], m.LearnedAt[i], m.now = true, 100, 100 // learned today, by research
-	m.applyTech()
+	m.applyTech(w)
 	a.followDoctrine()
 	for g := range a.Supply {
 		a.Supply[g] = 1

@@ -153,13 +153,19 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 	if err := n.SetResearch(TechID("Locomotives")); err != nil {
 		t.Errorf("Steam engine after Canals: %v", err)
 	}
-	// its bonus (transport +20%) comes in over techAdoptDays: none yet, half
+	// its bonus (transport +20%) comes in over techAdoptDays from the day it
+	// reaches each tile (it starts in one and spreads): none yet, half
 	// halfway, all of it at the end
-	check := func(adopted float64) {
+	wagons := TechID("Canals")
+	check := func(full bool) {
 		t.Helper()
 		for _, r := range w.Regions {
 			f := firmIn(r, "Transport")
 			want := f.Methods[0].BaseTFP
+			adopted := n.adoptionIn(w, wagons, r)
+			if full {
+				adopted = 1
+			}
 			switch {
 			case r.Nation == n:
 				want *= 1 + 0.2*adopted
@@ -171,23 +177,22 @@ func TestResearchUnlocksTechInOrder(t *testing.T) {
 			}
 		}
 	}
-	wagons := TechID("Canals")
 	learned := n.LearnedAt[wagons]
 	if a := n.Adoption(wagons); a > 0.01 {
 		t.Errorf("Canals %v adopted the day after it was learned", a)
 	}
-	check(n.Adoption(wagons))
+	check(false)
 	for w.Tick-1-learned < techAdoptDays/2 {
 		w.Step()
 	}
 	if a := n.Adoption(wagons); math.Abs(a-0.5) > 0.01 {
 		t.Errorf("halfway: %v adopted", a)
 	}
-	check(n.Adoption(wagons))
-	for w.Tick-1-learned < techAdoptDays+10 {
+	check(false)
+	for w.Tick-1-learned < techAdoptDays+n.spreadTicks(w, wagons)+10 {
 		w.Step()
 	}
-	check(1)
+	check(true)
 }
 
 // Research comes from the universities the state funds: none funded, none
@@ -441,5 +446,37 @@ func TestEmigrationAsFreeAsMoving(t *testing.T) {
 	}
 	if home := MigrationShare(a, a, gap, hop); home != MigrationShare(a, b, gap, hop) {
 		t.Errorf("moving within a nation (%v a day) and across a border (%v) differ", home, MigrationShare(a, b, gap, hop))
+	}
+}
+
+// A new technique starts in one tile and reaches the others techSpreadTicks
+// a tile later: its methods work in a tile once it has.
+func TestTechSpreadsFromWhereItStarts(t *testing.T) {
+	w := newTestGame(t)
+	n := w.Nations[0]
+	i := TechID("Steam power")
+	n.learn(w, i)
+	n.now = n.LearnedAt[i]
+	n.applyTech(w)
+	origin := w.Regions[n.TechOrigin[i]]
+	if origin.Nation != n {
+		t.Fatalf("Steam power started in %s, not one of %s's tiles", origin.Name, n.Name)
+	}
+	far := origin
+	for _, r := range n.Regions {
+		if w.hopsFrom(origin.ID)[r.ID] > w.hopsFrom(origin.ID)[far.ID] {
+			far = r
+		}
+	}
+	if far == origin {
+		t.Skip("the nation has one tile")
+	}
+	works := func(r *Region) bool { return n.allowsIn(w, "Steam sawmill", r) }
+	if !works(origin) || works(far) {
+		t.Fatalf("the day it is learned: works in %s %v, in %s (%d tiles away) %v", origin.Name, works(origin), far.Name, w.hopsFrom(origin.ID)[far.ID], works(far))
+	}
+	n.now += techSpreadTicks * w.hopsFrom(origin.ID)[far.ID]
+	if !works(far) {
+		t.Errorf("Steam power hasn't reached %s after %d ticks", far.Name, n.now-n.LearnedAt[i])
 	}
 }
