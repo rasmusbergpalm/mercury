@@ -1,1404 +1,1404 @@
 tile,name,row,col,terrain,coastal,good,price,active,made
-0,Iverberg,0,0,mountains,true,bread,14.33008,true,1.1893
-0,Iverberg,0,0,mountains,true,potatoes,10.69668,true,0.0000
-0,Iverberg,0,0,mountains,true,meat,20.46992,true,0.0000
-0,Iverberg,0,0,mountains,true,fish,5.80246,true,13.3586
-0,Iverberg,0,0,mountains,true,clothes,15.03929,true,4.2764
-0,Iverberg,0,0,mountains,true,wood,16.54798,true,0.0000
-0,Iverberg,0,0,mountains,true,coal,5.94333,true,28.3420
-0,Iverberg,0,0,mountains,true,furniture,22.32658,true,1.5130
-0,Iverberg,0,0,mountains,true,ironware,26.65960,true,2.2639
-0,Iverberg,0,0,mountains,true,beer,16.88516,true,3.9628
-0,Iverberg,0,0,mountains,true,tea,27.29060,true,0.0000
-0,Iverberg,0,0,mountains,true,sugar,35.17774,true,0.3341
-0,Iverberg,0,0,mountains,true,wine,16.82099,true,1.7538
-0,Iverberg,0,0,mountains,true,fine clothes,23.91102,true,1.0693
-0,Iverberg,0,0,mountains,true,porcelain,22.42006,true,0.8484
-0,Iverberg,0,0,mountains,true,grain,14.41209,true,0.0000
-0,Iverberg,0,0,mountains,true,iron ore,4.77206,true,7.2925
-0,Iverberg,0,0,mountains,true,iron,22.53576,true,4.1619
-0,Iverberg,0,0,mountains,true,wool,6.77550,true,0.8181
-0,Iverberg,0,0,mountains,true,cotton,20.29231,true,0.0000
-0,Iverberg,0,0,mountains,true,cloth,11.22378,true,2.1989
-0,Iverberg,0,0,mountains,true,sugar cane,41.84899,true,0.0000
-0,Iverberg,0,0,mountains,true,grapes,8.91697,true,0.0000
-0,Iverberg,0,0,mountains,true,silk,20.85579,true,0.0000
-0,Iverberg,0,0,mountains,true,clay,7.24071,true,0.0000
-0,Iverberg,0,0,mountains,true,transport,6.11468,true,7.1080
-0,Iverberg,0,0,mountains,true,construction,12.53150,true,6.9230
+0,Iverberg,0,0,mountains,true,bread,14.54928,true,1.1923
+0,Iverberg,0,0,mountains,true,potatoes,10.96366,true,0.0000
+0,Iverberg,0,0,mountains,true,meat,20.60759,true,0.0000
+0,Iverberg,0,0,mountains,true,fish,5.86445,true,13.5103
+0,Iverberg,0,0,mountains,true,clothes,15.17971,true,4.2735
+0,Iverberg,0,0,mountains,true,wood,16.03406,true,0.0000
+0,Iverberg,0,0,mountains,true,coal,6.12044,true,29.5055
+0,Iverberg,0,0,mountains,true,furniture,19.66816,true,1.7492
+0,Iverberg,0,0,mountains,true,ironware,26.98623,true,2.3477
+0,Iverberg,0,0,mountains,true,beer,17.01574,true,3.9210
+0,Iverberg,0,0,mountains,true,tea,26.53838,true,0.0000
+0,Iverberg,0,0,mountains,true,sugar,33.38825,true,0.2895
+0,Iverberg,0,0,mountains,true,wine,16.81631,true,1.7649
+0,Iverberg,0,0,mountains,true,fine clothes,23.93890,true,1.0603
+0,Iverberg,0,0,mountains,true,porcelain,22.68938,true,0.8362
+0,Iverberg,0,0,mountains,true,grain,14.51876,true,0.0000
+0,Iverberg,0,0,mountains,true,iron ore,4.70033,true,7.2989
+0,Iverberg,0,0,mountains,true,iron,22.18606,true,4.0861
+0,Iverberg,0,0,mountains,true,wool,6.82166,true,0.8873
+0,Iverberg,0,0,mountains,true,cotton,20.30088,true,0.0000
+0,Iverberg,0,0,mountains,true,cloth,11.32470,true,2.2913
+0,Iverberg,0,0,mountains,true,sugar cane,42.75592,true,0.0000
+0,Iverberg,0,0,mountains,true,grapes,9.15177,true,0.0000
+0,Iverberg,0,0,mountains,true,silk,20.72156,true,0.0000
+0,Iverberg,0,0,mountains,true,clay,7.43728,true,0.0000
+0,Iverberg,0,0,mountains,true,transport,5.46004,true,7.9192
+0,Iverberg,0,0,mountains,true,construction,11.41599,true,5.4984
 0,Iverberg,0,0,mountains,true,research,1.00000,false,0.0000
-0,Iverberg,0,0,mountains,true,arms,1.47257,false,0.0000
-0,Iverberg,0,0,mountains,true,artillery,1.47257,false,0.0000
+0,Iverberg,0,0,mountains,true,arms,1.48676,false,0.0000
+0,Iverberg,0,0,mountains,true,artillery,1.48676,false,0.0000
 0,Iverberg,0,0,mountains,true,munitions,1.00000,false,0.0000
 0,Iverberg,0,0,mountains,true,vehicles,1.00000,false,0.0000
 0,Iverberg,0,0,mountains,true,aircraft,1.00000,false,0.0000
 0,Iverberg,0,0,mountains,true,oil,1.00000,false,0.0000
-0,Iverberg,0,0,mountains,true,tools,1.47257,false,0.0000
+0,Iverberg,0,0,mountains,true,tools,1.48676,false,0.0000
 0,Iverberg,0,0,mountains,true,steam engines,1.00000,false,0.0000
 0,Iverberg,0,0,mountains,true,explosives,1.00000,false,0.0000
 0,Iverberg,0,0,mountains,true,fertilizer,1.00000,false,0.0000
 0,Iverberg,0,0,mountains,true,electricity,1.00000,false,0.0000
-1,Inkport,0,1,mountains,true,bread,14.07425,true,1.2007
-1,Inkport,0,1,mountains,true,potatoes,10.50683,true,0.0000
-1,Inkport,0,1,mountains,true,meat,19.80558,true,0.0000
-1,Inkport,0,1,mountains,true,fish,6.15803,true,14.8292
-1,Inkport,0,1,mountains,true,clothes,14.53430,true,4.3836
-1,Inkport,0,1,mountains,true,wood,13.73671,true,0.0000
-1,Inkport,0,1,mountains,true,coal,5.76694,true,27.8290
-1,Inkport,0,1,mountains,true,furniture,19.78562,true,1.4922
-1,Inkport,0,1,mountains,true,ironware,24.75184,true,2.0198
-1,Inkport,0,1,mountains,true,beer,16.61152,true,3.9525
-1,Inkport,0,1,mountains,true,tea,26.97525,true,0.0000
-1,Inkport,0,1,mountains,true,sugar,33.01684,true,0.3291
-1,Inkport,0,1,mountains,true,wine,15.81192,true,1.5549
-1,Inkport,0,1,mountains,true,fine clothes,23.25304,true,1.0602
-1,Inkport,0,1,mountains,true,porcelain,21.43279,true,0.7842
-1,Inkport,0,1,mountains,true,grain,14.33567,true,0.0000
-1,Inkport,0,1,mountains,true,iron ore,4.97547,true,8.0660
-1,Inkport,0,1,mountains,true,iron,22.38102,true,3.4029
-1,Inkport,0,1,mountains,true,wool,6.74406,true,0.8902
-1,Inkport,0,1,mountains,true,cotton,19.96738,true,0.0000
-1,Inkport,0,1,mountains,true,cloth,10.55478,true,1.9893
-1,Inkport,0,1,mountains,true,sugar cane,41.11100,true,0.0000
-1,Inkport,0,1,mountains,true,grapes,9.04961,true,0.0000
-1,Inkport,0,1,mountains,true,silk,20.76249,true,0.0000
-1,Inkport,0,1,mountains,true,clay,7.16805,true,0.0000
-1,Inkport,0,1,mountains,true,transport,5.99655,true,9.6856
-1,Inkport,0,1,mountains,true,construction,12.68455,true,8.2993
+1,Inkport,0,1,mountains,true,bread,14.62862,true,1.2310
+1,Inkport,0,1,mountains,true,potatoes,11.04443,true,0.0000
+1,Inkport,0,1,mountains,true,meat,21.03712,true,0.0000
+1,Inkport,0,1,mountains,true,fish,6.37772,true,15.0511
+1,Inkport,0,1,mountains,true,clothes,14.98672,true,4.3975
+1,Inkport,0,1,mountains,true,wood,14.41432,true,0.0000
+1,Inkport,0,1,mountains,true,coal,6.12664,true,28.9990
+1,Inkport,0,1,mountains,true,furniture,20.22096,true,1.4547
+1,Inkport,0,1,mountains,true,ironware,26.11607,true,2.1455
+1,Inkport,0,1,mountains,true,beer,17.12272,true,3.9583
+1,Inkport,0,1,mountains,true,tea,27.09549,true,0.0000
+1,Inkport,0,1,mountains,true,sugar,33.44233,true,0.2670
+1,Inkport,0,1,mountains,true,wine,16.72776,true,1.6492
+1,Inkport,0,1,mountains,true,fine clothes,23.78693,true,1.0417
+1,Inkport,0,1,mountains,true,porcelain,21.96582,true,0.7585
+1,Inkport,0,1,mountains,true,grain,14.70724,true,0.0000
+1,Inkport,0,1,mountains,true,iron ore,5.05584,true,7.9152
+1,Inkport,0,1,mountains,true,iron,22.72986,true,3.2528
+1,Inkport,0,1,mountains,true,wool,6.96508,true,0.8583
+1,Inkport,0,1,mountains,true,cotton,20.24624,true,0.0000
+1,Inkport,0,1,mountains,true,cloth,10.86653,true,2.0103
+1,Inkport,0,1,mountains,true,sugar cane,44.36584,true,0.0000
+1,Inkport,0,1,mountains,true,grapes,9.55322,true,0.0000
+1,Inkport,0,1,mountains,true,silk,20.76653,true,0.0000
+1,Inkport,0,1,mountains,true,clay,7.40797,true,0.0000
+1,Inkport,0,1,mountains,true,transport,5.68070,true,10.4606
+1,Inkport,0,1,mountains,true,construction,12.55743,true,7.5351
 1,Inkport,0,1,mountains,true,research,1.00000,false,0.0000
-1,Inkport,0,1,mountains,true,arms,1.42050,false,0.0000
-1,Inkport,0,1,mountains,true,artillery,1.42050,false,0.0000
+1,Inkport,0,1,mountains,true,arms,1.46685,false,0.0000
+1,Inkport,0,1,mountains,true,artillery,1.46685,false,0.0000
 1,Inkport,0,1,mountains,true,munitions,1.00000,false,0.0000
 1,Inkport,0,1,mountains,true,vehicles,1.00000,false,0.0000
 1,Inkport,0,1,mountains,true,aircraft,1.00000,false,0.0000
 1,Inkport,0,1,mountains,true,oil,1.00000,false,0.0000
-1,Inkport,0,1,mountains,true,tools,1.42050,false,0.0000
+1,Inkport,0,1,mountains,true,tools,1.46685,false,0.0000
 1,Inkport,0,1,mountains,true,steam engines,1.00000,false,0.0000
 1,Inkport,0,1,mountains,true,explosives,1.00000,false,0.0000
 1,Inkport,0,1,mountains,true,fertilizer,1.00000,false,0.0000
 1,Inkport,0,1,mountains,true,electricity,1.00000,false,0.0000
-2,Moreness,0,2,hills,true,bread,12.74524,true,1.2744
-2,Moreness,0,2,hills,true,potatoes,7.44407,true,23.8212
-2,Moreness,0,2,hills,true,meat,17.27506,true,0.0000
-2,Moreness,0,2,hills,true,fish,7.89249,true,20.0213
-2,Moreness,0,2,hills,true,clothes,14.25603,true,9.1274
-2,Moreness,0,2,hills,true,wood,11.05342,true,0.0000
-2,Moreness,0,2,hills,true,coal,8.89276,true,17.8253
-2,Moreness,0,2,hills,true,furniture,17.83980,true,2.9005
-2,Moreness,0,2,hills,true,ironware,27.62225,true,3.4397
-2,Moreness,0,2,hills,true,beer,15.26680,true,9.5642
-2,Moreness,0,2,hills,true,tea,26.65028,true,0.0000
-2,Moreness,0,2,hills,true,sugar,33.14542,true,0.6385
-2,Moreness,0,2,hills,true,wine,15.34975,true,6.1297
-2,Moreness,0,2,hills,true,fine clothes,23.48419,true,1.3100
-2,Moreness,0,2,hills,true,porcelain,20.53809,true,3.4201
-2,Moreness,0,2,hills,true,grain,12.65492,true,0.0000
-2,Moreness,0,2,hills,true,iron ore,7.96585,true,0.3185
-2,Moreness,0,2,hills,true,iron,23.97930,true,1.3025
-2,Moreness,0,2,hills,true,wool,5.35954,true,11.1933
-2,Moreness,0,2,hills,true,cotton,19.99752,true,0.0000
-2,Moreness,0,2,hills,true,cloth,10.51173,true,4.9329
-2,Moreness,0,2,hills,true,sugar cane,44.71427,true,0.0000
-2,Moreness,0,2,hills,true,grapes,6.98247,true,16.2609
-2,Moreness,0,2,hills,true,silk,20.42410,true,0.0000
-2,Moreness,0,2,hills,true,clay,4.36040,true,5.8344
-2,Moreness,0,2,hills,true,transport,5.62633,true,22.0445
-2,Moreness,0,2,hills,true,construction,11.06061,true,16.2508
+2,Moreness,0,2,hills,true,bread,13.10334,true,1.3072
+2,Moreness,0,2,hills,true,potatoes,7.72733,true,23.2203
+2,Moreness,0,2,hills,true,meat,18.14417,true,0.0000
+2,Moreness,0,2,hills,true,fish,8.17061,true,19.4730
+2,Moreness,0,2,hills,true,clothes,14.59553,true,8.8874
+2,Moreness,0,2,hills,true,wood,11.60109,true,0.0000
+2,Moreness,0,2,hills,true,coal,9.11386,true,16.9874
+2,Moreness,0,2,hills,true,furniture,18.30453,true,3.7246
+2,Moreness,0,2,hills,true,ironware,26.48250,true,3.5018
+2,Moreness,0,2,hills,true,beer,15.48202,true,9.5552
+2,Moreness,0,2,hills,true,tea,26.72427,true,0.0000
+2,Moreness,0,2,hills,true,sugar,31.37187,true,0.6230
+2,Moreness,0,2,hills,true,wine,14.81222,true,5.5612
+2,Moreness,0,2,hills,true,fine clothes,23.53128,true,1.2065
+2,Moreness,0,2,hills,true,porcelain,20.82581,true,3.1688
+2,Moreness,0,2,hills,true,grain,12.61470,true,0.0000
+2,Moreness,0,2,hills,true,iron ore,7.89134,true,0.2999
+2,Moreness,0,2,hills,true,iron,24.14652,true,1.2746
+2,Moreness,0,2,hills,true,wool,5.53401,true,10.8012
+2,Moreness,0,2,hills,true,cotton,20.12394,true,0.0000
+2,Moreness,0,2,hills,true,cloth,10.78533,true,4.8166
+2,Moreness,0,2,hills,true,sugar cane,40.91992,true,0.0000
+2,Moreness,0,2,hills,true,grapes,7.00758,true,15.5541
+2,Moreness,0,2,hills,true,silk,20.57958,true,0.0000
+2,Moreness,0,2,hills,true,clay,4.37303,true,5.4621
+2,Moreness,0,2,hills,true,transport,5.89527,true,21.6609
+2,Moreness,0,2,hills,true,construction,13.47231,true,20.2135
 2,Moreness,0,2,hills,true,research,1.00000,false,0.0000
-2,Moreness,0,2,hills,true,arms,1.27001,false,0.0000
-2,Moreness,0,2,hills,true,artillery,1.27001,false,0.0000
+2,Moreness,0,2,hills,true,arms,1.32878,false,0.0000
+2,Moreness,0,2,hills,true,artillery,1.32878,false,0.0000
 2,Moreness,0,2,hills,true,munitions,1.00000,false,0.0000
 2,Moreness,0,2,hills,true,vehicles,1.00000,false,0.0000
 2,Moreness,0,2,hills,true,aircraft,1.00000,false,0.0000
 2,Moreness,0,2,hills,true,oil,1.00000,false,0.0000
-2,Moreness,0,2,hills,true,tools,1.27001,false,0.0000
+2,Moreness,0,2,hills,true,tools,1.32878,false,0.0000
 2,Moreness,0,2,hills,true,steam engines,1.00000,false,0.0000
 2,Moreness,0,2,hills,true,explosives,1.00000,false,0.0000
 2,Moreness,0,2,hills,true,fertilizer,1.00000,false,0.0000
 2,Moreness,0,2,hills,true,electricity,1.00000,false,0.0000
-3,Maragrove,0,3,forest,true,bread,12.49109,true,3.6421
-3,Maragrove,0,3,forest,true,potatoes,9.23920,true,16.4684
-3,Maragrove,0,3,forest,true,meat,14.07461,true,3.5343
-3,Maragrove,0,3,forest,true,fish,8.63594,true,19.9496
-3,Maragrove,0,3,forest,true,clothes,13.62090,true,12.9888
-3,Maragrove,0,3,forest,true,wood,8.24708,true,60.6958
-3,Maragrove,0,3,forest,true,coal,11.75525,true,0.0000
-3,Maragrove,0,3,forest,true,furniture,15.81493,true,8.9747
-3,Maragrove,0,3,forest,true,ironware,26.76509,true,5.6312
-3,Maragrove,0,3,forest,true,beer,14.01437,true,14.3721
-3,Maragrove,0,3,forest,true,tea,25.68299,true,0.0000
-3,Maragrove,0,3,forest,true,sugar,31.40449,true,1.5267
-3,Maragrove,0,3,forest,true,wine,15.32415,true,6.2199
-3,Maragrove,0,3,forest,true,fine clothes,23.35339,true,2.6285
-3,Maragrove,0,3,forest,true,porcelain,21.59705,true,2.6278
-3,Maragrove,0,3,forest,true,grain,10.40540,true,0.0000
-3,Maragrove,0,3,forest,true,iron ore,10.72852,true,0.1234
-3,Maragrove,0,3,forest,true,iron,25.49202,true,2.4312
-3,Maragrove,0,3,forest,true,wool,6.75786,true,0.0000
-3,Maragrove,0,3,forest,true,cotton,18.42817,true,0.0000
-3,Maragrove,0,3,forest,true,cloth,10.68353,true,6.6390
-3,Maragrove,0,3,forest,true,sugar cane,38.32152,true,0.0000
-3,Maragrove,0,3,forest,true,grapes,9.10813,true,0.0000
-3,Maragrove,0,3,forest,true,silk,20.28880,true,0.0000
-3,Maragrove,0,3,forest,true,clay,6.98272,true,0.0000
-3,Maragrove,0,3,forest,true,transport,5.70033,true,24.0385
-3,Maragrove,0,3,forest,true,construction,13.97275,true,36.9930
+3,Maragrove,0,3,forest,true,bread,13.02608,true,3.9103
+3,Maragrove,0,3,forest,true,potatoes,9.78497,true,15.9649
+3,Maragrove,0,3,forest,true,meat,14.91459,true,3.4333
+3,Maragrove,0,3,forest,true,fish,9.19664,true,19.5529
+3,Maragrove,0,3,forest,true,clothes,14.41912,true,12.8563
+3,Maragrove,0,3,forest,true,wood,8.87681,true,59.7573
+3,Maragrove,0,3,forest,true,coal,12.07464,true,0.0000
+3,Maragrove,0,3,forest,true,furniture,16.51781,true,8.3467
+3,Maragrove,0,3,forest,true,ironware,27.79394,true,5.5444
+3,Maragrove,0,3,forest,true,beer,14.16302,true,15.3808
+3,Maragrove,0,3,forest,true,tea,26.16297,true,0.0000
+3,Maragrove,0,3,forest,true,sugar,30.24456,true,1.3859
+3,Maragrove,0,3,forest,true,wine,15.38112,true,5.8310
+3,Maragrove,0,3,forest,true,fine clothes,24.23098,true,2.4958
+3,Maragrove,0,3,forest,true,porcelain,22.56928,true,2.4082
+3,Maragrove,0,3,forest,true,grain,10.24635,true,0.0000
+3,Maragrove,0,3,forest,true,iron ore,10.83883,true,0.1134
+3,Maragrove,0,3,forest,true,iron,25.63998,true,2.2101
+3,Maragrove,0,3,forest,true,wool,7.01321,true,0.0000
+3,Maragrove,0,3,forest,true,cotton,18.34285,true,0.0000
+3,Maragrove,0,3,forest,true,cloth,11.21938,true,6.6178
+3,Maragrove,0,3,forest,true,sugar cane,35.98386,true,0.0000
+3,Maragrove,0,3,forest,true,grapes,9.30696,true,0.0000
+3,Maragrove,0,3,forest,true,silk,20.75199,true,0.0000
+3,Maragrove,0,3,forest,true,clay,7.23660,true,0.0000
+3,Maragrove,0,3,forest,true,transport,5.74040,true,23.2016
+3,Maragrove,0,3,forest,true,construction,15.52368,true,39.2615
 3,Maragrove,0,3,forest,true,research,1.00000,false,0.0000
-3,Maragrove,0,3,forest,true,arms,1.30560,false,0.0000
-3,Maragrove,0,3,forest,true,artillery,1.30560,false,0.0000
+3,Maragrove,0,3,forest,true,arms,1.35946,false,0.0000
+3,Maragrove,0,3,forest,true,artillery,1.36121,false,0.0000
 3,Maragrove,0,3,forest,true,munitions,1.00000,false,0.0000
 3,Maragrove,0,3,forest,true,vehicles,1.00000,false,0.0000
 3,Maragrove,0,3,forest,true,aircraft,1.00000,false,0.0000
 3,Maragrove,0,3,forest,true,oil,1.00000,false,0.0000
-3,Maragrove,0,3,forest,true,tools,1.30560,false,0.0000
+3,Maragrove,0,3,forest,true,tools,1.35946,false,0.0000
 3,Maragrove,0,3,forest,true,steam engines,1.00000,false,0.0000
 3,Maragrove,0,3,forest,true,explosives,1.00000,false,0.0000
 3,Maragrove,0,3,forest,true,fertilizer,1.00000,false,0.0000
 3,Maragrove,0,3,forest,true,electricity,1.00000,false,0.0000
-4,Ravashaw,0,4,forest,true,bread,10.50956,true,5.6440
-4,Ravashaw,0,4,forest,true,potatoes,8.28036,true,16.3465
-4,Ravashaw,0,4,forest,true,meat,10.91104,true,1.4047
-4,Ravashaw,0,4,forest,true,fish,7.82384,true,20.1585
-4,Ravashaw,0,4,forest,true,clothes,13.39668,true,13.8428
-4,Ravashaw,0,4,forest,true,wood,8.62057,true,76.1927
-4,Ravashaw,0,4,forest,true,coal,14.44878,true,0.0000
-4,Ravashaw,0,4,forest,true,furniture,15.09757,true,8.6301
-4,Ravashaw,0,4,forest,true,ironware,27.14582,true,6.8275
-4,Ravashaw,0,4,forest,true,beer,11.95283,true,19.5417
-4,Ravashaw,0,4,forest,true,tea,25.07440,true,0.0000
-4,Ravashaw,0,4,forest,true,sugar,31.67153,true,1.9466
-4,Ravashaw,0,4,forest,true,wine,16.08578,true,4.0136
-4,Ravashaw,0,4,forest,true,fine clothes,23.20488,true,3.1074
-4,Ravashaw,0,4,forest,true,porcelain,20.94525,true,2.4607
-4,Ravashaw,0,4,forest,true,grain,7.84348,true,0.0000
-4,Ravashaw,0,4,forest,true,iron ore,13.63278,true,0.2036
-4,Ravashaw,0,4,forest,true,iron,26.83584,true,1.1152
-4,Ravashaw,0,4,forest,true,wool,8.09850,true,0.0000
-4,Ravashaw,0,4,forest,true,cotton,17.05643,true,0.0000
-4,Ravashaw,0,4,forest,true,cloth,10.93236,true,6.6479
-4,Ravashaw,0,4,forest,true,sugar cane,33.95109,true,0.0000
-4,Ravashaw,0,4,forest,true,grapes,12.00947,true,0.0000
-4,Ravashaw,0,4,forest,true,silk,20.28031,true,0.0000
-4,Ravashaw,0,4,forest,true,clay,7.97641,true,0.0000
-4,Ravashaw,0,4,forest,true,transport,5.15654,true,27.0526
-4,Ravashaw,0,4,forest,true,construction,11.18460,true,26.6834
+4,Ravashaw,0,4,forest,true,bread,10.54366,true,5.8532
+4,Ravashaw,0,4,forest,true,potatoes,8.25664,true,17.5905
+4,Ravashaw,0,4,forest,true,meat,10.97029,true,1.5465
+4,Ravashaw,0,4,forest,true,fish,7.78704,true,21.7188
+4,Ravashaw,0,4,forest,true,clothes,13.46267,true,14.4795
+4,Ravashaw,0,4,forest,true,wood,8.30705,true,76.7008
+4,Ravashaw,0,4,forest,true,coal,14.68970,true,0.0000
+4,Ravashaw,0,4,forest,true,furniture,14.73698,true,9.1024
+4,Ravashaw,0,4,forest,true,ironware,26.83043,true,7.7523
+4,Ravashaw,0,4,forest,true,beer,12.08995,true,20.4296
+4,Ravashaw,0,4,forest,true,tea,25.40898,true,0.0000
+4,Ravashaw,0,4,forest,true,sugar,31.56145,true,2.1770
+4,Ravashaw,0,4,forest,true,wine,16.90404,true,4.8859
+4,Ravashaw,0,4,forest,true,fine clothes,22.58410,true,3.8081
+4,Ravashaw,0,4,forest,true,porcelain,21.66598,true,3.1630
+4,Ravashaw,0,4,forest,true,grain,8.07128,true,0.0000
+4,Ravashaw,0,4,forest,true,iron ore,13.95304,true,0.2401
+4,Ravashaw,0,4,forest,true,iron,26.95396,true,1.7747
+4,Ravashaw,0,4,forest,true,wool,8.39691,true,0.0000
+4,Ravashaw,0,4,forest,true,cotton,16.84277,true,0.0000
+4,Ravashaw,0,4,forest,true,cloth,11.06754,true,7.0175
+4,Ravashaw,0,4,forest,true,sugar cane,32.54088,true,0.0000
+4,Ravashaw,0,4,forest,true,grapes,11.93479,true,0.0000
+4,Ravashaw,0,4,forest,true,silk,20.63192,true,0.0000
+4,Ravashaw,0,4,forest,true,clay,8.09904,true,0.0000
+4,Ravashaw,0,4,forest,true,transport,4.90830,true,28.5732
+4,Ravashaw,0,4,forest,true,construction,6.51264,true,5.6963
 4,Ravashaw,0,4,forest,true,research,1.00000,false,0.0000
-4,Ravashaw,0,4,forest,true,arms,1.19811,false,0.0000
-4,Ravashaw,0,4,forest,true,artillery,1.19811,false,0.0000
+4,Ravashaw,0,4,forest,true,arms,1.20124,false,0.0000
+4,Ravashaw,0,4,forest,true,artillery,1.20220,false,0.0000
 4,Ravashaw,0,4,forest,true,munitions,1.00000,false,0.0000
 4,Ravashaw,0,4,forest,true,vehicles,1.00000,false,0.0000
 4,Ravashaw,0,4,forest,true,aircraft,1.00000,false,0.0000
 4,Ravashaw,0,4,forest,true,oil,1.00000,false,0.0000
-4,Ravashaw,0,4,forest,true,tools,1.19811,false,0.0000
+4,Ravashaw,0,4,forest,true,tools,1.20124,false,0.0000
 4,Ravashaw,0,4,forest,true,steam engines,1.00000,false,0.0000
 4,Ravashaw,0,4,forest,true,explosives,1.00000,false,0.0000
 4,Ravashaw,0,4,forest,true,fertilizer,1.00000,false,0.0000
 4,Ravashaw,0,4,forest,true,electricity,1.00000,false,0.0000
-5,Falobridge,0,5,plains,true,bread,9.07947,true,1.5315
-5,Falobridge,0,5,plains,true,potatoes,5.26186,true,25.6187
-5,Falobridge,0,5,plains,true,meat,8.10090,true,9.5723
-5,Falobridge,0,5,plains,true,fish,6.10860,true,15.6019
-5,Falobridge,0,5,plains,true,clothes,13.87905,true,7.9169
-5,Falobridge,0,5,plains,true,wood,11.35509,true,0.0000
-5,Falobridge,0,5,plains,true,coal,17.10075,true,0.0000
-5,Falobridge,0,5,plains,true,furniture,16.45290,true,3.4036
-5,Falobridge,0,5,plains,true,ironware,28.48321,true,3.0460
-5,Falobridge,0,5,plains,true,beer,10.88781,true,13.4808
-5,Falobridge,0,5,plains,true,tea,24.64864,true,0.0000
-5,Falobridge,0,5,plains,true,sugar,32.39552,true,0.9836
-5,Falobridge,0,5,plains,true,wine,19.77413,true,2.3763
-5,Falobridge,0,5,plains,true,fine clothes,24.30367,true,2.4381
-5,Falobridge,0,5,plains,true,porcelain,22.22941,true,3.4607
-5,Falobridge,0,5,plains,true,grain,5.67595,true,28.7586
-5,Falobridge,0,5,plains,true,iron ore,16.09528,true,0.1803
-5,Falobridge,0,5,plains,true,iron,28.19450,true,0.3916
-5,Falobridge,0,5,plains,true,wool,6.54842,true,3.1573
-5,Falobridge,0,5,plains,true,cotton,15.72980,true,0.0000
-5,Falobridge,0,5,plains,true,cloth,10.43853,true,4.2063
-5,Falobridge,0,5,plains,true,sugar cane,29.35273,true,0.0000
-5,Falobridge,0,5,plains,true,grapes,16.97510,true,0.0000
-5,Falobridge,0,5,plains,true,silk,20.12684,true,0.0000
-5,Falobridge,0,5,plains,true,clay,5.02987,true,4.3658
-5,Falobridge,0,5,plains,true,transport,5.38574,true,23.1667
-5,Falobridge,0,5,plains,true,construction,11.33392,true,17.2184
+5,Falobridge,0,5,plains,true,bread,9.25557,true,1.6007
+5,Falobridge,0,5,plains,true,potatoes,5.36637,true,26.3756
+5,Falobridge,0,5,plains,true,meat,8.25192,true,9.8463
+5,Falobridge,0,5,plains,true,fish,6.24010,true,16.2304
+5,Falobridge,0,5,plains,true,clothes,13.60137,true,8.6382
+5,Falobridge,0,5,plains,true,wood,10.81696,true,0.0000
+5,Falobridge,0,5,plains,true,coal,16.94941,true,0.0000
+5,Falobridge,0,5,plains,true,furniture,16.63402,true,3.7559
+5,Falobridge,0,5,plains,true,ironware,28.11155,true,3.0529
+5,Falobridge,0,5,plains,true,beer,10.81125,true,14.6038
+5,Falobridge,0,5,plains,true,tea,24.82049,true,0.0000
+5,Falobridge,0,5,plains,true,sugar,30.96791,true,1.0326
+5,Falobridge,0,5,plains,true,wine,18.17956,true,2.3499
+5,Falobridge,0,5,plains,true,fine clothes,23.33627,true,2.2487
+5,Falobridge,0,5,plains,true,porcelain,22.22279,true,3.6157
+5,Falobridge,0,5,plains,true,grain,5.84496,true,29.9648
+5,Falobridge,0,5,plains,true,iron ore,16.28891,true,0.1980
+5,Falobridge,0,5,plains,true,iron,28.16159,true,0.4197
+5,Falobridge,0,5,plains,true,wool,6.76747,true,3.2905
+5,Falobridge,0,5,plains,true,cotton,15.26461,true,0.0000
+5,Falobridge,0,5,plains,true,cloth,10.70309,true,4.3793
+5,Falobridge,0,5,plains,true,sugar cane,28.27433,true,0.0000
+5,Falobridge,0,5,plains,true,grapes,15.03872,true,0.0000
+5,Falobridge,0,5,plains,true,silk,20.36908,true,0.0000
+5,Falobridge,0,5,plains,true,clay,5.21994,true,4.7680
+5,Falobridge,0,5,plains,true,transport,5.42555,true,24.9763
+5,Falobridge,0,5,plains,true,construction,10.04737,true,9.2002
 5,Falobridge,0,5,plains,true,research,1.00000,false,0.0000
-5,Falobridge,0,5,plains,true,arms,1.26523,false,0.0000
-5,Falobridge,0,5,plains,true,artillery,1.26523,false,0.0000
+5,Falobridge,0,5,plains,true,arms,1.22524,false,0.0000
+5,Falobridge,0,5,plains,true,artillery,1.22527,false,0.0000
 5,Falobridge,0,5,plains,true,munitions,1.00000,false,0.0000
 5,Falobridge,0,5,plains,true,vehicles,1.00000,false,0.0000
 5,Falobridge,0,5,plains,true,aircraft,1.00000,false,0.0000
 5,Falobridge,0,5,plains,true,oil,1.00000,false,0.0000
-5,Falobridge,0,5,plains,true,tools,1.26523,false,0.0000
+5,Falobridge,0,5,plains,true,tools,1.22524,false,0.0000
 5,Falobridge,0,5,plains,true,steam engines,1.00000,false,0.0000
 5,Falobridge,0,5,plains,true,explosives,1.00000,false,0.0000
 5,Falobridge,0,5,plains,true,fertilizer,1.00000,false,0.0000
 5,Falobridge,0,5,plains,true,electricity,1.00000,false,0.0000
-6,Baradon,1,0,hills,true,bread,12.67259,true,1.2657
-6,Baradon,1,0,hills,true,potatoes,7.42822,true,23.7275
-6,Baradon,1,0,hills,true,meat,16.35050,true,0.0000
-6,Baradon,1,0,hills,true,fish,7.61928,true,18.9399
-6,Baradon,1,0,hills,true,clothes,14.26074,true,9.1568
-6,Baradon,1,0,hills,true,wood,13.38222,true,0.0000
-6,Baradon,1,0,hills,true,coal,8.97141,true,18.1145
-6,Baradon,1,0,hills,true,furniture,18.95156,true,2.5790
-6,Baradon,1,0,hills,true,ironware,27.84724,true,2.7134
-6,Baradon,1,0,hills,true,beer,15.56416,true,9.1654
-6,Baradon,1,0,hills,true,tea,26.61605,true,0.0000
-6,Baradon,1,0,hills,true,sugar,32.41545,true,0.3749
-6,Baradon,1,0,hills,true,wine,15.68224,true,6.7139
-6,Baradon,1,0,hills,true,fine clothes,24.25963,true,1.3983
-6,Baradon,1,0,hills,true,porcelain,21.23369,true,3.5551
-6,Baradon,1,0,hills,true,grain,12.06296,true,0.0000
-6,Baradon,1,0,hills,true,iron ore,7.81114,true,0.3098
-6,Baradon,1,0,hills,true,iron,23.94828,true,0.5949
-6,Baradon,1,0,hills,true,wool,5.09590,true,10.4091
-6,Baradon,1,0,hills,true,cotton,18.62558,true,0.0000
-6,Baradon,1,0,hills,true,cloth,10.37380,true,5.0580
-6,Baradon,1,0,hills,true,sugar cane,36.88367,true,0.0000
-6,Baradon,1,0,hills,true,grapes,6.84706,true,15.9152
-6,Baradon,1,0,hills,true,silk,20.57810,true,0.0000
-6,Baradon,1,0,hills,true,clay,4.36244,true,5.8988
-6,Baradon,1,0,hills,true,transport,5.93104,true,23.5389
-6,Baradon,1,0,hills,true,construction,10.97670,true,12.2885
+6,Baradon,1,0,hills,true,bread,12.88241,true,1.2598
+6,Baradon,1,0,hills,true,potatoes,7.61933,true,23.0466
+6,Baradon,1,0,hills,true,meat,16.52535,true,0.0000
+6,Baradon,1,0,hills,true,fish,7.76921,true,18.2141
+6,Baradon,1,0,hills,true,clothes,14.47000,true,8.8787
+6,Baradon,1,0,hills,true,wood,13.36211,true,0.0000
+6,Baradon,1,0,hills,true,coal,8.88438,true,16.5685
+6,Baradon,1,0,hills,true,furniture,18.66307,true,3.2557
+6,Baradon,1,0,hills,true,ironware,27.97330,true,2.7123
+6,Baradon,1,0,hills,true,beer,15.59558,true,8.6873
+6,Baradon,1,0,hills,true,tea,25.88752,true,0.0000
+6,Baradon,1,0,hills,true,sugar,31.32521,true,0.6795
+6,Baradon,1,0,hills,true,wine,14.55974,true,5.8034
+6,Baradon,1,0,hills,true,fine clothes,23.92303,true,1.2867
+6,Baradon,1,0,hills,true,porcelain,21.27251,true,3.3472
+6,Baradon,1,0,hills,true,grain,12.01701,true,0.0000
+6,Baradon,1,0,hills,true,iron ore,7.54477,true,0.2907
+6,Baradon,1,0,hills,true,iron,23.54647,true,0.5947
+6,Baradon,1,0,hills,true,wool,5.21832,true,10.0696
+6,Baradon,1,0,hills,true,cotton,18.25160,true,0.0000
+6,Baradon,1,0,hills,true,cloth,10.55398,true,4.8947
+6,Baradon,1,0,hills,true,sugar cane,38.54308,true,0.0000
+6,Baradon,1,0,hills,true,grapes,6.71746,true,15.2416
+6,Baradon,1,0,hills,true,silk,20.41813,true,0.0000
+6,Baradon,1,0,hills,true,clay,4.36000,true,5.5844
+6,Baradon,1,0,hills,true,transport,6.01704,true,23.7932
+6,Baradon,1,0,hills,true,construction,13.79982,true,15.6795
 6,Baradon,1,0,hills,true,research,1.00000,false,0.0000
-6,Baradon,1,0,hills,true,arms,1.30274,false,0.0000
-6,Baradon,1,0,hills,true,artillery,1.30274,false,0.0000
+6,Baradon,1,0,hills,true,arms,1.35084,false,0.0000
+6,Baradon,1,0,hills,true,artillery,1.35084,false,0.0000
 6,Baradon,1,0,hills,true,munitions,1.00000,false,0.0000
 6,Baradon,1,0,hills,true,vehicles,1.00000,false,0.0000
 6,Baradon,1,0,hills,true,aircraft,1.00000,false,0.0000
 6,Baradon,1,0,hills,true,oil,1.00000,false,0.0000
-6,Baradon,1,0,hills,true,tools,1.30274,false,0.0000
+6,Baradon,1,0,hills,true,tools,1.35084,false,0.0000
 6,Baradon,1,0,hills,true,steam engines,1.00000,false,0.0000
 6,Baradon,1,0,hills,true,explosives,1.00000,false,0.0000
 6,Baradon,1,0,hills,true,fertilizer,1.00000,false,0.0000
 6,Baradon,1,0,hills,true,electricity,1.00000,false,0.0000
-7,Dralencliffe,1,1,hills,false,bread,9.50299,true,0.2081
-7,Dralencliffe,1,1,hills,false,potatoes,4.47146,true,8.8123
-7,Dralencliffe,1,1,hills,false,meat,22.35529,true,0.0000
-7,Dralencliffe,1,1,hills,false,fish,15.29489,true,0.0000
-7,Dralencliffe,1,1,hills,false,clothes,14.46891,true,2.2265
-7,Dralencliffe,1,1,hills,false,wood,17.35390,true,0.0000
-7,Dralencliffe,1,1,hills,false,coal,5.84674,true,10.0599
-7,Dralencliffe,1,1,hills,false,furniture,21.51632,true,0.5074
-7,Dralencliffe,1,1,hills,false,ironware,25.07354,true,0.8181
-7,Dralencliffe,1,1,hills,false,beer,17.14621,true,1.8851
-7,Dralencliffe,1,1,hills,false,tea,27.55602,true,0.0000
-7,Dralencliffe,1,1,hills,false,sugar,31.60602,true,0.1284
-7,Dralencliffe,1,1,hills,false,wine,14.35386,true,2.5991
-7,Dralencliffe,1,1,hills,false,fine clothes,23.31231,true,0.3625
-7,Dralencliffe,1,1,hills,false,porcelain,19.35160,true,0.9405
-7,Dralencliffe,1,1,hills,false,grain,13.07474,true,0.0000
-7,Dralencliffe,1,1,hills,false,iron ore,7.56917,true,0.3147
-7,Dralencliffe,1,1,hills,false,iron,21.46351,true,0.3726
-7,Dralencliffe,1,1,hills,false,wool,3.75501,true,1.7432
-7,Dralencliffe,1,1,hills,false,cotton,17.33563,false,0.0000
-7,Dralencliffe,1,1,hills,false,cloth,8.55067,true,1.9379
-7,Dralencliffe,1,1,hills,false,sugar cane,52.80270,true,0.0000
-7,Dralencliffe,1,1,hills,false,grapes,4.18242,true,3.9717
-7,Dralencliffe,1,1,hills,false,silk,20.80359,true,0.0000
-7,Dralencliffe,1,1,hills,false,clay,2.59744,true,1.3997
-7,Dralencliffe,1,1,hills,false,transport,6.13233,true,6.1798
-7,Dralencliffe,1,1,hills,false,construction,14.54629,true,5.7667
+7,Dralencliffe,1,1,hills,false,bread,9.09173,true,0.1973
+7,Dralencliffe,1,1,hills,false,potatoes,4.10271,true,10.5495
+7,Dralencliffe,1,1,hills,false,meat,21.76744,true,0.0000
+7,Dralencliffe,1,1,hills,false,fish,15.32980,true,0.0000
+7,Dralencliffe,1,1,hills,false,clothes,14.76879,true,2.3585
+7,Dralencliffe,1,1,hills,false,wood,17.12840,true,0.0000
+7,Dralencliffe,1,1,hills,false,coal,6.03419,true,10.7899
+7,Dralencliffe,1,1,hills,false,furniture,21.49031,true,0.5508
+7,Dralencliffe,1,1,hills,false,ironware,25.49271,true,0.8805
+7,Dralencliffe,1,1,hills,false,beer,17.02517,true,2.0677
+7,Dralencliffe,1,1,hills,false,tea,27.58867,true,0.0000
+7,Dralencliffe,1,1,hills,false,sugar,33.53919,true,0.0000
+7,Dralencliffe,1,1,hills,false,wine,13.54082,true,2.4732
+7,Dralencliffe,1,1,hills,false,fine clothes,23.45415,true,0.4203
+7,Dralencliffe,1,1,hills,false,porcelain,19.54982,true,1.6399
+7,Dralencliffe,1,1,hills,false,grain,12.30269,true,0.0000
+7,Dralencliffe,1,1,hills,false,iron ore,7.57143,true,0.3231
+7,Dralencliffe,1,1,hills,false,iron,21.50205,true,0.3867
+7,Dralencliffe,1,1,hills,false,wool,3.84937,true,1.8270
+7,Dralencliffe,1,1,hills,false,cotton,18.78537,true,0.0000
+7,Dralencliffe,1,1,hills,false,cloth,8.74564,true,2.1103
+7,Dralencliffe,1,1,hills,false,sugar cane,54.23095,false,0.0000
+7,Dralencliffe,1,1,hills,false,grapes,4.11917,true,4.0857
+7,Dralencliffe,1,1,hills,false,silk,21.26975,true,0.0000
+7,Dralencliffe,1,1,hills,false,clay,3.20284,true,1.9965
+7,Dralencliffe,1,1,hills,false,transport,6.32521,true,6.5153
+7,Dralencliffe,1,1,hills,false,construction,13.54000,true,4.7702
 7,Dralencliffe,1,1,hills,false,research,1.00000,false,0.0000
-7,Dralencliffe,1,1,hills,false,arms,1.46137,false,0.0000
-7,Dralencliffe,1,1,hills,false,artillery,1.46232,false,0.0000
+7,Dralencliffe,1,1,hills,false,arms,1.38589,false,0.0000
+7,Dralencliffe,1,1,hills,false,artillery,1.40096,false,0.0000
 7,Dralencliffe,1,1,hills,false,munitions,1.00000,false,0.0000
 7,Dralencliffe,1,1,hills,false,vehicles,1.00000,false,0.0000
 7,Dralencliffe,1,1,hills,false,aircraft,1.00000,false,0.0000
 7,Dralencliffe,1,1,hills,false,oil,1.00000,false,0.0000
-7,Dralencliffe,1,1,hills,false,tools,1.46137,false,0.0000
+7,Dralencliffe,1,1,hills,false,tools,1.38589,false,0.0000
 7,Dralencliffe,1,1,hills,false,steam engines,1.00000,false,0.0000
 7,Dralencliffe,1,1,hills,false,explosives,1.00000,false,0.0000
 7,Dralencliffe,1,1,hills,false,fertilizer,1.00000,false,0.0000
 7,Dralencliffe,1,1,hills,false,electricity,1.00000,false,0.0000
-8,Morhurst,1,2,forest,false,bread,12.56452,true,1.1095
-8,Morhurst,1,2,forest,false,potatoes,7.52325,true,14.3934
-8,Morhurst,1,2,forest,false,meat,14.96597,true,4.6120
-8,Morhurst,1,2,forest,false,fish,18.25151,true,0.0000
-8,Morhurst,1,2,forest,false,clothes,13.41390,true,7.8773
-8,Morhurst,1,2,forest,false,wood,6.07855,true,45.3225
-8,Morhurst,1,2,forest,false,coal,16.30752,true,0.0000
-8,Morhurst,1,2,forest,false,furniture,13.32981,true,6.2430
-8,Morhurst,1,2,forest,false,ironware,26.37777,true,4.5126
-8,Morhurst,1,2,forest,false,beer,14.73261,true,7.8868
-8,Morhurst,1,2,forest,false,tea,25.20990,true,0.0000
-8,Morhurst,1,2,forest,false,sugar,32.71923,true,0.5509
-8,Morhurst,1,2,forest,false,wine,17.15673,true,2.0597
-8,Morhurst,1,2,forest,false,fine clothes,22.48038,true,2.4654
-8,Morhurst,1,2,forest,false,porcelain,22.38233,true,1.3876
-8,Morhurst,1,2,forest,false,grain,13.15147,true,0.0000
-8,Morhurst,1,2,forest,false,iron ore,15.15124,true,0.2486
-8,Morhurst,1,2,forest,false,iron,26.28262,true,1.3797
-8,Morhurst,1,2,forest,false,wool,9.02974,true,0.0000
-8,Morhurst,1,2,forest,false,cotton,20.73599,true,0.0000
-8,Morhurst,1,2,forest,false,cloth,11.14589,true,3.8192
-8,Morhurst,1,2,forest,false,sugar cane,47.94686,true,0.0000
-8,Morhurst,1,2,forest,false,grapes,12.54588,true,0.0000
-8,Morhurst,1,2,forest,false,silk,18.73101,true,0.0000
-8,Morhurst,1,2,forest,false,clay,11.15376,true,0.0000
-8,Morhurst,1,2,forest,false,transport,5.28340,true,25.6922
-8,Morhurst,1,2,forest,false,construction,9.60184,true,14.8134
+8,Morhurst,1,2,forest,false,bread,12.52716,true,1.1809
+8,Morhurst,1,2,forest,false,potatoes,7.63320,true,14.0863
+8,Morhurst,1,2,forest,false,meat,15.28545,true,4.5607
+8,Morhurst,1,2,forest,false,fish,18.88079,true,0.0000
+8,Morhurst,1,2,forest,false,clothes,13.63980,true,7.6876
+8,Morhurst,1,2,forest,false,wood,6.23908,true,45.1994
+8,Morhurst,1,2,forest,false,coal,16.81762,true,0.0000
+8,Morhurst,1,2,forest,false,furniture,13.30270,true,5.8071
+8,Morhurst,1,2,forest,false,ironware,26.14705,true,4.2667
+8,Morhurst,1,2,forest,false,beer,14.11876,true,8.4985
+8,Morhurst,1,2,forest,false,tea,25.45119,true,0.0000
+8,Morhurst,1,2,forest,false,sugar,31.37006,true,0.4548
+8,Morhurst,1,2,forest,false,wine,16.20262,true,2.2866
+8,Morhurst,1,2,forest,false,fine clothes,22.81629,true,2.3093
+8,Morhurst,1,2,forest,false,porcelain,22.72121,true,1.3163
+8,Morhurst,1,2,forest,false,grain,12.28972,true,0.0000
+8,Morhurst,1,2,forest,false,iron ore,15.43402,true,0.2431
+8,Morhurst,1,2,forest,false,iron,26.50747,true,1.2669
+8,Morhurst,1,2,forest,false,wool,9.33222,true,0.0000
+8,Morhurst,1,2,forest,false,cotton,20.57966,true,0.0000
+8,Morhurst,1,2,forest,false,cloth,11.36533,true,3.6518
+8,Morhurst,1,2,forest,false,sugar cane,49.44168,true,0.0000
+8,Morhurst,1,2,forest,false,grapes,13.03970,true,0.0000
+8,Morhurst,1,2,forest,false,silk,19.76956,true,0.0000
+8,Morhurst,1,2,forest,false,clay,11.65307,true,0.0000
+8,Morhurst,1,2,forest,false,transport,5.38471,true,25.4612
+8,Morhurst,1,2,forest,false,construction,10.37988,true,16.5643
 8,Morhurst,1,2,forest,false,research,1.00000,false,0.0000
-8,Morhurst,1,2,forest,false,arms,1.40733,false,0.0000
-8,Morhurst,1,2,forest,false,artillery,1.40733,false,0.0000
+8,Morhurst,1,2,forest,false,arms,1.38793,false,0.0000
+8,Morhurst,1,2,forest,false,artillery,1.38793,false,0.0000
 8,Morhurst,1,2,forest,false,munitions,1.00000,false,0.0000
 8,Morhurst,1,2,forest,false,vehicles,1.00000,false,0.0000
 8,Morhurst,1,2,forest,false,aircraft,1.00000,false,0.0000
 8,Morhurst,1,2,forest,false,oil,1.00000,false,0.0000
-8,Morhurst,1,2,forest,false,tools,1.40733,false,0.0000
+8,Morhurst,1,2,forest,false,tools,1.38793,false,0.0000
 8,Morhurst,1,2,forest,false,steam engines,1.00000,false,0.0000
 8,Morhurst,1,2,forest,false,explosives,1.00000,false,0.0000
 8,Morhurst,1,2,forest,false,fertilizer,1.00000,false,0.0000
 8,Morhurst,1,2,forest,false,electricity,1.00000,false,0.0000
-9,Torwick,1,3,plains,false,bread,7.37743,true,0.5942
-9,Torwick,1,3,plains,false,potatoes,3.83471,true,15.5652
-9,Torwick,1,3,plains,false,meat,7.19458,true,7.7807
-9,Torwick,1,3,plains,false,fish,18.38035,true,0.0000
-9,Torwick,1,3,plains,false,clothes,14.47532,true,3.3296
-9,Torwick,1,3,plains,false,wood,15.82433,true,0.0000
-9,Torwick,1,3,plains,false,coal,18.97973,true,0.0000
-9,Torwick,1,3,plains,false,furniture,19.93036,true,1.1396
-9,Torwick,1,3,plains,false,ironware,30.33053,true,0.9302
-9,Torwick,1,3,plains,false,beer,10.63183,true,6.3487
-9,Torwick,1,3,plains,false,tea,25.09528,true,0.0000
-9,Torwick,1,3,plains,false,sugar,32.61930,true,0.1584
-9,Torwick,1,3,plains,false,wine,17.17032,true,0.4108
-9,Torwick,1,3,plains,false,fine clothes,23.64357,true,0.5372
-9,Torwick,1,3,plains,false,porcelain,20.81056,true,0.6774
-9,Torwick,1,3,plains,false,grain,4.43263,true,19.2174
-9,Torwick,1,3,plains,false,iron ore,14.15051,true,0.1304
-9,Torwick,1,3,plains,false,iron,28.20111,true,0.2727
-9,Torwick,1,3,plains,false,wool,5.75518,true,1.2606
-9,Torwick,1,3,plains,false,cotton,19.40066,false,0.0000
-9,Torwick,1,3,plains,false,cloth,9.88561,true,1.9119
-9,Torwick,1,3,plains,false,sugar cane,45.10589,true,0.0000
-9,Torwick,1,3,plains,false,grapes,14.57633,true,0.0000
-9,Torwick,1,3,plains,false,silk,18.96284,true,0.0000
-9,Torwick,1,3,plains,false,clay,2.99451,true,0.9160
-9,Torwick,1,3,plains,false,transport,6.17803,true,12.2114
-9,Torwick,1,3,plains,false,construction,14.33837,true,9.0942
+9,Torwick,1,3,plains,false,bread,7.32321,true,0.6436
+9,Torwick,1,3,plains,false,potatoes,3.80178,true,16.6464
+9,Torwick,1,3,plains,false,meat,7.14818,true,8.4168
+9,Torwick,1,3,plains,false,fish,18.61855,true,0.0000
+9,Torwick,1,3,plains,false,clothes,14.40825,true,3.5841
+9,Torwick,1,3,plains,false,wood,15.74459,true,0.0000
+9,Torwick,1,3,plains,false,coal,19.36211,true,0.0000
+9,Torwick,1,3,plains,false,furniture,19.90332,true,1.2959
+9,Torwick,1,3,plains,false,ironware,30.35228,true,0.9961
+9,Torwick,1,3,plains,false,beer,10.56481,true,6.8990
+9,Torwick,1,3,plains,false,tea,25.48257,true,0.0000
+9,Torwick,1,3,plains,false,sugar,32.81240,true,0.1981
+9,Torwick,1,3,plains,false,wine,18.38756,true,0.5301
+9,Torwick,1,3,plains,false,fine clothes,22.54231,true,1.0278
+9,Torwick,1,3,plains,false,porcelain,20.91161,true,0.7576
+9,Torwick,1,3,plains,false,grain,4.38474,true,20.7471
+9,Torwick,1,3,plains,false,iron ore,13.79117,true,0.1502
+9,Torwick,1,3,plains,false,iron,28.22490,true,0.2841
+9,Torwick,1,3,plains,false,wool,5.70683,true,1.3831
+9,Torwick,1,3,plains,false,cotton,18.81562,false,0.0000
+9,Torwick,1,3,plains,false,cloth,9.82675,true,2.0762
+9,Torwick,1,3,plains,false,sugar cane,46.45398,true,0.0000
+9,Torwick,1,3,plains,false,grapes,16.26711,true,0.0000
+9,Torwick,1,3,plains,false,silk,19.84157,true,0.0000
+9,Torwick,1,3,plains,false,clay,3.02281,true,1.0980
+9,Torwick,1,3,plains,false,transport,5.79902,true,13.5277
+9,Torwick,1,3,plains,false,construction,11.56581,true,4.8201
 9,Torwick,1,3,plains,false,research,1.00000,false,0.0000
-9,Torwick,1,3,plains,false,arms,1.46852,false,0.0000
-9,Torwick,1,3,plains,false,artillery,1.46852,false,0.0000
+9,Torwick,1,3,plains,false,arms,1.48020,false,0.0000
+9,Torwick,1,3,plains,false,artillery,1.48035,false,0.0000
 9,Torwick,1,3,plains,false,munitions,1.00000,false,0.0000
 9,Torwick,1,3,plains,false,vehicles,1.00000,false,0.0000
 9,Torwick,1,3,plains,false,aircraft,1.00000,false,0.0000
 9,Torwick,1,3,plains,false,oil,1.00000,false,0.0000
-9,Torwick,1,3,plains,false,tools,1.46852,false,0.0000
+9,Torwick,1,3,plains,false,tools,1.48020,false,0.0000
 9,Torwick,1,3,plains,false,steam engines,1.00000,false,0.0000
 9,Torwick,1,3,plains,false,explosives,1.00000,false,0.0000
 9,Torwick,1,3,plains,false,fertilizer,1.00000,false,0.0000
 9,Torwick,1,3,plains,false,electricity,1.00000,false,0.0000
-10,Elmworth,1,4,plains,false,bread,6.30543,true,0.4384
-10,Elmworth,1,4,plains,false,potatoes,3.33815,true,10.6897
-10,Elmworth,1,4,plains,false,meat,6.24599,true,5.3413
-10,Elmworth,1,4,plains,false,fish,14.01149,true,0.0000
-10,Elmworth,1,4,plains,false,clothes,13.11867,true,2.4356
-10,Elmworth,1,4,plains,false,wood,15.21511,true,0.0000
-10,Elmworth,1,4,plains,false,coal,20.56873,true,0.0000
-10,Elmworth,1,4,plains,false,furniture,20.71042,true,0.6264
-10,Elmworth,1,4,plains,false,ironware,28.74466,true,0.7522
-10,Elmworth,1,4,plains,false,beer,9.36004,true,4.5378
-10,Elmworth,1,4,plains,false,tea,25.00786,true,0.0000
-10,Elmworth,1,4,plains,false,sugar,30.03619,true,0.1773
-10,Elmworth,1,4,plains,false,wine,16.49092,true,0.2521
-10,Elmworth,1,4,plains,false,fine clothes,23.99060,true,1.0164
-10,Elmworth,1,4,plains,false,porcelain,22.34564,true,0.7865
-10,Elmworth,1,4,plains,false,grain,3.43054,true,7.4182
-10,Elmworth,1,4,plains,false,iron ore,12.51642,true,0.1104
-10,Elmworth,1,4,plains,false,iron,27.58455,true,0.2672
-10,Elmworth,1,4,plains,false,wool,5.41830,true,1.3053
-10,Elmworth,1,4,plains,false,cotton,16.48866,true,0.0000
-10,Elmworth,1,4,plains,false,cloth,9.88322,true,1.9811
-10,Elmworth,1,4,plains,false,sugar cane,33.05176,true,0.0000
-10,Elmworth,1,4,plains,false,grapes,18.55211,true,0.0000
-10,Elmworth,1,4,plains,false,silk,20.19337,true,0.0000
-10,Elmworth,1,4,plains,false,clay,3.08142,true,1.1321
-10,Elmworth,1,4,plains,false,transport,5.72012,true,4.2219
-10,Elmworth,1,4,plains,false,construction,13.59884,true,4.8259
+10,Elmworth,1,4,plains,false,bread,5.97498,true,0.5282
+10,Elmworth,1,4,plains,false,potatoes,3.28173,true,10.4687
+10,Elmworth,1,4,plains,false,meat,6.11331,true,5.1864
+10,Elmworth,1,4,plains,false,fish,13.02191,true,0.0000
+10,Elmworth,1,4,plains,false,clothes,13.12534,true,2.6218
+10,Elmworth,1,4,plains,false,wood,15.08000,true,0.0000
+10,Elmworth,1,4,plains,false,coal,20.75239,true,0.0000
+10,Elmworth,1,4,plains,false,furniture,17.28383,true,0.8180
+10,Elmworth,1,4,plains,false,ironware,28.02487,true,0.7573
+10,Elmworth,1,4,plains,false,beer,8.69158,true,4.8746
+10,Elmworth,1,4,plains,false,tea,25.09109,true,0.0000
+10,Elmworth,1,4,plains,false,sugar,28.40297,true,0.1476
+10,Elmworth,1,4,plains,false,wine,15.53809,true,0.2407
+10,Elmworth,1,4,plains,false,fine clothes,23.07008,true,0.8395
+10,Elmworth,1,4,plains,false,porcelain,21.89114,true,0.7776
+10,Elmworth,1,4,plains,false,grain,2.88030,true,8.6284
+10,Elmworth,1,4,plains,false,iron ore,12.48659,true,0.1539
+10,Elmworth,1,4,plains,false,iron,26.78462,true,0.1664
+10,Elmworth,1,4,plains,false,wool,5.13934,true,1.1966
+10,Elmworth,1,4,plains,false,cotton,15.74797,false,0.0000
+10,Elmworth,1,4,plains,false,cloth,9.27210,true,1.7316
+10,Elmworth,1,4,plains,false,sugar cane,31.39621,true,0.0000
+10,Elmworth,1,4,plains,false,grapes,17.46503,true,0.0000
+10,Elmworth,1,4,plains,false,silk,20.13381,true,0.0000
+10,Elmworth,1,4,plains,false,clay,3.01036,true,1.0686
+10,Elmworth,1,4,plains,false,transport,5.75173,true,4.4370
+10,Elmworth,1,4,plains,false,construction,13.39791,true,5.7277
 10,Elmworth,1,4,plains,false,research,1.00000,false,0.0000
-10,Elmworth,1,4,plains,false,arms,1.38052,false,0.0000
-10,Elmworth,1,4,plains,false,artillery,1.38052,false,0.0000
+10,Elmworth,1,4,plains,false,arms,1.32201,false,0.0000
+10,Elmworth,1,4,plains,false,artillery,1.32201,false,0.0000
 10,Elmworth,1,4,plains,false,munitions,1.00000,false,0.0000
 10,Elmworth,1,4,plains,false,vehicles,1.00000,false,0.0000
 10,Elmworth,1,4,plains,false,aircraft,1.00000,false,0.0000
 10,Elmworth,1,4,plains,false,oil,1.00000,false,0.0000
-10,Elmworth,1,4,plains,false,tools,1.38052,false,0.0000
+10,Elmworth,1,4,plains,false,tools,1.32201,false,0.0000
 10,Elmworth,1,4,plains,false,steam engines,1.00000,false,0.0000
 10,Elmworth,1,4,plains,false,explosives,1.00000,false,0.0000
 10,Elmworth,1,4,plains,false,fertilizer,1.00000,false,0.0000
 10,Elmworth,1,4,plains,false,electricity,1.00000,false,0.0000
-11,Aleworth,1,5,plains,true,bread,8.02763,true,1.7249
-11,Aleworth,1,5,plains,true,potatoes,4.44053,true,19.9251
-11,Aleworth,1,5,plains,true,meat,7.37469,true,8.2737
-11,Aleworth,1,5,plains,true,fish,5.40995,true,13.0403
-11,Aleworth,1,5,plains,true,clothes,15.04583,true,7.3847
-11,Aleworth,1,5,plains,true,wood,14.21915,true,0.0000
-11,Aleworth,1,5,plains,true,coal,19.77197,true,0.0000
-11,Aleworth,1,5,plains,true,furniture,19.85654,true,2.4263
-11,Aleworth,1,5,plains,true,ironware,30.54055,true,2.1738
-11,Aleworth,1,5,plains,true,beer,9.43081,true,11.7672
-11,Aleworth,1,5,plains,true,tea,24.10716,true,0.0000
-11,Aleworth,1,5,plains,true,sugar,30.61280,true,0.9079
-11,Aleworth,1,5,plains,true,wine,18.92745,true,1.5149
-11,Aleworth,1,5,plains,true,fine clothes,24.60012,true,1.4473
-11,Aleworth,1,5,plains,true,porcelain,23.26470,true,1.9178
-11,Aleworth,1,5,plains,true,grain,3.53795,true,14.1691
-11,Aleworth,1,5,plains,true,iron ore,16.05163,true,0.1757
-11,Aleworth,1,5,plains,true,iron,29.42742,true,0.3359
-11,Aleworth,1,5,plains,true,wool,7.39416,true,1.8919
-11,Aleworth,1,5,plains,true,cotton,14.14604,true,0.0000
-11,Aleworth,1,5,plains,true,cloth,11.31021,true,3.9187
-11,Aleworth,1,5,plains,true,sugar cane,24.38951,true,0.0000
-11,Aleworth,1,5,plains,true,grapes,14.03959,true,0.0000
-11,Aleworth,1,5,plains,true,silk,19.68296,true,0.0000
-11,Aleworth,1,5,plains,true,clay,4.66347,true,1.9203
-11,Aleworth,1,5,plains,true,transport,6.26698,true,11.6282
-11,Aleworth,1,5,plains,true,construction,12.67056,true,12.2760
+11,Aleworth,1,5,plains,true,bread,7.83811,true,2.0096
+11,Aleworth,1,5,plains,true,potatoes,4.20841,true,20.9231
+11,Aleworth,1,5,plains,true,meat,7.13564,true,9.0372
+11,Aleworth,1,5,plains,true,fish,5.14571,true,13.7925
+11,Aleworth,1,5,plains,true,clothes,14.08387,true,7.9372
+11,Aleworth,1,5,plains,true,wood,13.86722,true,0.0000
+11,Aleworth,1,5,plains,true,coal,19.79277,true,0.0000
+11,Aleworth,1,5,plains,true,furniture,19.07637,true,2.5683
+11,Aleworth,1,5,plains,true,ironware,29.51198,true,2.2679
+11,Aleworth,1,5,plains,true,beer,9.07206,true,12.3779
+11,Aleworth,1,5,plains,true,tea,24.30913,true,0.0000
+11,Aleworth,1,5,plains,true,sugar,30.02513,true,0.9713
+11,Aleworth,1,5,plains,true,wine,20.75383,true,1.8729
+11,Aleworth,1,5,plains,true,fine clothes,23.75454,true,2.2411
+11,Aleworth,1,5,plains,true,porcelain,23.23832,true,2.3167
+11,Aleworth,1,5,plains,true,grain,3.40052,true,15.2249
+11,Aleworth,1,5,plains,true,iron ore,15.80662,true,0.2021
+11,Aleworth,1,5,plains,true,iron,29.65878,true,0.3758
+11,Aleworth,1,5,plains,true,wool,5.70923,true,2.9143
+11,Aleworth,1,5,plains,true,cotton,13.83370,true,0.0000
+11,Aleworth,1,5,plains,true,cloth,10.26700,true,4.6012
+11,Aleworth,1,5,plains,true,sugar cane,24.16805,true,0.0000
+11,Aleworth,1,5,plains,true,grapes,15.28002,true,0.0000
+11,Aleworth,1,5,plains,true,silk,19.93491,true,0.0000
+11,Aleworth,1,5,plains,true,clay,4.75560,true,2.2727
+11,Aleworth,1,5,plains,true,transport,5.11903,true,12.6400
+11,Aleworth,1,5,plains,true,construction,6.65406,true,6.6792
 11,Aleworth,1,5,plains,true,research,1.00000,false,0.0000
-11,Aleworth,1,5,plains,true,arms,1.40178,false,0.0000
-11,Aleworth,1,5,plains,true,artillery,1.41624,false,0.0000
+11,Aleworth,1,5,plains,true,arms,1.38369,false,0.0000
+11,Aleworth,1,5,plains,true,artillery,1.38820,false,0.0000
 11,Aleworth,1,5,plains,true,munitions,1.00000,false,0.0000
 11,Aleworth,1,5,plains,true,vehicles,1.00000,false,0.0000
 11,Aleworth,1,5,plains,true,aircraft,1.00000,false,0.0000
 11,Aleworth,1,5,plains,true,oil,1.00000,false,0.0000
-11,Aleworth,1,5,plains,true,tools,1.40183,false,0.0000
+11,Aleworth,1,5,plains,true,tools,1.38369,false,0.0000
 11,Aleworth,1,5,plains,true,steam engines,1.00000,false,0.0000
 11,Aleworth,1,5,plains,true,explosives,1.00000,false,0.0000
 11,Aleworth,1,5,plains,true,fertilizer,1.00000,false,0.0000
 11,Aleworth,1,5,plains,true,electricity,1.00000,false,0.0000
-12,Elmness,2,0,forest,true,bread,12.34767,true,5.6100
-12,Elmness,2,0,forest,true,potatoes,9.73858,true,16.3016
-12,Elmness,2,0,forest,true,meat,13.10013,true,1.4455
-12,Elmness,2,0,forest,true,fish,9.21690,true,20.1826
-12,Elmness,2,0,forest,true,clothes,14.40083,true,15.1710
-12,Elmness,2,0,forest,true,wood,10.54562,true,79.0826
-12,Elmness,2,0,forest,true,coal,12.09743,true,0.0000
-12,Elmness,2,0,forest,true,furniture,17.19273,true,8.0464
-12,Elmness,2,0,forest,true,ironware,28.33052,true,6.2467
-12,Elmness,2,0,forest,true,beer,13.93164,true,18.6144
-12,Elmness,2,0,forest,true,tea,26.07442,true,0.0000
-12,Elmness,2,0,forest,true,sugar,30.61554,true,1.7299
-12,Elmness,2,0,forest,true,wine,15.87061,true,5.0773
-12,Elmness,2,0,forest,true,fine clothes,24.12241,true,2.8282
-12,Elmness,2,0,forest,true,porcelain,21.95919,true,2.3016
-12,Elmness,2,0,forest,true,grain,9.70130,true,0.0000
-12,Elmness,2,0,forest,true,iron ore,10.91318,true,0.1201
-12,Elmness,2,0,forest,true,iron,25.26307,true,1.4467
-12,Elmness,2,0,forest,true,wool,6.62486,true,0.0000
-12,Elmness,2,0,forest,true,cotton,16.94847,true,0.0000
-12,Elmness,2,0,forest,true,cloth,10.57104,true,8.2564
-12,Elmness,2,0,forest,true,sugar cane,32.22474,true,0.0000
-12,Elmness,2,0,forest,true,grapes,8.89503,true,0.0000
-12,Elmness,2,0,forest,true,silk,20.25354,true,0.0000
-12,Elmness,2,0,forest,true,clay,7.25529,true,0.0000
-12,Elmness,2,0,forest,true,transport,6.05893,true,32.2475
-12,Elmness,2,0,forest,true,construction,15.87116,true,38.1383
+12,Elmness,2,0,forest,true,bread,11.77174,true,6.3521
+12,Elmness,2,0,forest,true,potatoes,9.50727,true,15.9496
+12,Elmness,2,0,forest,true,meat,12.79451,true,1.4504
+12,Elmness,2,0,forest,true,fish,9.25025,true,20.5582
+12,Elmness,2,0,forest,true,clothes,14.60977,true,15.3179
+12,Elmness,2,0,forest,true,wood,10.39698,true,78.5962
+12,Elmness,2,0,forest,true,coal,11.86033,true,0.0000
+12,Elmness,2,0,forest,true,furniture,17.34296,true,8.3178
+12,Elmness,2,0,forest,true,ironware,27.42005,true,6.6209
+12,Elmness,2,0,forest,true,beer,13.90310,true,18.9418
+12,Elmness,2,0,forest,true,tea,25.14215,true,0.0000
+12,Elmness,2,0,forest,true,sugar,30.08609,true,1.6976
+12,Elmness,2,0,forest,true,wine,15.54724,true,5.0191
+12,Elmness,2,0,forest,true,fine clothes,23.48120,true,3.3376
+12,Elmness,2,0,forest,true,porcelain,22.05391,true,2.3663
+12,Elmness,2,0,forest,true,grain,9.49909,true,0.0000
+12,Elmness,2,0,forest,true,iron ore,11.12623,true,0.1317
+12,Elmness,2,0,forest,true,iron,24.79827,true,1.5016
+12,Elmness,2,0,forest,true,wool,6.75608,true,0.0000
+12,Elmness,2,0,forest,true,cotton,16.39669,true,0.0000
+12,Elmness,2,0,forest,true,cloth,10.72236,true,8.2773
+12,Elmness,2,0,forest,true,sugar cane,33.71803,true,0.0000
+12,Elmness,2,0,forest,true,grapes,9.30111,true,0.0000
+12,Elmness,2,0,forest,true,silk,20.12556,true,0.0000
+12,Elmness,2,0,forest,true,clay,7.51390,true,0.0000
+12,Elmness,2,0,forest,true,transport,6.05691,true,32.5443
+12,Elmness,2,0,forest,true,construction,14.88216,true,34.4943
 12,Elmness,2,0,forest,true,research,1.00000,false,0.0000
-12,Elmness,2,0,forest,true,arms,1.27239,false,0.0000
-12,Elmness,2,0,forest,true,artillery,1.27239,false,0.0000
+12,Elmness,2,0,forest,true,arms,1.23277,false,0.0000
+12,Elmness,2,0,forest,true,artillery,1.23322,false,0.0000
 12,Elmness,2,0,forest,true,munitions,1.00000,false,0.0000
 12,Elmness,2,0,forest,true,vehicles,1.00000,false,0.0000
 12,Elmness,2,0,forest,true,aircraft,1.00000,false,0.0000
 12,Elmness,2,0,forest,true,oil,1.00000,false,0.0000
-12,Elmness,2,0,forest,true,tools,1.27239,false,0.0000
+12,Elmness,2,0,forest,true,tools,1.23277,false,0.0000
 12,Elmness,2,0,forest,true,steam engines,1.00000,false,0.0000
 12,Elmness,2,0,forest,true,explosives,1.00000,false,0.0000
 12,Elmness,2,0,forest,true,fertilizer,1.00000,false,0.0000
 12,Elmness,2,0,forest,true,electricity,1.00000,false,0.0000
-13,Valeden,2,1,forest,false,bread,12.12481,true,1.0299
-13,Valeden,2,1,forest,false,potatoes,7.15258,true,14.3184
-13,Valeden,2,1,forest,false,meat,14.22283,true,4.5896
-13,Valeden,2,1,forest,false,fish,17.33536,true,0.0000
-13,Valeden,2,1,forest,false,clothes,13.73831,true,7.1387
-13,Valeden,2,1,forest,false,wood,5.73845,true,44.8010
-13,Valeden,2,1,forest,false,coal,16.25501,true,0.0000
-13,Valeden,2,1,forest,false,furniture,13.47198,true,7.1285
-13,Valeden,2,1,forest,false,ironware,25.73584,true,4.1365
-13,Valeden,2,1,forest,false,beer,14.41121,true,7.6877
-13,Valeden,2,1,forest,false,tea,26.38757,true,0.0000
-13,Valeden,2,1,forest,false,sugar,33.64649,true,0.7668
-13,Valeden,2,1,forest,false,wine,17.88848,true,2.2660
-13,Valeden,2,1,forest,false,fine clothes,23.08844,true,1.8710
-13,Valeden,2,1,forest,false,porcelain,22.14207,true,1.4483
-13,Valeden,2,1,forest,false,grain,13.18834,true,0.0000
-13,Valeden,2,1,forest,false,iron ore,15.16515,true,0.2587
-13,Valeden,2,1,forest,false,iron,25.05049,true,1.2603
-13,Valeden,2,1,forest,false,wool,8.90812,true,0.0000
-13,Valeden,2,1,forest,false,cotton,19.30482,true,0.0000
-13,Valeden,2,1,forest,false,cloth,11.59102,true,3.3135
-13,Valeden,2,1,forest,false,sugar cane,40.54538,true,0.0000
-13,Valeden,2,1,forest,false,grapes,13.20231,true,0.0000
-13,Valeden,2,1,forest,false,silk,20.61195,true,0.0000
-13,Valeden,2,1,forest,false,clay,11.85523,true,0.0000
-13,Valeden,2,1,forest,false,transport,5.19585,true,24.6933
-13,Valeden,2,1,forest,false,construction,8.27168,true,10.5538
+13,Valeden,2,1,forest,false,bread,12.40001,true,1.0322
+13,Valeden,2,1,forest,false,potatoes,7.42346,true,13.5678
+13,Valeden,2,1,forest,false,meat,14.60061,true,4.2725
+13,Valeden,2,1,forest,false,fish,17.24074,true,0.0000
+13,Valeden,2,1,forest,false,clothes,14.11179,true,6.8188
+13,Valeden,2,1,forest,false,wood,6.11167,true,43.9625
+13,Valeden,2,1,forest,false,coal,16.58245,true,0.0000
+13,Valeden,2,1,forest,false,furniture,13.65902,true,6.2201
+13,Valeden,2,1,forest,false,ironware,25.87746,true,3.7726
+13,Valeden,2,1,forest,false,beer,14.45405,true,7.4810
+13,Valeden,2,1,forest,false,tea,25.49161,true,0.0000
+13,Valeden,2,1,forest,false,sugar,29.96702,true,0.8719
+13,Valeden,2,1,forest,false,wine,16.49990,true,1.7421
+13,Valeden,2,1,forest,false,fine clothes,21.93259,true,2.0011
+13,Valeden,2,1,forest,false,porcelain,22.54805,true,1.2047
+13,Valeden,2,1,forest,false,grain,12.70373,true,0.0000
+13,Valeden,2,1,forest,false,iron ore,15.06889,true,0.2346
+13,Valeden,2,1,forest,false,iron,25.04276,true,1.1751
+13,Valeden,2,1,forest,false,wool,9.15283,true,0.0000
+13,Valeden,2,1,forest,false,cotton,18.65974,true,0.0000
+13,Valeden,2,1,forest,false,cloth,11.85361,true,3.1645
+13,Valeden,2,1,forest,false,sugar cane,40.44239,true,0.0000
+13,Valeden,2,1,forest,false,grapes,13.33704,true,0.0000
+13,Valeden,2,1,forest,false,silk,20.59528,true,0.0000
+13,Valeden,2,1,forest,false,clay,12.07226,true,0.0000
+13,Valeden,2,1,forest,false,transport,5.13027,true,21.6863
+13,Valeden,2,1,forest,false,construction,10.83885,true,18.2094
 13,Valeden,2,1,forest,false,research,1.00000,false,0.0000
-13,Valeden,2,1,forest,false,arms,1.39806,false,0.0000
-13,Valeden,2,1,forest,false,artillery,1.39806,false,0.0000
+13,Valeden,2,1,forest,false,arms,1.42829,false,0.0000
+13,Valeden,2,1,forest,false,artillery,1.42829,false,0.0000
 13,Valeden,2,1,forest,false,munitions,1.00000,false,0.0000
 13,Valeden,2,1,forest,false,vehicles,1.00000,false,0.0000
 13,Valeden,2,1,forest,false,aircraft,1.00000,false,0.0000
 13,Valeden,2,1,forest,false,oil,1.00000,false,0.0000
-13,Valeden,2,1,forest,false,tools,1.39806,false,0.0000
+13,Valeden,2,1,forest,false,tools,1.42829,false,0.0000
 13,Valeden,2,1,forest,false,steam engines,1.00000,false,0.0000
 13,Valeden,2,1,forest,false,explosives,1.00000,false,0.0000
 13,Valeden,2,1,forest,false,fertilizer,1.00000,false,0.0000
 13,Valeden,2,1,forest,false,electricity,1.00000,false,0.0000
-14,Ulford,2,2,plains,false,bread,6.98948,true,0.7719
-14,Ulford,2,2,plains,false,potatoes,3.80472,true,16.2013
-14,Ulford,2,2,plains,false,meat,7.49697,true,8.7354
-14,Ulford,2,2,plains,false,fish,37.82415,false,0.0000
-14,Ulford,2,2,plains,false,clothes,14.37256,true,3.5724
-14,Ulford,2,2,plains,false,wood,16.58034,true,0.0000
-14,Ulford,2,2,plains,false,coal,18.08054,true,0.0000
-14,Ulford,2,2,plains,false,furniture,20.10749,true,1.2133
-14,Ulford,2,2,plains,false,ironware,30.48327,true,1.0194
-14,Ulford,2,2,plains,false,beer,9.31303,true,8.1940
-14,Ulford,2,2,plains,false,tea,25.38238,true,0.0000
-14,Ulford,2,2,plains,false,sugar,31.25096,true,0.1296
-14,Ulford,2,2,plains,false,wine,17.21907,true,0.4700
-14,Ulford,2,2,plains,false,fine clothes,22.57618,true,1.1036
-14,Ulford,2,2,plains,false,porcelain,21.66192,true,1.3796
-14,Ulford,2,2,plains,false,grain,3.60612,true,14.9590
-14,Ulford,2,2,plains,false,iron ore,14.07980,true,0.1608
-14,Ulford,2,2,plains,false,iron,27.51412,true,0.2802
-14,Ulford,2,2,plains,false,wool,5.71829,true,1.2662
-14,Ulford,2,2,plains,false,cotton,19.48491,true,0.0000
-14,Ulford,2,2,plains,false,cloth,9.81510,true,2.0400
-14,Ulford,2,2,plains,false,sugar cane,45.29392,true,0.0000
-14,Ulford,2,2,plains,false,grapes,14.88808,true,0.0000
-14,Ulford,2,2,plains,false,silk,19.64307,true,0.0000
-14,Ulford,2,2,plains,false,clay,3.89678,true,1.5152
-14,Ulford,2,2,plains,false,transport,5.87384,true,14.4855
-14,Ulford,2,2,plains,false,construction,13.20420,true,8.4734
+14,Ulford,2,2,plains,false,bread,6.95173,true,0.7642
+14,Ulford,2,2,plains,false,potatoes,3.75927,true,16.5090
+14,Ulford,2,2,plains,false,meat,7.43457,true,8.9559
+14,Ulford,2,2,plains,false,fish,37.61188,false,0.0000
+14,Ulford,2,2,plains,false,clothes,14.28494,true,3.6536
+14,Ulford,2,2,plains,false,wood,17.13677,true,0.0000
+14,Ulford,2,2,plains,false,coal,18.77298,true,0.0000
+14,Ulford,2,2,plains,false,furniture,20.35982,true,1.2475
+14,Ulford,2,2,plains,false,ironware,30.34049,true,1.0095
+14,Ulford,2,2,plains,false,beer,9.29753,true,8.2897
+14,Ulford,2,2,plains,false,tea,25.57197,true,0.0000
+14,Ulford,2,2,plains,false,sugar,33.61694,true,0.1583
+14,Ulford,2,2,plains,false,wine,18.39061,true,1.0875
+14,Ulford,2,2,plains,false,fine clothes,22.93566,true,1.0361
+14,Ulford,2,2,plains,false,porcelain,22.12948,true,1.4983
+14,Ulford,2,2,plains,false,grain,3.62163,true,15.6071
+14,Ulford,2,2,plains,false,iron ore,13.88702,true,0.1614
+14,Ulford,2,2,plains,false,iron,27.60603,true,0.2714
+14,Ulford,2,2,plains,false,wool,5.65354,true,1.2966
+14,Ulford,2,2,plains,false,cotton,18.59341,true,0.0000
+14,Ulford,2,2,plains,false,cloth,9.73979,true,2.1287
+14,Ulford,2,2,plains,false,sugar cane,49.22287,true,0.0000
+14,Ulford,2,2,plains,false,grapes,15.92344,true,0.0000
+14,Ulford,2,2,plains,false,silk,20.48258,true,0.0000
+14,Ulford,2,2,plains,false,clay,3.99629,true,1.6451
+14,Ulford,2,2,plains,false,transport,5.34747,true,15.2656
+14,Ulford,2,2,plains,false,construction,11.87702,true,6.7537
 14,Ulford,2,2,plains,false,research,1.00000,false,0.0000
-14,Ulford,2,2,plains,false,arms,1.44421,false,0.0000
-14,Ulford,2,2,plains,false,artillery,1.44725,false,0.0000
+14,Ulford,2,2,plains,false,arms,1.45469,false,0.0000
+14,Ulford,2,2,plains,false,artillery,1.47785,false,0.0000
 14,Ulford,2,2,plains,false,munitions,1.00000,false,0.0000
 14,Ulford,2,2,plains,false,vehicles,1.00000,false,0.0000
 14,Ulford,2,2,plains,false,aircraft,1.00000,false,0.0000
 14,Ulford,2,2,plains,false,oil,1.00000,false,0.0000
-14,Ulford,2,2,plains,false,tools,1.44421,false,0.0000
+14,Ulford,2,2,plains,false,tools,1.45469,false,0.0000
 14,Ulford,2,2,plains,false,steam engines,1.00000,false,0.0000
 14,Ulford,2,2,plains,false,explosives,1.00000,false,0.0000
 14,Ulford,2,2,plains,false,fertilizer,1.00000,false,0.0000
 14,Ulford,2,2,plains,false,electricity,1.00000,false,0.0000
-15,Carrofield,2,3,plains,false,bread,7.46523,true,0.9212
-15,Carrofield,2,3,plains,false,potatoes,4.19688,true,17.1158
-15,Carrofield,2,3,plains,false,meat,8.53500,true,9.6801
-15,Carrofield,2,3,plains,false,fish,44.03628,true,0.0000
-15,Carrofield,2,3,plains,false,clothes,15.54333,true,5.3374
-15,Carrofield,2,3,plains,false,wood,16.72089,true,0.0000
-15,Carrofield,2,3,plains,false,coal,22.44588,true,0.0000
-15,Carrofield,2,3,plains,false,furniture,21.19931,true,1.3423
-15,Carrofield,2,3,plains,false,ironware,31.01027,true,0.9442
-15,Carrofield,2,3,plains,false,beer,9.68478,true,8.7393
-15,Carrofield,2,3,plains,false,tea,22.78714,true,0.0000
-15,Carrofield,2,3,plains,false,sugar,29.02659,true,0.2814
-15,Carrofield,2,3,plains,false,wine,16.77230,true,0.6971
-15,Carrofield,2,3,plains,false,fine clothes,23.17977,true,1.2434
-15,Carrofield,2,3,plains,false,porcelain,23.60864,true,1.4916
-15,Carrofield,2,3,plains,false,grain,3.60589,true,10.2300
-15,Carrofield,2,3,plains,false,iron ore,14.64694,true,0.1126
-15,Carrofield,2,3,plains,false,iron,29.47518,true,0.2331
-15,Carrofield,2,3,plains,false,wool,6.84607,true,1.5787
-15,Carrofield,2,3,plains,false,cotton,14.09365,true,0.0000
-15,Carrofield,2,3,plains,false,cloth,11.93271,true,2.7675
-15,Carrofield,2,3,plains,false,sugar cane,28.17788,true,0.0000
-15,Carrofield,2,3,plains,false,grapes,17.41528,true,0.0000
-15,Carrofield,2,3,plains,false,silk,17.15505,true,0.0000
-15,Carrofield,2,3,plains,false,clay,4.33182,true,1.6491
-15,Carrofield,2,3,plains,false,transport,5.91614,true,13.6300
-15,Carrofield,2,3,plains,false,construction,14.86389,true,10.3777
+15,Carrofield,2,3,plains,false,bread,7.44193,true,0.9107
+15,Carrofield,2,3,plains,false,potatoes,4.16970,true,16.9641
+15,Carrofield,2,3,plains,false,meat,8.37460,true,9.4144
+15,Carrofield,2,3,plains,false,fish,44.43600,true,0.0000
+15,Carrofield,2,3,plains,false,clothes,15.55952,true,5.3429
+15,Carrofield,2,3,plains,false,wood,17.32720,true,0.0000
+15,Carrofield,2,3,plains,false,coal,22.60510,true,0.0000
+15,Carrofield,2,3,plains,false,furniture,21.14165,true,1.9153
+15,Carrofield,2,3,plains,false,ironware,31.04989,true,1.2669
+15,Carrofield,2,3,plains,false,beer,9.66838,true,8.7507
+15,Carrofield,2,3,plains,false,tea,23.23588,true,0.0000
+15,Carrofield,2,3,plains,false,sugar,28.68099,true,0.2691
+15,Carrofield,2,3,plains,false,wine,17.50087,true,0.7312
+15,Carrofield,2,3,plains,false,fine clothes,23.82019,true,1.2204
+15,Carrofield,2,3,plains,false,porcelain,23.60435,true,1.4381
+15,Carrofield,2,3,plains,false,grain,3.59543,true,10.1817
+15,Carrofield,2,3,plains,false,iron ore,16.11344,true,0.1751
+15,Carrofield,2,3,plains,false,iron,31.72441,true,0.3068
+15,Carrofield,2,3,plains,false,wool,6.84656,true,1.5734
+15,Carrofield,2,3,plains,false,cotton,14.36828,true,0.0000
+15,Carrofield,2,3,plains,false,cloth,11.95053,true,2.7672
+15,Carrofield,2,3,plains,false,sugar cane,28.96772,true,0.0000
+15,Carrofield,2,3,plains,false,grapes,18.47536,true,0.0000
+15,Carrofield,2,3,plains,false,silk,18.48292,true,0.0000
+15,Carrofield,2,3,plains,false,clay,4.29166,true,1.6337
+15,Carrofield,2,3,plains,false,transport,5.79510,true,15.5218
+15,Carrofield,2,3,plains,false,construction,14.56218,true,9.5061
 15,Carrofield,2,3,plains,false,research,1.00000,false,0.0000
-15,Carrofield,2,3,plains,false,arms,1.51860,false,0.0000
-15,Carrofield,2,3,plains,false,artillery,1.52383,false,0.0000
+15,Carrofield,2,3,plains,false,arms,1.57339,false,0.0000
+15,Carrofield,2,3,plains,false,artillery,1.57494,false,0.0000
 15,Carrofield,2,3,plains,false,munitions,1.00000,false,0.0000
 15,Carrofield,2,3,plains,false,vehicles,1.00000,false,0.0000
 15,Carrofield,2,3,plains,false,aircraft,1.00000,false,0.0000
 15,Carrofield,2,3,plains,false,oil,1.00000,false,0.0000
-15,Carrofield,2,3,plains,false,tools,1.51860,false,0.0000
+15,Carrofield,2,3,plains,false,tools,1.57339,false,0.0000
 15,Carrofield,2,3,plains,false,steam engines,1.00000,false,0.0000
 15,Carrofield,2,3,plains,false,explosives,1.00000,false,0.0000
 15,Carrofield,2,3,plains,false,fertilizer,1.00000,false,0.0000
 15,Carrofield,2,3,plains,false,electricity,1.00000,false,0.0000
-16,Kelobury,2,4,hills,false,bread,11.15082,true,0.3755
-16,Kelobury,2,4,hills,false,potatoes,5.45209,true,13.4118
-16,Kelobury,2,4,hills,false,meat,19.36323,true,0.0000
-16,Kelobury,2,4,hills,false,fish,18.87428,true,0.0000
-16,Kelobury,2,4,hills,false,clothes,16.21944,true,3.7913
-16,Kelobury,2,4,hills,false,wood,26.34183,true,0.0000
-16,Kelobury,2,4,hills,false,coal,8.45678,true,14.8538
-16,Kelobury,2,4,hills,false,furniture,27.82242,true,1.1634
-16,Kelobury,2,4,hills,false,ironware,31.84880,true,1.0679
-16,Kelobury,2,4,hills,false,beer,17.92968,true,3.5045
-16,Kelobury,2,4,hills,false,tea,22.63013,true,0.0000
-16,Kelobury,2,4,hills,false,sugar,29.39405,true,0.2860
-16,Kelobury,2,4,hills,false,wine,16.18928,true,4.7703
-16,Kelobury,2,4,hills,false,fine clothes,25.09226,true,0.5832
-16,Kelobury,2,4,hills,false,porcelain,23.27665,true,1.8851
-16,Kelobury,2,4,hills,false,grain,12.62373,true,0.0000
-16,Kelobury,2,4,hills,false,iron ore,9.48583,true,0.3826
-16,Kelobury,2,4,hills,false,iron,26.86066,true,0.4520
-16,Kelobury,2,4,hills,false,wool,4.58123,true,1.9990
-16,Kelobury,2,4,hills,false,cotton,13.94207,true,0.0000
-16,Kelobury,2,4,hills,false,cloth,9.99870,true,2.3924
-16,Kelobury,2,4,hills,false,sugar cane,28.62770,true,0.0000
-16,Kelobury,2,4,hills,false,grapes,5.94770,true,5.8935
-16,Kelobury,2,4,hills,false,silk,17.49166,true,0.0000
-16,Kelobury,2,4,hills,false,clay,3.91579,true,2.2137
-16,Kelobury,2,4,hills,false,transport,6.89663,true,11.6034
-16,Kelobury,2,4,hills,false,construction,15.46935,true,5.6411
+16,Kelobury,2,4,hills,false,bread,10.94899,true,0.3687
+16,Kelobury,2,4,hills,false,potatoes,5.38881,true,12.8436
+16,Kelobury,2,4,hills,false,meat,18.99070,true,0.0000
+16,Kelobury,2,4,hills,false,fish,18.68954,true,0.0000
+16,Kelobury,2,4,hills,false,clothes,15.95017,true,3.6287
+16,Kelobury,2,4,hills,false,wood,25.13304,true,0.0000
+16,Kelobury,2,4,hills,false,coal,8.39069,true,14.2921
+16,Kelobury,2,4,hills,false,furniture,26.54456,true,1.0791
+16,Kelobury,2,4,hills,false,ironware,31.18574,true,1.0206
+16,Kelobury,2,4,hills,false,beer,16.27175,true,3.8417
+16,Kelobury,2,4,hills,false,tea,23.27860,true,0.0000
+16,Kelobury,2,4,hills,false,sugar,29.08192,true,0.2189
+16,Kelobury,2,4,hills,false,wine,15.30525,true,4.3268
+16,Kelobury,2,4,hills,false,fine clothes,23.99060,true,0.4740
+16,Kelobury,2,4,hills,false,porcelain,22.81314,true,1.7169
+16,Kelobury,2,4,hills,false,grain,12.10233,true,0.0000
+16,Kelobury,2,4,hills,false,iron ore,9.39405,true,0.3662
+16,Kelobury,2,4,hills,false,iron,26.32277,true,0.4244
+16,Kelobury,2,4,hills,false,wool,4.54065,true,1.8604
+16,Kelobury,2,4,hills,false,cotton,14.64813,true,0.0000
+16,Kelobury,2,4,hills,false,cloth,9.86527,true,2.2509
+16,Kelobury,2,4,hills,false,sugar cane,30.09539,true,0.0000
+16,Kelobury,2,4,hills,false,grapes,5.68573,true,5.3509
+16,Kelobury,2,4,hills,false,silk,18.60926,true,0.0000
+16,Kelobury,2,4,hills,false,clay,3.80547,true,2.0750
+16,Kelobury,2,4,hills,false,transport,7.06948,true,11.7158
+16,Kelobury,2,4,hills,false,construction,17.54787,true,7.5694
 16,Kelobury,2,4,hills,false,research,1.00000,false,0.0000
-16,Kelobury,2,4,hills,false,arms,1.58278,false,0.0000
-16,Kelobury,2,4,hills,false,artillery,1.58278,false,0.0000
+16,Kelobury,2,4,hills,false,arms,1.56775,false,0.0000
+16,Kelobury,2,4,hills,false,artillery,1.56855,false,0.0000
 16,Kelobury,2,4,hills,false,munitions,1.00000,false,0.0000
 16,Kelobury,2,4,hills,false,vehicles,1.00000,false,0.0000
 16,Kelobury,2,4,hills,false,aircraft,1.00000,false,0.0000
 16,Kelobury,2,4,hills,false,oil,1.00000,false,0.0000
-16,Kelobury,2,4,hills,false,tools,1.58278,false,0.0000
+16,Kelobury,2,4,hills,false,tools,1.56775,false,0.0000
 16,Kelobury,2,4,hills,false,steam engines,1.00000,false,0.0000
 16,Kelobury,2,4,hills,false,explosives,1.00000,false,0.0000
 16,Kelobury,2,4,hills,false,fertilizer,1.00000,false,0.0000
 16,Kelobury,2,4,hills,false,electricity,1.00000,false,0.0000
-17,Halewick,2,5,plains,true,bread,10.67212,true,1.6507
-17,Halewick,2,5,plains,true,potatoes,6.45355,true,26.0868
-17,Halewick,2,5,plains,true,meat,10.15191,true,10.0498
-17,Halewick,2,5,plains,true,fish,8.35776,true,18.7542
-17,Halewick,2,5,plains,true,clothes,15.85289,true,8.7670
-17,Halewick,2,5,plains,true,wood,17.74332,true,0.0000
-17,Halewick,2,5,plains,true,coal,17.00286,true,0.0000
-17,Halewick,2,5,plains,true,furniture,22.37255,true,3.0579
-17,Halewick,2,5,plains,true,ironware,32.24278,true,2.1826
-17,Halewick,2,5,plains,true,beer,12.24274,true,15.0591
-17,Halewick,2,5,plains,true,tea,23.45746,true,0.0000
-17,Halewick,2,5,plains,true,sugar,28.00626,true,1.0085
-17,Halewick,2,5,plains,true,wine,18.72767,true,2.8502
-17,Halewick,2,5,plains,true,fine clothes,24.82705,true,2.0304
-17,Halewick,2,5,plains,true,porcelain,24.11222,true,1.6783
-17,Halewick,2,5,plains,true,grain,6.07986,true,23.9249
-17,Halewick,2,5,plains,true,iron ore,17.48757,true,0.1621
-17,Halewick,2,5,plains,true,iron,30.96394,true,0.3301
-17,Halewick,2,5,plains,true,wool,8.07955,true,1.6322
-17,Halewick,2,5,plains,true,cotton,12.40425,true,0.0000
-17,Halewick,2,5,plains,true,cloth,11.83925,true,3.9783
-17,Halewick,2,5,plains,true,sugar cane,19.59986,true,0.0000
-17,Halewick,2,5,plains,true,grapes,10.75491,true,0.0000
-17,Halewick,2,5,plains,true,silk,19.19854,true,0.0000
-17,Halewick,2,5,plains,true,clay,5.00104,true,1.5785
-17,Halewick,2,5,plains,true,transport,6.59441,true,28.8131
-17,Halewick,2,5,plains,true,construction,15.40556,true,17.1258
+17,Halewick,2,5,plains,true,bread,10.12171,true,1.5658
+17,Halewick,2,5,plains,true,potatoes,6.20139,true,25.9281
+17,Halewick,2,5,plains,true,meat,9.65701,true,9.8349
+17,Halewick,2,5,plains,true,fish,7.99411,true,18.4877
+17,Halewick,2,5,plains,true,clothes,14.83627,true,8.8841
+17,Halewick,2,5,plains,true,wood,16.68123,true,0.0000
+17,Halewick,2,5,plains,true,coal,17.49908,true,0.0000
+17,Halewick,2,5,plains,true,furniture,21.36414,true,3.2035
+17,Halewick,2,5,plains,true,ironware,31.20829,true,2.1665
+17,Halewick,2,5,plains,true,beer,11.80114,true,15.1459
+17,Halewick,2,5,plains,true,tea,23.69612,true,0.0000
+17,Halewick,2,5,plains,true,sugar,28.83855,true,1.1149
+17,Halewick,2,5,plains,true,wine,18.29145,true,2.6477
+17,Halewick,2,5,plains,true,fine clothes,23.98376,true,1.9451
+17,Halewick,2,5,plains,true,porcelain,24.01115,true,1.7927
+17,Halewick,2,5,plains,true,grain,5.82828,true,23.5467
+17,Halewick,2,5,plains,true,iron ore,17.19728,true,0.1370
+17,Halewick,2,5,plains,true,iron,30.73415,true,0.3496
+17,Halewick,2,5,plains,true,wool,6.09301,true,2.2458
+17,Halewick,2,5,plains,true,cotton,12.10462,true,0.0000
+17,Halewick,2,5,plains,true,cloth,10.71414,true,4.3695
+17,Halewick,2,5,plains,true,sugar cane,19.58820,true,0.0000
+17,Halewick,2,5,plains,true,grapes,12.01241,true,0.0000
+17,Halewick,2,5,plains,true,silk,19.46136,true,0.0000
+17,Halewick,2,5,plains,true,clay,5.01172,true,1.7133
+17,Halewick,2,5,plains,true,transport,6.46150,true,29.2937
+17,Halewick,2,5,plains,true,construction,14.52569,true,18.2244
 17,Halewick,2,5,plains,true,research,1.00000,false,0.0000
-17,Halewick,2,5,plains,true,arms,1.39168,false,0.0000
-17,Halewick,2,5,plains,true,artillery,1.39168,false,0.0000
+17,Halewick,2,5,plains,true,arms,1.33382,false,0.0000
+17,Halewick,2,5,plains,true,artillery,1.33382,false,0.0000
 17,Halewick,2,5,plains,true,munitions,1.00000,false,0.0000
 17,Halewick,2,5,plains,true,vehicles,1.00000,false,0.0000
 17,Halewick,2,5,plains,true,aircraft,1.00000,false,0.0000
 17,Halewick,2,5,plains,true,oil,1.00000,false,0.0000
-17,Halewick,2,5,plains,true,tools,1.39168,false,0.0000
+17,Halewick,2,5,plains,true,tools,1.33382,false,0.0000
 17,Halewick,2,5,plains,true,steam engines,1.00000,false,0.0000
 17,Halewick,2,5,plains,true,explosives,1.00000,false,0.0000
 17,Halewick,2,5,plains,true,fertilizer,1.00000,false,0.0000
 17,Halewick,2,5,plains,true,electricity,1.00000,false,0.0000
-18,Corby,3,0,plains,true,bread,10.76606,true,1.7067
-18,Corby,3,0,plains,true,potatoes,6.20980,true,28.7323
-18,Corby,3,0,plains,true,meat,9.84630,true,11.2326
-18,Corby,3,0,plains,true,fish,7.62796,true,19.0422
-18,Corby,3,0,plains,true,clothes,14.24304,true,10.7177
-18,Corby,3,0,plains,true,wood,13.55548,true,0.0000
-18,Corby,3,0,plains,true,coal,15.12042,true,0.0000
-18,Corby,3,0,plains,true,furniture,19.07260,true,4.6330
-18,Corby,3,0,plains,true,ironware,28.54986,true,3.7163
-18,Corby,3,0,plains,true,beer,12.63198,true,15.0379
-18,Corby,3,0,plains,true,tea,25.40508,true,0.0000
-18,Corby,3,0,plains,true,sugar,29.80145,true,0.8908
-18,Corby,3,0,plains,true,wine,17.07496,true,2.6956
-18,Corby,3,0,plains,true,fine clothes,24.37346,true,2.3326
-18,Corby,3,0,plains,true,porcelain,22.41595,true,2.8168
-18,Corby,3,0,plains,true,grain,7.39151,true,37.2791
-18,Corby,3,0,plains,true,iron ore,13.39906,true,0.1233
-18,Corby,3,0,plains,true,iron,26.96744,true,0.4029
-18,Corby,3,0,plains,true,wool,6.89497,true,2.9655
-18,Corby,3,0,plains,true,cotton,15.47531,true,0.0000
-18,Corby,3,0,plains,true,cloth,10.76325,true,5.6899
-18,Corby,3,0,plains,true,sugar cane,27.89044,true,0.0000
-18,Corby,3,0,plains,true,grapes,11.35060,true,0.0000
-18,Corby,3,0,plains,true,silk,19.89856,true,0.0000
-18,Corby,3,0,plains,true,clay,5.62942,true,2.2445
-18,Corby,3,0,plains,true,transport,5.80520,true,32.1436
-18,Corby,3,0,plains,true,construction,12.65882,true,19.8196
+18,Corby,3,0,plains,true,bread,10.76617,true,1.7788
+18,Corby,3,0,plains,true,potatoes,6.26274,true,29.6296
+18,Corby,3,0,plains,true,meat,10.01698,true,11.5972
+18,Corby,3,0,plains,true,fish,7.68061,true,19.6001
+18,Corby,3,0,plains,true,clothes,14.22030,true,10.8271
+18,Corby,3,0,plains,true,wood,13.62793,true,0.0000
+18,Corby,3,0,plains,true,coal,15.06305,true,0.0000
+18,Corby,3,0,plains,true,furniture,18.82870,true,4.5441
+18,Corby,3,0,plains,true,ironware,29.07160,true,4.0015
+18,Corby,3,0,plains,true,beer,12.24349,true,15.9611
+18,Corby,3,0,plains,true,tea,24.66197,true,0.0000
+18,Corby,3,0,plains,true,sugar,29.21659,true,0.8381
+18,Corby,3,0,plains,true,wine,17.32336,true,3.6218
+18,Corby,3,0,plains,true,fine clothes,24.08860,true,2.3401
+18,Corby,3,0,plains,true,porcelain,22.49603,true,2.9331
+18,Corby,3,0,plains,true,grain,7.30128,true,37.2440
+18,Corby,3,0,plains,true,iron ore,13.65973,true,0.1320
+18,Corby,3,0,plains,true,iron,26.72034,true,0.4035
+18,Corby,3,0,plains,true,wool,6.83033,true,2.9738
+18,Corby,3,0,plains,true,cotton,14.87382,true,0.0000
+18,Corby,3,0,plains,true,cloth,10.70071,true,5.7827
+18,Corby,3,0,plains,true,sugar cane,28.41595,true,0.0000
+18,Corby,3,0,plains,true,grapes,11.68852,true,0.0000
+18,Corby,3,0,plains,true,silk,19.75483,true,0.0000
+18,Corby,3,0,plains,true,clay,5.64872,true,2.2997
+18,Corby,3,0,plains,true,transport,5.59389,true,30.9769
+18,Corby,3,0,plains,true,construction,11.15841,true,15.1044
 18,Corby,3,0,plains,true,research,1.00000,false,0.0000
-18,Corby,3,0,plains,true,arms,1.29961,false,0.0000
-18,Corby,3,0,plains,true,artillery,1.29961,false,0.0000
+18,Corby,3,0,plains,true,arms,1.28883,false,0.0000
+18,Corby,3,0,plains,true,artillery,1.28883,false,0.0000
 18,Corby,3,0,plains,true,munitions,1.00000,false,0.0000
 18,Corby,3,0,plains,true,vehicles,1.00000,false,0.0000
 18,Corby,3,0,plains,true,aircraft,1.00000,false,0.0000
 18,Corby,3,0,plains,true,oil,1.00000,false,0.0000
-18,Corby,3,0,plains,true,tools,1.29961,false,0.0000
+18,Corby,3,0,plains,true,tools,1.28883,false,0.0000
 18,Corby,3,0,plains,true,steam engines,1.00000,false,0.0000
 18,Corby,3,0,plains,true,explosives,1.00000,false,0.0000
 18,Corby,3,0,plains,true,fertilizer,1.00000,false,0.0000
 18,Corby,3,0,plains,true,electricity,1.00000,false,0.0000
-19,Glenford,3,1,plains,false,bread,6.94390,true,0.7478
-19,Glenford,3,1,plains,false,potatoes,3.64417,true,15.9834
-19,Glenford,3,1,plains,false,meat,6.84043,true,8.0215
-19,Glenford,3,1,plains,false,fish,17.02668,true,0.0000
-19,Glenford,3,1,plains,false,clothes,14.15199,true,4.2984
-19,Glenford,3,1,plains,false,wood,16.45981,true,0.0000
-19,Glenford,3,1,plains,false,coal,22.12986,true,0.0000
-19,Glenford,3,1,plains,false,furniture,21.91680,true,1.5268
-19,Glenford,3,1,plains,false,ironware,31.32221,true,0.9625
-19,Glenford,3,1,plains,false,beer,9.89162,true,7.6755
-19,Glenford,3,1,plains,false,tea,24.19055,true,0.0000
-19,Glenford,3,1,plains,false,sugar,30.56613,true,0.3085
-19,Glenford,3,1,plains,false,wine,20.84280,true,0.5280
-19,Glenford,3,1,plains,false,fine clothes,24.51492,true,1.2876
-19,Glenford,3,1,plains,false,porcelain,23.26033,true,1.6079
-19,Glenford,3,1,plains,false,grain,3.80371,true,8.2180
-19,Glenford,3,1,plains,false,iron ore,14.05398,true,0.1648
-19,Glenford,3,1,plains,false,iron,29.13923,true,0.2879
-19,Glenford,3,1,plains,false,wool,5.84040,true,1.4372
-19,Glenford,3,1,plains,false,cotton,14.11616,true,0.0000
-19,Glenford,3,1,plains,false,cloth,10.25056,true,2.3524
-19,Glenford,3,1,plains,false,sugar cane,27.21191,true,0.0000
-19,Glenford,3,1,plains,false,grapes,19.89876,true,0.0000
-19,Glenford,3,1,plains,false,silk,19.35391,true,0.0000
-19,Glenford,3,1,plains,false,clay,4.15758,true,1.7720
-19,Glenford,3,1,plains,false,transport,5.71700,true,11.8360
-19,Glenford,3,1,plains,false,construction,12.05027,true,4.2778
+19,Glenford,3,1,plains,false,bread,6.83080,true,0.7153
+19,Glenford,3,1,plains,false,potatoes,3.68291,true,15.6312
+19,Glenford,3,1,plains,false,meat,6.92936,true,7.8628
+19,Glenford,3,1,plains,false,fish,17.30412,true,0.0000
+19,Glenford,3,1,plains,false,clothes,13.85122,true,4.1720
+19,Glenford,3,1,plains,false,wood,16.88616,true,0.0000
+19,Glenford,3,1,plains,false,coal,22.37361,true,0.0000
+19,Glenford,3,1,plains,false,furniture,21.27678,true,1.3636
+19,Glenford,3,1,plains,false,ironware,31.33872,true,0.9203
+19,Glenford,3,1,plains,false,beer,9.55583,true,7.1919
+19,Glenford,3,1,plains,false,tea,23.47709,true,0.0000
+19,Glenford,3,1,plains,false,sugar,26.99888,true,0.2704
+19,Glenford,3,1,plains,false,wine,18.82637,true,0.4287
+19,Glenford,3,1,plains,false,fine clothes,23.88014,true,1.2221
+19,Glenford,3,1,plains,false,porcelain,22.83387,true,1.4484
+19,Glenford,3,1,plains,false,grain,3.46699,true,10.6800
+19,Glenford,3,1,plains,false,iron ore,14.42708,true,0.1613
+19,Glenford,3,1,plains,false,iron,29.42100,true,0.2767
+19,Glenford,3,1,plains,false,wool,5.74826,true,1.3493
+19,Glenford,3,1,plains,false,cotton,12.89872,true,0.0000
+19,Glenford,3,1,plains,false,cloth,10.01115,true,2.3095
+19,Glenford,3,1,plains,false,sugar cane,24.52345,true,0.0000
+19,Glenford,3,1,plains,false,grapes,18.92079,true,0.0000
+19,Glenford,3,1,plains,false,silk,19.01079,true,0.0000
+19,Glenford,3,1,plains,false,clay,4.06615,true,1.6042
+19,Glenford,3,1,plains,false,transport,5.83070,true,11.9296
+19,Glenford,3,1,plains,false,construction,13.99147,true,8.0575
 19,Glenford,3,1,plains,false,research,1.00000,false,0.0000
-19,Glenford,3,1,plains,false,arms,1.42845,false,0.0000
-19,Glenford,3,1,plains,false,artillery,1.42845,false,0.0000
+19,Glenford,3,1,plains,false,arms,1.42840,false,0.0000
+19,Glenford,3,1,plains,false,artillery,1.42840,false,0.0000
 19,Glenford,3,1,plains,false,munitions,1.00000,false,0.0000
 19,Glenford,3,1,plains,false,vehicles,1.00000,false,0.0000
 19,Glenford,3,1,plains,false,aircraft,1.00000,false,0.0000
 19,Glenford,3,1,plains,false,oil,1.00000,false,0.0000
-19,Glenford,3,1,plains,false,tools,1.42845,false,0.0000
+19,Glenford,3,1,plains,false,tools,1.42840,false,0.0000
 19,Glenford,3,1,plains,false,steam engines,1.00000,false,0.0000
 19,Glenford,3,1,plains,false,explosives,1.00000,false,0.0000
 19,Glenford,3,1,plains,false,fertilizer,1.00000,false,0.0000
 19,Glenford,3,1,plains,false,electricity,1.00000,false,0.0000
-20,Jorley,3,2,plains,false,bread,7.65582,true,0.5583
-20,Jorley,3,2,plains,false,potatoes,3.98530,true,14.9728
-20,Jorley,3,2,plains,false,meat,8.23633,true,8.6897
-20,Jorley,3,2,plains,false,fish,44.39034,true,0.0000
-20,Jorley,3,2,plains,false,clothes,16.25233,true,3.4234
-20,Jorley,3,2,plains,false,wood,28.65818,true,0.0000
-20,Jorley,3,2,plains,false,coal,29.75819,true,0.0000
-20,Jorley,3,2,plains,false,furniture,24.44884,true,0.7587
-20,Jorley,3,2,plains,false,ironware,36.02426,true,0.8258
-20,Jorley,3,2,plains,false,beer,10.24321,true,6.1461
-20,Jorley,3,2,plains,false,tea,23.27853,true,0.0000
-20,Jorley,3,2,plains,false,sugar,28.04108,true,0.2001
-20,Jorley,3,2,plains,false,wine,19.61988,true,0.2149
-20,Jorley,3,2,plains,false,fine clothes,24.18943,true,1.0353
-20,Jorley,3,2,plains,false,porcelain,24.65752,true,0.5854
-20,Jorley,3,2,plains,false,grain,3.82317,true,7.0417
-20,Jorley,3,2,plains,false,iron ore,15.11464,true,0.1429
-20,Jorley,3,2,plains,false,iron,33.50760,true,0.2327
-20,Jorley,3,2,plains,false,wool,6.05777,true,1.2388
-20,Jorley,3,2,plains,false,cotton,13.00573,true,0.0000
-20,Jorley,3,2,plains,false,cloth,10.70005,true,2.0736
-20,Jorley,3,2,plains,false,sugar cane,26.45676,true,0.0000
-20,Jorley,3,2,plains,false,grapes,29.00697,true,0.0000
-20,Jorley,3,2,plains,false,silk,18.63701,true,0.0000
-20,Jorley,3,2,plains,false,clay,3.14541,true,0.9435
-20,Jorley,3,2,plains,false,transport,5.94162,true,7.8631
-20,Jorley,3,2,plains,false,construction,17.05481,true,5.8234
+20,Jorley,3,2,plains,false,bread,7.13699,true,0.7036
+20,Jorley,3,2,plains,false,potatoes,3.83056,true,16.0941
+20,Jorley,3,2,plains,false,meat,8.01684,true,9.5073
+20,Jorley,3,2,plains,false,fish,44.24756,true,0.0000
+20,Jorley,3,2,plains,false,clothes,15.05779,true,4.1953
+20,Jorley,3,2,plains,false,wood,28.31818,true,0.0000
+20,Jorley,3,2,plains,false,coal,29.66424,true,0.0000
+20,Jorley,3,2,plains,false,furniture,24.43702,true,0.8408
+20,Jorley,3,2,plains,false,ironware,34.76071,true,0.8854
+20,Jorley,3,2,plains,false,beer,9.49023,true,7.1897
+20,Jorley,3,2,plains,false,tea,23.37240,true,0.0000
+20,Jorley,3,2,plains,false,sugar,29.25199,true,0.2490
+20,Jorley,3,2,plains,false,wine,21.50902,true,0.2657
+20,Jorley,3,2,plains,false,fine clothes,24.28838,true,1.1464
+20,Jorley,3,2,plains,false,porcelain,24.94409,true,0.6986
+20,Jorley,3,2,plains,false,grain,3.19043,true,9.1528
+20,Jorley,3,2,plains,false,iron ore,14.43721,true,0.1721
+20,Jorley,3,2,plains,false,iron,32.46792,true,0.2305
+20,Jorley,3,2,plains,false,wool,6.02675,true,1.4008
+20,Jorley,3,2,plains,false,cotton,13.13942,true,0.0000
+20,Jorley,3,2,plains,false,cloth,10.75913,true,2.3186
+20,Jorley,3,2,plains,false,sugar cane,26.33312,true,0.0000
+20,Jorley,3,2,plains,false,grapes,31.73043,true,0.0000
+20,Jorley,3,2,plains,false,silk,18.94073,true,0.0000
+20,Jorley,3,2,plains,false,clay,3.24932,true,1.0724
+20,Jorley,3,2,plains,false,transport,5.86553,true,8.7801
+20,Jorley,3,2,plains,false,construction,10.43640,true,2.7837
 20,Jorley,3,2,plains,false,research,1.00000,false,0.0000
-20,Jorley,3,2,plains,false,arms,1.65598,false,0.0000
-20,Jorley,3,2,plains,false,artillery,1.66435,false,0.0000
+20,Jorley,3,2,plains,false,arms,1.46921,false,0.0000
+20,Jorley,3,2,plains,false,artillery,1.48264,false,0.0000
 20,Jorley,3,2,plains,false,munitions,1.00000,false,0.0000
 20,Jorley,3,2,plains,false,vehicles,1.00000,false,0.0000
 20,Jorley,3,2,plains,false,aircraft,1.00000,false,0.0000
 20,Jorley,3,2,plains,false,oil,1.00000,false,0.0000
-20,Jorley,3,2,plains,false,tools,1.65598,false,0.0000
+20,Jorley,3,2,plains,false,tools,1.46921,false,0.0000
 20,Jorley,3,2,plains,false,steam engines,1.00000,false,0.0000
 20,Jorley,3,2,plains,false,explosives,1.00000,false,0.0000
 20,Jorley,3,2,plains,false,fertilizer,1.00000,false,0.0000
 20,Jorley,3,2,plains,false,electricity,1.00000,false,0.0000
-21,Elara,3,3,tropical,false,bread,17.56660,true,2.1350
-21,Elara,3,3,tropical,false,potatoes,17.66293,true,0.0000
-21,Elara,3,3,tropical,false,meat,23.87091,true,0.0000
-21,Elara,3,3,tropical,false,fish,51.40599,true,0.0000
-21,Elara,3,3,tropical,false,clothes,18.88559,true,2.0104
-21,Elara,3,3,tropical,false,wood,28.53997,true,0.0000
-21,Elara,3,3,tropical,false,coal,22.40625,true,0.0000
-21,Elara,3,3,tropical,false,furniture,30.83288,true,0.4751
-21,Elara,3,3,tropical,false,ironware,36.89948,true,0.4034
-21,Elara,3,3,tropical,false,beer,19.78386,true,3.4241
-21,Elara,3,3,tropical,false,tea,19.60569,true,17.0689
-21,Elara,3,3,tropical,false,sugar,24.82838,true,3.4109
-21,Elara,3,3,tropical,false,wine,20.46733,true,0.3087
-21,Elara,3,3,tropical,false,fine clothes,24.92220,true,0.4323
-21,Elara,3,3,tropical,false,porcelain,26.82629,true,0.1034
-21,Elara,3,3,tropical,false,grain,12.00219,true,3.5035
-21,Elara,3,3,tropical,false,iron ore,14.76444,true,0.0842
-21,Elara,3,3,tropical,false,iron,28.74253,true,0.1449
-21,Elara,3,3,tropical,false,wool,11.96400,true,0.0000
-21,Elara,3,3,tropical,false,cotton,4.91031,true,1.4716
-21,Elara,3,3,tropical,false,cloth,12.01491,true,1.2720
-21,Elara,3,3,tropical,false,sugar cane,5.33403,true,6.8068
-21,Elara,3,3,tropical,false,grapes,18.66768,true,0.0000
-21,Elara,3,3,tropical,false,silk,14.97188,true,2.8257
-21,Elara,3,3,tropical,false,clay,14.14970,true,0.0000
-21,Elara,3,3,tropical,false,transport,8.83892,true,6.4706
-21,Elara,3,3,tropical,false,construction,14.89407,true,2.4758
+21,Elara,3,3,tropical,false,bread,17.77687,true,1.9780
+21,Elara,3,3,tropical,false,potatoes,17.40221,true,0.0000
+21,Elara,3,3,tropical,false,meat,23.36395,true,0.0000
+21,Elara,3,3,tropical,false,fish,51.31399,true,0.0000
+21,Elara,3,3,tropical,false,clothes,18.84601,true,1.9128
+21,Elara,3,3,tropical,false,wood,29.47261,true,0.0000
+21,Elara,3,3,tropical,false,coal,22.46837,true,0.0000
+21,Elara,3,3,tropical,false,furniture,30.32842,true,0.4213
+21,Elara,3,3,tropical,false,ironware,36.65415,true,0.3628
+21,Elara,3,3,tropical,false,beer,20.12734,true,3.2882
+21,Elara,3,3,tropical,false,tea,20.06874,true,16.2536
+21,Elara,3,3,tropical,false,sugar,23.87018,true,3.7370
+21,Elara,3,3,tropical,false,wine,18.98759,true,0.2615
+21,Elara,3,3,tropical,false,fine clothes,25.12040,true,0.3859
+21,Elara,3,3,tropical,false,porcelain,26.45597,true,0.0896
+21,Elara,3,3,tropical,false,grain,12.22346,true,3.3216
+21,Elara,3,3,tropical,false,iron ore,14.76947,true,0.0687
+21,Elara,3,3,tropical,false,iron,28.85678,true,0.1562
+21,Elara,3,3,tropical,false,wool,11.83220,true,0.0000
+21,Elara,3,3,tropical,false,cotton,4.95071,true,1.3839
+21,Elara,3,3,tropical,false,cloth,12.01240,true,1.2110
+21,Elara,3,3,tropical,false,sugar cane,5.59594,true,6.7915
+21,Elara,3,3,tropical,false,grapes,18.16148,true,0.0000
+21,Elara,3,3,tropical,false,silk,16.50071,true,2.9909
+21,Elara,3,3,tropical,false,clay,13.97756,true,0.0000
+21,Elara,3,3,tropical,false,transport,9.08243,true,6.2289
+21,Elara,3,3,tropical,false,construction,20.20160,true,4.4856
 21,Elara,3,3,tropical,false,research,1.00000,false,0.0000
-21,Elara,3,3,tropical,false,arms,1.81981,false,0.0000
-21,Elara,3,3,tropical,false,artillery,1.82753,false,0.0000
+21,Elara,3,3,tropical,false,arms,1.86463,false,0.0000
+21,Elara,3,3,tropical,false,artillery,1.86965,false,0.0000
 21,Elara,3,3,tropical,false,munitions,1.00000,false,0.0000
 21,Elara,3,3,tropical,false,vehicles,1.00000,false,0.0000
 21,Elara,3,3,tropical,false,aircraft,1.00000,false,0.0000
 21,Elara,3,3,tropical,false,oil,1.00000,false,0.0000
-21,Elara,3,3,tropical,false,tools,1.81981,false,0.0000
+21,Elara,3,3,tropical,false,tools,1.86463,false,0.0000
 21,Elara,3,3,tropical,false,steam engines,1.00000,false,0.0000
 21,Elara,3,3,tropical,false,explosives,1.00000,false,0.0000
 21,Elara,3,3,tropical,false,fertilizer,1.00000,false,0.0000
 21,Elara,3,3,tropical,false,electricity,1.00000,false,0.0000
-22,Morica,3,4,tropical,false,bread,18.16669,true,1.3172
-22,Morica,3,4,tropical,false,potatoes,15.43339,true,0.0000
-22,Morica,3,4,tropical,false,meat,19.39408,true,0.0000
-22,Morica,3,4,tropical,false,fish,18.88917,true,0.0000
-22,Morica,3,4,tropical,false,clothes,17.95580,true,1.8339
-22,Morica,3,4,tropical,false,wood,23.99337,true,0.0000
-22,Morica,3,4,tropical,false,coal,22.00399,true,0.0000
-22,Morica,3,4,tropical,false,furniture,28.65378,true,0.5294
-22,Morica,3,4,tropical,false,ironware,36.14023,true,0.4113
-22,Morica,3,4,tropical,false,beer,19.44751,true,3.3451
-22,Morica,3,4,tropical,false,tea,21.46994,true,18.5923
-22,Morica,3,4,tropical,false,sugar,25.32766,true,4.3429
-22,Morica,3,4,tropical,false,wine,19.81055,true,0.3884
-22,Morica,3,4,tropical,false,fine clothes,25.73005,true,0.4210
-22,Morica,3,4,tropical,false,porcelain,26.46259,true,0.1293
-22,Morica,3,4,tropical,false,grain,12.30817,true,2.3185
-22,Morica,3,4,tropical,false,iron ore,14.62711,true,0.0733
-22,Morica,3,4,tropical,false,iron,28.82701,true,0.1070
-22,Morica,3,4,tropical,false,wool,10.77812,true,0.0000
-22,Morica,3,4,tropical,false,cotton,6.79935,true,2.2798
-22,Morica,3,4,tropical,false,cloth,12.37008,true,1.0641
-22,Morica,3,4,tropical,false,sugar cane,6.10573,true,11.8218
-22,Morica,3,4,tropical,false,grapes,15.69646,true,0.0000
-22,Morica,3,4,tropical,false,silk,17.91862,true,3.4684
-22,Morica,3,4,tropical,false,clay,12.96542,true,0.0000
-22,Morica,3,4,tropical,false,transport,8.74746,true,10.7260
-22,Morica,3,4,tropical,false,construction,18.89799,true,5.9622
+22,Morica,3,4,tropical,false,bread,18.10358,true,1.2423
+22,Morica,3,4,tropical,false,potatoes,15.33879,true,0.0000
+22,Morica,3,4,tropical,false,meat,18.98543,true,0.0000
+22,Morica,3,4,tropical,false,fish,18.67782,true,0.0000
+22,Morica,3,4,tropical,false,clothes,17.25540,true,1.7662
+22,Morica,3,4,tropical,false,wood,25.74616,true,0.0000
+22,Morica,3,4,tropical,false,coal,23.30115,true,0.0000
+22,Morica,3,4,tropical,false,furniture,28.44620,true,0.9414
+22,Morica,3,4,tropical,false,ironware,35.65822,true,0.7051
+22,Morica,3,4,tropical,false,beer,19.37664,true,3.3106
+22,Morica,3,4,tropical,false,tea,21.79453,true,18.6123
+22,Morica,3,4,tropical,false,sugar,24.94653,true,4.2282
+22,Morica,3,4,tropical,false,wine,18.95888,true,0.3331
+22,Morica,3,4,tropical,false,fine clothes,25.05541,true,0.3868
+22,Morica,3,4,tropical,false,porcelain,26.15148,true,0.1429
+22,Morica,3,4,tropical,false,grain,12.39027,true,2.2787
+22,Morica,3,4,tropical,false,iron ore,15.62876,true,0.0796
+22,Morica,3,4,tropical,false,iron,32.03656,true,0.1330
+22,Morica,3,4,tropical,false,wool,9.79552,true,0.0000
+22,Morica,3,4,tropical,false,cotton,6.64954,true,2.1643
+22,Morica,3,4,tropical,false,cloth,11.86094,true,1.0228
+22,Morica,3,4,tropical,false,sugar cane,6.06268,true,11.6587
+22,Morica,3,4,tropical,false,grapes,16.46872,true,0.0000
+22,Morica,3,4,tropical,false,silk,18.22880,true,3.5181
+22,Morica,3,4,tropical,false,clay,12.97016,true,0.0000
+22,Morica,3,4,tropical,false,transport,8.70833,true,10.6951
+22,Morica,3,4,tropical,false,construction,21.42590,true,7.6221
 22,Morica,3,4,tropical,false,research,1.00000,false,0.0000
-22,Morica,3,4,tropical,false,arms,1.80638,false,0.0000
-22,Morica,3,4,tropical,false,artillery,1.80638,false,0.0000
+22,Morica,3,4,tropical,false,arms,1.81746,false,0.0000
+22,Morica,3,4,tropical,false,artillery,1.81746,false,0.0000
 22,Morica,3,4,tropical,false,munitions,1.00000,false,0.0000
 22,Morica,3,4,tropical,false,vehicles,1.00000,false,0.0000
 22,Morica,3,4,tropical,false,aircraft,1.00000,false,0.0000
 22,Morica,3,4,tropical,false,oil,1.00000,false,0.0000
-22,Morica,3,4,tropical,false,tools,1.80638,false,0.0000
+22,Morica,3,4,tropical,false,tools,1.81746,false,0.0000
 22,Morica,3,4,tropical,false,steam engines,1.00000,false,0.0000
 22,Morica,3,4,tropical,false,explosives,1.00000,false,0.0000
 22,Morica,3,4,tropical,false,fertilizer,1.00000,false,0.0000
 22,Morica,3,4,tropical,false,electricity,1.00000,false,0.0000
-23,Falwold,3,5,hills,true,bread,12.90985,true,1.8611
-23,Falwold,3,5,hills,true,potatoes,7.96340,true,20.7899
-23,Falwold,3,5,hills,true,meat,13.18768,true,0.0000
-23,Falwold,3,5,hills,true,fish,8.48833,true,17.5848
-23,Falwold,3,5,hills,true,clothes,16.46454,true,9.4060
-23,Falwold,3,5,hills,true,wood,18.43332,true,0.0000
-23,Falwold,3,5,hills,true,coal,13.67532,true,26.9359
-23,Falwold,3,5,hills,true,furniture,24.14576,true,3.4831
-23,Falwold,3,5,hills,true,ironware,33.95108,true,2.4316
-23,Falwold,3,5,hills,true,beer,14.70072,true,12.8233
-23,Falwold,3,5,hills,true,tea,23.04597,true,0.0000
-23,Falwold,3,5,hills,true,sugar,27.62612,true,1.0149
-23,Falwold,3,5,hills,true,wine,18.26621,true,8.9794
-23,Falwold,3,5,hills,true,fine clothes,25.14157,true,1.3771
-23,Falwold,3,5,hills,true,porcelain,24.92191,true,2.2357
-23,Falwold,3,5,hills,true,grain,8.61282,true,0.0000
-23,Falwold,3,5,hills,true,iron ore,16.14487,true,0.7452
-23,Falwold,3,5,hills,true,iron,32.80184,true,0.9131
-23,Falwold,3,5,hills,true,wool,6.31298,true,5.6507
-23,Falwold,3,5,hills,true,cotton,12.41916,true,0.0000
-23,Falwold,3,5,hills,true,cloth,11.93785,true,5.1678
-23,Falwold,3,5,hills,true,sugar cane,20.15326,true,0.0000
-23,Falwold,3,5,hills,true,grapes,8.62768,true,17.9980
-23,Falwold,3,5,hills,true,silk,19.03322,true,0.0000
-23,Falwold,3,5,hills,true,clay,4.55746,true,2.4792
-23,Falwold,3,5,hills,true,transport,6.62839,true,14.9895
-23,Falwold,3,5,hills,true,construction,15.02178,true,16.4322
+23,Falwold,3,5,hills,true,bread,13.29745,true,1.7764
+23,Falwold,3,5,hills,true,potatoes,8.33935,true,18.6964
+23,Falwold,3,5,hills,true,meat,12.96617,true,0.0000
+23,Falwold,3,5,hills,true,fish,8.80775,true,15.6166
+23,Falwold,3,5,hills,true,clothes,16.17231,true,9.1841
+23,Falwold,3,5,hills,true,wood,20.89796,true,0.0000
+23,Falwold,3,5,hills,true,coal,14.51142,true,24.6990
+23,Falwold,3,5,hills,true,furniture,25.57981,true,2.9881
+23,Falwold,3,5,hills,true,ironware,32.92648,true,1.9960
+23,Falwold,3,5,hills,true,beer,14.32471,true,12.5120
+23,Falwold,3,5,hills,true,tea,22.89324,true,0.0000
+23,Falwold,3,5,hills,true,sugar,26.40839,true,0.8466
+23,Falwold,3,5,hills,true,wine,17.86070,true,5.9665
+23,Falwold,3,5,hills,true,fine clothes,24.18293,true,1.0913
+23,Falwold,3,5,hills,true,porcelain,24.97415,true,1.7339
+23,Falwold,3,5,hills,true,grain,8.32382,true,0.0000
+23,Falwold,3,5,hills,true,iron ore,16.77458,true,0.6718
+23,Falwold,3,5,hills,true,iron,32.09108,true,0.7445
+23,Falwold,3,5,hills,true,wool,5.60253,true,5.9717
+23,Falwold,3,5,hills,true,cotton,12.23394,true,0.0000
+23,Falwold,3,5,hills,true,cloth,10.78073,true,5.5443
+23,Falwold,3,5,hills,true,sugar cane,18.98203,true,0.0000
+23,Falwold,3,5,hills,true,grapes,8.74168,true,15.1042
+23,Falwold,3,5,hills,true,silk,18.81052,true,0.0000
+23,Falwold,3,5,hills,true,clay,4.37891,true,1.9876
+23,Falwold,3,5,hills,true,transport,7.14665,true,14.1338
+23,Falwold,3,5,hills,true,construction,22.03437,true,27.8586
 23,Falwold,3,5,hills,true,research,1.00000,false,0.0000
-23,Falwold,3,5,hills,true,arms,1.41880,false,0.0000
-23,Falwold,3,5,hills,true,artillery,1.41880,false,0.0000
+23,Falwold,3,5,hills,true,arms,1.44181,false,0.0000
+23,Falwold,3,5,hills,true,artillery,1.44181,false,0.0000
 23,Falwold,3,5,hills,true,munitions,1.00000,false,0.0000
 23,Falwold,3,5,hills,true,vehicles,1.00000,false,0.0000
 23,Falwold,3,5,hills,true,aircraft,1.00000,false,0.0000
 23,Falwold,3,5,hills,true,oil,1.00000,false,0.0000
-23,Falwold,3,5,hills,true,tools,1.41880,false,0.0000
+23,Falwold,3,5,hills,true,tools,1.44181,false,0.0000
 23,Falwold,3,5,hills,true,steam engines,1.00000,false,0.0000
 23,Falwold,3,5,hills,true,explosives,1.00000,false,0.0000
 23,Falwold,3,5,hills,true,fertilizer,1.00000,false,0.0000
 23,Falwold,3,5,hills,true,electricity,1.00000,false,0.0000
-24,Verford,4,0,plains,true,bread,9.72056,true,1.6679
-24,Verford,4,0,plains,true,potatoes,4.97180,true,21.6970
-24,Verford,4,0,plains,true,meat,8.60727,true,9.5819
-24,Verford,4,0,plains,true,fish,6.06129,true,14.2173
-24,Verford,4,0,plains,true,clothes,15.12324,true,5.9543
-24,Verford,4,0,plains,true,wood,16.61303,true,0.0000
-24,Verford,4,0,plains,true,coal,17.93716,true,0.0000
-24,Verford,4,0,plains,true,furniture,21.76305,true,2.4830
-24,Verford,4,0,plains,true,ironware,31.26593,true,1.7863
-24,Verford,4,0,plains,true,beer,11.34445,true,10.8256
-24,Verford,4,0,plains,true,tea,24.66296,true,0.0000
-24,Verford,4,0,plains,true,sugar,28.42758,true,0.7902
-24,Verford,4,0,plains,true,wine,17.63438,true,1.9443
-24,Verford,4,0,plains,true,fine clothes,24.53540,true,1.4043
-24,Verford,4,0,plains,true,porcelain,23.37591,true,1.7821
-24,Verford,4,0,plains,true,grain,5.19888,true,23.0934
-24,Verford,4,0,plains,true,iron ore,15.06150,true,0.1378
-24,Verford,4,0,plains,true,iron,28.35920,true,0.3239
-24,Verford,4,0,plains,true,wool,7.01107,true,1.6075
-24,Verford,4,0,plains,true,cotton,13.99568,true,0.0000
-24,Verford,4,0,plains,true,cloth,11.70251,true,3.0073
-24,Verford,4,0,plains,true,sugar cane,23.81435,true,0.0000
-24,Verford,4,0,plains,true,grapes,9.91980,true,0.0000
-24,Verford,4,0,plains,true,silk,19.44778,true,0.0000
-24,Verford,4,0,plains,true,clay,4.68981,true,1.7876
-24,Verford,4,0,plains,true,transport,5.60781,true,16.3293
-24,Verford,4,0,plains,true,construction,14.15796,true,13.6904
+24,Verford,4,0,plains,true,bread,9.36808,true,1.6317
+24,Verford,4,0,plains,true,potatoes,4.80901,true,21.8222
+24,Verford,4,0,plains,true,meat,8.26964,true,9.6195
+24,Verford,4,0,plains,true,fish,5.85618,true,14.2940
+24,Verford,4,0,plains,true,clothes,14.65619,true,6.0092
+24,Verford,4,0,plains,true,wood,16.48310,true,0.0000
+24,Verford,4,0,plains,true,coal,17.19141,true,0.0000
+24,Verford,4,0,plains,true,furniture,21.21343,true,2.4894
+24,Verford,4,0,plains,true,ironware,30.63366,true,1.7640
+24,Verford,4,0,plains,true,beer,11.00710,true,10.8184
+24,Verford,4,0,plains,true,tea,24.09739,true,0.0000
+24,Verford,4,0,plains,true,sugar,28.42868,true,0.8149
+24,Verford,4,0,plains,true,wine,15.87325,true,2.3903
+24,Verford,4,0,plains,true,fine clothes,24.15228,true,1.4553
+24,Verford,4,0,plains,true,porcelain,22.90592,true,1.8856
+24,Verford,4,0,plains,true,grain,5.06092,true,23.6353
+24,Verford,4,0,plains,true,iron ore,15.30080,true,0.1715
+24,Verford,4,0,plains,true,iron,28.40636,true,0.3192
+24,Verford,4,0,plains,true,wool,6.76755,true,1.6167
+24,Verford,4,0,plains,true,cotton,13.41474,true,0.0000
+24,Verford,4,0,plains,true,cloth,11.33669,true,3.0172
+24,Verford,4,0,plains,true,sugar cane,24.01145,true,0.0000
+24,Verford,4,0,plains,true,grapes,10.18227,true,0.0000
+24,Verford,4,0,plains,true,silk,19.43702,true,0.0000
+24,Verford,4,0,plains,true,clay,4.60791,true,1.8643
+24,Verford,4,0,plains,true,transport,5.29070,true,16.0200
+24,Verford,4,0,plains,true,construction,13.39135,true,13.0261
 24,Verford,4,0,plains,true,research,1.00000,false,0.0000
-24,Verford,4,0,plains,true,arms,1.40768,false,0.0000
-24,Verford,4,0,plains,true,artillery,1.40894,false,0.0000
+24,Verford,4,0,plains,true,arms,1.34030,false,0.0000
+24,Verford,4,0,plains,true,artillery,1.34641,false,0.0000
 24,Verford,4,0,plains,true,munitions,1.00000,false,0.0000
 24,Verford,4,0,plains,true,vehicles,1.00000,false,0.0000
 24,Verford,4,0,plains,true,aircraft,1.00000,false,0.0000
 24,Verford,4,0,plains,true,oil,1.00000,false,0.0000
-24,Verford,4,0,plains,true,tools,1.40768,false,0.0000
+24,Verford,4,0,plains,true,tools,1.34030,false,0.0000
 24,Verford,4,0,plains,true,steam engines,1.00000,false,0.0000
 24,Verford,4,0,plains,true,explosives,1.00000,false,0.0000
 24,Verford,4,0,plains,true,fertilizer,1.00000,false,0.0000
 24,Verford,4,0,plains,true,electricity,1.00000,false,0.0000
-25,Dunoworth,4,1,plains,false,bread,6.86818,true,0.6091
-25,Dunoworth,4,1,plains,false,potatoes,3.43446,true,10.3832
-25,Dunoworth,4,1,plains,false,meat,6.36642,true,5.1103
-25,Dunoworth,4,1,plains,false,fish,14.16895,true,0.0000
-25,Dunoworth,4,1,plains,false,clothes,15.36921,true,2.1566
-25,Dunoworth,4,1,plains,false,wood,20.60703,true,0.0000
-25,Dunoworth,4,1,plains,false,coal,22.61121,true,0.0000
-25,Dunoworth,4,1,plains,false,furniture,23.50062,true,0.5198
-25,Dunoworth,4,1,plains,false,ironware,32.21299,true,0.7924
-25,Dunoworth,4,1,plains,false,beer,9.21823,true,4.6109
-25,Dunoworth,4,1,plains,false,tea,24.15496,true,0.0000
-25,Dunoworth,4,1,plains,false,sugar,28.20111,true,0.1936
-25,Dunoworth,4,1,plains,false,wine,18.54628,true,0.4210
-25,Dunoworth,4,1,plains,false,fine clothes,23.71795,true,0.9552
-25,Dunoworth,4,1,plains,false,porcelain,23.24175,true,0.6733
-25,Dunoworth,4,1,plains,false,grain,3.12093,true,5.9944
-25,Dunoworth,4,1,plains,false,iron ore,13.42867,true,0.1503
-25,Dunoworth,4,1,plains,false,iron,29.64308,true,0.2149
-25,Dunoworth,4,1,plains,false,wool,5.57209,true,1.2332
-25,Dunoworth,4,1,plains,false,cotton,14.11146,true,0.0000
-25,Dunoworth,4,1,plains,false,cloth,9.96229,true,1.7868
-25,Dunoworth,4,1,plains,false,sugar cane,26.61274,true,0.0000
-25,Dunoworth,4,1,plains,false,grapes,14.70258,true,0.0000
-25,Dunoworth,4,1,plains,false,silk,19.28437,true,0.0000
-25,Dunoworth,4,1,plains,false,clay,3.00824,true,1.0288
-25,Dunoworth,4,1,plains,false,transport,5.18921,true,3.3430
-25,Dunoworth,4,1,plains,false,construction,15.43032,true,4.7680
+25,Dunoworth,4,1,plains,false,bread,6.91127,true,0.7242
+25,Dunoworth,4,1,plains,false,potatoes,3.39753,true,11.4800
+25,Dunoworth,4,1,plains,false,meat,6.30298,true,5.6798
+25,Dunoworth,4,1,plains,false,fish,14.21106,true,0.0000
+25,Dunoworth,4,1,plains,false,clothes,14.29771,true,3.2261
+25,Dunoworth,4,1,plains,false,wood,20.63236,true,0.0000
+25,Dunoworth,4,1,plains,false,coal,21.76689,true,0.0000
+25,Dunoworth,4,1,plains,false,furniture,23.13620,true,0.5790
+25,Dunoworth,4,1,plains,false,ironware,32.01015,true,0.8719
+25,Dunoworth,4,1,plains,false,beer,9.12628,true,5.1455
+25,Dunoworth,4,1,plains,false,tea,23.51618,true,0.0000
+25,Dunoworth,4,1,plains,false,sugar,27.43307,true,0.2382
+25,Dunoworth,4,1,plains,false,wine,18.51602,true,0.5470
+25,Dunoworth,4,1,plains,false,fine clothes,23.65987,true,1.1362
+25,Dunoworth,4,1,plains,false,porcelain,22.32375,true,1.0893
+25,Dunoworth,4,1,plains,false,grain,3.09831,true,6.6027
+25,Dunoworth,4,1,plains,false,iron ore,13.56970,true,0.1444
+25,Dunoworth,4,1,plains,false,iron,30.09669,true,0.2670
+25,Dunoworth,4,1,plains,false,wool,5.39884,true,1.3349
+25,Dunoworth,4,1,plains,false,cotton,12.92470,true,0.0000
+25,Dunoworth,4,1,plains,false,cloth,9.60886,true,1.9640
+25,Dunoworth,4,1,plains,false,sugar cane,24.57710,true,0.0000
+25,Dunoworth,4,1,plains,false,grapes,14.75297,true,0.0000
+25,Dunoworth,4,1,plains,false,silk,18.97112,true,0.0000
+25,Dunoworth,4,1,plains,false,clay,3.11858,true,1.3696
+25,Dunoworth,4,1,plains,false,transport,5.13496,true,3.9718
+25,Dunoworth,4,1,plains,false,construction,12.32162,true,2.0476
 25,Dunoworth,4,1,plains,false,research,1.00000,false,0.0000
-25,Dunoworth,4,1,plains,false,arms,1.45904,false,0.0000
-25,Dunoworth,4,1,plains,false,artillery,1.45904,false,0.0000
+25,Dunoworth,4,1,plains,false,arms,1.39384,false,0.0000
+25,Dunoworth,4,1,plains,false,artillery,1.39384,false,0.0000
 25,Dunoworth,4,1,plains,false,munitions,1.00000,false,0.0000
 25,Dunoworth,4,1,plains,false,vehicles,1.00000,false,0.0000
 25,Dunoworth,4,1,plains,false,aircraft,1.00000,false,0.0000
 25,Dunoworth,4,1,plains,false,oil,1.00000,false,0.0000
-25,Dunoworth,4,1,plains,false,tools,1.45904,false,0.0000
+25,Dunoworth,4,1,plains,false,tools,1.39384,false,0.0000
 25,Dunoworth,4,1,plains,false,steam engines,1.00000,false,0.0000
 25,Dunoworth,4,1,plains,false,explosives,1.00000,false,0.0000
 25,Dunoworth,4,1,plains,false,fertilizer,1.00000,false,0.0000
 25,Dunoworth,4,1,plains,false,electricity,1.00000,false,0.0000
-26,Dralara,4,2,tropical,false,bread,17.45083,true,1.2996
-26,Dralara,4,2,tropical,false,potatoes,15.00538,true,0.0000
-26,Dralara,4,2,tropical,false,meat,17.67379,true,0.0000
-26,Dralara,4,2,tropical,false,fish,17.35075,true,0.0000
-26,Dralara,4,2,tropical,false,clothes,18.03000,true,3.2698
-26,Dralara,4,2,tropical,false,wood,28.73139,true,0.0000
-26,Dralara,4,2,tropical,false,coal,25.62819,true,0.0000
-26,Dralara,4,2,tropical,false,furniture,31.01672,true,0.5251
-26,Dralara,4,2,tropical,false,ironware,37.11300,true,0.4075
-26,Dralara,4,2,tropical,false,beer,18.46531,true,4.5929
-26,Dralara,4,2,tropical,false,tea,21.25391,true,18.8217
-26,Dralara,4,2,tropical,false,sugar,24.54066,true,4.8332
-26,Dralara,4,2,tropical,false,wine,21.05790,true,0.3982
-26,Dralara,4,2,tropical,false,fine clothes,25.60846,true,0.4335
-26,Dralara,4,2,tropical,false,porcelain,25.74653,true,0.0000
-26,Dralara,4,2,tropical,false,grain,11.15683,true,2.0685
-26,Dralara,4,2,tropical,false,iron ore,14.31720,true,0.0844
-26,Dralara,4,2,tropical,false,iron,29.11800,true,0.1618
-26,Dralara,4,2,tropical,false,wool,11.00074,true,0.0000
-26,Dralara,4,2,tropical,false,cotton,5.42323,true,1.6264
-26,Dralara,4,2,tropical,false,cloth,11.12432,true,2.1269
-26,Dralara,4,2,tropical,false,sugar cane,5.15036,true,9.4610
-26,Dralara,4,2,tropical,false,grapes,17.67076,true,0.0000
-26,Dralara,4,2,tropical,false,silk,17.64587,true,3.5089
-26,Dralara,4,2,tropical,false,clay,12.01245,false,0.0000
-26,Dralara,4,2,tropical,false,transport,8.40196,true,6.2594
-26,Dralara,4,2,tropical,false,construction,20.99288,true,6.9904
+26,Dralara,4,2,tropical,false,bread,17.02343,true,1.3042
+26,Dralara,4,2,tropical,false,potatoes,14.59053,true,0.0000
+26,Dralara,4,2,tropical,false,meat,17.40427,true,0.0000
+26,Dralara,4,2,tropical,false,fish,17.08349,true,0.0000
+26,Dralara,4,2,tropical,false,clothes,17.31012,true,3.1925
+26,Dralara,4,2,tropical,false,wood,28.97032,true,0.0000
+26,Dralara,4,2,tropical,false,coal,25.39431,true,0.0000
+26,Dralara,4,2,tropical,false,furniture,30.94113,true,1.0655
+26,Dralara,4,2,tropical,false,ironware,37.47925,true,0.4328
+26,Dralara,4,2,tropical,false,beer,18.18374,true,4.8070
+26,Dralara,4,2,tropical,false,tea,20.99809,true,19.4340
+26,Dralara,4,2,tropical,false,sugar,23.34290,true,5.5334
+26,Dralara,4,2,tropical,false,wine,21.80918,true,0.4474
+26,Dralara,4,2,tropical,false,fine clothes,25.47978,true,0.4621
+26,Dralara,4,2,tropical,false,porcelain,25.91047,true,0.1036
+26,Dralara,4,2,tropical,false,grain,10.88262,true,2.0555
+26,Dralara,4,2,tropical,false,iron ore,14.31171,true,0.0598
+26,Dralara,4,2,tropical,false,iron,29.35468,true,0.1371
+26,Dralara,4,2,tropical,false,wool,10.77362,true,0.0000
+26,Dralara,4,2,tropical,false,cotton,5.46933,true,1.7571
+26,Dralara,4,2,tropical,false,cloth,10.81152,true,2.0382
+26,Dralara,4,2,tropical,false,sugar cane,5.21961,true,10.3035
+26,Dralara,4,2,tropical,false,grapes,18.04272,true,0.0000
+26,Dralara,4,2,tropical,false,silk,17.34302,true,3.5996
+26,Dralara,4,2,tropical,false,clay,12.02459,true,0.0000
+26,Dralara,4,2,tropical,false,transport,7.26542,true,7.1432
+26,Dralara,4,2,tropical,false,construction,18.12684,true,5.2781
 26,Dralara,4,2,tropical,false,research,1.00000,false,0.0000
-26,Dralara,4,2,tropical,false,arms,1.76158,false,0.0000
-26,Dralara,4,2,tropical,false,artillery,1.76158,false,0.0000
+26,Dralara,4,2,tropical,false,arms,1.73208,false,0.0000
+26,Dralara,4,2,tropical,false,artillery,1.73208,false,0.0000
 26,Dralara,4,2,tropical,false,munitions,1.00000,false,0.0000
 26,Dralara,4,2,tropical,false,vehicles,1.00000,false,0.0000
 26,Dralara,4,2,tropical,false,aircraft,1.00000,false,0.0000
 26,Dralara,4,2,tropical,false,oil,1.00000,false,0.0000
-26,Dralara,4,2,tropical,false,tools,1.76158,false,0.0000
+26,Dralara,4,2,tropical,false,tools,1.73208,false,0.0000
 26,Dralara,4,2,tropical,false,steam engines,1.00000,false,0.0000
 26,Dralara,4,2,tropical,false,explosives,1.00000,false,0.0000
 26,Dralara,4,2,tropical,false,fertilizer,1.00000,false,0.0000
 26,Dralara,4,2,tropical,false,electricity,1.00000,false,0.0000
-27,Dorana,4,3,tropical,false,bread,19.42308,true,1.2090
-27,Dorana,4,3,tropical,false,potatoes,16.25293,true,0.0000
-27,Dorana,4,3,tropical,false,meat,19.55114,true,0.0000
-27,Dorana,4,3,tropical,false,fish,18.48110,true,0.0000
-27,Dorana,4,3,tropical,false,clothes,19.40783,true,2.0292
-27,Dorana,4,3,tropical,false,wood,29.25146,true,0.0000
-27,Dorana,4,3,tropical,false,coal,29.15583,true,0.0000
-27,Dorana,4,3,tropical,false,furniture,32.75744,true,1.0119
-27,Dorana,4,3,tropical,false,ironware,41.31005,true,0.4119
-27,Dorana,4,3,tropical,false,beer,20.51751,true,3.2601
-27,Dorana,4,3,tropical,false,tea,20.90334,true,17.6807
-27,Dorana,4,3,tropical,false,sugar,23.72867,true,3.0501
-27,Dorana,4,3,tropical,false,wine,22.33690,true,0.3033
-27,Dorana,4,3,tropical,false,fine clothes,25.65291,true,0.3927
-27,Dorana,4,3,tropical,false,porcelain,27.60154,true,0.1101
-27,Dorana,4,3,tropical,false,grain,12.81447,true,2.4050
-27,Dorana,4,3,tropical,false,iron ore,16.09850,true,0.0977
-27,Dorana,4,3,tropical,false,iron,32.23722,true,0.1651
-27,Dorana,4,3,tropical,false,wool,11.83154,true,0.0000
-27,Dorana,4,3,tropical,false,cotton,4.67486,true,1.2553
-27,Dorana,4,3,tropical,false,cloth,12.08162,true,1.2887
-27,Dorana,4,3,tropical,false,sugar cane,5.02455,true,5.8401
-27,Dorana,4,3,tropical,false,grapes,21.18055,true,0.0000
-27,Dorana,4,3,tropical,false,silk,17.32619,true,2.1724
-27,Dorana,4,3,tropical,false,clay,13.70059,true,0.0000
-27,Dorana,4,3,tropical,false,transport,8.30714,true,3.7127
-27,Dorana,4,3,tropical,false,construction,19.98470,true,3.2261
+27,Dorana,4,3,tropical,false,bread,18.92864,true,1.2232
+27,Dorana,4,3,tropical,false,potatoes,15.82539,true,0.0000
+27,Dorana,4,3,tropical,false,meat,19.35651,true,0.0000
+27,Dorana,4,3,tropical,false,fish,18.15820,true,0.0000
+27,Dorana,4,3,tropical,false,clothes,18.45653,true,2.5803
+27,Dorana,4,3,tropical,false,wood,27.99510,true,0.0000
+27,Dorana,4,3,tropical,false,coal,28.84002,true,0.0000
+27,Dorana,4,3,tropical,false,furniture,32.15757,true,1.0574
+27,Dorana,4,3,tropical,false,ironware,40.33130,true,0.4318
+27,Dorana,4,3,tropical,false,beer,20.06792,true,3.3144
+27,Dorana,4,3,tropical,false,tea,20.57018,true,17.7953
+27,Dorana,4,3,tropical,false,sugar,23.56898,true,3.1340
+27,Dorana,4,3,tropical,false,wine,21.80572,true,0.3060
+27,Dorana,4,3,tropical,false,fine clothes,25.58493,true,0.4075
+27,Dorana,4,3,tropical,false,porcelain,27.76251,true,0.1069
+27,Dorana,4,3,tropical,false,grain,12.40790,true,2.3932
+27,Dorana,4,3,tropical,false,iron ore,15.52500,true,0.0812
+27,Dorana,4,3,tropical,false,iron,31.13719,true,0.1221
+27,Dorana,4,3,tropical,false,wool,11.51321,true,0.0000
+27,Dorana,4,3,tropical,false,cotton,4.89198,true,1.4109
+27,Dorana,4,3,tropical,false,cloth,12.83866,true,1.4733
+27,Dorana,4,3,tropical,false,sugar cane,4.97525,true,6.0001
+27,Dorana,4,3,tropical,false,grapes,21.04834,true,0.0000
+27,Dorana,4,3,tropical,false,silk,17.11989,true,2.2161
+27,Dorana,4,3,tropical,false,clay,13.29709,true,0.0000
+27,Dorana,4,3,tropical,false,transport,8.01594,true,3.6180
+27,Dorana,4,3,tropical,false,construction,18.97351,true,3.4046
 27,Dorana,4,3,tropical,false,research,1.00000,false,0.0000
-27,Dorana,4,3,tropical,false,arms,1.94154,false,0.0000
-27,Dorana,4,3,tropical,false,artillery,1.94154,false,0.0000
+27,Dorana,4,3,tropical,false,arms,1.86926,false,0.0000
+27,Dorana,4,3,tropical,false,artillery,1.86926,false,0.0000
 27,Dorana,4,3,tropical,false,munitions,1.00000,false,0.0000
 27,Dorana,4,3,tropical,false,vehicles,1.00000,false,0.0000
 27,Dorana,4,3,tropical,false,aircraft,1.00000,false,0.0000
 27,Dorana,4,3,tropical,false,oil,1.00000,false,0.0000
-27,Dorana,4,3,tropical,false,tools,1.94154,false,0.0000
+27,Dorana,4,3,tropical,false,tools,1.86926,false,0.0000
 27,Dorana,4,3,tropical,false,steam engines,1.00000,false,0.0000
 27,Dorana,4,3,tropical,false,explosives,1.00000,false,0.0000
 27,Dorana,4,3,tropical,false,fertilizer,1.00000,false,0.0000
 27,Dorana,4,3,tropical,false,electricity,1.00000,false,0.0000
-28,Dunenza,4,4,tropical,false,bread,18.80398,true,1.2326
-28,Dunenza,4,4,tropical,false,potatoes,16.13097,true,0.0000
-28,Dunenza,4,4,tropical,false,meat,19.64016,true,0.0000
-28,Dunenza,4,4,tropical,false,fish,18.41343,true,0.0000
-28,Dunenza,4,4,tropical,false,clothes,19.18046,true,1.8687
-28,Dunenza,4,4,tropical,false,wood,24.38005,true,0.0000
-28,Dunenza,4,4,tropical,false,coal,25.67778,true,0.0000
-28,Dunenza,4,4,tropical,false,furniture,28.96166,true,0.4776
-28,Dunenza,4,4,tropical,false,ironware,39.98953,true,0.3624
-28,Dunenza,4,4,tropical,false,beer,20.18813,true,2.2047
-28,Dunenza,4,4,tropical,false,tea,20.69535,true,17.3226
-28,Dunenza,4,4,tropical,false,sugar,23.09744,true,3.0471
-28,Dunenza,4,4,tropical,false,wine,22.07949,true,0.3515
-28,Dunenza,4,4,tropical,false,fine clothes,26.78035,true,0.4078
-28,Dunenza,4,4,tropical,false,porcelain,28.10231,true,0.1174
-28,Dunenza,4,4,tropical,false,grain,12.16333,true,2.2270
-28,Dunenza,4,4,tropical,false,iron ore,15.46839,true,0.0886
-28,Dunenza,4,4,tropical,false,iron,31.65391,true,0.1665
-28,Dunenza,4,4,tropical,false,wool,12.54775,true,0.0000
-28,Dunenza,4,4,tropical,false,cotton,5.46331,true,1.6208
-28,Dunenza,4,4,tropical,false,cloth,12.48174,true,1.1518
-28,Dunenza,4,4,tropical,false,sugar cane,4.93540,true,5.7149
-28,Dunenza,4,4,tropical,false,grapes,19.39677,true,0.0000
-28,Dunenza,4,4,tropical,false,silk,17.55567,true,2.2093
-28,Dunenza,4,4,tropical,false,clay,14.43794,true,0.0000
-28,Dunenza,4,4,tropical,false,transport,8.21744,true,3.6022
-28,Dunenza,4,4,tropical,false,construction,20.75059,true,4.3091
+28,Dunenza,4,4,tropical,false,bread,19.25128,true,1.2389
+28,Dunenza,4,4,tropical,false,potatoes,16.82821,true,0.0000
+28,Dunenza,4,4,tropical,false,meat,19.68130,true,0.0000
+28,Dunenza,4,4,tropical,false,fish,18.28406,true,0.0000
+28,Dunenza,4,4,tropical,false,clothes,18.93296,true,1.9261
+28,Dunenza,4,4,tropical,false,wood,25.18186,true,0.0000
+28,Dunenza,4,4,tropical,false,coal,26.99042,true,0.0000
+28,Dunenza,4,4,tropical,false,furniture,30.08184,true,0.4971
+28,Dunenza,4,4,tropical,false,ironware,39.03433,true,0.3905
+28,Dunenza,4,4,tropical,false,beer,20.14020,true,3.0901
+28,Dunenza,4,4,tropical,false,tea,20.53453,true,17.4074
+28,Dunenza,4,4,tropical,false,sugar,23.48926,true,3.1216
+28,Dunenza,4,4,tropical,false,wine,21.91128,true,0.3407
+28,Dunenza,4,4,tropical,false,fine clothes,26.21780,true,0.4165
+28,Dunenza,4,4,tropical,false,porcelain,28.24233,true,0.1187
+28,Dunenza,4,4,tropical,false,grain,12.90369,true,2.4951
+28,Dunenza,4,4,tropical,false,iron ore,16.07172,true,0.0996
+28,Dunenza,4,4,tropical,false,iron,31.54227,true,0.1537
+28,Dunenza,4,4,tropical,false,wool,11.82733,true,0.0000
+28,Dunenza,4,4,tropical,false,cotton,5.30036,true,1.5801
+28,Dunenza,4,4,tropical,false,cloth,12.23486,true,1.1951
+28,Dunenza,4,4,tropical,false,sugar cane,4.98379,true,5.8894
+28,Dunenza,4,4,tropical,false,grapes,19.40548,true,0.0000
+28,Dunenza,4,4,tropical,false,silk,17.29024,true,2.1990
+28,Dunenza,4,4,tropical,false,clay,14.55532,true,0.0000
+28,Dunenza,4,4,tropical,false,transport,8.08496,true,3.5486
+28,Dunenza,4,4,tropical,false,construction,19.56556,true,3.7952
 28,Dunenza,4,4,tropical,false,research,1.00000,false,0.0000
-28,Dunenza,4,4,tropical,false,arms,1.89865,false,0.0000
-28,Dunenza,4,4,tropical,false,artillery,1.89897,false,0.0000
+28,Dunenza,4,4,tropical,false,arms,1.90711,false,0.0000
+28,Dunenza,4,4,tropical,false,artillery,1.90711,false,0.0000
 28,Dunenza,4,4,tropical,false,munitions,1.00000,false,0.0000
 28,Dunenza,4,4,tropical,false,vehicles,1.00000,false,0.0000
 28,Dunenza,4,4,tropical,false,aircraft,1.00000,false,0.0000
 28,Dunenza,4,4,tropical,false,oil,1.00000,false,0.0000
-28,Dunenza,4,4,tropical,false,tools,1.89865,false,0.0000
+28,Dunenza,4,4,tropical,false,tools,1.90711,false,0.0000
 28,Dunenza,4,4,tropical,false,steam engines,1.00000,false,0.0000
 28,Dunenza,4,4,tropical,false,explosives,1.00000,false,0.0000
 28,Dunenza,4,4,tropical,false,fertilizer,1.00000,false,0.0000
 28,Dunenza,4,4,tropical,false,electricity,1.00000,false,0.0000
-29,Inkenby,4,5,plains,true,bread,10.71514,true,1.9917
-29,Inkenby,4,5,plains,true,potatoes,6.58607,true,28.1878
-29,Inkenby,4,5,plains,true,meat,9.82809,true,10.0508
-29,Inkenby,4,5,plains,true,fish,7.48609,true,16.6188
-29,Inkenby,4,5,plains,true,clothes,16.32739,true,9.1881
-29,Inkenby,4,5,plains,true,wood,15.42709,true,0.0000
-29,Inkenby,4,5,plains,true,coal,17.26858,true,0.0000
-29,Inkenby,4,5,plains,true,furniture,22.03605,true,3.7258
-29,Inkenby,4,5,plains,true,ironware,35.56299,true,2.6365
-29,Inkenby,4,5,plains,true,beer,12.33334,true,14.9182
-29,Inkenby,4,5,plains,true,tea,22.48644,true,0.0000
-29,Inkenby,4,5,plains,true,sugar,27.17058,true,1.2349
-29,Inkenby,4,5,plains,true,wine,19.76146,true,4.4044
-29,Inkenby,4,5,plains,true,fine clothes,25.39488,true,1.5503
-29,Inkenby,4,5,plains,true,porcelain,25.90840,true,2.1962
-29,Inkenby,4,5,plains,true,grain,5.80802,true,23.4023
-29,Inkenby,4,5,plains,true,iron ore,19.46695,true,0.1993
-29,Inkenby,4,5,plains,true,iron,34.76968,true,0.4189
-29,Inkenby,4,5,plains,true,wool,8.12321,true,1.7000
-29,Inkenby,4,5,plains,true,cotton,10.79898,true,0.0000
-29,Inkenby,4,5,plains,true,cloth,12.36174,true,4.8407
-29,Inkenby,4,5,plains,true,sugar cane,16.59504,true,0.0000
-29,Inkenby,4,5,plains,true,grapes,11.19733,true,0.0000
-29,Inkenby,4,5,plains,true,silk,18.76370,true,0.0000
-29,Inkenby,4,5,plains,true,clay,5.78614,true,2.1123
-29,Inkenby,4,5,plains,true,transport,6.64787,true,30.2664
-29,Inkenby,4,5,plains,true,construction,12.91572,true,14.3343
+29,Inkenby,4,5,plains,true,bread,11.41060,true,1.8969
+29,Inkenby,4,5,plains,true,potatoes,7.00738,true,25.2694
+29,Inkenby,4,5,plains,true,meat,10.43497,true,8.9265
+29,Inkenby,4,5,plains,true,fish,7.97496,true,14.9182
+29,Inkenby,4,5,plains,true,clothes,16.93951,true,8.6673
+29,Inkenby,4,5,plains,true,wood,16.79095,true,0.0000
+29,Inkenby,4,5,plains,true,coal,18.06862,true,0.0000
+29,Inkenby,4,5,plains,true,furniture,23.62679,true,3.3719
+29,Inkenby,4,5,plains,true,ironware,34.72460,true,2.6848
+29,Inkenby,4,5,plains,true,beer,12.73909,true,13.2490
+29,Inkenby,4,5,plains,true,tea,22.28756,true,0.0000
+29,Inkenby,4,5,plains,true,sugar,25.83979,true,1.0853
+29,Inkenby,4,5,plains,true,wine,18.86110,true,3.1887
+29,Inkenby,4,5,plains,true,fine clothes,25.07569,true,1.8656
+29,Inkenby,4,5,plains,true,porcelain,26.27388,true,1.5703
+29,Inkenby,4,5,plains,true,grain,6.05066,true,20.1402
+29,Inkenby,4,5,plains,true,iron ore,20.24232,true,0.1704
+29,Inkenby,4,5,plains,true,iron,33.86790,true,0.3310
+29,Inkenby,4,5,plains,true,wool,7.40656,true,2.3908
+29,Inkenby,4,5,plains,true,cotton,10.40105,true,0.0000
+29,Inkenby,4,5,plains,true,cloth,12.40252,true,4.6995
+29,Inkenby,4,5,plains,true,sugar cane,15.04687,true,0.0000
+29,Inkenby,4,5,plains,true,grapes,11.25037,true,0.0000
+29,Inkenby,4,5,plains,true,silk,18.33063,true,0.0000
+29,Inkenby,4,5,plains,true,clay,5.87309,true,1.6740
+29,Inkenby,4,5,plains,true,transport,7.33125,true,29.1832
+29,Inkenby,4,5,plains,true,construction,17.78505,true,25.9170
 29,Inkenby,4,5,plains,true,research,1.00000,false,0.0000
-29,Inkenby,4,5,plains,true,arms,1.26388,false,0.0000
-29,Inkenby,4,5,plains,true,artillery,1.36186,false,0.0000
+29,Inkenby,4,5,plains,true,arms,1.38930,false,0.0000
+29,Inkenby,4,5,plains,true,artillery,1.38930,false,0.0000
 29,Inkenby,4,5,plains,true,munitions,1.00000,false,0.0000
 29,Inkenby,4,5,plains,true,vehicles,1.00000,false,0.0000
 29,Inkenby,4,5,plains,true,aircraft,1.00000,false,0.0000
 29,Inkenby,4,5,plains,true,oil,1.00000,false,0.0000
-29,Inkenby,4,5,plains,true,tools,1.26388,false,0.0000
+29,Inkenby,4,5,plains,true,tools,1.38930,false,0.0000
 29,Inkenby,4,5,plains,true,steam engines,1.00000,false,0.0000
 29,Inkenby,4,5,plains,true,explosives,1.00000,false,0.0000
 29,Inkenby,4,5,plains,true,fertilizer,1.00000,false,0.0000
 29,Inkenby,4,5,plains,true,electricity,1.00000,false,0.0000
-30,Yarencliffe,5,0,hills,true,bread,11.98159,true,2.0156
-30,Yarencliffe,5,0,hills,true,potatoes,8.01160,true,21.4204
-30,Yarencliffe,5,0,hills,true,meat,11.16673,true,0.0000
-30,Yarencliffe,5,0,hills,true,fish,8.34698,true,17.5397
-30,Yarencliffe,5,0,hills,true,clothes,15.48908,true,11.3072
-30,Yarencliffe,5,0,hills,true,wood,19.71677,true,0.0000
-30,Yarencliffe,5,0,hills,true,coal,14.56592,true,30.0807
-30,Yarencliffe,5,0,hills,true,furniture,23.81990,true,3.2789
-30,Yarencliffe,5,0,hills,true,ironware,32.63421,true,3.1753
-30,Yarencliffe,5,0,hills,true,beer,13.57425,true,15.7453
-30,Yarencliffe,5,0,hills,true,tea,23.88227,true,0.0000
-30,Yarencliffe,5,0,hills,true,sugar,27.34015,true,1.0137
-30,Yarencliffe,5,0,hills,true,wine,18.66025,true,9.1025
-30,Yarencliffe,5,0,hills,true,fine clothes,24.87697,true,1.4073
-30,Yarencliffe,5,0,hills,true,porcelain,24.21558,true,2.8361
-30,Yarencliffe,5,0,hills,true,grain,7.26905,true,0.0000
-30,Yarencliffe,5,0,hills,true,iron ore,12.13794,true,0.4663
-30,Yarencliffe,5,0,hills,true,iron,29.75030,true,0.4911
-30,Yarencliffe,5,0,hills,true,wool,5.47814,true,4.6546
-30,Yarencliffe,5,0,hills,true,cotton,12.29395,true,0.0000
-30,Yarencliffe,5,0,hills,true,cloth,10.77648,true,6.7462
-30,Yarencliffe,5,0,hills,true,sugar cane,19.52529,true,0.0000
-30,Yarencliffe,5,0,hills,true,grapes,7.98013,true,15.8890
-30,Yarencliffe,5,0,hills,true,silk,19.15748,true,0.0000
-30,Yarencliffe,5,0,hills,true,clay,4.90879,true,2.8086
-30,Yarencliffe,5,0,hills,true,transport,6.61558,true,18.4140
-30,Yarencliffe,5,0,hills,true,construction,16.26622,true,20.1457
+30,Yarencliffe,5,0,hills,true,bread,11.68901,true,2.0396
+30,Yarencliffe,5,0,hills,true,potatoes,7.77069,true,21.7051
+30,Yarencliffe,5,0,hills,true,meat,10.93093,true,0.0000
+30,Yarencliffe,5,0,hills,true,fish,8.10584,true,17.7701
+30,Yarencliffe,5,0,hills,true,clothes,14.99384,true,11.4901
+30,Yarencliffe,5,0,hills,true,wood,18.97061,true,0.0000
+30,Yarencliffe,5,0,hills,true,coal,14.19971,true,30.7968
+30,Yarencliffe,5,0,hills,true,furniture,23.35881,true,3.4568
+30,Yarencliffe,5,0,hills,true,ironware,32.32065,true,3.2213
+30,Yarencliffe,5,0,hills,true,beer,12.90557,true,16.6207
+30,Yarencliffe,5,0,hills,true,tea,23.50514,true,0.0000
+30,Yarencliffe,5,0,hills,true,sugar,27.80049,true,1.1050
+30,Yarencliffe,5,0,hills,true,wine,18.08262,true,9.3560
+30,Yarencliffe,5,0,hills,true,fine clothes,24.45748,true,1.4498
+30,Yarencliffe,5,0,hills,true,porcelain,23.56042,true,2.9504
+30,Yarencliffe,5,0,hills,true,grain,7.16730,true,0.0000
+30,Yarencliffe,5,0,hills,true,iron ore,13.85272,true,0.6210
+30,Yarencliffe,5,0,hills,true,iron,30.01592,true,0.9127
+30,Yarencliffe,5,0,hills,true,wool,5.30256,true,4.7079
+30,Yarencliffe,5,0,hills,true,cotton,11.80315,true,0.0000
+30,Yarencliffe,5,0,hills,true,cloth,10.37770,true,6.7261
+30,Yarencliffe,5,0,hills,true,sugar cane,19.59252,true,0.0000
+30,Yarencliffe,5,0,hills,true,grapes,7.81655,true,17.0006
+30,Yarencliffe,5,0,hills,true,silk,19.04989,true,0.0000
+30,Yarencliffe,5,0,hills,true,clay,4.78120,true,2.8998
+30,Yarencliffe,5,0,hills,true,transport,5.97641,true,18.8379
+30,Yarencliffe,5,0,hills,true,construction,14.51726,true,17.0207
 30,Yarencliffe,5,0,hills,true,research,1.00000,false,0.0000
-30,Yarencliffe,5,0,hills,true,arms,1.29344,false,0.0000
-30,Yarencliffe,5,0,hills,true,artillery,1.29344,false,0.0000
+30,Yarencliffe,5,0,hills,true,arms,1.33791,false,0.0000
+30,Yarencliffe,5,0,hills,true,artillery,1.33793,false,0.0000
 30,Yarencliffe,5,0,hills,true,munitions,1.00000,false,0.0000
 30,Yarencliffe,5,0,hills,true,vehicles,1.00000,false,0.0000
 30,Yarencliffe,5,0,hills,true,aircraft,1.00000,false,0.0000
 30,Yarencliffe,5,0,hills,true,oil,1.00000,false,0.0000
-30,Yarencliffe,5,0,hills,true,tools,1.29344,false,0.0000
+30,Yarencliffe,5,0,hills,true,tools,1.33791,false,0.0000
 30,Yarencliffe,5,0,hills,true,steam engines,1.00000,false,0.0000
 30,Yarencliffe,5,0,hills,true,explosives,1.00000,false,0.0000
 30,Yarencliffe,5,0,hills,true,fertilizer,1.00000,false,0.0000
 30,Yarencliffe,5,0,hills,true,electricity,1.00000,false,0.0000
-31,Lisness,5,1,plains,true,bread,9.89407,true,2.0202
-31,Lisness,5,1,plains,true,potatoes,5.91896,true,25.0003
-31,Lisness,5,1,plains,true,meat,8.82491,true,8.8873
-31,Lisness,5,1,plains,true,fish,7.21992,true,16.4307
-31,Lisness,5,1,plains,true,clothes,15.83576,true,7.6550
-31,Lisness,5,1,plains,true,wood,23.32821,true,0.0000
-31,Lisness,5,1,plains,true,coal,17.77145,true,0.0000
-31,Lisness,5,1,plains,true,furniture,25.04345,true,2.1486
-31,Lisness,5,1,plains,true,ironware,34.44009,true,2.4553
-31,Lisness,5,1,plains,true,beer,11.19701,true,13.7327
-31,Lisness,5,1,plains,true,tea,23.25475,true,0.0000
-31,Lisness,5,1,plains,true,sugar,26.83786,true,1.1524
-31,Lisness,5,1,plains,true,wine,19.52183,true,3.4493
-31,Lisness,5,1,plains,true,fine clothes,24.12590,true,2.0241
-31,Lisness,5,1,plains,true,porcelain,24.92734,true,1.7222
-31,Lisness,5,1,plains,true,grain,4.67594,true,17.5164
-31,Lisness,5,1,plains,true,iron ore,15.07835,true,0.1351
-31,Lisness,5,1,plains,true,iron,31.66232,true,0.3662
-31,Lisness,5,1,plains,true,wool,6.98342,true,1.3960
-31,Lisness,5,1,plains,true,cotton,10.62749,true,0.0000
-31,Lisness,5,1,plains,true,cloth,11.88902,true,3.3459
-31,Lisness,5,1,plains,true,sugar cane,15.52209,true,0.0000
-31,Lisness,5,1,plains,true,grapes,10.35808,true,0.0000
-31,Lisness,5,1,plains,true,silk,18.93356,true,0.0000
-31,Lisness,5,1,plains,true,clay,5.03146,true,1.7109
-31,Lisness,5,1,plains,true,transport,6.61140,true,24.9794
-31,Lisness,5,1,plains,true,construction,16.00208,true,17.8377
+31,Lisness,5,1,plains,true,bread,9.62396,true,2.0711
+31,Lisness,5,1,plains,true,potatoes,5.79039,true,25.8101
+31,Lisness,5,1,plains,true,meat,8.64790,true,9.1876
+31,Lisness,5,1,plains,true,fish,7.06917,true,16.9612
+31,Lisness,5,1,plains,true,clothes,14.86537,true,7.9077
+31,Lisness,5,1,plains,true,wood,21.89554,true,0.0000
+31,Lisness,5,1,plains,true,coal,17.44608,true,0.0000
+31,Lisness,5,1,plains,true,furniture,24.08276,true,2.2510
+31,Lisness,5,1,plains,true,ironware,34.20059,true,2.5829
+31,Lisness,5,1,plains,true,beer,10.93312,true,14.1638
+31,Lisness,5,1,plains,true,tea,22.92356,true,0.0000
+31,Lisness,5,1,plains,true,sugar,26.84565,true,1.2434
+31,Lisness,5,1,plains,true,wine,18.99281,true,4.6818
+31,Lisness,5,1,plains,true,fine clothes,24.32997,true,2.2297
+31,Lisness,5,1,plains,true,porcelain,24.38372,true,1.8541
+31,Lisness,5,1,plains,true,grain,4.53992,true,17.9303
+31,Lisness,5,1,plains,true,iron ore,16.67520,true,0.1642
+31,Lisness,5,1,plains,true,iron,31.69662,true,0.3548
+31,Lisness,5,1,plains,true,wool,6.96747,true,1.4968
+31,Lisness,5,1,plains,true,cotton,10.20388,true,0.0000
+31,Lisness,5,1,plains,true,cloth,10.73611,true,4.2504
+31,Lisness,5,1,plains,true,sugar cane,15.40267,true,0.0000
+31,Lisness,5,1,plains,true,grapes,10.42036,true,0.0000
+31,Lisness,5,1,plains,true,silk,18.65557,true,0.0000
+31,Lisness,5,1,plains,true,clay,4.93790,true,1.8417
+31,Lisness,5,1,plains,true,transport,6.04293,true,26.2190
+31,Lisness,5,1,plains,true,construction,14.23408,true,14.1985
 31,Lisness,5,1,plains,true,research,1.00000,false,0.0000
-31,Lisness,5,1,plains,true,arms,1.33486,false,0.0000
-31,Lisness,5,1,plains,true,artillery,1.33486,false,0.0000
+31,Lisness,5,1,plains,true,arms,1.25836,false,0.0000
+31,Lisness,5,1,plains,true,artillery,1.25836,false,0.0000
 31,Lisness,5,1,plains,true,munitions,1.00000,false,0.0000
 31,Lisness,5,1,plains,true,vehicles,1.00000,false,0.0000
 31,Lisness,5,1,plains,true,aircraft,1.00000,false,0.0000
 31,Lisness,5,1,plains,true,oil,1.00000,false,0.0000
-31,Lisness,5,1,plains,true,tools,1.33486,false,0.0000
+31,Lisness,5,1,plains,true,tools,1.25836,false,0.0000
 31,Lisness,5,1,plains,true,steam engines,1.00000,false,0.0000
 31,Lisness,5,1,plains,true,explosives,1.00000,false,0.0000
 31,Lisness,5,1,plains,true,fertilizer,1.00000,false,0.0000
 31,Lisness,5,1,plains,true,electricity,1.00000,false,0.0000
-32,Lanenton,5,2,plains,true,bread,11.19791,true,2.0942
-32,Lanenton,5,2,plains,true,potatoes,6.74026,true,29.9335
-32,Lanenton,5,2,plains,true,meat,9.93411,true,10.4136
-32,Lanenton,5,2,plains,true,fish,7.71531,true,17.7825
-32,Lanenton,5,2,plains,true,clothes,16.07449,true,9.5548
-32,Lanenton,5,2,plains,true,wood,22.47779,true,0.0000
-32,Lanenton,5,2,plains,true,coal,20.89346,true,0.0000
-32,Lanenton,5,2,plains,true,furniture,26.19570,true,2.4990
-32,Lanenton,5,2,plains,true,ironware,36.04789,true,2.5543
-32,Lanenton,5,2,plains,true,beer,12.27996,true,14.9063
-32,Lanenton,5,2,plains,true,tea,22.70697,true,0.0000
-32,Lanenton,5,2,plains,true,sugar,26.30849,true,2.4387
-32,Lanenton,5,2,plains,true,wine,20.47314,true,1.9550
-32,Lanenton,5,2,plains,true,fine clothes,24.98650,true,2.2325
-32,Lanenton,5,2,plains,true,porcelain,25.51366,true,1.7032
-32,Lanenton,5,2,plains,true,grain,5.79535,true,23.7711
-32,Lanenton,5,2,plains,true,iron ore,18.24087,true,0.1890
-32,Lanenton,5,2,plains,true,iron,33.79981,true,0.3445
-32,Lanenton,5,2,plains,true,wool,7.30490,true,2.9727
-32,Lanenton,5,2,plains,true,cotton,8.99018,true,0.0000
-32,Lanenton,5,2,plains,true,cloth,11.76390,true,5.2259
-32,Lanenton,5,2,plains,true,sugar cane,11.74012,true,0.0000
-32,Lanenton,5,2,plains,true,grapes,13.08132,true,0.0000
-32,Lanenton,5,2,plains,true,silk,18.66909,true,0.0000
-32,Lanenton,5,2,plains,true,clay,5.32640,true,1.9016
-32,Lanenton,5,2,plains,true,transport,6.61522,true,24.8332
-32,Lanenton,5,2,plains,true,construction,12.58081,true,9.6598
+32,Lanenton,5,2,plains,true,bread,11.23153,true,1.8538
+32,Lanenton,5,2,plains,true,potatoes,6.85244,true,28.4607
+32,Lanenton,5,2,plains,true,meat,10.11257,true,9.9537
+32,Lanenton,5,2,plains,true,fish,7.80692,true,16.8677
+32,Lanenton,5,2,plains,true,clothes,16.16247,true,9.1029
+32,Lanenton,5,2,plains,true,wood,22.74040,true,0.0000
+32,Lanenton,5,2,plains,true,coal,20.68459,true,0.0000
+32,Lanenton,5,2,plains,true,furniture,26.25645,true,2.2939
+32,Lanenton,5,2,plains,true,ironware,36.05947,true,2.4264
+32,Lanenton,5,2,plains,true,beer,12.41310,true,13.8982
+32,Lanenton,5,2,plains,true,tea,22.35682,true,0.0000
+32,Lanenton,5,2,plains,true,sugar,25.51242,true,2.2996
+32,Lanenton,5,2,plains,true,wine,19.58812,true,1.7080
+32,Lanenton,5,2,plains,true,fine clothes,24.86744,true,2.1182
+32,Lanenton,5,2,plains,true,porcelain,25.35334,true,1.4788
+32,Lanenton,5,2,plains,true,grain,5.92314,true,22.8701
+32,Lanenton,5,2,plains,true,iron ore,18.23522,true,0.1433
+32,Lanenton,5,2,plains,true,iron,33.25098,true,0.3223
+32,Lanenton,5,2,plains,true,wool,7.30030,true,2.7682
+32,Lanenton,5,2,plains,true,cotton,8.52910,true,0.0000
+32,Lanenton,5,2,plains,true,cloth,11.72074,true,4.9837
+32,Lanenton,5,2,plains,true,sugar cane,11.26384,true,0.0000
+32,Lanenton,5,2,plains,true,grapes,12.97155,true,0.0000
+32,Lanenton,5,2,plains,true,silk,18.25352,true,0.0000
+32,Lanenton,5,2,plains,true,clay,5.27901,true,1.7233
+32,Lanenton,5,2,plains,true,transport,6.38442,true,24.6911
+32,Lanenton,5,2,plains,true,construction,13.98827,true,14.7076
 32,Lanenton,5,2,plains,true,research,1.00000,false,0.0000
-32,Lanenton,5,2,plains,true,arms,1.24304,false,0.0000
-32,Lanenton,5,2,plains,true,artillery,1.24304,false,0.0000
+32,Lanenton,5,2,plains,true,arms,1.26923,false,0.0000
+32,Lanenton,5,2,plains,true,artillery,1.26923,false,0.0000
 32,Lanenton,5,2,plains,true,munitions,1.00000,false,0.0000
 32,Lanenton,5,2,plains,true,vehicles,1.00000,false,0.0000
 32,Lanenton,5,2,plains,true,aircraft,1.00000,false,0.0000
 32,Lanenton,5,2,plains,true,oil,1.00000,false,0.0000
-32,Lanenton,5,2,plains,true,tools,1.24304,false,0.0000
+32,Lanenton,5,2,plains,true,tools,1.26923,false,0.0000
 32,Lanenton,5,2,plains,true,steam engines,1.00000,false,0.0000
 32,Lanenton,5,2,plains,true,explosives,1.00000,false,0.0000
 32,Lanenton,5,2,plains,true,fertilizer,1.00000,false,0.0000
 32,Lanenton,5,2,plains,true,electricity,1.00000,false,0.0000
-33,Thornora,5,3,tropical,true,bread,14.41735,true,2.0176
-33,Thornora,5,3,tropical,true,potatoes,10.62271,true,0.0000
-33,Thornora,5,3,tropical,true,meat,13.45847,true,0.0000
-33,Thornora,5,3,tropical,true,fish,9.12437,true,15.9466
-33,Thornora,5,3,tropical,true,clothes,17.85657,true,8.0129
-33,Thornora,5,3,tropical,true,wood,19.15003,true,0.0000
-33,Thornora,5,3,tropical,true,coal,24.00782,true,0.0000
-33,Thornora,5,3,tropical,true,furniture,26.25280,true,2.5025
-33,Thornora,5,3,tropical,true,ironware,37.88143,true,1.6287
-33,Thornora,5,3,tropical,true,beer,15.65520,true,11.2681
-33,Thornora,5,3,tropical,true,tea,22.30612,true,22.0550
-33,Thornora,5,3,tropical,true,sugar,24.99944,true,9.4038
-33,Thornora,5,3,tropical,true,wine,20.39704,true,1.2423
-33,Thornora,5,3,tropical,true,fine clothes,25.69830,true,1.2105
-33,Thornora,5,3,tropical,true,porcelain,26.30231,true,0.3888
-33,Thornora,5,3,tropical,true,grain,8.42442,true,0.7312
-33,Thornora,5,3,tropical,true,iron ore,20.60298,true,0.1559
-33,Thornora,5,3,tropical,true,iron,35.92497,true,0.3205
-33,Thornora,5,3,tropical,true,wool,9.06215,true,0.0000
-33,Thornora,5,3,tropical,true,cotton,7.00957,true,8.0537
-33,Thornora,5,3,tropical,true,cloth,12.18504,true,4.6444
-33,Thornora,5,3,tropical,true,sugar cane,7.43676,true,23.9298
-33,Thornora,5,3,tropical,true,grapes,15.60353,true,0.0000
-33,Thornora,5,3,tropical,true,silk,18.39918,true,5.4181
-33,Thornora,5,3,tropical,true,clay,8.47340,true,0.0000
-33,Thornora,5,3,tropical,true,transport,7.67360,true,14.7708
-33,Thornora,5,3,tropical,true,construction,18.23853,true,17.7005
+33,Thornora,5,3,tropical,true,bread,13.32288,true,3.1016
+33,Thornora,5,3,tropical,true,potatoes,10.24048,true,0.0000
+33,Thornora,5,3,tropical,true,meat,13.23466,true,0.0000
+33,Thornora,5,3,tropical,true,fish,8.88234,true,16.4026
+33,Thornora,5,3,tropical,true,clothes,17.13705,true,8.0084
+33,Thornora,5,3,tropical,true,wood,19.39093,true,0.0000
+33,Thornora,5,3,tropical,true,coal,24.30151,true,0.0000
+33,Thornora,5,3,tropical,true,furniture,25.13921,true,3.1357
+33,Thornora,5,3,tropical,true,ironware,37.65621,true,1.7286
+33,Thornora,5,3,tropical,true,beer,15.39591,true,11.2564
+33,Thornora,5,3,tropical,true,tea,21.83663,true,22.9556
+33,Thornora,5,3,tropical,true,sugar,24.54610,true,9.6172
+33,Thornora,5,3,tropical,true,wine,20.37542,true,1.2918
+33,Thornora,5,3,tropical,true,fine clothes,25.25449,true,1.2826
+33,Thornora,5,3,tropical,true,porcelain,26.23389,true,0.4179
+33,Thornora,5,3,tropical,true,grain,8.40040,true,0.7900
+33,Thornora,5,3,tropical,true,iron ore,20.08057,true,0.1626
+33,Thornora,5,3,tropical,true,iron,35.08577,true,0.3101
+33,Thornora,5,3,tropical,true,wool,8.95080,true,0.0000
+33,Thornora,5,3,tropical,true,cotton,6.79199,true,8.2470
+33,Thornora,5,3,tropical,true,cloth,11.75141,true,4.6456
+33,Thornora,5,3,tropical,true,sugar cane,7.22870,true,24.7787
+33,Thornora,5,3,tropical,true,grapes,15.73186,true,0.0000
+33,Thornora,5,3,tropical,true,silk,17.87351,true,5.5647
+33,Thornora,5,3,tropical,true,clay,8.42521,true,0.0000
+33,Thornora,5,3,tropical,true,transport,6.74683,true,15.3153
+33,Thornora,5,3,tropical,true,construction,16.21442,true,14.4021
 33,Thornora,5,3,tropical,true,research,1.00000,false,0.0000
-33,Thornora,5,3,tropical,true,arms,1.56294,false,0.0000
-33,Thornora,5,3,tropical,true,artillery,1.56294,false,0.0000
+33,Thornora,5,3,tropical,true,arms,1.55639,false,0.0000
+33,Thornora,5,3,tropical,true,artillery,1.55639,false,0.0000
 33,Thornora,5,3,tropical,true,munitions,1.00000,false,0.0000
 33,Thornora,5,3,tropical,true,vehicles,1.00000,false,0.0000
 33,Thornora,5,3,tropical,true,aircraft,1.00000,false,0.0000
 33,Thornora,5,3,tropical,true,oil,1.00000,false,0.0000
-33,Thornora,5,3,tropical,true,tools,1.56294,false,0.0000
+33,Thornora,5,3,tropical,true,tools,1.55639,false,0.0000
 33,Thornora,5,3,tropical,true,steam engines,1.00000,false,0.0000
 33,Thornora,5,3,tropical,true,explosives,1.00000,false,0.0000
 33,Thornora,5,3,tropical,true,fertilizer,1.00000,false,0.0000
 33,Thornora,5,3,tropical,true,electricity,1.00000,false,0.0000
-34,Iveraley,5,4,plains,true,bread,11.63806,true,2.0781
-34,Iveraley,5,4,plains,true,potatoes,7.04953,true,26.3985
-34,Iveraley,5,4,plains,true,meat,10.16369,true,8.9487
-34,Iveraley,5,4,plains,true,fish,7.73828,true,14.8490
-34,Iveraley,5,4,plains,true,clothes,16.82005,true,7.6194
-34,Iveraley,5,4,plains,true,wood,15.77072,true,0.0000
-34,Iveraley,5,4,plains,true,coal,20.80345,true,0.0000
-34,Iveraley,5,4,plains,true,furniture,23.35812,true,2.6436
-34,Iveraley,5,4,plains,true,ironware,36.18048,true,2.1781
-34,Iveraley,5,4,plains,true,beer,12.90651,true,12.0954
-34,Iveraley,5,4,plains,true,tea,22.94306,true,0.0000
-34,Iveraley,5,4,plains,true,sugar,25.98222,true,2.2348
-34,Iveraley,5,4,plains,true,wine,19.56556,true,1.8888
-34,Iveraley,5,4,plains,true,fine clothes,26.02724,true,1.3599
-34,Iveraley,5,4,plains,true,porcelain,26.13520,true,1.5739
-34,Iveraley,5,4,plains,true,grain,5.94644,true,20.4731
-34,Iveraley,5,4,plains,true,iron ore,20.58001,true,0.1249
-34,Iveraley,5,4,plains,true,iron,36.72700,true,0.3983
-34,Iveraley,5,4,plains,true,wool,8.14719,true,1.4434
-34,Iveraley,5,4,plains,true,cotton,8.94389,true,0.0000
-34,Iveraley,5,4,plains,true,cloth,11.99937,true,4.3607
-34,Iveraley,5,4,plains,true,sugar cane,11.97883,true,0.0000
-34,Iveraley,5,4,plains,true,grapes,14.44058,true,0.0000
-34,Iveraley,5,4,plains,true,silk,18.69432,true,0.0000
-34,Iveraley,5,4,plains,true,clay,5.86619,true,1.7881
-34,Iveraley,5,4,plains,true,transport,6.99723,true,24.7624
-34,Iveraley,5,4,plains,true,construction,15.56192,true,23.3122
+34,Iveraley,5,4,plains,true,bread,10.92213,true,1.9830
+34,Iveraley,5,4,plains,true,potatoes,6.61720,true,28.8815
+34,Iveraley,5,4,plains,true,meat,9.80316,true,10.2535
+34,Iveraley,5,4,plains,true,fish,7.39356,true,16.6683
+34,Iveraley,5,4,plains,true,clothes,16.14288,true,8.3193
+34,Iveraley,5,4,plains,true,wood,16.34823,true,0.0000
+34,Iveraley,5,4,plains,true,coal,21.99496,true,0.0000
+34,Iveraley,5,4,plains,true,furniture,21.51813,true,3.2396
+34,Iveraley,5,4,plains,true,ironware,35.79711,true,2.4256
+34,Iveraley,5,4,plains,true,beer,11.98978,true,13.7462
+34,Iveraley,5,4,plains,true,tea,22.59658,true,0.0000
+34,Iveraley,5,4,plains,true,sugar,25.85303,true,2.5671
+34,Iveraley,5,4,plains,true,wine,22.01470,true,2.8037
+34,Iveraley,5,4,plains,true,fine clothes,25.49343,true,1.5967
+34,Iveraley,5,4,plains,true,porcelain,25.76240,true,1.8130
+34,Iveraley,5,4,plains,true,grain,5.76804,true,23.7152
+34,Iveraley,5,4,plains,true,iron ore,20.56132,true,0.1697
+34,Iveraley,5,4,plains,true,iron,36.27587,true,0.4124
+34,Iveraley,5,4,plains,true,wool,7.70492,true,1.5955
+34,Iveraley,5,4,plains,true,cotton,8.59494,true,0.0000
+34,Iveraley,5,4,plains,true,cloth,11.47239,true,4.7335
+34,Iveraley,5,4,plains,true,sugar cane,11.26770,true,0.0000
+34,Iveraley,5,4,plains,true,grapes,15.52181,true,0.0000
+34,Iveraley,5,4,plains,true,silk,18.28394,true,0.0000
+34,Iveraley,5,4,plains,true,clay,5.95666,true,2.2428
+34,Iveraley,5,4,plains,true,transport,6.52854,true,26.8925
+34,Iveraley,5,4,plains,true,construction,11.62148,true,9.8247
 34,Iveraley,5,4,plains,true,research,1.00000,false,0.0000
-34,Iveraley,5,4,plains,true,arms,1.35501,false,0.0000
-34,Iveraley,5,4,plains,true,artillery,1.35501,false,0.0000
+34,Iveraley,5,4,plains,true,arms,1.18056,false,0.0000
+34,Iveraley,5,4,plains,true,artillery,1.18056,false,0.0000
 34,Iveraley,5,4,plains,true,munitions,1.00000,false,0.0000
 34,Iveraley,5,4,plains,true,vehicles,1.00000,false,0.0000
 34,Iveraley,5,4,plains,true,aircraft,1.00000,false,0.0000
 34,Iveraley,5,4,plains,true,oil,1.00000,false,0.0000
-34,Iveraley,5,4,plains,true,tools,1.35501,false,0.0000
+34,Iveraley,5,4,plains,true,tools,1.18056,false,0.0000
 34,Iveraley,5,4,plains,true,steam engines,1.00000,false,0.0000
 34,Iveraley,5,4,plains,true,explosives,1.00000,false,0.0000
 34,Iveraley,5,4,plains,true,fertilizer,1.00000,false,0.0000
 34,Iveraley,5,4,plains,true,electricity,1.00000,false,0.0000
-35,Barobay,5,5,forest,true,bread,13.09062,true,6.3967
-35,Barobay,5,5,forest,true,potatoes,10.54133,true,15.7725
-35,Barobay,5,5,forest,true,meat,13.56921,true,0.6566
-35,Barobay,5,5,forest,true,fish,10.14202,true,20.0072
-35,Barobay,5,5,forest,true,clothes,16.78975,true,14.8127
-35,Barobay,5,5,forest,true,wood,12.49116,true,88.6580
-35,Barobay,5,5,forest,true,coal,21.04892,true,0.0000
-35,Barobay,5,5,forest,true,furniture,20.80919,true,7.6721
-35,Barobay,5,5,forest,true,ironware,35.93783,true,5.2545
-35,Barobay,5,5,forest,true,beer,14.72030,true,20.1896
-35,Barobay,5,5,forest,true,tea,23.60582,true,0.0000
-35,Barobay,5,5,forest,true,sugar,27.02989,true,1.9969
-35,Barobay,5,5,forest,true,wine,20.83599,true,2.8722
-35,Barobay,5,5,forest,true,fine clothes,25.95490,true,3.0242
-35,Barobay,5,5,forest,true,porcelain,27.25629,true,0.8349
-35,Barobay,5,5,forest,true,grain,8.59980,true,0.0000
-35,Barobay,5,5,forest,true,iron ore,23.05322,true,0.3103
-35,Barobay,5,5,forest,true,iron,37.07757,true,0.9373
-35,Barobay,5,5,forest,true,wool,9.90956,true,0.0000
-35,Barobay,5,5,forest,true,cotton,10.70333,true,0.0000
-35,Barobay,5,5,forest,true,cloth,12.83668,true,7.6575
-35,Barobay,5,5,forest,true,sugar cane,16.59759,true,0.0000
-35,Barobay,5,5,forest,true,grapes,13.51502,true,0.0000
-35,Barobay,5,5,forest,true,silk,19.13075,true,0.0000
-35,Barobay,5,5,forest,true,clay,9.12537,true,0.0000
-35,Barobay,5,5,forest,true,transport,6.52590,true,28.4683
-35,Barobay,5,5,forest,true,construction,14.33181,true,23.6399
+35,Barobay,5,5,forest,true,bread,13.40954,true,6.4972
+35,Barobay,5,5,forest,true,potatoes,10.87823,true,15.5590
+35,Barobay,5,5,forest,true,meat,13.61732,true,0.6208
+35,Barobay,5,5,forest,true,fish,10.38919,true,19.4544
+35,Barobay,5,5,forest,true,clothes,17.08438,true,14.7891
+35,Barobay,5,5,forest,true,wood,13.03707,true,88.7060
+35,Barobay,5,5,forest,true,coal,21.91779,true,0.0000
+35,Barobay,5,5,forest,true,furniture,21.26311,true,7.2512
+35,Barobay,5,5,forest,true,ironware,35.34333,true,5.5047
+35,Barobay,5,5,forest,true,beer,14.95468,true,20.1006
+35,Barobay,5,5,forest,true,tea,23.30120,true,0.0000
+35,Barobay,5,5,forest,true,sugar,27.05661,true,2.1076
+35,Barobay,5,5,forest,true,wine,20.23709,true,3.3185
+35,Barobay,5,5,forest,true,fine clothes,26.16290,true,2.9789
+35,Barobay,5,5,forest,true,porcelain,27.67078,true,1.5400
+35,Barobay,5,5,forest,true,grain,8.59127,true,0.0000
+35,Barobay,5,5,forest,true,iron ore,23.78984,true,0.3033
+35,Barobay,5,5,forest,true,iron,36.14929,true,1.2018
+35,Barobay,5,5,forest,true,wool,9.22395,true,0.0000
+35,Barobay,5,5,forest,true,cotton,10.35410,true,0.0000
+35,Barobay,5,5,forest,true,cloth,12.80667,true,7.8547
+35,Barobay,5,5,forest,true,sugar cane,15.40183,true,0.0000
+35,Barobay,5,5,forest,true,grapes,13.76988,true,0.0000
+35,Barobay,5,5,forest,true,silk,18.57746,true,0.0000
+35,Barobay,5,5,forest,true,clay,9.20651,true,0.0000
+35,Barobay,5,5,forest,true,transport,6.82649,true,28.5974
+35,Barobay,5,5,forest,true,construction,15.34276,true,23.3527
 35,Barobay,5,5,forest,true,research,1.00000,false,0.0000
-35,Barobay,5,5,forest,true,arms,1.39572,false,0.0000
-35,Barobay,5,5,forest,true,artillery,1.39572,false,0.0000
+35,Barobay,5,5,forest,true,arms,1.43649,false,0.0000
+35,Barobay,5,5,forest,true,artillery,1.43649,false,0.0000
 35,Barobay,5,5,forest,true,munitions,1.00000,false,0.0000
 35,Barobay,5,5,forest,true,vehicles,1.00000,false,0.0000
 35,Barobay,5,5,forest,true,aircraft,1.00000,false,0.0000
 35,Barobay,5,5,forest,true,oil,1.00000,false,0.0000
-35,Barobay,5,5,forest,true,tools,1.39572,false,0.0000
+35,Barobay,5,5,forest,true,tools,1.43649,false,0.0000
 35,Barobay,5,5,forest,true,steam engines,1.00000,false,0.0000
 35,Barobay,5,5,forest,true,explosives,1.00000,false,0.0000
 35,Barobay,5,5,forest,true,fertilizer,1.00000,false,0.0000

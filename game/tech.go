@@ -436,6 +436,7 @@ func (n *Nation) supplyTransportMult() float64 {
 func (n *Nation) buildRateMult() float64 {
 	return n.techProduct(func(t *Tech) float64 { return t.BuildRate })
 }
+
 // paybackMult is how much longer owners will wait for a level to pay off:
 // each finance tech's effect as far as it has been adopted. Banks and their
 // branches spread over years, and with them the credit that let owners

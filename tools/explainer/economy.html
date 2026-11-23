@@ -533,7 +533,7 @@ function drawFirm() {
   legend(document.getElementById("legend-firm"), f.Methods.map((m, i) => [SERIES[i], `${m.Name}${i ? " (later)" : " (1820)"}: TFP ${m.TFP}, labour exponent ${(m.Factors.find((x) => x.Kind === "labour") || { Exp: 0 }).Exp}`]));
   const first = f.Methods[0], last = f.Methods[f.Methods.length - 1];
   const inputs = (m) => m.Factors.filter((x) => x.Kind !== "labour").map((x) => `${x.Kind} (${x.Exp})`).join(", ") || "nothing but labour";
-  document.getElementById("cap-firm").textContent = `The other inputs are held at one unit per level. The ${first.Name.toLowerCase()} of 1820 needs ${inputs(first)}; the ${last.Name.toLowerCase()} needs ${inputs(last)}. Each curve flattens as workers are added: that is the diminishing return. A higher curve with a lower exponent makes more with fewer hands.`;
+  document.getElementById("cap-firm").textContent = `The other inputs are held at one unit per level. The ${first.Name.toLowerCase()} of 1820 needs ${inputs(first)}; the ${last.Name.toLowerCase()} needs ${inputs(last)}. Each curve flattens as workers are added: that is the diminishing return. The later methods' levels also hold machines (the seed drill's tools, the tractor), so each makes more with the same hands.`;
   document.querySelectorAll("#firm-pick button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.f === firmPick));
 }
 document.getElementById("firm-pick").innerHTML = firmNames.map((n) => `<button data-f="${esc(n)}">${esc(n)}</button>`).join("");
