@@ -315,13 +315,19 @@ func TestProfitableFirmsInvest(t *testing.T) {
 		t.Error("no firm expanded in 1200 ticks")
 	}
 	still := newTestWorld(t, 1) // investment off
+	start := map[*Firm]int{}
+	for _, r := range still.Regions {
+		for _, f := range r.Firms {
+			start[f] = f.Levels
+		}
+	}
 	for i := 0; i < 300; i++ {
 		still.Step()
 	}
 	for _, r := range still.Regions {
 		for _, f := range r.Firms {
-			if f.Levels != 1 {
-				t.Fatalf("with investment off, firm %s grew to %d levels", f.Name, f.Levels)
+			if f.Levels != start[f] {
+				t.Fatalf("with investment off, firm %s went from %d to %d levels", f.Name, start[f], f.Levels)
 			}
 		}
 	}
