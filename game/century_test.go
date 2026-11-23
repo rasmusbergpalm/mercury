@@ -152,7 +152,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		"grain", "wood", "clay"}
 	cols := []string{"year", "pop", "gdp", "gdpHead", "living", "nominal", "invest", "investPriv", "KY", "ret", "laborShare",
 		"primary", "industry", "service", "levels", "techs", "tax", "bigShare", "smallest",
-		"traded", "transportJobs", "priceSpread", "infra", "machinesK", "machinesInvest", "constructionJobs"}
+		"traded", "transportJobs", "priceSpread", "infra", "machinesK", "machinesInvest", "constructionJobs", "rent"}
 	for _, b := range order {
 		for _, f := range groups[b] {
 			cols = append(cols, "share "+b+"|"+f)
@@ -175,7 +175,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 	fmt.Fprintln(out, strings.Join(cols, ","))
 
 	days := int(TicksPerYear)
-	var ni, wages, constr, constrPriv, profit, shipped, mach float64
+	var ni, wages, constr, constrPriv, profit, landProfit, shipped, mach float64
 	made := map[string]float64{}
 	for d := 1; d <= years*days; d++ {
 		// expansions under way: what they had
@@ -207,7 +207,11 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 				}
 			}
 			for _, f := range r.Firms {
-				profit += f.TickRevenue - f.TickCost
+				if f.MaxLevels > 0 { // land-bound: its profit is rent and a return on its buildings and machines
+					landProfit += f.TickRevenue - f.TickCost
+				} else {
+					profit += f.TickRevenue - f.TickCost
+				}
 				wages += f.Labor * r.Wage
 				for _, m := range f.Methods {
 					made[f.Name+"|"+m.Name] += m.Output
@@ -239,12 +243,15 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		if d%days != 0 {
 			continue
 		}
-		var k, levels, big, people, util, machK, constrJobs float64
+		var k, kLand, levels, big, people, util, machK, constrJobs float64
 		var labor [3]float64
 		small := math.Inf(1)
 		for _, r := range w.Regions {
 			for _, f := range r.Firms {
 				k += f.CapitalValue(r.Prices())
+				if f.MaxLevels > 0 {
+					kLand += f.CapitalValue(r.Prices())
+				}
 				for i, m := range f.Methods {
 					for _, s := range m.Capital {
 						if s.Good != Construction {
@@ -312,11 +319,11 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			goods++
 		}
 		row := []string{fmt.Sprint(d / days), f0(people), f0(n.RealGDP), f4(n.RealGDP / people), f4(util / people), f4(ni / float64(days)),
-			f4(constr / ni), f4(constrPriv / ni), f4(k / ni), f4(profit / k), f4(wages / ni),
+			f4(constr / ni), f4(constrPriv / ni), f4(k / ni), f4(profit / (k - kLand)), f4(wages / ni),
 			f4(labor[Primary] / lt), f4(labor[Industry] / lt), f4(labor[Service] / lt), f0(levels), fmt.Sprint(techs),
 			f4(n.TaxRate), f4(big / people), f0(small),
 			f4(shipped / ni), f4(transportJobs / lt), f4(spread / math.Max(1, float64(goods))), f4(infra),
-			f4(machK / k), f4(mach / ni), f4(constrJobs / lt)}
+			f4(machK / k), f4(mach / ni), f4(constrJobs / lt), f4(math.Max(0, landProfit-0.10*kLand) / ni)}
 		for _, b := range order {
 			total := 0.0
 			for _, m := range groups[b] {
@@ -361,8 +368,41 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		}
 		row = append(row, f4(wl/math.Max(l, 1e-12)))
 		fmt.Fprintln(out, strings.Join(row, ","))
-		ni, wages, constr, constrPriv, profit, shipped, mach = 0, 0, 0, 0, 0, 0, 0
+		ni, wages, constr, constrPriv, profit, landProfit, shipped, mach = 0, 0, 0, 0, 0, 0, 0, 0
 		made = map[string]float64{}
+	}
+	if os.Getenv("CENTURY_FIRMS") != "" { // each firm's return on its capital at the end
+		type acc struct{ profit, k, levels, full, building, n float64 }
+		by := map[string]*acc{}
+		var names []string
+		for _, r := range w.Regions {
+			for _, f := range r.Firms {
+				if !f.Enabled || f.Levels == 0 {
+					continue
+				}
+				a := by[f.Name]
+				if a == nil {
+					a = &acc{}
+					by[f.Name] = a
+					names = append(names, f.Name)
+				}
+				a.profit += f.ProfitEMA * TicksPerYear
+				a.k += f.CapitalValue(r.Prices())
+				a.levels += float64(f.Levels)
+				a.n++
+				if f.AtCap() {
+					a.full++
+				}
+				if f.Expansion != nil {
+					a.building++
+				}
+			}
+		}
+		slices.SortFunc(names, func(x, y string) int { return int(by[y].k - by[x].k) })
+		for _, name := range names {
+			a := by[name]
+			t.Logf("%-20s capital %9.0f  return %5.1f%%  levels %5.0f in %2.0f tiles  full %2.0f  building %2.0f", name, a.k, 100*a.profit/a.k, a.levels, a.n, a.full, a.building)
+		}
 	}
 }
 

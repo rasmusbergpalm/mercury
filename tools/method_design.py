@@ -3,7 +3,7 @@
 Each firm has its 1820 method and one for each later era: the steam age,
 steel, electricity and chemistry, and the motor age. A method turns labour
 into its era's machinery and fuel, and its productivity is set so that a
-level of it is ADV (a tenth) more profitable than a level of the method
+level of it is ADV (a twentieth) more profitable than a level of the method
 before it, at the prices of its era. Those prices are the game's own: for
 the steam age and for steel and electricity, the average over seeds of the
 era's years in century runs (the wage, and the machinery, fuel and
@@ -42,7 +42,7 @@ import math
 import re
 import sys
 
-ADV = 1.10
+ADV = 1.05
 FLOOR = 1.05
 ERAS = {2: (1840, 1860), 3: (1870, 1890)}  # the years whose prices the steam age's and steel's methods are set at
 # machines, held as capital: the good, and the share of it worn out a year
@@ -177,7 +177,7 @@ def main(alltech, paths):
         for name, era, tech, f in meths:
             calc = prev_t * math.exp(term(prev_f, P[era]) - term(f, P[era])) * ADV
             tfp = round(max(calc, prev_t * FLOOR), 2)
-            print(f"{firm:18s} {name:30s} era {era}  tfp {tfp:5.2f}  (a tenth more profitable: {calc:5.2f})")
+            print(f"{firm:18s} {name:30s} era {era}  tfp {tfp:5.2f}  (a twentieth more profitable: {calc:5.2f})")
             designs[name] = (firm, tfp, f, era)
             prev_t, prev_f = tfp, f
     for name, (firm, tfp, f, era) in designs.items():
