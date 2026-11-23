@@ -294,15 +294,17 @@ func TestLevelsAreConstantReturns(t *testing.T) {
 }
 
 func TestProfitableFirmsInvest(t *testing.T) {
+	// a new world's owners build slowly at first: little cash, and tools
+	// and building work dear until toolmakers and builders have grown
 	w := newTestGame(t)
-	for i := 0; i < 600; i++ {
+	for i := 0; i < 1200; i++ {
 		w.Step()
 	}
 	grew := 0
 	for _, r := range w.Regions {
 		for _, f := range r.Firms {
-			if (f.MaxLevels > 0 && f.Levels > f.MaxLevels) || (f.Levels < 1 && f.Enabled) { // a method not yet known has none
-				t.Errorf("%s in %s has %d levels (max %d)", f.Name, r.Name, f.Levels, f.MaxLevels)
+			if (f.Reach() > 0 && f.Levels > f.Reach()) || (f.Levels < 1 && f.Enabled) { // a method not yet known has none
+				t.Errorf("%s in %s has %d levels (at most %d)", f.Name, r.Name, f.Levels, f.Reach())
 			}
 			if f.Levels > 1 {
 				grew++
@@ -310,7 +312,7 @@ func TestProfitableFirmsInvest(t *testing.T) {
 		}
 	}
 	if grew == 0 {
-		t.Error("no firm expanded in 600 ticks")
+		t.Error("no firm expanded in 1200 ticks")
 	}
 	still := newTestWorld(t, 1) // investment off
 	for i := 0; i < 300; i++ {
@@ -350,7 +352,7 @@ func TestNationFundedExpansion(t *testing.T) {
 	if f.Levels != levels+1 || spent <= 0 {
 		t.Errorf("bakery levels %d -> %d, nation spent %v", levels, f.Levels, spent)
 	}
-	f.Levels, f.Expansion = f.MaxLevels, nil
+	f.Levels, f.Expansion = f.Reach(), nil
 	if err := w.Expand(r.ID, fi); !errors.Is(err, ErrFirmMax) {
 		t.Errorf("expansion beyond max: %v", err)
 	}
