@@ -182,9 +182,9 @@ func (w *World) settleFrom(b *World) {
 			f := r.Firms[j]
 			f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = bf.Cash, bf.Inventory, bf.Labor, bf.LastOutput, bf.ProfitEMA
 			f.Levels, f.Age, f.Wear, f.Expansion = bf.Levels, bf.Age, bf.Wear, nil
-			f.Urge = bf.Urge
+			f.Urge, f.Held = bf.Urge, append([]float64(nil), bf.Held...)
 			for k, m := range f.Methods {
-				m.Levels, m.Held = bf.Methods[k].Levels, append([]float64(nil), bf.Methods[k].Held...)
+				m.Levels = bf.Methods[k].Levels
 			}
 			if bf.Expansion != nil {
 				f.Expansion = bf.Expansion.Copy()

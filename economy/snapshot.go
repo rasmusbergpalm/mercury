@@ -70,8 +70,8 @@ type FirmState struct {
 	TFP          []float64
 	MethodOn     []bool
 	MethodLevels []int `json:",omitempty"`
-	// per method, per factor: how much of a leased good it holds
-	Held [][]float64 `json:",omitempty"`
+	// how much of each leased good it holds, by good
+	Held []float64 `json:",omitempty"`
 }
 
 // TraderState is a route's state in a Snapshot.
@@ -111,16 +111,11 @@ func (w *World) Snapshot() *Snapshot {
 			fs := FirmState{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
 				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age,
 				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Enabled: f.Enabled,
-				Monopoly: f.Monopoly, Elasticity: f.Elasticity, Share: f.share}
+				Monopoly: f.Monopoly, Elasticity: f.Elasticity, Share: f.share, Held: append([]float64(nil), f.Held...)}
 			for i, m := range f.Methods {
 				fs.TFP = append(fs.TFP, m.TFP)
 				fs.MethodOn = append(fs.MethodOn, m.Enabled)
-				if m.Held != nil {
-					if fs.Held == nil {
-						fs.Held = make([][]float64, len(f.Methods))
-					}
-					fs.Held[i] = append([]float64(nil), m.Held...)
-				}
+
 				if i > 0 {
 					fs.MethodLevels = append(fs.MethodLevels, m.Levels)
 				}
@@ -213,10 +208,7 @@ func (w *World) SetState(s *Snapshot) error {
 			}
 			f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = fs.Cash, fs.Inventory, fs.Labor, fs.LastOutput, fs.ProfitEMA
 			for k, m := range f.Methods {
-				m.TFP, m.Enabled, m.Held = fs.TFP[k], fs.MethodOn[k], nil
-				if k < len(fs.Held) && fs.Held[k] != nil {
-					m.Held = append([]float64(nil), fs.Held[k]...)
-				}
+				m.TFP, m.Enabled = fs.TFP[k], fs.MethodOn[k]
 				if k > 0 {
 					m.Levels = fs.MethodLevels[k-1]
 				}
@@ -226,6 +218,7 @@ func (w *World) SetState(s *Snapshot) error {
 				f.Expansion = fs.Expansion.Copy()
 			}
 			f.Wear, f.Urge, f.Mult = fs.Wear, fs.Urge, fs.Mult
+			f.Held = append([]float64(nil), fs.Held...)
 			f.Enabled = fs.Enabled
 			f.Monopoly, f.Elasticity, f.share = fs.Monopoly, fs.Elasticity, fs.Share
 		}

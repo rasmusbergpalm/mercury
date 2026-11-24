@@ -71,10 +71,6 @@ type Method struct {
 	Levels int
 	Output float64 // what it made today
 
-	// Held is, per factor, how much of a leased good (Good.Lease) it holds
-	// (0 for the rest).
-	Held []float64
-
 	planLabor, labor float64   // today's plan, and what it got
 	planQty          []float64 // per good
 	powLevels        int
@@ -164,6 +160,8 @@ type Firm struct {
 	Site       string
 	SiteMult   float64
 	LastOutput float64
+	// Held is how much of each leased good (Good.Lease) it holds, by good.
+	Held []float64
 	// DesiredSpend is the unconstrained cost of the optimal plan.
 	DesiredSpend float64
 
@@ -706,35 +704,63 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 		for j, fc := range m.Factors {
 			pl.want[j] = fc.Exp * p * pl.q / pl.cost[j]
 		}
-		if m.leases() { // leased goods: held, and moved slowly to what it wants; the rest planned around them
-			if m.Held == nil {
-				m.Held = make([]float64, len(m.Factors))
-			}
-			k, s := f.effectiveTFP(i), 0.0
-			for j, fc := range m.Factors {
-				if l := leaseOf(fc); l > 0 {
-					if m.Held[j] <= 0 {
-						m.Held[j] = pl.want[j]
-					} else {
-						m.Held[j] += (pl.want[j] - m.Held[j]) / l
-					}
-					k *= math.Pow(m.Held[j], fc.Exp)
-				} else {
-					k *= math.Pow(fc.Exp*p/pl.cost[j], fc.Exp)
-					s += fc.Exp
-				}
-			}
-			pl.q, pl.s = math.Pow(k, 1/(1-s)), s
-			for j, fc := range m.Factors {
+		total += pl.q
+		plans = append(plans, pl)
+	}
+	// Leased goods (land): the firm holds them, and moves what it holds a
+	// lease's fraction of the way to what its methods want, shared among
+	// them as they want it; each method plans its other inputs around its
+	// share, as a tenant farms the acres he has.
+	leased := false
+	for _, pl := range plans {
+		leased = leased || pl.m.leases()
+	}
+	if leased {
+		if f.Held == nil {
+			f.Held = make([]float64, NumGoods)
+		}
+		want := make([]float64, NumGoods)
+		for _, pl := range plans {
+			for j, fc := range pl.m.Factors {
 				if leaseOf(fc) > 0 {
-					pl.want[j] = m.Held[j]
-				} else {
-					pl.want[j] = fc.Exp * p * pl.q / pl.cost[j]
+					want[fc.Good] += pl.want[j]
 				}
 			}
 		}
-		total += pl.q
-		plans = append(plans, pl)
+		for g, x := range want {
+			if l := Goods[g].Lease; l > 0 {
+				if f.Held[g] <= 0 {
+					f.Held[g] = x // a new firm takes up its land
+				} else {
+					f.Held[g] += (x - f.Held[g]) / l
+				}
+			}
+		}
+		total = 0
+		for k := range plans {
+			pl := &plans[k]
+			if !pl.m.leases() {
+				total += pl.q
+				continue
+			}
+			kk, s := f.effectiveTFP(f.methodIndex(pl.m)), 0.0
+			for j, fc := range pl.m.Factors {
+				if leaseOf(fc) > 0 {
+					pl.want[j] = f.Held[fc.Good] * pl.want[j] / math.Max(want[fc.Good], 1e-300)
+					kk *= math.Pow(pl.want[j], fc.Exp)
+				} else {
+					kk *= math.Pow(fc.Exp*p/pl.cost[j], fc.Exp)
+					s += fc.Exp
+				}
+			}
+			pl.q, pl.s = math.Pow(kk, 1/(1-s)), s
+			for j, fc := range pl.m.Factors {
+				if leaseOf(fc) == 0 {
+					pl.want[j] = fc.Exp * p * pl.q / pl.cost[j]
+				}
+			}
+			total += pl.q
+		}
 	}
 	// Stock beyond a tick's output is stock it failed to sell (when it
 	// plans, its stock still holds yesterday's output, not yet offered): it
@@ -795,6 +821,16 @@ func leaseOf(fc Factor) float64 {
 		return Goods[fc.Good].Lease
 	}
 	return 0
+}
+
+// methodIndex is m's index among the firm's methods.
+func (f *Firm) methodIndex(m *Method) int {
+	for i, x := range f.Methods {
+		if x == m {
+			return i
+		}
+	}
+	return -1
 }
 
 // leases reports whether any of the method's factors is leased.
