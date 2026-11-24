@@ -67,7 +67,7 @@ LAND = {"Farm": .25, "Potato farm": .25, "Ranch": .25, "Sheep farm": .25, "Cotto
         "Sugar plantation": .2, "Vineyard": .2, "Silk farm": .2, "Forestry": .2, "Coal mine": .12, "Iron mine": .12,
         "Clay pit": .1, "Fishery": .1, "Oil well": .15}
 # those whose land is a deposit of their own (seams, wells, fishing
-# grounds); the rest share the tile's surface with its houses
+# grounds); the rest rent the tile's land, a good its landowner lets
 DEPOSIT = {"Coal mine", "Iron mine", "Clay pit", "Fishery", "Oil well"}
 COLS = dict(L="wage", tools="price tools", steam="price steam engines", coal="price coal", iron="price iron", wood="price wood",
             grain="price grain", fuel="price coal", clay="price clay", fert="price fertilizer", elec="price electricity",

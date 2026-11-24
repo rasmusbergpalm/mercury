@@ -60,7 +60,6 @@ type PopState struct {
 type FirmState struct {
 	Cash, Inventory, Labor, LastOutput, ProfitEMA float64
 	Levels, MaxLevels, LossTicks, Age             int
-	Area                                          float64 `json:",omitempty"`
 	Expansion                                     *Expansion
 	Wear, Urge, Mult                              float64
 	Monopoly                                      bool    `json:",omitempty"`
@@ -71,6 +70,8 @@ type FirmState struct {
 	TFP          []float64
 	MethodOn     []bool
 	MethodLevels []int `json:",omitempty"`
+	// per method, per factor: how much of a leased good it holds
+	Held [][]float64 `json:",omitempty"`
 }
 
 // TraderState is a route's state in a Snapshot.
@@ -108,12 +109,18 @@ func (w *World) Snapshot() *Snapshot {
 		}
 		for _, f := range r.Firms {
 			fs := FirmState{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
-				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age, Area: f.Area,
+				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age,
 				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Enabled: f.Enabled,
 				Monopoly: f.Monopoly, Elasticity: f.Elasticity, Share: f.share}
 			for i, m := range f.Methods {
 				fs.TFP = append(fs.TFP, m.TFP)
 				fs.MethodOn = append(fs.MethodOn, m.Enabled)
+				if m.Held != nil {
+					if fs.Held == nil {
+						fs.Held = make([][]float64, len(f.Methods))
+					}
+					fs.Held[i] = append([]float64(nil), m.Held...)
+				}
 				if i > 0 {
 					fs.MethodLevels = append(fs.MethodLevels, m.Levels)
 				}
@@ -206,12 +213,15 @@ func (w *World) SetState(s *Snapshot) error {
 			}
 			f.Cash, f.Inventory, f.Labor, f.LastOutput, f.ProfitEMA = fs.Cash, fs.Inventory, fs.Labor, fs.LastOutput, fs.ProfitEMA
 			for k, m := range f.Methods {
-				m.TFP, m.Enabled = fs.TFP[k], fs.MethodOn[k]
+				m.TFP, m.Enabled, m.Held = fs.TFP[k], fs.MethodOn[k], nil
+				if k < len(fs.Held) && fs.Held[k] != nil {
+					m.Held = append([]float64(nil), fs.Held[k]...)
+				}
 				if k > 0 {
 					m.Levels = fs.MethodLevels[k-1]
 				}
 			}
-			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion, f.Area = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, nil, fs.Area
+			f.Levels, f.MaxLevels, f.LossTicks, f.Age, f.Expansion = fs.Levels, fs.MaxLevels, fs.LossTicks, fs.Age, nil
 			if fs.Expansion != nil {
 				f.Expansion = fs.Expansion.Copy()
 			}

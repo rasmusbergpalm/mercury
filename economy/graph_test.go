@@ -104,48 +104,42 @@ func TestLandIsFixed(t *testing.T) {
 	}
 }
 
-// A tile's surface land goes, over the years, to the uses that pay most
-// rent for it; the tile's land stays the same.
-func TestLandGoesToTheRent(t *testing.T) {
+// Land is a good: each tile's Landowner makes a fixed amount a day, and its
+// farms, forests and houses rent it at the price that clears it. When the
+// town's houses can pay more, land dears and the farm rents less of it.
+func TestLandIsRented(t *testing.T) {
 	w, err := BuildWorld(1, Graph{Places: []Place{{Name: "A", Terrain: "plains"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for range 30 {
-		w.Step()
-	}
-	r := w.Regions[0]
-	var houses, farm *Firm
-	total := 0.0
-	for _, f := range r.Firms {
-		if f.Surface {
-			total += f.Area
-			switch f.Name {
-			case "Houses":
-				houses = f
-			case "Farm":
-				farm = f
+	r, land := w.Regions[0], G("land")
+	firm := func(name string) *Firm {
+		for _, f := range r.Firms {
+			if f.Name == name {
+				return f
 			}
 		}
+		t.Fatalf("no %s on the plains", name)
+		return nil
 	}
-	if houses == nil || farm == nil {
-		t.Fatal("no houses or farm on the plains")
-	}
-	before := houses.Area
-	for range 2 * 365 {
-		houses.LastOutput = 100 * farm.LastOutput // a town that pays far more for its land
-		r.allocateLand()
-	}
-	after := 0.0
-	for _, f := range r.Firms {
-		if f.Surface {
-			after += f.Area
+	houses, farm, owner := firm("Houses"), firm("Farm"), firm("Landowner")
+	used := func(days int) (price, farmLand float64) {
+		for range days {
+			w.Step()
+			price += r.Markets[land].Price / float64(days)
+			farmLand += farm.Used[land] / float64(days)
 		}
+		return
 	}
-	if houses.Area <= before {
-		t.Errorf("houses' land %v -> %v, paying far more rent", before, houses.Area)
+	used(400)
+	p0, f0 := used(100)
+	if owner.LastOutput <= 0 || p0 <= 0 {
+		t.Fatalf("the landowner made %v land, at £%v", owner.LastOutput, p0)
 	}
-	if math.Abs(after-total) > 1e-9*total {
-		t.Errorf("the tile's land %v -> %v", total, after)
+	houses.Mult = 3 // a town whose houses are worth far more
+	used(400)
+	p1, f1 := used(100)
+	if p1 <= p0 || f1 >= f0 {
+		t.Errorf("land at £%.2f -> £%.2f, the farm renting %.2f -> %.2f a day", p0, p1, f0, f1)
 	}
 }

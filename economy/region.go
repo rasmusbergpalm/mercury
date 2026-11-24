@@ -158,7 +158,7 @@ func (r *Region) planInvestment() {
 		r.investBuying[g] = r.investBuying[g][:0]
 	}
 	for i, f := range r.Firms {
-		if f.Levels < 1 {
+		if f.Levels < 1 || f.Fixed {
 			continue
 		}
 		f.levelValue = f.CapitalValue(r.prices) / float64(f.Levels)
@@ -258,7 +258,6 @@ func (r *Region) planInvestment() {
 // settleFirms updates profit records, finishes expansions and closes levels
 // that keep losing money.
 func (r *Region) settleFirms() {
-	defer r.allocateLand()
 	for _, f := range r.Firms {
 		f.Age++
 		f.ProfitEMA = 0.95*f.ProfitEMA + 0.05*(f.TickRevenue-f.TickCost)
@@ -292,56 +291,6 @@ func (r *Region) settleFirms() {
 			}
 		} else {
 			f.LossTicks = 0
-		}
-	}
-}
-
-// landTicks is how long a tile's land takes to go most of the way to the
-// uses that pay most for it: fields enclosed, a farm sold for building,
-// woods cleared. At a tick a day, about five years.
-const landTicks = 5 * 365.0
-
-// allocateLand moves the tile's surface land towards the uses that pay
-// most for it. A Cobb-Douglas firm pays its land its exponent times what
-// it makes: that is its rent, and at one rent across the tile each use
-// holds land in proportion to it. The farms, forests and houses of a
-// growing town bid land from one another, and the houses win it as the
-// town grows. A use keeps at least a quarter of a level's worth, so that
-// one that stops paying can come back.
-func (r *Region) allocateLand() {
-	total, rent := 0.0, 0.0
-	for _, f := range r.Firms {
-		if f.Surface {
-			total += f.Area
-			if f.Enabled && f.Levels > 0 {
-				rent += f.Methods[f.Main()].Land * f.LastOutput * r.prices[f.Output]
-			}
-		}
-	}
-	if rent <= 0 {
-		return
-	}
-	for _, f := range r.Firms {
-		if !f.Surface {
-			continue
-		}
-		pays := 0.0
-		if f.Enabled && f.Levels > 0 {
-			pays = f.Methods[f.Main()].Land * f.LastOutput * r.prices[f.Output]
-		}
-		f.Area += (total*pays/rent - f.Area) / landTicks
-		f.Area = math.Max(f.Area, 0.25)
-	}
-	// what the floor added comes back from the others, in proportion
-	sum := 0.0
-	for _, f := range r.Firms {
-		if f.Surface {
-			sum += f.Area
-		}
-	}
-	for _, f := range r.Firms {
-		if f.Surface {
-			f.Area *= total / sum
 		}
 	}
 }

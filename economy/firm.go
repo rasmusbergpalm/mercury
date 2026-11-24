@@ -71,6 +71,10 @@ type Method struct {
 	Levels int
 	Output float64 // what it made today
 
+	// Held is, per factor, how much of a leased good (Good.Lease) it holds
+	// (0 for the rest).
+	Held []float64
+
 	planLabor, labor float64   // today's plan, and what it got
 	planQty          []float64 // per good
 	powLevels        int
@@ -131,12 +135,9 @@ type Firm struct {
 	// to repay (0: as any other firm's): houses were a safe, long-lived
 	// asset, bought for a lower return than a works.
 	Payback float64
-	// Surface: its land is a share of the tile's surface, Area levels'
-	// worth, which its farms, forests and houses share by the rent they
-	// pay (Region.allocateLand); else its land is a deposit of its own
-	// (seams, wells, fishing grounds: MaxLevels, or a method's Cap).
-	Surface bool
-	Area    float64
+	// Fixed: its levels are all it will have and don't wear (the tile's
+	// land: Recipe.Fixed).
+	Fixed bool
 	// Enabled: the firm works at all (one whose recipe StartsOff doesn't
 	// until it is switched on).
 	Enabled bool
@@ -477,14 +478,8 @@ func (f *Firm) effectiveTFP(i int) float64 {
 // owners build while the next level pays.
 const landReach = 50 // the most levels a land-bound firm may have, in levels of its land: a safety (land already makes each more level add less; towns built dense)
 
-// land is the firm's land, in levels' worth: its share of the tile's
-// surface (Area), or its own deposit (landCap).
-func (f *Firm) land() float64 {
-	if f.Surface {
-		return f.Area
-	}
-	return float64(f.landCap())
-}
+// land is the firm's deposit, in levels' worth (0: it has none).
+func (f *Firm) land() float64 { return float64(f.landCap()) }
 
 // landMult is method i's share of the firm's land, against a level's
 // worth: (land/L)^Land.
@@ -565,7 +560,7 @@ func (f *Firm) factors() []Factor {
 // AtCap reports whether the firm can have no more levels.
 func (f *Firm) AtCap() bool {
 	c := f.Reach()
-	return c > 0 && f.Levels >= c
+	return f.Fixed || (c > 0 && f.Levels >= c)
 }
 
 // BestMethod is the working method a level would earn most on at today's
@@ -574,7 +569,7 @@ func (f *Firm) AtCap() bool {
 func (f *Firm) BestMethod(prices []float64, wage float64) (int, float64) {
 	best, top := -1, 0.0
 	for i, m := range f.Methods {
-		if !m.Runs() || (!f.Surface && f.methodCap(i) > 0 && f.MethodLevels(i) >= landReach*f.methodCap(i)) || f.AtCap() {
+		if !m.Runs() || (f.methodCap(i) > 0 && f.MethodLevels(i) >= landReach*f.methodCap(i)) || f.AtCap() {
 			continue
 		}
 		if p := f.LevelProfit(i, prices, wage); best < 0 || p > top {
@@ -711,6 +706,33 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 		for j, fc := range m.Factors {
 			pl.want[j] = fc.Exp * p * pl.q / pl.cost[j]
 		}
+		if m.leases() { // leased goods: held, and moved slowly to what it wants; the rest planned around them
+			if m.Held == nil {
+				m.Held = make([]float64, len(m.Factors))
+			}
+			k, s := f.effectiveTFP(i), 0.0
+			for j, fc := range m.Factors {
+				if l := leaseOf(fc); l > 0 {
+					if m.Held[j] <= 0 {
+						m.Held[j] = pl.want[j]
+					} else {
+						m.Held[j] += (pl.want[j] - m.Held[j]) / l
+					}
+					k *= math.Pow(m.Held[j], fc.Exp)
+				} else {
+					k *= math.Pow(fc.Exp*p/pl.cost[j], fc.Exp)
+					s += fc.Exp
+				}
+			}
+			pl.q, pl.s = math.Pow(k, 1/(1-s)), s
+			for j, fc := range m.Factors {
+				if leaseOf(fc) > 0 {
+					pl.want[j] = m.Held[j]
+				} else {
+					pl.want[j] = fc.Exp * p * pl.q / pl.cost[j]
+				}
+			}
+		}
 		total += pl.q
 		plans = append(plans, pl)
 	}
@@ -723,8 +745,10 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 		x := math.Max(0, total-over) / total
 		for _, pl := range plans {
 			scale := math.Pow(x, 1/pl.s)
-			for j := range pl.want {
-				pl.want[j] *= scale
+			for j, fc := range pl.m.Factors {
+				if leaseOf(fc) == 0 { // what it holds on a lease it keeps
+					pl.want[j] *= scale
+				}
 			}
 		}
 	}
@@ -762,6 +786,25 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 			f.PlanQty[g] += x
 		}
 	}
+}
+
+// leaseOf is how many ticks a factor's holding takes to change (0: it
+// isn't leased).
+func leaseOf(fc Factor) float64 {
+	if fc.Kind == GoodFactor {
+		return Goods[fc.Good].Lease
+	}
+	return 0
+}
+
+// leases reports whether any of the method's factors is leased.
+func (m *Method) leases() bool {
+	for _, fc := range m.Factors {
+		if leaseOf(fc) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // methodInputs is method m's share of what the firm got today: of each

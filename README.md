@@ -79,13 +79,13 @@ Each tick, on every tile:
   capital and `s = Σ aᵢ`. A level is a building (construction) and the
   machines in it (steam engines, tools, vehicles), as its recipe says. A firm hires workers and buys inputs up to
   where they pay, so its wage bill is its labour exponent times its sales.
-  Land-bound producers (farms, mines, houses) have land as a factor of
-  their own: fixed, shared by their levels, so each more level on it adds
-  less; its exponent is its share, the rent. A tile's surface `land` is
-  shared by its farms, forests and houses in proportion to the rent each
-  pays, shifting over years, so a growing town takes farmland; a
-  `deposit` (seams, wells, fishing grounds) is a firm's own. Farms and
-  mines also have a site that suits them more or less.
+  Land is a good like any other: each tile's landowner makes a fixed
+  amount of it a day, and its farms, forests and houses rent it at the
+  price that clears it, so a growing town's houses outbid its farms. Its
+  exponent in a recipe is its share, the rent, and the rent goes to the
+  tile's owners. Mines, wells and fisheries work a `deposit` of their own
+  instead: fixed, shared by their levels, so each more level adds less.
+  Farms and mines also have a site that suits them more or less.
 - **Owners** build a new level where it would repay its cost within
   ten years of profit (twenty for houses, a safe asset), a twentieth of
   an industry's levels at a time, and refit levels to newer production methods when

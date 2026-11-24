@@ -88,9 +88,9 @@ func useData(fsys fs.FS) (err error) {
 
 type goodsFile struct {
 	Goods []struct {
-		Name                 string
-		Bulk, Spoilage, Wear float64
-		Service              bool
+		Name                        string
+		Bulk, Spoilage, Wear, Lease float64
+		Service                     bool
 	}
 	Composites []struct {
 		Name  string
@@ -129,10 +129,12 @@ type recipeData struct {
 	Cap          int
 	Capital      [][2]any
 	Payback      float64
+	Fixed        bool
+	Levels       int
 }
 
 func (d recipeData) recipe() Recipe {
-	r := Recipe{Firm: d.Firm, Output: d.Output, TFP: d.TFP, Payback: d.Payback, StartsOff: d.Enabled != nil && !*d.Enabled, Service: d.Sector == "service"}
+	r := Recipe{Firm: d.Firm, Output: d.Output, TFP: d.TFP, Payback: d.Payback, Fixed: d.Fixed, Levels: d.Levels, StartsOff: d.Enabled != nil && !*d.Enabled, Service: d.Sector == "service"}
 	for _, f := range d.Factors {
 		name, _ := f[0].(string)
 		exp, ok := f[1].(float64)
@@ -142,8 +144,8 @@ func (d recipeData) recipe() Recipe {
 		switch {
 		case name == "labor":
 			r.Factors = append(r.Factors, Labor(exp))
-		case name == "land" || name == "deposit": // fixed, not bought: see Method.Land
-			r.Land, r.Surface = exp, name == "land"
+		case name == "deposit": // the firm's own, fixed, not bought: see Method.Land
+			r.Land = exp
 		case compositeIndex(name) >= 0:
 			r.Factors = append(r.Factors, Comp(name, exp))
 		default:

@@ -208,8 +208,11 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 				}
 			}
 			for _, f := range r.Firms {
-				for _, m := range f.Methods { // land's share of what it makes: its rent
+				for _, m := range f.Methods { // a deposit's share of what it makes: its rent
 					landRent += m.Land * m.Output * r.Markets[f.Output].Price
+				}
+				if f.Fixed { // the land its landowner lets
+					landRent += f.TickRevenue
 				}
 				if f.MaxLevels == 0 { // the return on capital is measured where no land shares the profit
 					profit += f.TickRevenue - f.TickCost
