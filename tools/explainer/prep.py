@@ -104,6 +104,9 @@ run = {r["Name"]: r for r in co["runs"]}
 out["corridor"] = {"route": co["route"],
                    "trade": {k: [[int(a), int(b), round(v, 2)] for a, b, v in run[k]["Trade"]] for k in run},
                    "people": {k: [round(x, 1) for x in run[k]["People"]] for k in run}}
+# a boomtown, with and without new houses
+bt = json.load(open(f"{S}/boomtown.json"))
+out["boomtown"] = {"tile": bt["tile"], **{run: {k: [round(x, 4) for x in v] for k, v in bt[run].items()} for run in ("control", "built", "walled", "walledControl")}}
 # money: the quantity theory and Hume's price-specie flow
 mo = json.load(open(f"{S}/money.json"))
 r3 = lambda xs: [round(x, 4) for x in xs] if xs else xs

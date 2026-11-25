@@ -73,6 +73,7 @@ type Method struct {
 
 	planLabor, labor float64   // today's plan, and what it got
 	deposit          float64   // its share of the firm's deposit today
+	holding          []float64 // per factor, its share of what the firm holds of a leased good
 	planQty          []float64 // per good
 	powLevels        int
 	levelsPow        float64 // L^(1-s), cached
@@ -135,6 +136,10 @@ type Firm struct {
 	// Fixed: its levels are all it will have and don't wear (the tile's
 	// land: Recipe.Fixed).
 	Fixed bool
+	// NoBuilding is a lever: its owners may not start a project, to build
+	// or to refit (a restriction on building, or a town hemmed in by its
+	// walls). They still keep up what they have.
+	NoBuilding bool
 	// Deposit is how much of its deposit it works (a DepositFactor's
 	// amount), and DepositRent what a unit of it earned the firm in the
 	// last tick: the value its methods share it by.
@@ -640,8 +645,11 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 	// holds them and shares them among its methods as each would want them
 	// at their price (a deposit's: what a unit of it earns); each method
 	// plans its other inputs around its share, as a tenant farms the acres
-	// he has. What it holds of a leased good moves a lease's fraction of
-	// the way to what its methods want; its deposit is fixed.
+	// he has. A leased good it rents each tick, bidding for what its
+	// methods want, at the price that clears its market; what it holds and
+	// works moves a lease's fraction of the way a tick to what it rented,
+	// as new acres are taken up and old ones given up. Its deposit is
+	// fixed.
 	held := false
 	for _, pl := range plans {
 		held = held || pl.m.holds()
@@ -663,12 +671,8 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 			}
 		}
 		for g, x := range want {
-			if l := Goods[g].Lease; l > 0 {
-				if f.Held[g] <= 0 {
-					f.Held[g] = x // a new firm takes up its land
-				} else {
-					f.Held[g] += (x - f.Held[g]) / l
-				}
+			if Goods[g].Lease > 0 && f.Held[g] <= 0 {
+				f.Held[g] = x // a new firm takes up its land (then it moves with what it rents: Produce)
 			}
 		}
 		total = 0
@@ -687,9 +691,12 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 					pl.m.deposit = f.Deposit * pl.want[j] / math.Max(deposit, 1e-300)
 					pl.want[j] = pl.m.deposit
 					kk *= math.Pow(pl.want[j], fc.Exp)
-				case leaseOf(fc) > 0:
-					pl.want[j] = f.Held[fc.Good] * pl.want[j] / math.Max(want[fc.Good], 1e-300)
-					kk *= math.Pow(pl.want[j], fc.Exp)
+				case leaseOf(fc) > 0: // it bids for what it wants, and works its share of what it holds
+					if pl.m.holding == nil {
+						pl.m.holding = make([]float64, len(pl.m.Factors))
+					}
+					pl.m.holding[j] = f.Held[fc.Good] * pl.want[j] / math.Max(want[fc.Good], 1e-300)
+					kk *= math.Pow(pl.m.holding[j], fc.Exp)
 				default:
 					kk *= math.Pow(fc.Exp*p/pl.cost[j], fc.Exp)
 					s += fc.Exp
@@ -851,13 +858,22 @@ func (f *Firm) Produce() float64 {
 			}
 		}
 		x := f.effectiveTFP(i)
-		for _, fc := range m.Factors {
-			x *= math.Pow(factorAmount(fc, m, m.labor, in), fc.Exp)
+		for j, fc := range m.Factors {
+			a := factorAmount(fc, m, m.labor, in)
+			if leaseOf(fc) > 0 && m.holding != nil { // it works what it holds
+				a = m.holding[j]
+			}
+			x *= math.Pow(a, fc.Exp)
 		}
 		m.Output = x
 		q += x
 	}
 	f.Inventory += q
+	for g, x := range f.Held { // what it works moves towards what it rented
+		if l := Goods[g].Lease; l > 0 && x > 0 {
+			f.Held[g] += (f.Inputs[g] - x) / l
+		}
+	}
 	if f.Used == nil {
 		f.Used = make([]float64, len(f.Inputs))
 	}

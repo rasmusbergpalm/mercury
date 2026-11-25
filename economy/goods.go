@@ -21,10 +21,11 @@ type Good struct {
 	// good with the same good, or lose capital.
 	Wear float64
 	// Lease is how many ticks a firm takes to change how much of it it
-	// holds (0: it buys what it wants each tick): land is let on long
-	// tenancies, so a farm can't double its acres overnight. Each tick a
-	// firm moves its holding 1/Lease of the way to what it would want, and
-	// plans its other inputs around what it holds.
+	// works (0: it works what it buys each tick): land is let on long
+	// tenancies, so a farm can't double its acres overnight. It rents what
+	// it wants each tick, at the price that clears the market; what it
+	// works moves 1/Lease of the way a tick to what it rents, and it plans
+	// its other inputs around what it works.
 	Lease float64
 }
 

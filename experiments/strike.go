@@ -28,6 +28,9 @@ func runStrike(o *Out) {
 				}
 				if shock && d == shockDay {
 					for _, f := range w.Regions[shockTile].Firms {
+						if f.Fixed {
+							continue // (the land is as it was)
+						}
 						for _, m := range f.Methods {
 							m.TFP *= 1.5
 						}

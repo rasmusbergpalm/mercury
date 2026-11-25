@@ -184,7 +184,7 @@ func (r *Region) planInvestment() {
 		if best >= 0 && worst >= 0 && best != worst {
 			refitGain = bestProfit - worstProfit
 		}
-		if f.Expansion == nil && f.Enabled && f.Age > investMinAge && best >= 0 {
+		if f.Expansion == nil && f.Enabled && !f.NoBuilding && f.Age > investMinAge && best >= 0 {
 			full := f.AtCap()
 			// how many times over each project repays its cost within the payback
 			var refit, build float64

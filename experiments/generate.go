@@ -10,6 +10,7 @@ package experiments
 //go:generate go run ./run -out data trade
 //go:generate go run ./run -out data boom
 //go:generate go run ./run -out data corridor
+//go:generate go run ./run -out data boomtown
 //go:generate go run ./run -out data aa
 //go:generate go run ./run -out data recipes
 //go:generate go run ./run -out data sweep

@@ -109,41 +109,49 @@ func TestDepositIsShared(t *testing.T) {
 }
 
 // Land is a good: each tile's Landowner makes a fixed amount a day, and its
-// farms, forests and houses rent it at the price that clears it. When the
-// town's houses can pay more, land dears and the farm rents less of it.
+// farms, forests and houses rent it at the price that clears it. When twice
+// as many people, with their money, want houses and food, land dears, and
+// what is let is still the land there is.
 func TestLandIsRented(t *testing.T) {
 	w, err := BuildWorld(1, Graph{Places: []Place{{Name: "A", Terrain: "plains"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	r, land := w.Regions[0], G("land")
-	firm := func(name string) *Firm {
-		for _, f := range r.Firms {
-			if f.Name == name {
-				return f
-			}
+	var houses, owner *Firm
+	for _, f := range r.Firms {
+		switch {
+		case f.Output == G("housing"):
+			houses = f
+		case f.Fixed:
+			owner = f
 		}
-		t.Fatalf("no %s on the plains", name)
-		return nil
 	}
-	houses, farm, owner := firm("Houses"), firm("Farm"), firm("Landowner")
-	used := func(days int) (price, farmLand float64) {
+	used := func(days int) (price, housesLand, let float64) {
 		for range days {
 			w.Step()
 			price += r.Markets[land].Price / float64(days)
-			farmLand += farm.Used[land] / float64(days)
+			housesLand += houses.Used[land] / float64(days)
+			for _, f := range r.Firms {
+				if f.Used != nil {
+					let += f.Used[land] / float64(days)
+				}
+			}
 		}
 		return
 	}
 	used(400)
-	p0, f0 := used(100)
-	if owner.LastOutput <= 0 || p0 <= 0 {
-		t.Fatalf("the landowner made %v land, at £%v", owner.LastOutput, p0)
+	p0, h0, l0 := used(100)
+	if owner.LastOutput <= 0 || p0 <= 0 || math.Abs(l0-owner.LastOutput) > 0.05*owner.LastOutput {
+		t.Fatalf("the landowner made %v land, at £%v, and %v was let", owner.LastOutput, p0, l0)
 	}
-	houses.Mult = 3 // a town whose houses are worth far more
+	for _, p := range r.Pops { // twice the people, with their money
+		p.Size *= 2
+		p.Cash *= 2
+	}
 	used(400)
-	p1, f1 := used(100)
-	if p1 <= p0 || f1 >= f0 {
-		t.Errorf("land at £%.2f -> £%.2f, the farm renting %.2f -> %.2f a day", p0, p1, f0, f1)
+	p1, h1, l1 := used(100)
+	if p1 <= p0 || math.Abs(l1-owner.LastOutput) > 0.05*owner.LastOutput {
+		t.Errorf("land at £%.2f -> £%.2f (the houses renting %.2f -> %.2f a day), %v let of %v", p0, p1, h0, h1, l1, owner.LastOutput)
 	}
 }

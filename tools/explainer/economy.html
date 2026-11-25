@@ -297,6 +297,27 @@ __STYLE__</style>
 </div>
 
 <div class="col">
+<p>Newcomers need somewhere to live, and a town's land is fixed. Ricardo's theory of rent says what follows: when more people want the same land, its price rises, and the rent goes to whoever owns it. Manchester's population nearly doubled between 1821 and 1841 as its mills boomed, and its rents and land values rose with it. To watch it, one inland tile's trades, its industry and services but not its farms, mines or houses, were made half again as productive, against a twin without the boom, with people free to move. The boom ran twice: once with landlords free to build, and once with no new houses allowed, as under a building restriction or in a town hemmed in by its walls. Vienna kept its walls until 1857. <span class="ref" data-fig="boomtown"></span> follows the tile for ten years.</p>
+</div>
+
+<div class="figure" id="fig-boomtown">
+  <div class="head"><span class="plate"></span><h3>A boomtown's land and rents</h3></div>
+  <div class="grid2">
+    <svg class="chart" id="chart-boom-prices" role="img" aria-label="The boomtown's land price and rent against the twin without the boom"></svg>
+    <svg class="chart" id="chart-boom-people" role="img" aria-label="The boomtown's people, with and without new houses"></svg>
+    <svg class="chart" id="chart-boom-houses" role="img" aria-label="The boomtown's houses, with and without new building"></svg>
+    <svg class="chart" id="chart-boom-living" role="img" aria-label="The boomtown's workers' and owners' living standards against the twin"></svg>
+  </div>
+  <div class="legend" id="legend-boomtown"></div>
+  <p class="cap" id="cap-boomtown"></p>
+</div>
+
+<div class="col">
+<p id="txt-boomtown-1"></p>
+<p id="txt-boomtown-2"></p>
+</div>
+
+<div class="col">
 <p>A boom in one trade draws workers from the others. When a coalfield in the nineteenth century found richer seams or better ways to dig them, as in South Wales or the Ruhr, its mines bid for labour, wages rose, and the valley's farms and workshops had to pay more for hands while their goods still sold at prices set by trade with the rest of the country. Some of them shrank.</p>
 <p>To test it, the tile with the most coal miners finds its coal easier to dig, by a dose from 2 to 10 times, and each dose is run twice: once with nobody moving after the map has settled, and once with people free to move. <span class="ref" data-fig="boom"></span> shows how the tile's trades respond to the size of the boom.</p>
 <p>A boom in a real coalfield came with the means to carry its coal away: the Tyne's colliers, the Ruhr's canals and railways. A tile's carters couldn't haul ten times the coal without them, so the boom tile's coal also gets as much cheaper to carry to its neighbours. The coal trade counts both the miners and the carters hauling the coal away; the rest of the tile's carters, shopkeepers and the like are its other services.</p>
@@ -860,6 +881,42 @@ function drawEngel() {
 }
 
 // ---- the boom plate: a coal boom, dose and response ------------------------------------------------------
+function drawBoomtown() {
+  const B = D.boomtown, t = byId[B.tile], n = B.control.Months.length, x = (i) => B.control.Months[i] / 12;
+  // a year's moving average (owners are few, and their dividends lumpy)
+  const smooth = (xs) => xs.map((_, i) => { const a = xs.slice(Math.max(0, i - 11), i + 1); return a.reduce((u, v) => u + v, 0) / a.length; });
+  const vs = (run, k, base = B.control, sm = false) => { const a = sm ? smooth(run[k]) : run[k], b = sm ? smooth(base[k]) : base[k]; return a.map((v, i) => [x(i), v / b[i]]); };
+  const avg = (xs) => xs.slice(-12).reduce((a, b) => a + b, 0) / 12;
+  const end = (run, k, base = B.control) => avg(run[k]) / avg(base[k]); // the tenth year, against the twin
+  const ticks = [0, 2, 4, 6, 8, 10], times = (v) => "×" + (+v.toFixed(2));
+  lineChart(document.getElementById("chart-boom-prices"), { title: "Land and rent, against the twin",
+    series: [{ pts: vs(B.built, "Land"), color: "--s1", end: "land" }, { pts: vs(B.built, "Rent"), color: "--s2", end: "rent", below: true },
+      { pts: vs(B.walled, "Rent", B.walledControl), color: "--s2", dash: "5 4", end: "rent, walled" }],
+    xTicks: ticks, xLabel: "years", yFmt: times, w: 480, h: 300 });
+  lineChart(document.getElementById("chart-boom-people"), { title: `${t.name}'s people`,
+    series: [{ pts: B.built.People.map((v, i) => [x(i), v]), color: "--s1", end: "built" },
+      { pts: B.walled.People.map((v, i) => [x(i), v]), color: "--s1", dash: "5 4", end: "walled", below: true },
+      { pts: B.control.People.map((v, i) => [x(i), v]), color: "--muted", end: "no boom" }],
+    xTicks: ticks, xLabel: "years", yFmt: (v) => v.toFixed(0), w: 480, h: 300 });
+  lineChart(document.getElementById("chart-boom-houses"), { title: "Its houses (levels)",
+    series: [{ pts: B.built.Houses.map((v, i) => [x(i), v]), color: "--s3", end: "built" },
+      { pts: B.walled.Houses.map((v, i) => [x(i), v]), color: "--s3", dash: "5 4", end: "walled" },
+      { pts: B.control.Houses.map((v, i) => [x(i), v]), color: "--muted", end: "no boom", below: true }],
+    xTicks: ticks, xLabel: "years", yFmt: (v) => v.toFixed(0), w: 480, h: 300 });
+  lineChart(document.getElementById("chart-boom-living"), { title: "Living standards, against the twin",
+    series: [{ pts: vs(B.built, "Workers", B.control, true), color: "--s1", end: "workers" }, { pts: vs(B.walled, "Workers", B.walledControl, true), color: "--s1", dash: "5 4", end: "workers, walled", below: true },
+      { pts: vs(B.built, "Owners", B.control, true), color: "--s4", end: "owners" }, { pts: vs(B.walled, "Owners", B.walledControl, true), color: "--s4", dash: "5 4", end: "owners, walled" }],
+    xTicks: ticks, xLabel: "years", yFmt: times, w: 480, h: 300 });
+  legend(document.getElementById("legend-boomtown"), [["--s1", "landlords build as usual (solid)"], ["--muted", "no boom"]]);
+  document.getElementById("cap-boomtown").textContent = `${t.name}, its trades half again as productive from year 0. Solid: its landlords build as usual; dashed: no new houses. Prices and living standards are against the twin without the boom, month by month; living standards are averaged over the year before.`;
+  const pB = B.built.People[n - 1], pW = B.walled.People[n - 1], p0 = B.built.People[0], hB = B.built.Houses[n - 1], hC = B.control.Houses[n - 1], h0 = B.built.Houses[0];
+  const lh0 = B.built.LandHouses[0], lh1 = B.built.LandHouses[n - 1], la = B.built.LandHouses[n - 1] + B.built.LandFarms[n - 1];
+  const pct = (v) => `${Math.abs(100 * (v - 1)).toFixed(0)}%`, change = (v, up, down) => `${pct(v)} ${v >= 1 ? up : down}`;
+  const wB = end(B.built, "Workers"), wW = end(B.walled, "Workers", B.walledControl), oB = end(B.built, "Owners"), oW = end(B.walled, "Owners", B.walledControl);
+  document.getElementById("txt-boomtown-1").textContent = `People come at once, from ${fmt(p0, 0)} to ${fmt(pB, 0)} in ten years, and bid for the tile's land and houses: in the tenth year its land lets for ×${end(B.built, "Land").toFixed(1)} what it does in the twin, and its rents are ×${end(B.built, "Rent").toFixed(1)}. Landlords build, from ${fmt(h0, 0)} levels of houses to ${fmt(hB, 0)}, against ${fmt(hC, 0)} in the twin, but they build as owners build anything here, a project at a time, and a town that doubles in a decade outruns them. Manchester's did: in 1845 Engels found its poorest packed into cellars and courts. The town builds up more than out: its houses hold ${fmt(lh0, 1)} of its ${fmt(la, 0)} units of land at the start and ${fmt(lh1, 1)} at the end, so each unit carries more houses.`;
+  document.getElementById("txt-boomtown-2").textContent = `Forbidding new houses changes less than you might expect, because here landlords build slowly even when they may: rents end ×${end(B.walled, "Rent", B.walledControl).toFixed(1)} on the twin's, against ×${end(B.built, "Rent").toFixed(1)}, and ${fmt(pW, 0)} people come instead of ${fmt(pB, 0)}. Against where houses were built, the workers there live ${change(wW / wB, "better", "worse")} and the owners ${change(oW / oB, "better", "worse")}: the owners lose the rent of the houses that weren't built about as much as they gain on the dearer land.`;
+}
+
 function drawBoom() {
   const B = D.boom;
   document.getElementById("boom-name").textContent = byId[B[0].Tile].name;
@@ -1130,7 +1187,7 @@ const roman = (n) => [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]].reduc
 document.querySelectorAll(".figure").forEach((f, i) => { const p = f.querySelector(".plate"); if (p) p.textContent = `Plate ${roman(i + 1)}`; });
 document.querySelectorAll(".ref").forEach((r) => { const f = document.getElementById(`fig-${r.dataset.fig}`); r.textContent = f ? f.querySelector(".plate").textContent : "a plate below"; });
 
-function drawAll() { drawWorld(); drawFirm(); drawMonopoly(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoom(); drawCorridor(); drawMoney(); drawDoubling(); drawVelocity(); drawProductivity(); drawCornLaws(); drawBrexit(); drawStarlanes(); }
+function drawAll() { drawWorld(); drawFirm(); drawMonopoly(); drawSites(); drawVA(); drawPrice(); drawLanded(); drawAA(); drawSweep(); drawFPE(); drawSpec(); drawBlight(); drawEngel(); drawShock(); drawEven(); drawBoomtown(); drawBoom(); drawCorridor(); drawMoney(); drawDoubling(); drawVelocity(); drawProductivity(); drawCornLaws(); drawBrexit(); drawStarlanes(); }
 inspect(picked);
 drawAll();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);

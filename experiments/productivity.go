@@ -19,7 +19,9 @@ func runProductivity(o *Out) {
 	control, shocked := settled(), settled()
 	for _, r := range shocked.Regions {
 		for _, f := range r.Firms {
-			f.Mult *= 2
+			if !f.Fixed { // (the land is as it was)
+				f.Mult *= 2
+			}
 		}
 	}
 	basket := make([][]float64, len(control.Regions))

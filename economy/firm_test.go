@@ -28,7 +28,7 @@ func TestPlanMaximisesProfit(t *testing.T) {
 		best := profit(f, prices, 1.3, f.PlanLabor, inputs)
 		// scaling any one input up or down must not help
 		for g := range inputs {
-			if !f.PlanHas[g] {
+			if !f.PlanHas[g] || Goods[g].Lease > 0 { // (a leased good it works as it holds it)
 				continue
 			}
 			for _, k := range []float64{0.97, 1.03} {
