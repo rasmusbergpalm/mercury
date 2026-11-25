@@ -1112,6 +1112,13 @@ func (w *World) aiTax(n *Nation) {
 	if w.atWar(n) {
 		step *= aiWarTaxSpeed
 	}
+	// a surplus of more than twice the reserve (a building programme ended,
+	// an army demobilised) is cut as fast: money held by the state is money
+	// its people can't spend, and Parliaments and taxpayers saw to it that
+	// a surplus didn't sit idle
+	if n.Treasury > 2*n.reserve() && want/perPoint < n.TaxRate {
+		step = aiTaxStep * aiWarTaxSpeed
+	}
 	rate := math.Max(n.TaxRate-step, math.Min(n.TaxRate+step, want/perPoint))
 	n.SetTaxRate(math.Max(0.005, math.Min(0.6, rate)))
 }
