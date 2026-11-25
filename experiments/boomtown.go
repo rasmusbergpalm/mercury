@@ -36,13 +36,10 @@ func runBoomtown(o *Out) {
 			}
 			for d := settle; d < settle+years*days; d++ {
 				if d == settle {
+					if boom { // its trades: industry and services
+						windfall(r, 1.5, func(f *Firm) bool { return f.Sector != Primary && f.Output != housing })
+					}
 					for _, f := range r.Firms {
-						if boom && f.Sector != Primary && f.Output != housing { // its trades: industry and services
-
-							for _, m := range f.Methods {
-								m.TFP *= 1.5
-							}
-						}
 						if f.Output == housing {
 							f.NoBuilding = !build
 						}

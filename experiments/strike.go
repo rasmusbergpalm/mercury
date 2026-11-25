@@ -27,14 +27,7 @@ func runStrike(o *Out) {
 					w.Migration = migration // (people sort themselves out while the map settles, then may stay put)
 				}
 				if shock && d == shockDay {
-					for _, f := range w.Regions[shockTile].Firms {
-						if f.Fixed {
-							continue // (the land is as it was)
-						}
-						for _, m := range f.Methods {
-							m.TFP *= 1.5
-						}
-					}
+					windfall(w.Regions[shockTile], 1.5, nil)
 				}
 				w.Step()
 				if d >= settle && (d-settle)%30 == 0 {

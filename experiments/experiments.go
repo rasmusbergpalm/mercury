@@ -277,3 +277,17 @@ func hopsFrom(w *World, tile int) []int {
 	}
 	return dist
 }
+
+// windfall makes a tile's firms k times as productive, those for which
+// which says so (nil: all of them), as a find or an invention would. Its
+// land is as it was: no windfall makes more of it.
+func windfall(r *Region, k float64, which func(*Firm) bool) {
+	for _, f := range r.Firms {
+		if f.Fixed || (which != nil && !which(f)) {
+			continue
+		}
+		for _, m := range f.Methods {
+			m.TFP *= k
+		}
+	}
+}

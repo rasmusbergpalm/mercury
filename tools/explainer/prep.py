@@ -141,5 +141,36 @@ r3 = lambda xs: [round(x, 3) for x in xs]
 out["starlanes"] = {k: sl[k] for k in ("systems", "lanes", "start", "riotFrom", "riotTo", "riot", "peopleUnit")}
 for run in ("control", "riots"):
     out["starlanes"][run] = {k: ([r3(x) for x in v] if k != "Output" else r3(v)) for k, v in sl[run].items()}
+# The page's sentences that aren't filled in from the data: each is checked
+# against it here, so that a change to the economy that breaks one stops the
+# build instead of leaving the page saying what is no longer so.
+def claim(ok, sentence):
+    if not ok:
+        raise SystemExit(f"economy.html no longer holds: {sentence}")
+
+sw = sorted(out["sweep"], key=lambda r: r["cost"])
+by_cost = {}
+for r in sw:
+    by_cost.setdefault(r["cost"], []).append(r)
+mean = lambda c, k: sum(r[k] for r in by_cost[c]) / len(by_cost[c])
+costs = sorted(by_cost)
+jobs = [mean(c, "transportJobs") for c in costs[:-1]]  # (the last is autarky)
+peak = jobs.index(max(jobs))
+claim(0 < peak < len(jobs) - 1, "transport's share of workers first rises with its cost, then falls (Plate X's hump)")
+claim(mean(costs[-1], "priceGap") < max(mean(c, "priceGap") for c in costs[:-1]),
+      "the price gap narrows again near autarky")
+spec = [r for r in out["trade"] if not r["migration"]]
+spec.sort(key=lambda r: r["cost"])
+lo = min(range(len(spec) - 1), key=lambda i: spec[i]["spec"])
+claim(0 < lo < len(spec) - 2 and max(r["spec"] for r in spec[lo + 1:-1]) > spec[lo]["spec"],
+      "Krugman's index falls as carriage gets dear, then rises a little near autarky")
+coal = sorted((r for r in out["boom"] if not r["Migration"]), key=lambda r: r["Boom"])
+c0 = coal[0]["Coal"] + coal[0]["Haul"]
+gain = [(r["Boom"], (r["Coal"] + r["Haul"]) / c0) for r in coal]
+top = max(gain, key=lambda x: x[1])[0]
+claim(3 <= top <= 6 and gain[-1][1] <= max(g for _, g in gain), "the coal boom levels off beyond about four times")
+rank = lambda key: sorted(out["aa"]["base"], key=lambda g: -g[key]).index(next(g for g in out["aa"]["base"] if g["good"] == "tea"))
+claim(rank("vpb") <= 2 and rank("hops") <= 2, "tea is among the goods worth the most for their bulk, and already travels about as far as any")
+
 json.dump(out, open(OUT, "w"), separators=(",", ":"))
 print(f"{len(json.dumps(out))} bytes of data; goods {goods}")
