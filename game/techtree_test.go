@@ -88,11 +88,13 @@ func TestGatedFirmsNeedTheirTech(t *testing.T) {
 		}
 	}
 	w.GrantTech(m.ID, "Fertilizers")
+	made := 0.0 // (until the farms refit to fertilized methods nobody buys it, and it may stop again)
 	for i := 0; i < 150; i++ { // its coal and clay may have to be imported
 		w.Step()
+		made += firmIn(own, "Fertilizer works").LastOutput
 	}
-	if k := firmIn(own, "Fertilizer works"); !k.Enabled || k.LastOutput <= 0 {
-		t.Errorf("fertilizer works idle after Fertilizers: enabled %v output %v", k.Enabled, k.LastOutput)
+	if k := firmIn(own, "Fertilizer works"); !k.Enabled || made <= 0 {
+		t.Errorf("fertilizer works idle after Fertilizers: enabled %v, made %v", k.Enabled, made)
 	}
 	if firmIn(unowned, "Fertilizer works").Enabled {
 		t.Error("an unowned tile's fertilizer works were unlocked by another nation's tech")
