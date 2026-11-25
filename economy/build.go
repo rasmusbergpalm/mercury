@@ -21,10 +21,6 @@ type Recipe struct {
 	// (construction) and the machines in them. None given: LevelCost of
 	// construction.
 	Capital []Stock
-	// Land is a deposit's share of what it makes (its rent), for a mine,
-	// well or fishery: its own, RawMaxLevels levels' worth (Cap for a
-	// method). Land that farms, forests and houses share is a good they buy.
-	Land float64
 	// Payback multiplies the ticks of profit its owners accept a new level
 	// to repay (0: as any other).
 	Payback float64
@@ -47,16 +43,11 @@ var (
 // starting switched off until it is invented (StartsOff): a firm of its own beside the old one, with
 // its own recipe and levels. More productive, it needs machinery and fuel
 // the old one doesn't, so it spreads as owners find it worth building (and
-// the old one comes back where the machinery is dear). A land-bound one
-// shares its land with the old one: it grows by taking the old one's
-// levels over.
+// the old one comes back where the machinery is dear). The firm's methods
+// share its land and its deposit.
 type MethodRecipe struct {
 	Base string // the firm whose method it is
 	Recipe
-	// Cap is the levels a land-bound method can work, if more than the
-	// old one's (RawMaxLevels): steam pumps and blasting reach seams the
-	// old mines couldn't.
-	Cap int
 }
 
 // MethodRecipes are every firm's later methods (data/recipes.json).
@@ -65,14 +56,14 @@ var MethodRecipes []MethodRecipe
 func makeMethodRecipes() []MethodRecipe {
 	var out []MethodRecipe
 	for _, d := range recipesData.Methods {
-		out = append(out, MethodRecipe{d.Base, d.recipe(), d.Cap})
+		out = append(out, MethodRecipe{d.Base, d.recipe()})
 	}
 	return out
 }
 
-// RawMaxLevels is a land-bound producer's land, in levels' worth (see
-// Method.Land).
-var RawMaxLevels int
+// DepositSize is how much of its deposit a mine, well or fishery works
+// (Firm.Deposit; data/terrains.json).
+var DepositSize float64
 
 // Bonus is a raw producer available on a terrain, with a TFP multiplier.
 type Bonus struct {
@@ -156,10 +147,10 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 			for _, b := range bonuses {
 				if b.Firm == rc.Firm {
 					f := NewFirm(rc.Firm, G(rc.Output), rc.TFP*b.Mult, rc.Factors, 50)
-					f.Methods[0].Capital, f.Methods[0].Land = levelOf(rc.Capital), rc.Land
+					f.Methods[0].Capital = levelOf(rc.Capital)
 					f.Sector = Primary
-					if rc.Land > 0 { // a deposit of its own
-						f.MaxLevels = RawMaxLevels
+					if hasDeposit(rc.Factors) {
+						f.Deposit = DepositSize
 					}
 					f.Site, f.SiteMult = site, b.Mult
 					f.Enabled = !rc.StartsOff
@@ -174,7 +165,7 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 	}
 	for _, rc := range ProcessingRecipes {
 		f := NewFirm(rc.Firm, G(rc.Output), rc.TFP, rc.Factors, 50)
-		f.Methods[0].Capital, f.Methods[0].Land = levelOf(rc.Capital), rc.Land
+		f.Methods[0].Capital = levelOf(rc.Capital)
 		if rc.Levels > 0 { // built up from the start: a town's houses
 			f.Levels = rc.Levels
 		}
@@ -189,8 +180,7 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 		firms = append(firms, f)
 	}
 	for _, f := range firms {
-		// the later methods, at the site's productivity; a land-bound
-		// one may work as much of the land as its Cap
+		// the later methods, at the site's productivity
 		for _, mr := range MethodRecipes {
 			if mr.Base != f.Name {
 				continue
@@ -200,15 +190,22 @@ func makeFirms(t Terrain, coastal bool) []*Firm {
 				site = f.SiteMult
 			}
 			m := newMethod(mr.Firm, mr.TFP*site, mr.Factors)
-			m.Capital, m.Land = levelOf(mr.Capital), mr.Land
+			m.Capital = levelOf(mr.Capital)
 			m.Enabled = !mr.StartsOff
-			if f.Sector == Primary {
-				m.Cap = max(RawMaxLevels, mr.Cap)
-			}
 			f.Methods = append(f.Methods, m)
 		}
 	}
 	return firms
+}
+
+// hasDeposit reports whether a recipe works a deposit.
+func hasDeposit(fs []Factor) bool {
+	for _, fc := range fs {
+		if fc.Kind == DepositFactor {
+			return true
+		}
+	}
+	return false
 }
 
 // Graph is a map: places joined by lanes. Rows and Cols, if set, are the

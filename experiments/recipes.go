@@ -34,23 +34,18 @@ func runRecipes(o *Out) {
 				out = append(out, factor{Goods[fc.Good].Name, fc.Exp})
 			case CompositeFactor:
 				out = append(out, factor{Composites[fc.Composite].Name, fc.Exp})
+			case DepositFactor:
+				out = append(out, factor{"deposit", fc.Exp})
 			}
 		}
 		return out
 	}
 	var firms []firm
 	addFirm := func(rc Recipe) {
-		withLand := func(r Recipe) []factor {
-			out := facs(r.Factors)
-			if r.Land > 0 {
-				out = append(out, factor{"land", r.Land})
-			}
-			return out
-		}
-		f := firm{Name: rc.Firm, Good: rc.Output, Methods: []method{{rc.Firm, rc.TFP, withLand(rc)}}, Sites: map[string]float64{}}
+		f := firm{Name: rc.Firm, Good: rc.Output, Methods: []method{{rc.Firm, rc.TFP, facs(rc.Factors)}}, Sites: map[string]float64{}}
 		for _, mr := range MethodRecipes {
 			if mr.Base == rc.Firm {
-				f.Methods = append(f.Methods, method{mr.Firm, mr.TFP, withLand(mr.Recipe)})
+				f.Methods = append(f.Methods, method{mr.Firm, mr.TFP, facs(mr.Factors)})
 			}
 		}
 		for _, tn := range Terrains {

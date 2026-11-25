@@ -11,6 +11,10 @@ const (
 	LaborFactor FactorKind = iota
 	GoodFactor
 	CompositeFactor
+	// DepositFactor is a resource only the firm works (a coal seam, an oil
+	// field, a fishing ground): a fixed amount of it (Firm.Deposit), shared
+	// among its methods, never bought; its rent is part of the firm's profit.
+	DepositFactor
 )
 
 // Factor is one input of a Cobb-Douglas production function.
@@ -57,11 +61,7 @@ type Method struct {
 	// TFP is productivity per level, a lever (an outside improvement to the
 	// method raises it); BaseTFP is the recipe's.
 	TFP, BaseTFP float64
-	// Cap is the land it may work, in levels (0: the firm's MaxLevels):
-	// steam pumps and blasting reach seams the old mines couldn't.
-	Cap int
-	// Land is land's share of what it makes (0: it needs none); see landMult.
-	Land float64
+
 	// Capital is what one of its levels is made of: the building
 	// (construction) and the machines in it (engines, tools, vehicles).
 	// Owners buy it to build a level and make good its wear (Good.Wear).
@@ -72,6 +72,7 @@ type Method struct {
 	Output float64 // what it made today
 
 	planLabor, labor float64   // today's plan, and what it got
+	deposit          float64   // its share of the firm's deposit today
 	planQty          []float64 // per good
 	powLevels        int
 	levelsPow        float64 // L^(1-s), cached
@@ -134,6 +135,10 @@ type Firm struct {
 	// Fixed: its levels are all it will have and don't wear (the tile's
 	// land: Recipe.Fixed).
 	Fixed bool
+	// Deposit is how much of its deposit it works (a DepositFactor's
+	// amount), and DepositRent what a unit of it earned the firm in the
+	// last tick: the value its methods share it by.
+	Deposit, DepositRent float64
 	// Enabled: the firm works at all (one whose recipe StartsOff doesn't
 	// until it is switched on).
 	Enabled bool
@@ -235,13 +240,9 @@ func NewLevels(f *Firm, method, n int, external bool) *Expansion {
 const projectShare = 0.05
 
 // projectLevels is how many levels the firm's owners build at once: a
-// projectShare of what it has, at least one, as far as its land reaches.
+// projectShare of what it has, at least one.
 func (f *Firm) projectLevels() int {
-	n := max(1, int(projectShare*float64(f.Levels)))
-	if r := f.Reach(); r > 0 {
-		n = max(1, min(n, r-f.Levels))
-	}
-	return n
+	return max(1, int(projectShare*float64(f.Levels)))
 }
 
 // NewRefit is an expansion that refits one of the firm's levels from its
@@ -433,29 +434,6 @@ func (f *Firm) refit(from, to int) {
 	f.addLevel(to)
 }
 
-// methodCap is the land method i may work, in levels (0: no cap).
-func (f *Firm) methodCap(i int) int {
-	if c := f.Methods[i].Cap; c > 0 {
-		return c
-	}
-	return f.MaxLevels
-}
-
-// landCap is the firm's land, in levels: the most any of its working
-// methods may work (0: it has none).
-func (f *Firm) landCap() int {
-	if f.MaxLevels == 0 {
-		return 0
-	}
-	c := f.MaxLevels
-	for i, m := range f.Methods {
-		if m.Enabled {
-			c = max(c, f.methodCap(i))
-		}
-	}
-	return c
-}
-
 // effectiveTFP is method i's TFP * L^(1-s) with the tile's multipliers: the
 // productivity of its variable factors.
 func (f *Firm) effectiveTFP(i int) float64 {
@@ -463,60 +441,12 @@ func (f *Firm) effectiveTFP(i int) float64 {
 	if m.powLevels != l || m.levelsPow == 0 {
 		m.powLevels, m.levelsPow = l, math.Pow(float64(l), 1-m.exponentSum())
 	}
-	return m.TFP * m.levelsPow * f.Agglom * f.Mult * f.landMult(i)
+	return m.TFP * m.levelsPow * f.Agglom * f.Mult
 }
 
-// Land is a factor of a land-bound method's recipe of its own (Method.Land,
-// its share of what the method makes: its rent), and it is fixed: the
-// firm's land is landCap levels' worth. Its methods share it in proportion
-// to their levels, so a method makes TFP * L_m^(1-s) * (landCap/L)^Land:
-// on a firm of one method, TFP * landCap^Land * L^(1-s-Land). More levels
-// on the same land, more workers and inputs with them, each add less
-// (Ricardo's intensive margin: drainage, marling, deeper shafts), and
-// owners build while the next level pays.
-const landReach = 50 // the most levels a land-bound firm may have, in levels of its land: a safety (land already makes each more level add less; towns built dense)
-
-// land is the firm's deposit, in levels' worth (0: it has none).
-func (f *Firm) land() float64 { return float64(f.landCap()) }
-
-// landMult is method i's share of the firm's land, against a level's
-// worth: (land/L)^Land.
-func (f *Firm) landMult(i int) float64 {
-	m, c := f.Methods[i], f.land()
-	if m.Land == 0 || c == 0 || f.Levels == 0 {
-		return 1
-	}
-	return math.Pow(c/float64(f.Levels), m.Land)
-}
-
-// marginalLevel is what one more level would add to the firm's profit,
-// against what each of its levels earns now: 1 where it has no land, else
-// (1-s-Land)/(1-s). (With its variable factors bought as they pay, a
-// Cobb-Douglas firm's profit is proportional to its productivity to the
-// power 1/(1-s).)
-func (f *Firm) marginalLevel() float64 {
-	m := f.Methods[f.Main()]
-	if m.Land == 0 || f.land() == 0 {
-		return 1
-	}
-	s := m.exponentSum()
-	return (1 - s - m.Land) / (1 - s)
-}
-
-// LandMult is what its land does for its main method's productivity:
-// above 1 on fewer levels than its land holds, below on more.
-func (f *Firm) LandMult() float64 { return f.landMult(f.Main()) }
-
-// LandArea is the firm's land, in levels' worth (0: it has none).
-func (f *Firm) LandArea() float64 { return f.land() }
-
-// Reach is the most levels the firm may have (0: no cap).
-func (f *Firm) Reach() int {
-	if f.MaxLevels == 0 {
-		return 0
-	}
-	return max(1, int(landReach*f.land()))
-}
+// depositRent is the rent of the firm's deposit a tick: what it is worth
+// to it (DepositRent a unit), part of its profit.
+func (f *Firm) depositRent() float64 { return f.DepositRent * f.Deposit }
 
 // main is the method that runs most of the firm's levels (its first, at
 // a tie): what its productivity breakdown describes.
@@ -556,10 +486,7 @@ func (f *Firm) factors() []Factor {
 }
 
 // AtCap reports whether the firm can have no more levels.
-func (f *Firm) AtCap() bool {
-	c := f.Reach()
-	return f.Fixed || (c > 0 && f.Levels >= c)
-}
+func (f *Firm) AtCap() bool { return f.Fixed }
 
 // BestMethod is the working method a level would earn most on at today's
 // prices, of those with room for one more (-1 if none), and WorstMethod
@@ -567,7 +494,7 @@ func (f *Firm) AtCap() bool {
 func (f *Firm) BestMethod(prices []float64, wage float64) (int, float64) {
 	best, top := -1, 0.0
 	for i, m := range f.Methods {
-		if !m.Runs() || (f.methodCap(i) > 0 && f.MethodLevels(i) >= landReach*f.methodCap(i)) || f.AtCap() {
+		if !m.Runs() || f.AtCap() {
 			continue
 		}
 		if p := f.LevelProfit(i, prices, wage); best < 0 || p > top {
@@ -614,6 +541,8 @@ func (f *Firm) unitCost(fc Factor, prices []float64, wage float64) float64 {
 	switch fc.Kind {
 	case LaborFactor:
 		return wage
+	case DepositFactor: // what a unit of its deposit earns it
+		return math.Max(f.DepositRent, 1e-9)
 	case CompositeFactor:
 		c := Composites[fc.Composite]
 		return PriceIndex(prices, c.Goods, c.Sigma)
@@ -707,22 +636,28 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 		total += pl.q
 		plans = append(plans, pl)
 	}
-	// Leased goods (land): the firm holds them, and moves what it holds a
-	// lease's fraction of the way to what its methods want, shared among
-	// them as they want it; each method plans its other inputs around its
-	// share, as a tenant farms the acres he has.
-	leased := false
+	// Held factors: leased goods (land) and the firm's deposit. The firm
+	// holds them and shares them among its methods as each would want them
+	// at their price (a deposit's: what a unit of it earns); each method
+	// plans its other inputs around its share, as a tenant farms the acres
+	// he has. What it holds of a leased good moves a lease's fraction of
+	// the way to what its methods want; its deposit is fixed.
+	held := false
 	for _, pl := range plans {
-		leased = leased || pl.m.leases()
+		held = held || pl.m.holds()
 	}
-	if leased {
+	if held {
 		if f.Held == nil {
 			f.Held = make([]float64, NumGoods)
 		}
 		want := make([]float64, NumGoods)
+		deposit := 0.0
 		for _, pl := range plans {
 			for j, fc := range pl.m.Factors {
-				if leaseOf(fc) > 0 {
+				switch {
+				case fc.Kind == DepositFactor:
+					deposit += pl.want[j]
+				case leaseOf(fc) > 0:
 					want[fc.Good] += pl.want[j]
 				}
 			}
@@ -737,29 +672,42 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 			}
 		}
 		total = 0
+		rent := 0.0 // what its methods' shares of the deposit earn
 		for k := range plans {
 			pl := &plans[k]
-			if !pl.m.leases() {
+			pl.m.deposit = 0
+			if !pl.m.holds() {
 				total += pl.q
 				continue
 			}
 			kk, s := f.effectiveTFP(f.methodIndex(pl.m)), 0.0
 			for j, fc := range pl.m.Factors {
-				if leaseOf(fc) > 0 {
+				switch {
+				case fc.Kind == DepositFactor:
+					pl.m.deposit = f.Deposit * pl.want[j] / math.Max(deposit, 1e-300)
+					pl.want[j] = pl.m.deposit
+					kk *= math.Pow(pl.want[j], fc.Exp)
+				case leaseOf(fc) > 0:
 					pl.want[j] = f.Held[fc.Good] * pl.want[j] / math.Max(want[fc.Good], 1e-300)
 					kk *= math.Pow(pl.want[j], fc.Exp)
-				} else {
+				default:
 					kk *= math.Pow(fc.Exp*p/pl.cost[j], fc.Exp)
 					s += fc.Exp
 				}
 			}
 			pl.q, pl.s = math.Pow(kk, 1/(1-s)), s
 			for j, fc := range pl.m.Factors {
-				if leaseOf(fc) == 0 {
+				switch {
+				case fc.Kind == DepositFactor:
+					rent += fc.Exp * p * pl.q
+				case leaseOf(fc) == 0:
 					pl.want[j] = fc.Exp * p * pl.q / pl.cost[j]
 				}
 			}
 			total += pl.q
+		}
+		if f.Deposit > 0 {
+			f.DepositRent = rent / f.Deposit
 		}
 	}
 	// Stock beyond a tick's output is stock it failed to sell (when it
@@ -772,7 +720,7 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 		for _, pl := range plans {
 			scale := math.Pow(x, 1/pl.s)
 			for j, fc := range pl.m.Factors {
-				if leaseOf(fc) == 0 { // what it holds on a lease it keeps
+				if !heldFactor(fc) { // what it holds it keeps
 					pl.want[j] *= scale
 				}
 			}
@@ -780,8 +728,10 @@ func (f *Firm) Plan(prices []float64, wage float64) {
 	}
 	spend := 0.0
 	for _, pl := range plans {
-		for j := range pl.want {
-			spend += pl.want[j] * pl.cost[j]
+		for j, fc := range pl.m.Factors {
+			if fc.Kind != DepositFactor { // its own: nothing to pay
+				spend += pl.want[j] * pl.cost[j]
+			}
 		}
 	}
 	f.DesiredSpend = spend
@@ -833,10 +783,14 @@ func (f *Firm) methodIndex(m *Method) int {
 	return -1
 }
 
-// leases reports whether any of the method's factors is leased.
-func (m *Method) leases() bool {
+// heldFactor reports whether the firm holds a factor rather than buying
+// what it wants each tick: a leased good, or its deposit.
+func heldFactor(fc Factor) bool { return fc.Kind == DepositFactor || leaseOf(fc) > 0 }
+
+// holds reports whether any of the method's factors is held.
+func (m *Method) holds() bool {
 	for _, fc := range m.Factors {
-		if leaseOf(fc) > 0 {
+		if heldFactor(fc) {
 			return true
 		}
 	}
@@ -858,11 +812,14 @@ func (f *Firm) methodInputs(m *Method, out []float64) {
 	}
 }
 
-// factorAmount is how much of a factor a method has, of its labor and goods.
-func factorAmount(fc Factor, labor float64, inputs []float64) float64 {
+// factorAmount is how much of a factor a method has, of its labor, goods
+// and its share of the deposit.
+func factorAmount(fc Factor, m *Method, labor float64, inputs []float64) float64 {
 	switch fc.Kind {
 	case LaborFactor:
 		return labor
+	case DepositFactor:
+		return m.deposit
 	case CompositeFactor:
 		c := Composites[fc.Composite]
 		return Aggregate(inputs, c.Goods, c.Sigma)
@@ -895,7 +852,7 @@ func (f *Firm) Produce() float64 {
 		}
 		x := f.effectiveTFP(i)
 		for _, fc := range m.Factors {
-			x *= math.Pow(factorAmount(fc, m.labor, in), fc.Exp)
+			x *= math.Pow(factorAmount(fc, m, m.labor, in), fc.Exp)
 		}
 		m.Output = x
 		q += x
@@ -913,7 +870,7 @@ func (f *Firm) Produce() float64 {
 }
 
 // CrowdingMult is how much one more level would multiply the firm's
-// output from the same workers and inputs, with land enough for it:
+// output from the same workers, inputs and deposit:
 // ((n+1)/n)^(1-s). Output is constant-returns in levels and the variable
 // factors together, so the gain depends only on the number of levels.
 func (f *Firm) CrowdingMult() float64 {
@@ -922,12 +879,8 @@ func (f *Firm) CrowdingMult() float64 {
 }
 
 // NextLevelMult is how much one more level would multiply the firm's
-// output from the same workers and inputs: CrowdingMult, less the land it
-// shares with the others.
-func (f *Firm) NextLevelMult() float64 {
-	n := float64(max(f.Levels, 1))
-	return f.CrowdingMult() * math.Pow(n/(n+1), f.Methods[f.Main()].Land)
-}
+// output from the same workers, inputs and deposit.
+func (f *Firm) NextLevelMult() float64 { return f.CrowdingMult() }
 
 // ValueAdded is what the firm added today: its output at the given price,
 // less the goods it used up (wages and profits are the value it added).

@@ -79,28 +79,32 @@ func TestSubsistence(t *testing.T) {
 	}
 }
 
-// A land-bound firm's land is fixed: its levels share it, so more levels
-// on it each make less, and the next adds less than each earns.
-func TestLandIsFixed(t *testing.T) {
-	f := NewFirm("Farm", G("grain"), 2, []Factor{Labor(0.6)}, 50)
-	f.Methods[0].Land = 0.25
-	f.MaxLevels, f.Levels = 4, 4
-	if m := f.LandMult(); m != 1 {
-		t.Errorf("on as many levels as its land holds: %v", m)
+// A mine's deposit is a factor it holds, fixed: its methods share it as
+// each would want it, and a method makes TFP * L^(1-s) * D^d * ...
+func TestDepositIsShared(t *testing.T) {
+	facs := []Factor{Labor(0.6), {Kind: DepositFactor, Exp: 0.12}}
+	f := NewFirm("Coal mine", G("coal"), 2, facs, 1e6)
+	f.Deposit = 4
+	m := newMethod("Better mine", 3, facs)
+	f.Methods = append(f.Methods, m)
+	f.Levels, m.Levels = 4, 2
+	prices := make([]float64, NumGoods)
+	prices[G("coal")] = 10
+	for range 5 { // the deposit's value settles
+		f.Plan(prices, 1)
 	}
-	f.Levels = 8
-	if m := f.LandMult(); math.Abs(m-math.Pow(0.5, 0.25)) > 1e-12 {
-		t.Errorf("on twice as many: %v, want 0.5^0.25", m)
+	a, b := f.Methods[0].deposit, m.deposit
+	if math.Abs(a+b-4) > 1e-9 || b <= a {
+		t.Errorf("shares %v and %v of a deposit of 4: the more productive method should get more", a, b)
 	}
-	if m := f.marginalLevel(); math.Abs(m-0.15/0.4) > 1e-12 {
-		t.Errorf("the next level adds %v of what each earns, want (1-0.6-0.25)/(1-0.6)", m)
+	f.Labor = f.PlanLabor
+	q := f.Produce()
+	want := 0.0
+	for i, x := range f.Methods {
+		want += x.TFP * math.Pow(float64(f.MethodLevels(i)), 1-0.72) * math.Pow(x.planLabor, 0.6) * math.Pow(x.deposit, 0.12)
 	}
-	if f.AtCap() {
-		t.Error("full at twice its land")
-	}
-	f.Levels = 4 * landReach
-	if !f.AtCap() {
-		t.Errorf("room beyond %d times its land", landReach)
+	if math.Abs(q-want) > 1e-9*want {
+		t.Errorf("made %v, want %v", q, want)
 	}
 }
 

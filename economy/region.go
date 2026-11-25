@@ -162,7 +162,9 @@ func (r *Region) planInvestment() {
 			continue
 		}
 		f.levelValue = f.CapitalValue(r.prices) / float64(f.Levels)
-		perLevel := f.ProfitEMA / float64(f.Levels)
+		// what a level earns, less its deposit's rent: a new level adds
+		// what the levels earn, not the deposit, which it only shares
+		perLevel := (f.ProfitEMA - f.depositRent()) / float64(f.Levels)
 		payback := payback
 		if f.Payback > 0 {
 			payback *= f.Payback
@@ -190,7 +192,7 @@ func (r *Region) planInvestment() {
 				refit = refitGain * payback / NewRefit(f, worst, best, false).Value(r.prices)
 			}
 			if v := f.Methods[best].LevelValue(r.prices); v > 0 {
-				build = perLevel * f.marginalLevel() * payback / v // beyond its good land, what the next level adds
+				build = perLevel * payback / v
 			}
 			var refitUrge, buildUrge float64
 			if refit > 1 {
@@ -278,9 +280,6 @@ func (r *Region) settleFirms() {
 				for range max(1, e.Levels) {
 					f.addLevel(e.Method)
 				}
-			}
-			for c := f.Reach(); c > 0 && f.Levels > c; {
-				f.dropLevel(r) // on all the land it can reach, the new method takes over the old one's
 			}
 		}
 		if f.ProfitEMA < 0 && f.Levels > 1 {

@@ -303,8 +303,11 @@ func TestProfitableFirmsInvest(t *testing.T) {
 	grew := 0
 	for _, r := range w.Regions {
 		for _, f := range r.Firms {
-			if (f.Reach() > 0 && f.Levels > f.Reach()) || (f.Levels < 1 && f.Enabled) { // a method not yet known has none
-				t.Errorf("%s in %s has %d levels (at most %d)", f.Name, r.Name, f.Levels, f.Reach())
+			if f.Levels < 1 && f.Enabled { // a method not yet known has none
+				t.Errorf("%s in %s has %d levels", f.Name, r.Name, f.Levels)
+			}
+			if f.Fixed && f.Levels != f.MaxLevels {
+				t.Errorf("%s in %s, its land fixed at %d levels, has %d", f.Name, r.Name, f.MaxLevels, f.Levels)
 			}
 			if f.Levels > 1 {
 				grew++
@@ -343,7 +346,6 @@ func TestNationFundedExpansion(t *testing.T) {
 		}
 	}
 	f := r.Firms[fi]
-	f.MaxLevels = 99 // keep private investment from finishing first
 	if err := w.Expand(r.ID, fi); err != nil {
 		t.Fatal(err)
 	}
@@ -358,9 +360,12 @@ func TestNationFundedExpansion(t *testing.T) {
 	if f.Levels != levels+1 || spent <= 0 {
 		t.Errorf("bakery levels %d -> %d, nation spent %v", levels, f.Levels, spent)
 	}
-	f.Levels, f.Expansion = f.Reach(), nil
-	if err := w.Expand(r.ID, fi); !errors.Is(err, ErrFirmMax) {
-		t.Errorf("expansion beyond max: %v", err)
+	for i, lf := range r.Firms { // a tile's land can't be built
+		if lf.Fixed {
+			if err := w.Expand(r.ID, i); !errors.Is(err, ErrFirmMax) {
+				t.Errorf("building more land: %v", err)
+			}
+		}
 	}
 }
 

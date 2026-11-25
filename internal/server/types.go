@@ -614,7 +614,7 @@ func regionDetail(w *game.World, i int) RegionDetail {
 	}
 	for _, f := range r.Firms {
 		fs := FirmState{f.Name, int(f.Output), f.Labor, f.LastOutput, f.Inventory, f.Cash,
-			f.Levels, f.Reach(), f.ProfitEMA, nil, f.Enabled, game.FirmTech[f.Name], f.Sector.String(), game.FirmBonuses(r, f), 0, 0, 0, nil, ""}
+			f.Levels, f.MaxLevels, f.ProfitEMA, nil, f.Enabled, game.FirmTech[f.Name], f.Sector.String(), game.FirmBonuses(r, f), 0, 0, 0, nil, ""}
 		fs.Wanted = f.PlanLabor
 		if best, _ := f.BestMethod(r.Prices(), r.Wage); best >= 0 {
 			fs.Level = stocks(f.Methods[best].Capital)

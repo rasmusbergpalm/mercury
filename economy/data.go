@@ -79,7 +79,7 @@ func useData(fsys fs.FS) (err error) {
 	}
 	ConsumerGoods, TierOf = makeConsumerGoods(), makeTierOf()
 	RawRecipes, ProcessingRecipes, MethodRecipes = recipes(recipesData.Raw), recipes(recipesData.Processing), makeMethodRecipes()
-	RawMaxLevels = terrainsData.RawMaxLevels
+	DepositSize = terrainsData.Deposit
 	Terrains = makeTerrains()
 	CoastMove, CoastRaw = terrainsData.Coast.Move, bonuses(terrainsData.Coast.Raw)
 	publicSlot = NumGoods
@@ -126,7 +126,6 @@ type recipeData struct {
 	Sector       string
 	Enabled      *bool
 	Base         string
-	Cap          int
 	Capital      [][2]any
 	Payback      float64
 	Fixed        bool
@@ -144,8 +143,8 @@ func (d recipeData) recipe() Recipe {
 		switch {
 		case name == "labor":
 			r.Factors = append(r.Factors, Labor(exp))
-		case name == "deposit": // the firm's own, fixed, not bought: see Method.Land
-			r.Land = exp
+		case name == "deposit": // the firm's own, fixed, not bought
+			r.Factors = append(r.Factors, Factor{Kind: DepositFactor, Exp: exp})
 		case compositeIndex(name) >= 0:
 			r.Factors = append(r.Factors, Comp(name, exp))
 		default:
@@ -194,7 +193,7 @@ type terrainsFile struct {
 		Move float64
 		Raw  [][2]any
 	}
-	RawMaxLevels int `json:"raw_max_levels"`
+	Deposit float64
 }
 
 var terrainsData terrainsFile

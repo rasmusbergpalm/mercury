@@ -55,7 +55,6 @@ var (
 	MethodRecipes   = economy.MethodRecipes
 	DefaultMap      = economy.DefaultMap
 	Terrains        = economy.Terrains
-	RawMaxLevels    = economy.RawMaxLevels
 	G               = economy.G
 	NewLevel        = economy.NewLevel
 	NewRefit        = economy.NewRefit

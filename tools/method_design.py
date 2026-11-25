@@ -69,6 +69,12 @@ LAND = {"Farm": .25, "Potato farm": .25, "Ranch": .25, "Sheep farm": .25, "Cotto
 # those whose land is a deposit of their own (seams, wells, fishing
 # grounds); the rest rent the tile's land, a good its landowner lets
 DEPOSIT = {"Coal mine", "Iron mine", "Clay pit", "Fishery", "Oil well"}
+# the deposits methods reach that the old mines couldn't (steam pumps,
+# blasting), against the old mines' (DEPOSIT_SIZE, economy/data/terrains.json
+# "deposit"): a method that works a deeper seam makes (reach/size)^d more
+DEPOSIT_SIZE = 4
+REACH = {"Steam coal mine": 16, "Mechanized coal mine": 16, "Conveyor coal mine": 16,
+         "Steam iron mine": 6, "Blasting iron mine": 8, "Motor ore mine": 8}
 COLS = dict(L="wage", tools="price tools", steam="price steam engines", coal="price coal", iron="price iron", wood="price wood",
             grain="price grain", fuel="price coal", clay="price clay", fert="price fertilizer", elec="price electricity",
             expl="price explosives", veh="price vehicles", oil="price oil")
@@ -210,9 +216,13 @@ def main(alltech, paths):
         t, rest, machines = as_capital(firm, tfp, f, P[era])
         rc["tfp"] = round(t, 3)
         rc["factors"] = [["labor" if g == "L" else NAMES.get(g, g), a] for g, a in rest.items()]
+        rc.pop("cap", None)
         if firm in LAND:  # the base's share of value added, of this method's
             materials = lambda d: sum(a for g, a in d.items() if g != "L" and g not in EQUIP)
-            rc["factors"].append(["deposit" if firm in DEPOSIT else "land", round(LAND[firm] / (1 - materials(F[firm][0][1])) * (1 - materials(f)), 3)])
+            share = round(LAND[firm] / (1 - materials(F[firm][0][1])) * (1 - materials(f)), 3)
+            rc["factors"].append(["deposit" if firm in DEPOSIT else "land", share])
+            if name in REACH:
+                rc["tfp"] = round(rc["tfp"] * (REACH[name] / DEPOSIT_SIZE) ** share, 3)
         rc.pop("capital", None)
         if machines:
             rc["capital"] = [["construction", LEVEL]] + [[g, round(q, 1)] for g, q in machines.items()]

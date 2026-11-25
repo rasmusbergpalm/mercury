@@ -208,14 +208,14 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 				}
 			}
 			for _, f := range r.Firms {
-				for _, m := range f.Methods { // a deposit's share of what it makes: its rent
-					landRent += m.Land * m.Output * r.Markets[f.Output].Price
-				}
-				if f.Fixed { // the land its landowner lets
+				// rent: the land landowners let, and what deposits earn the
+				// firms that work them; the return on capital is the profit
+				// of the rest, less its deposits' rent
+				if f.Fixed {
 					landRent += f.TickRevenue
-				}
-				if f.MaxLevels == 0 { // the return on capital is measured where no land shares the profit
-					profit += f.TickRevenue - f.TickCost
+				} else {
+					landRent += f.DepositRent * f.Deposit
+					profit += f.TickRevenue - f.TickCost - f.DepositRent*f.Deposit
 				}
 				wages += f.Labor * r.Wage
 				for _, m := range f.Methods {
@@ -254,15 +254,12 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 		if d%days != 0 {
 			continue
 		}
-		var k, kLand, kHouses, levels, big, people, util, machK, constrJobs float64
+		var k, kHouses, levels, big, people, util, machK, constrJobs float64
 		var labor [3]float64
 		small := math.Inf(1)
 		for _, r := range w.Regions {
 			for _, f := range r.Firms {
 				k += f.CapitalValue(r.Prices())
-				if f.MaxLevels > 0 {
-					kLand += f.CapitalValue(r.Prices())
-				}
 				if f.Output == housing {
 					kHouses += f.CapitalValue(r.Prices())
 				}
@@ -333,7 +330,7 @@ func runCentury(t *testing.T, seed int64, years int, path string) {
 			goods++
 		}
 		row := []string{fmt.Sprint(d / days), f0(people), f0(n.RealGDP), f4(n.RealGDP / people), f4(util / people), f4(ni / float64(days)),
-			f4(constr / ni), f4(constrPriv / ni), f4(k / ni), f4(profit / (k - kLand)), f4(wages / ni),
+			f4(constr / ni), f4(constrPriv / ni), f4(k / ni), f4(profit / k), f4(wages / ni),
 			f4(labor[Primary] / lt), f4(labor[Industry] / lt), f4(labor[Service] / lt), f0(levels), fmt.Sprint(techs),
 			f4(n.TaxRate), f4(big / people), f0(small),
 			f4(shipped / ni), f4(transportJobs / lt), f4(spread / math.Max(1, float64(goods))), f4(infra),

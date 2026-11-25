@@ -70,8 +70,10 @@ type FirmState struct {
 	TFP          []float64
 	MethodOn     []bool
 	MethodLevels []int `json:",omitempty"`
-	// how much of each leased good it holds, by good
-	Held []float64 `json:",omitempty"`
+	// how much of each leased good it holds, by good, and what a unit of
+	// its deposit earned it
+	Held        []float64 `json:",omitempty"`
+	DepositRent float64   `json:",omitempty"`
 }
 
 // TraderState is a route's state in a Snapshot.
@@ -111,7 +113,7 @@ func (w *World) Snapshot() *Snapshot {
 			fs := FirmState{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
 				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age,
 				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Enabled: f.Enabled,
-				Monopoly: f.Monopoly, Elasticity: f.Elasticity, Share: f.share, Held: append([]float64(nil), f.Held...)}
+				Monopoly: f.Monopoly, Elasticity: f.Elasticity, Share: f.share, Held: append([]float64(nil), f.Held...), DepositRent: f.DepositRent}
 			for i, m := range f.Methods {
 				fs.TFP = append(fs.TFP, m.TFP)
 				fs.MethodOn = append(fs.MethodOn, m.Enabled)
@@ -218,7 +220,7 @@ func (w *World) SetState(s *Snapshot) error {
 				f.Expansion = fs.Expansion.Copy()
 			}
 			f.Wear, f.Urge, f.Mult = fs.Wear, fs.Urge, fs.Mult
-			f.Held = append([]float64(nil), fs.Held...)
+			f.Held, f.DepositRent = append([]float64(nil), fs.Held...), fs.DepositRent
 			f.Enabled = fs.Enabled
 			f.Monopoly, f.Elasticity, f.share = fs.Monopoly, fs.Elasticity, fs.Share
 		}
