@@ -84,7 +84,10 @@ Each tick, on every tile:
   price that clears it, so a growing town's houses outbid its farms. Its
   exponent in a recipe is its share, the rent, and the rent goes to the
   tile's owners. Mines, wells and fisheries work a `deposit` of their own
-  instead: fixed, shared by their levels, so each more level adds less.
+  instead, a factor like land but fixed and never bought (the
+  specific-factors model): its methods share it as each would want it at
+  what it earns, each more level adds less, and its rent is part of the
+  firm's profit.
   Farms and mines also have a site that suits them more or less.
 - **Owners** build a new level where it would repay its cost within
   ten years of profit (twenty for houses, a safe asset), a twentieth of
