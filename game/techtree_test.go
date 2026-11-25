@@ -88,7 +88,7 @@ func TestGatedFirmsNeedTheirTech(t *testing.T) {
 		}
 	}
 	w.GrantTech(m.ID, "Fertilizers")
-	made := 0.0 // (until the farms refit to fertilized methods nobody buys it, and it may stop again)
+	made := 0.0                // (until the farms refit to fertilized methods nobody buys it, and it may stop again)
 	for i := 0; i < 150; i++ { // its coal and clay may have to be imported
 		w.Step()
 		made += firmIn(own, "Fertilizer works").LastOutput
