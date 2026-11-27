@@ -35,8 +35,8 @@ func Example() {
 		fmt.Printf("tile %s: bread £%.2f, %.0f people\n", r.Name, r.Markets[bread].Price, r.Population())
 	}
 	// Output:
-	// tile 00: bread £24.30, 88 people
-	// tile 55: bread £23.95, 135 people
+	// tile 00: bread £24.41, 88 people
+	// tile 55: bread £24.04, 134 people
 }
 
 // A 20% tax on one tile's incomes: what it has withheld after a year.

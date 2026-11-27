@@ -132,17 +132,25 @@ const (
 	disinvestAt = 100 // ticks of losses before a firm closes a level
 )
 
-// investDecideTicks is how long owners take to start a project that pays
-// twice what they ask. Owners close the gap between the capital they have
-// and the capital that would pay a little at a time, faster the more it
-// pays (the flexible accelerator of Clark and of Koyck): each tick a project
-// pays, the owners' urge grows in proportion to how far it beats their
-// hurdle, and the project starts when the urge reaches one. The clear
-// winners are taken up soon and the marginal ones slowly, each firm by its
-// own profits and prices, rather than every owner on the map at once. A
-// project that pays three times what they ask starts in half the time:
-// when rents in a boomtown doubled, builders crowded in, as Manchester's
-// jerry-builders did in the 1830s.
+// investQ is how much of its capital a firm's owners plan to add in
+// investYear ticks for each time over beyond once that a level repays what
+// they ask: Tobin's q, in Hayashi's form, in which investment runs in
+// proportion to q - 1, the margin by which new capital is worth more than
+// it costs. A level that repays twice what they ask has them add a quarter
+// of their capital in a year; one that barely repays it, hardly any. Each
+// firm goes by its own profits and prices, so the clear winners grow soon
+// and the marginal ones slowly, rather than every owner on the map at once,
+// and when rents in a boomtown doubled its builders put up streets at a
+// time, as Manchester's did in the 1830s.
+const (
+	investQ    = 0.25
+	investYear = 365.0
+)
+
+// investDecideTicks is how long owners take to plan a level that repays
+// twice what they ask, at the least: a small trade, a works or two, adds a
+// works at a time, not a share of what it has, and a new trade grows from
+// its first works as fast as one that size could.
 const investDecideTicks = 180.0
 
 // refitDecideTicks is the same for refitting a working level to another
@@ -201,27 +209,33 @@ func (r *Region) planInvestment() {
 			if v := f.Methods[best].LevelValue(r.prices); v > 0 {
 				build = perLevel * payback / v
 			}
-			var refitUrge, buildUrge float64
+			var refitUrge float64
 			if refit > 1 {
 				refitUrge = math.Min(1, refit-1) / refitDecideTicks
+				f.Urge = math.Min(f.Urge+refitUrge, 1)
 			}
+			// the levels the owners plan, while a level pays: they plan the
+			// next while one is being built, as a booming trade's many
+			// builders work side by side, and start what they have planned,
+			// in whole levels, when nothing is underway
 			if !full && build > 1 {
-				buildUrge = (build - 1) / investDecideTicks
+				// they plan no further ahead than a build's worth: what is
+				// underway is not yet earning, and plans made while it is
+				// built would build the same gap twice
+				rate := math.Max(investQ*float64(f.Levels)/investYear, 1/investDecideTicks) * (build - 1)
+				f.Planned = math.Min(f.Planned+rate, math.Max(1, rate*buildTicks))
+			} else {
+				f.Planned = 0 // what no longer pays is not built
 			}
-			f.Urge += refitUrge + buildUrge
-			// the urge built up over the ticks a project paid; it is acted on
-			// only on a tick one still does, for the one that pays better then.
-			// Owners weigh the next project while one is being built, as a
-			// booming trade's many builders work side by side: when a
-			// project ends the next can start at once, and the trade's
-			// building goes on steadily instead of stopping between projects.
-			f.Urge = math.Min(f.Urge, 1)
-			if f.Expansion == nil && refitUrge+buildUrge > 0 && f.Urge >= 1 {
-				f.Urge = 0
-				if refitUrge >= buildUrge {
+			if f.Expansion == nil {
+				switch {
+				case refitUrge > 0 && f.Urge >= 1:
+					f.Urge = 0
 					f.Expansion = NewRefit(f, worst, best, false)
-				} else {
-					f.Expansion = NewLevels(f, best, f.projectLevels(), false)
+				case f.Planned >= 1:
+					n := int(f.Planned)
+					f.Planned -= float64(n)
+					f.Expansion = NewLevels(f, best, n, false)
 				}
 			}
 		}

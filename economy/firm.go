@@ -184,7 +184,8 @@ type Firm struct {
 	ProfitEMA             float64
 	LossTicks, Age        int     // ticks of losses in a row; ticks alive
 	Wear                  float64 // levels worn out and not yet made good by upkeep (see Good.Wear)
-	Urge                  float64 // the owners' urge to start the next project (see investDecideTicks)
+	Urge                  float64 // the owners' urge to refit a level (see refitDecideTicks)
+	Planned               float64 // the levels the owners plan to build (see investQ)
 	TickRevenue, TickCost float64
 	tickInputs            float64   // what the goods it used up cost this tick
 	Used                  []float64 // goods it used up producing this tick, by good
@@ -237,17 +238,6 @@ func NewLevels(f *Firm, method, n int, external bool) *Expansion {
 		e.Levels = n
 	}
 	return e
-}
-
-// projectShare is the share of its levels a firm's owners build in one
-// project. A tile's firm is a whole industry, many works and builders: it
-// adds capacity in proportion to its size, not a works at a time.
-const projectShare = 0.05
-
-// projectLevels is how many levels the firm's owners build at once: a
-// projectShare of what it has, at least one.
-func (f *Firm) projectLevels() int {
-	return max(1, int(projectShare*float64(f.Levels)))
 }
 
 // NewRefit is an expansion that refits one of the firm's levels from its

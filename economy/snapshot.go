@@ -61,7 +61,7 @@ type FirmState struct {
 	Cash, Inventory, Labor, LastOutput, ProfitEMA float64
 	Levels, MaxLevels, LossTicks, Age             int
 	Expansion                                     *Expansion
-	Wear, Urge, Mult                              float64
+	Wear, Urge, Planned, Mult                     float64
 	Monopoly                                      bool    `json:",omitempty"`
 	Elasticity, Share                             float64 `json:",omitempty"`
 	Enabled                                       bool
@@ -112,7 +112,7 @@ func (w *World) Snapshot() *Snapshot {
 		for _, f := range r.Firms {
 			fs := FirmState{Cash: f.Cash, Inventory: f.Inventory, Labor: f.Labor, LastOutput: f.LastOutput, ProfitEMA: f.ProfitEMA,
 				Levels: f.Levels, MaxLevels: f.MaxLevels, LossTicks: f.LossTicks, Age: f.Age,
-				Wear: f.Wear, Urge: f.Urge, Mult: f.Mult, Enabled: f.Enabled,
+				Wear: f.Wear, Urge: f.Urge, Planned: f.Planned, Mult: f.Mult, Enabled: f.Enabled,
 				Monopoly: f.Monopoly, Elasticity: f.Elasticity, Share: f.share, Held: append([]float64(nil), f.Held...), DepositRent: f.DepositRent}
 			for i, m := range f.Methods {
 				fs.TFP = append(fs.TFP, m.TFP)
@@ -219,7 +219,7 @@ func (w *World) SetState(s *Snapshot) error {
 			if fs.Expansion != nil {
 				f.Expansion = fs.Expansion.Copy()
 			}
-			f.Wear, f.Urge, f.Mult = fs.Wear, fs.Urge, fs.Mult
+			f.Wear, f.Urge, f.Planned, f.Mult = fs.Wear, fs.Urge, fs.Planned, fs.Mult
 			f.Held, f.DepositRent = append([]float64(nil), fs.Held...), fs.DepositRent
 			f.Enabled = fs.Enabled
 			f.Monopoly, f.Elasticity, f.share = fs.Monopoly, fs.Elasticity, fs.Share
