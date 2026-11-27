@@ -143,7 +143,7 @@ const (
 // and when rents in a boomtown doubled its builders put up streets at a
 // time, as Manchester's did in the 1830s.
 const (
-	investQ    = 0.25
+	investQ    = 0.1
 	investYear = 365.0
 )
 

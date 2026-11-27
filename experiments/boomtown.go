@@ -30,7 +30,7 @@ func runBoomtown(o *Out) {
 		People, Land, Rent, Houses  []float64
 		LandHouses, LandFarms       []float64 // the tile's land held by houses and by farms, forests and the rest
 		Workers, Owners, Neighbours []float64 // living standards
-		Wage, Grain                 []float64
+		Wage, Grain, Construction   []float64
 	}
 	housing, land := G("housing"), G("land")
 	run := func(boom, build bool, out *series) func() {
@@ -62,6 +62,7 @@ func runBoomtown(o *Out) {
 				out.Rent = append(out.Rent, r.Markets[housing].Price)
 				out.Wage = append(out.Wage, r.Wage)
 				out.Grain = append(out.Grain, r.Markets[G("grain")].Price)
+				out.Construction = append(out.Construction, r.Markets[G("construction")].Price)
 				var houses, lh, lf float64
 				for _, f := range r.Firms {
 					if f.Output == housing {
