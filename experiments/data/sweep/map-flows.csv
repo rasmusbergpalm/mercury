@@ -1,2126 +1,1650 @@
 good,from,to,shipped
-meat,0,1,0.00388
-clothes,0,1,0.01906
-wood,0,1,0.00138
-furniture,0,1,0.00067
-ironware,0,1,0.02207
-tea,0,1,0.00066
-sugar,0,1,0.06222
-wine,0,1,0.11990
-fine clothes,0,1,0.04414
-porcelain,0,1,0.02068
-iron,0,1,0.01851
-wool,0,1,0.00000
-cotton,0,1,0.00624
-cloth,0,1,0.00134
-sugar cane,0,1,0.00054
-grapes,0,1,0.00066
-silk,0,1,0.02154
-clay,0,1,0.00000
-tools,0,1,0.09176
-clothes,0,6,0.13020
-coal,0,6,5.71525
-ironware,0,6,0.50347
-tea,0,6,0.00000
-sugar,0,6,0.00066
-wine,0,6,0.04759
-fine clothes,0,6,0.50898
-porcelain,0,6,0.03119
-iron ore,0,6,2.09915
-iron,0,6,4.77716
-wool,0,6,0.00000
-cotton,0,6,0.00434
-cloth,0,6,0.44713
-silk,0,6,0.00846
-tools,0,6,0.07733
-bread,1,0,0.00066
-meat,1,0,0.00051
-fish,1,0,0.00067
-clothes,1,0,0.00403
-wood,1,0,0.01058
-furniture,1,0,0.00674
-ironware,1,0,0.00337
-beer,1,0,0.00068
-tea,1,0,0.00264
-sugar,1,0,0.01661
-wine,1,0,0.00065
-fine clothes,1,0,0.02248
-porcelain,1,0,0.00398
-iron ore,1,0,0.00135
-iron,1,0,0.00607
-wool,1,0,0.00067
-cotton,1,0,0.00613
-cloth,1,0,0.00470
-sugar cane,1,0,0.00675
-silk,1,0,0.02071
-tools,1,0,0.04360
-meat,1,2,0.00149
-fish,1,2,0.00067
-clothes,1,2,0.01200
-wood,1,2,0.00065
-coal,1,2,2.26728
-furniture,1,2,0.00067
-ironware,1,2,0.14308
-beer,1,2,0.00067
-tea,1,2,0.02045
-sugar,1,2,0.00259
-wine,1,2,0.00067
-fine clothes,1,2,0.02032
-porcelain,1,2,0.00132
-iron ore,1,2,3.69975
-iron,1,2,3.57553
-wool,1,2,0.00199
-cotton,1,2,0.00247
-cloth,1,2,0.05109
-sugar cane,1,2,0.00162
-silk,1,2,0.01048
-tools,1,2,0.02298
-bread,1,6,0.00065
-fish,1,6,0.00134
-clothes,1,6,0.08502
-wood,1,6,0.00195
-coal,1,6,1.14165
-furniture,1,6,0.00331
-ironware,1,6,0.29776
-beer,1,6,0.00067
-tea,1,6,0.00065
-fine clothes,1,6,0.34926
-porcelain,1,6,0.02592
-iron ore,1,6,0.05657
-iron,1,6,0.81653
-wool,1,6,0.00203
-cotton,1,6,0.00065
-cloth,1,6,0.29878
-sugar cane,1,6,0.00064
-silk,1,6,0.00651
-tools,1,6,0.64555
-fish,1,7,3.53484
-clothes,1,7,0.00067
-wood,1,7,0.00720
-furniture,1,7,0.00133
-ironware,1,7,0.00400
-tea,1,7,0.02016
-fine clothes,1,7,0.00335
-iron,1,7,0.02265
-cotton,1,7,0.00278
-sugar cane,1,7,0.00163
-silk,1,7,0.00803
-tools,1,7,0.00937
-potatoes,2,1,6.29151
-meat,2,1,0.00604
-wood,2,1,3.39518
-furniture,2,1,0.02238
-tea,2,1,0.02888
-sugar,2,1,0.02118
-wine,2,1,0.01210
-fine clothes,2,1,0.00922
-porcelain,2,1,0.03141
-cotton,2,1,0.00728
-sugar cane,2,1,0.00955
-grapes,2,1,0.92035
-silk,2,1,0.05732
-clay,2,1,0.61577
-tools,2,1,0.00346
-potatoes,2,3,0.00201
-clothes,2,3,0.00067
-coal,2,3,4.31105
-ironware,2,3,0.00066
-tea,2,3,0.00332
-wine,2,3,2.43568
-fine clothes,2,3,0.04549
-porcelain,2,3,0.43629
-iron ore,2,3,2.47598
-iron,2,3,3.17587
-wool,2,3,2.82490
-cotton,2,3,0.00989
-cloth,2,3,0.09888
-grapes,2,3,7.17320
-silk,2,3,0.00871
-clay,2,3,1.12481
-tools,2,3,0.02658
-wood,2,7,1.68827
-tea,2,7,0.00134
-sugar,2,7,0.00888
-fine clothes,2,7,0.00664
-iron,2,7,0.00729
-cotton,2,7,0.00463
-sugar cane,2,7,0.00991
-silk,2,7,0.01338
-tools,2,7,0.00199
-fish,2,8,3.94233
-clothes,2,8,0.00134
-coal,2,8,0.20659
-ironware,2,8,0.00133
-sugar,2,8,0.00129
-wine,2,8,0.07686
-fine clothes,2,8,0.00459
-porcelain,2,8,0.01060
-iron ore,2,8,0.50573
-iron,2,8,0.01569
-wool,2,8,0.61529
-cotton,2,8,0.00385
-cloth,2,8,0.01476
-grapes,2,8,1.38738
-silk,2,8,0.00325
-clay,2,8,0.55690
-tools,2,8,0.00547
-meat,3,2,0.32792
-fish,3,2,0.00067
-wood,3,2,22.77328
-furniture,3,2,0.78578
-ironware,3,2,0.02686
-beer,3,2,0.00868
-tea,3,2,0.03022
-sugar,3,2,0.23982
-fine clothes,3,2,0.02993
-porcelain,3,2,0.00132
-grain,3,2,3.99916
-iron,3,2,0.00067
-cotton,3,2,0.07022
-sugar cane,3,2,0.30243
-silk,3,2,0.02790
-tools,3,2,0.05700
-fish,3,4,0.00135
-clothes,3,4,0.00601
-coal,3,4,1.69755
-furniture,3,4,0.00067
-ironware,3,4,0.02019
-beer,3,4,0.00067
-tea,3,4,0.00265
-sugar,3,4,0.00128
-wine,3,4,2.32039
-fine clothes,3,4,0.00133
-porcelain,3,4,0.05125
-iron ore,3,4,0.77831
-iron,3,4,3.14502
-wool,3,4,0.54893
-cotton,3,4,0.00121
-cloth,3,4,0.00331
-grapes,3,4,2.77834
-silk,3,4,0.01173
-tools,3,4,0.47045
-bread,3,8,0.00067
-meat,3,8,0.00067
-fish,3,8,0.05248
-clothes,3,8,0.00134
+meat,0,1,0.00226
+ironware,0,1,0.00000
+sugar,0,1,0.01939
+wine,0,1,0.02266
+fine clothes,0,1,0.01548
+porcelain,0,1,0.00197
+cotton,0,1,0.00601
+sugar cane,0,1,0.00496
+grapes,0,1,0.00923
+silk,0,1,0.02109
+clay,0,1,0.00064
+tools,0,1,0.01701
+meat,0,6,0.00056
+coal,0,6,6.68092
+ironware,0,6,0.38374
+sugar,0,6,0.00534
+wine,0,6,0.00133
+fine clothes,0,6,0.02089
+iron ore,0,6,2.62250
+iron,0,6,5.27652
+cotton,0,6,0.00276
+cloth,0,6,0.23391
+sugar cane,0,6,0.00066
+silk,0,6,0.00788
+tools,0,6,0.19510
+bread,1,0,0.00133
+meat,1,0,0.00490
+fish,1,0,0.00347
+clothes,1,0,0.01453
+wood,1,0,0.02407
+coal,1,0,0.00135
+furniture,1,0,0.02038
+ironware,1,0,0.01167
+beer,1,0,0.00201
+sugar,1,0,0.03672
+wine,1,0,0.01837
+fine clothes,1,0,0.08509
+porcelain,1,0,0.04684
+iron ore,1,0,0.00136
+iron,1,0,0.01845
+wool,1,0,0.00197
+cotton,1,0,0.00035
+cloth,1,0,0.01105
+sugar cane,1,0,0.00180
+silk,1,0,0.01228
+tools,1,0,0.02140
+meat,1,2,0.00135
+fish,1,2,0.00204
+wood,1,2,0.00139
+coal,1,2,1.61478
+furniture,1,2,0.00135
+ironware,1,2,0.27555
+tea,1,2,0.02523
+sugar,1,2,0.08113
+fine clothes,1,2,0.00124
+porcelain,1,2,0.00130
+iron ore,1,2,4.31486
+iron,1,2,4.34001
+wool,1,2,0.00067
+cotton,1,2,0.00246
+cloth,1,2,0.02193
+sugar cane,1,2,0.00272
+silk,1,2,0.00761
+tools,1,2,0.02797
+meat,1,6,0.00046
+fish,1,6,0.00345
+clothes,1,6,0.00470
+wood,1,6,0.00280
+coal,1,6,1.09556
+furniture,1,6,0.00136
+ironware,1,6,0.11141
+fine clothes,1,6,0.06267
+porcelain,1,6,0.13680
+iron ore,1,6,0.01999
+iron,1,6,1.02557
+wool,1,6,0.00128
+cotton,1,6,0.00463
+cloth,1,6,0.07455
+silk,1,6,0.00836
+tools,1,6,0.19089
+fish,1,7,3.27501
+wood,1,7,0.00814
+furniture,1,7,0.00204
+ironware,1,7,0.11961
+fine clothes,1,7,0.00187
+iron,1,7,0.01603
+cotton,1,7,0.00088
+sugar cane,1,7,0.00215
+silk,1,7,0.00837
+tools,1,7,0.01463
+potatoes,2,1,5.62083
+meat,2,1,0.00602
+clothes,2,1,0.00067
+wood,2,1,4.36252
+furniture,2,1,0.14327
+ironware,2,1,0.00066
+tea,2,1,0.00401
+sugar,2,1,0.02327
+wine,2,1,0.02489
+fine clothes,2,1,0.02906
+porcelain,2,1,0.01502
+grain,2,1,0.00335
+iron,2,1,0.00135
+cotton,2,1,0.00861
+sugar cane,2,1,0.00339
+grapes,2,1,0.32336
+silk,2,1,0.02215
+clay,2,1,0.45839
+tools,2,1,0.12928
+coal,2,3,4.84027
+tea,2,3,0.00066
+sugar,2,3,0.00531
+wine,2,3,2.77319
+fine clothes,2,3,0.02398
+porcelain,2,3,0.26979
+iron ore,2,3,2.49325
+iron,2,3,4.50604
+wool,2,3,3.21831
+cotton,2,3,0.00370
+cloth,2,3,0.36717
+grapes,2,3,9.12320
+silk,2,3,0.01170
+clay,2,3,1.22528
+tools,2,3,0.00067
+wood,2,7,0.73838
+furniture,2,7,0.00067
+ironware,2,7,0.00133
+sugar,2,7,0.00686
+fine clothes,2,7,0.00267
+iron,2,7,0.00269
+cotton,2,7,0.00468
+sugar cane,2,7,0.00472
+silk,2,7,0.01383
+tools,2,7,0.00067
+fish,2,8,4.15756
+coal,2,8,0.22477
+sugar,2,8,0.00136
+wine,2,8,0.04632
+fine clothes,2,8,0.00528
+porcelain,2,8,0.28774
+iron ore,2,8,0.58918
+iron,2,8,0.00201
+wool,2,8,0.92898
+cotton,2,8,0.00194
+sugar cane,2,8,0.00267
+grapes,2,8,0.82337
+silk,2,8,0.00240
+clay,2,8,0.32998
+tools,2,8,0.00067
+meat,3,2,0.41347
+wood,3,2,23.62790
+furniture,3,2,1.39246
+ironware,3,2,0.04837
+tea,3,2,0.07125
+sugar,3,2,0.72916
+fine clothes,3,2,0.08047
+grain,3,2,4.65992
+cotton,3,2,0.07715
+sugar cane,3,2,0.11504
+silk,3,2,0.02504
+tools,3,2,0.02709
+clothes,3,4,0.00134
+wood,3,4,0.00067
+coal,3,4,1.86711
+furniture,3,4,0.00134
+ironware,3,4,0.00267
+wine,3,4,3.31579
+fine clothes,3,4,0.02539
+porcelain,3,4,0.02663
+iron ore,3,4,0.81698
+iron,3,4,4.38270
+wool,3,4,0.86260
+cotton,3,4,0.00390
+cloth,3,4,0.00066
+grapes,3,4,3.74458
+silk,3,4,0.00318
+tools,3,4,0.38348
+fish,3,8,0.17993
 coal,3,8,0.00201
-furniture,3,8,0.00069
-ironware,3,8,0.00411
-sugar,3,8,0.04099
-wine,3,8,0.05838
-fine clothes,3,8,0.01125
-porcelain,3,8,0.00603
-iron ore,3,8,0.00478
-iron,3,8,0.00772
-cloth,3,8,0.00202
-sugar cane,3,8,0.00794
-silk,3,8,0.01113
-tools,3,8,0.00290
-fish,3,9,0.44058
-wood,3,9,7.50927
-coal,3,9,0.64242
-furniture,3,9,0.00135
-ironware,3,9,0.00599
-sugar,3,9,0.00545
-fine clothes,3,9,0.00066
-porcelain,3,9,0.00202
-iron ore,3,9,0.00204
-iron,3,9,0.16282
-cotton,3,9,0.00720
-sugar cane,3,9,0.00614
-grapes,3,9,0.14816
-silk,3,9,0.00316
-tools,3,9,0.03354
-meat,4,3,0.32954
-tea,4,3,5.19191
-sugar,4,3,0.61638
-fine clothes,4,3,0.03033
-grain,4,3,0.55926
-cotton,4,3,0.20878
-sugar cane,4,3,0.81154
-silk,4,3,0.36535
-tools,4,3,0.01729
-wood,4,5,47.12333
-coal,4,5,0.70693
-furniture,4,5,0.29907
-ironware,4,5,0.12265
-tea,4,5,0.00201
-sugar,4,5,0.00066
-wine,4,5,0.16791
-fine clothes,4,5,0.02679
-porcelain,4,5,0.00066
-iron ore,4,5,0.00541
-iron,4,5,2.10512
-cotton,4,5,0.00122
-grapes,4,5,0.75967
-silk,4,5,0.00591
-tools,4,5,1.86078
-fish,4,9,0.08964
-wood,4,9,0.02193
-ironware,4,9,0.00066
-sugar,4,9,0.00832
-fine clothes,4,9,0.00199
-porcelain,4,9,0.00066
-iron ore,4,9,0.00067
-iron,4,9,0.00685
-cotton,4,9,0.00667
-sugar cane,4,9,0.00997
-silk,4,9,0.00909
-tools,4,9,0.02803
-wood,4,10,5.32818
-coal,4,10,0.07181
-furniture,4,10,0.00134
-ironware,4,10,0.00332
-tea,4,10,0.00267
-sugar,4,10,0.00759
-wine,4,10,0.00132
-fine clothes,4,10,0.02428
-iron ore,4,10,0.00207
-iron,4,10,0.20856
-cotton,4,10,0.00389
-sugar cane,4,10,0.00628
-grapes,4,10,0.00132
-silk,4,10,0.01197
-tools,4,10,0.16086
-potatoes,5,4,9.49580
-meat,5,4,2.96900
-clothes,5,4,0.00333
-tea,5,4,10.95103
-sugar,5,4,1.17122
-fine clothes,5,4,0.00685
-porcelain,5,4,0.05410
-grain,5,4,13.43350
-wool,5,4,0.03571
-cotton,5,4,0.41323
-sugar cane,5,4,1.42188
-silk,5,4,0.87130
-clay,5,4,1.09281
-tools,5,4,0.00065
-fish,5,10,0.00066
-tea,5,10,0.00268
-sugar,5,10,0.00884
-fine clothes,5,10,0.00459
-iron,5,10,0.00400
-cotton,5,10,0.00531
-sugar cane,5,10,0.00702
-silk,5,10,0.01490
-tools,5,10,0.00065
-clothes,5,11,0.01546
-wood,5,11,23.59381
-furniture,5,11,0.38075
-ironware,5,11,0.11547
-tea,5,11,0.00132
-wine,5,11,0.05689
-fine clothes,5,11,0.63923
-porcelain,5,11,0.66869
-iron ore,5,11,0.00823
-iron,5,11,1.07782
-cotton,5,11,0.00067
-cloth,5,11,0.00066
-silk,5,11,0.00258
-tools,5,11,3.01812
-potatoes,6,0,5.61407
-meat,6,0,0.06891
-clothes,6,0,0.00067
-wood,6,0,3.03574
-furniture,6,0,0.00067
-ironware,6,0,0.00066
-tea,6,0,1.96481
-sugar,6,0,0.15829
-wine,6,0,0.02450
-fine clothes,6,0,0.01273
-porcelain,6,0,0.00800
-grain,6,0,2.15476
-iron,6,0,0.00268
-cotton,6,0,0.03130
-sugar cane,6,0,0.12636
-grapes,6,0,1.61948
-silk,6,0,0.35615
-clay,6,0,0.59216
-tools,6,0,0.00281
-potatoes,6,1,0.02209
-meat,6,1,0.06820
-wood,6,1,0.00357
-furniture,6,1,0.00201
-tea,6,1,2.26515
-sugar,6,1,0.20724
-wine,6,1,0.04115
-fine clothes,6,1,0.00725
-porcelain,6,1,0.02126
-grain,6,1,2.38711
-iron,6,1,0.00199
-cotton,6,1,0.02086
-sugar cane,6,1,0.13417
-grapes,6,1,0.74171
-silk,6,1,0.29424
-clay,6,1,0.02396
-tools,6,1,0.00618
-wood,6,7,0.00269
-furniture,6,7,0.00067
-tea,6,7,0.02321
-sugar,6,7,0.03961
-fine clothes,6,7,0.00736
-iron,6,7,0.02210
-cotton,6,7,0.00732
-sugar cane,6,7,0.03497
-silk,6,7,0.00794
-tools,6,7,0.00609
-potatoes,6,12,1.17393
-clothes,6,12,0.46651
-coal,6,12,6.27379
-ironware,6,12,0.59401
-sugar,6,12,0.00199
-wine,6,12,2.05589
-fine clothes,6,12,0.40588
-porcelain,6,12,1.12287
-iron ore,6,12,0.99526
-iron,6,12,5.09000
-wool,6,12,2.50934
-cotton,6,12,0.00393
-cloth,6,12,0.83689
-grapes,6,12,6.12404
-silk,6,12,0.00919
-clay,6,12,0.95072
-tools,6,12,0.59391
-fish,6,13,3.99828
-coal,6,13,0.22601
-wine,6,13,0.05748
-fine clothes,6,13,0.00063
-iron ore,6,13,0.58948
-iron,6,13,0.07005
-wool,6,13,0.16050
-cotton,6,13,0.00160
-cloth,6,13,0.00065
-grapes,6,13,0.74852
-silk,6,13,0.00386
-clay,6,13,0.32249
-tools,6,13,0.02352
-meat,7,1,0.00415
-sugar,7,1,0.00972
-wine,7,1,0.11933
-fine clothes,7,1,0.01533
-porcelain,7,1,0.04232
-cotton,7,1,0.00632
-cloth,7,1,0.00066
-grapes,7,1,0.00201
-silk,7,1,0.01179
-clay,7,1,0.00067
-tools,7,1,0.00275
-clothes,7,2,0.00067
-sugar,7,2,0.00893
-wine,7,2,0.39266
-fine clothes,7,2,0.01534
-porcelain,7,2,0.00462
-cotton,7,2,0.00304
-cloth,7,2,0.16793
-sugar cane,7,2,0.00067
-silk,7,2,0.00397
-tools,7,2,0.00128
-clothes,7,6,0.04218
-ironware,7,6,0.00065
-wine,7,6,0.11250
-fine clothes,7,6,0.06095
-porcelain,7,6,0.38324
-iron,7,6,0.00202
-cotton,7,6,0.00417
-cloth,7,6,0.66962
-sugar cane,7,6,0.00160
-silk,7,6,0.00862
-tools,7,6,0.07842
-clothes,7,8,0.00134
-coal,7,8,0.00201
-ironware,7,8,0.00066
-sugar,7,8,0.00643
-wine,7,8,0.72217
-fine clothes,7,8,0.00556
-porcelain,7,8,0.01532
-iron ore,7,8,0.00411
-iron,7,8,0.00269
-wool,7,8,0.32134
-cotton,7,8,0.00183
-cloth,7,8,0.07644
-grapes,7,8,0.00067
-silk,7,8,0.00212
-tools,7,8,0.00548
-wine,7,13,0.75982
-fine clothes,7,13,0.00126
-porcelain,7,13,0.06105
-iron,7,13,0.00130
-wool,7,13,0.69170
-cotton,7,13,0.00168
-cloth,7,13,0.15561
-grapes,7,13,0.00067
-silk,7,13,0.00181
-clay,7,13,0.00135
-tools,7,13,0.04615
-fish,7,14,0.00739
-coal,7,14,1.75229
-ironware,7,14,0.00066
-sugar,7,14,0.00063
-wine,7,14,0.80143
-fine clothes,7,14,0.00294
-porcelain,7,14,0.00263
-iron ore,7,14,0.00135
-iron,7,14,0.13294
-cotton,7,14,0.00030
-grapes,7,14,0.49434
-silk,7,14,0.00139
-tools,7,14,0.02238
-furniture,8,2,0.01691
-tea,8,2,3.98365
-sugar,8,2,0.03930
-fine clothes,8,2,0.02173
-cotton,8,2,0.00831
-sugar cane,8,2,0.00061
-silk,8,2,0.39938
-tools,8,2,0.06483
-clothes,8,3,0.00067
-ironware,8,3,0.00132
-tea,8,3,0.00812
-fine clothes,8,3,0.12805
-iron,8,3,0.00129
-cotton,8,3,0.00068
-cloth,8,3,0.00066
-silk,8,3,0.01416
-tools,8,3,0.08906
-wood,8,7,0.18679
-furniture,8,7,0.01191
-tea,8,7,0.17494
-sugar,8,7,0.01008
-fine clothes,8,7,0.00466
-cotton,8,7,0.00509
-sugar cane,8,7,0.00745
-silk,8,7,0.04303
-tools,8,7,0.01291
-wood,8,9,0.00067
-furniture,8,9,0.00067
-ironware,8,9,0.00198
-sugar,8,9,0.00482
-fine clothes,8,9,0.00067
-iron ore,8,9,0.00063
-iron,8,9,0.00595
-cotton,8,9,0.00445
-sugar cane,8,9,0.00494
-silk,8,9,0.01270
-tools,8,9,0.15536
-wood,8,14,4.82902
-furniture,8,14,0.09819
-sugar,8,14,0.00589
-iron ore,8,14,0.00062
-iron,8,14,0.02590
-cotton,8,14,0.00431
-sugar cane,8,14,0.00369
-silk,8,14,0.00942
-tools,8,14,0.12946
-fish,8,15,0.00858
-clothes,8,15,0.00065
-wood,8,15,7.47998
-furniture,8,15,0.05233
-ironware,8,15,0.13775
-fine clothes,8,15,0.00329
-porcelain,8,15,0.00065
-iron,8,15,0.27110
-silk,8,15,0.00263
-tools,8,15,0.65195
-bread,9,3,0.00067
-meat,9,3,0.61264
-clothes,9,3,0.00133
-tea,9,3,0.02293
-sugar,9,3,0.04597
-wine,9,3,0.03195
-fine clothes,9,3,0.29412
-porcelain,9,3,0.06732
-grain,9,3,11.51896
-cotton,9,3,0.00114
-cloth,9,3,0.00997
-sugar cane,9,3,0.00012
-silk,9,3,0.03743
-clay,9,3,0.00063
-tools,9,3,0.00328
-bread,9,4,0.00066
-potatoes,9,4,0.00067
-meat,9,4,0.00068
-clothes,9,4,0.01142
-furniture,9,4,0.00065
-ironware,9,4,0.00119
-beer,9,4,0.00134
-tea,9,4,0.00329
-sugar,9,4,0.02135
-wine,9,4,0.06696
-fine clothes,9,4,0.28051
-porcelain,9,4,0.41785
-grain,9,4,0.00068
-iron ore,9,4,0.00102
-iron,9,4,0.00153
-wool,9,4,0.00729
-cotton,9,4,0.00046
-cloth,9,4,0.34746
-sugar cane,9,4,0.00039
-silk,9,4,0.00596
-clay,9,4,0.00061
-tools,9,4,0.00134
-bread,9,8,0.00067
-meat,9,8,0.00068
-clothes,9,8,0.00202
-coal,9,8,0.00063
-ironware,9,8,0.00203
-beer,9,8,0.00068
-sugar,9,8,0.04377
-wine,9,8,0.07207
-fine clothes,9,8,0.02288
-porcelain,9,8,0.02939
-grain,9,8,0.00067
-iron,9,8,0.00543
-cotton,9,8,0.00155
-cloth,9,8,0.00407
-sugar cane,9,8,0.00012
-silk,9,8,0.00944
-tools,9,8,0.00264
-clothes,9,10,0.00067
-wood,9,10,0.00068
-furniture,9,10,0.00065
-ironware,9,10,0.00121
-tea,9,10,0.00195
-sugar,9,10,0.00466
-wine,9,10,0.03296
-fine clothes,9,10,0.02066
-iron ore,9,10,0.00103
-iron,9,10,0.00286
-cotton,9,10,0.00166
-cloth,9,10,0.00064
-sugar cane,9,10,0.00319
-silk,9,10,0.00687
-tools,9,10,0.01041
-fish,9,15,0.00720
-clothes,9,15,0.00270
-wood,9,15,0.00133
-coal,9,15,0.00064
-furniture,9,15,0.00134
-ironware,9,15,0.00455
-sugar,9,15,0.00145
-wine,9,15,0.12460
-fine clothes,9,15,0.02272
-porcelain,9,15,0.03792
-iron,9,15,0.00725
-cotton,9,15,0.00091
-cloth,9,15,0.00134
-silk,9,15,0.00248
-tools,9,15,0.00267
-meat,9,16,0.00402
-clothes,9,16,0.00067
-wood,9,16,0.01034
-furniture,9,16,0.11965
-ironware,9,16,0.00121
-beer,9,16,0.00067
-sugar,9,16,0.00520
-wine,9,16,0.00063
-fine clothes,9,16,0.18077
-porcelain,9,16,0.02576
-grain,9,16,0.00404
-iron,9,16,0.00155
-cotton,9,16,0.00033
-sugar cane,9,16,0.00039
-silk,9,16,0.00165
-tools,9,16,0.00823
-sugar,10,4,0.00606
-wine,10,4,0.00064
-fine clothes,10,4,0.00257
-porcelain,10,4,0.00064
-wool,10,4,0.85733
-cotton,10,4,0.00299
-cloth,10,4,0.88511
-sugar cane,10,4,0.00295
-silk,10,4,0.01431
-clay,10,4,0.00065
-ironware,10,5,0.00067
-tea,10,5,0.00200
-sugar,10,5,0.00414
-wine,10,5,0.00327
-fine clothes,10,5,0.00850
-porcelain,10,5,0.00264
-iron,10,5,0.00061
-cotton,10,5,0.00320
-cloth,10,5,0.00263
-silk,10,5,0.00630
+porcelain,3,8,0.03616
+grain,3,8,0.00067
+iron ore,3,8,0.00067
+iron,3,8,0.00067
+cotton,3,8,0.00688
+silk,3,8,0.00268
+tools,3,8,0.00067
+fish,3,9,0.44696
+wood,3,9,5.63533
+coal,3,9,0.82582
+furniture,3,9,0.12367
+ironware,3,9,0.00067
+sugar,3,9,0.00065
+wine,3,9,0.40971
+iron ore,3,9,0.00067
+iron,3,9,0.21124
+cotton,3,9,0.00406
+sugar cane,3,9,0.00064
+grapes,3,9,0.36818
+silk,3,9,0.00337
+tools,3,9,0.02054
+meat,4,3,0.06385
+ironware,4,3,0.00000
+tea,4,3,5.41480
+sugar,4,3,0.94110
+wine,4,3,0.00067
+grain,4,3,0.09794
+cotton,4,3,0.21155
+sugar cane,4,3,0.61801
+silk,4,3,0.33571
+wood,4,5,47.27969
+coal,4,5,0.79963
+furniture,4,5,1.10252
+ironware,4,5,0.18484
+wine,4,5,1.40652
+fine clothes,4,5,0.05334
+iron ore,4,5,0.00667
+iron,4,5,2.92300
+cotton,4,5,0.00059
+grapes,4,5,0.91392
+silk,4,5,0.00727
+tools,4,5,2.26369
+fish,4,9,0.11605
+wood,4,9,0.02771
+furniture,4,9,0.20294
+ironware,4,9,0.00000
+sugar,4,9,0.00810
+wine,4,9,0.00401
+iron,4,9,0.00269
+cotton,4,9,0.00609
+sugar cane,4,9,0.01031
+grapes,4,9,0.00067
+silk,4,9,0.00457
+wood,4,10,5.78401
+coal,4,10,0.05590
+furniture,4,10,0.11733
+ironware,4,10,0.00397
+sugar,4,10,0.00766
+wine,4,10,0.00681
+fine clothes,4,10,0.01859
+iron,4,10,0.23546
+cotton,4,10,0.00575
+sugar cane,4,10,0.00641
+grapes,4,10,0.00847
+silk,4,10,0.01095
+tools,4,10,0.04481
+potatoes,5,4,12.11980
+meat,5,4,2.77850
+tea,5,4,11.37976
+sugar,5,4,0.92718
+fine clothes,5,4,0.00994
+porcelain,5,4,0.02440
+grain,5,4,13.84589
+cotton,5,4,0.41206
+cloth,5,4,0.13926
+sugar cane,5,4,1.53472
+silk,5,4,0.98123
+clay,5,4,1.47492
+tools,5,4,0.00198
+fish,5,10,0.01682
+sugar,5,10,0.00820
+wine,5,10,0.00481
+fine clothes,5,10,0.00606
+iron,5,10,0.00733
+cotton,5,10,0.00592
+sugar cane,5,10,0.00645
+grapes,5,10,0.00633
+silk,5,10,0.00966
+tools,5,10,0.00067
+clothes,5,11,0.05052
+wood,5,11,24.18471
+furniture,5,11,1.08776
+ironware,5,11,0.51047
+wine,5,11,0.02371
+fine clothes,5,11,0.94061
+porcelain,5,11,0.53756
+iron ore,5,11,0.00815
+iron,5,11,1.83236
+silk,5,11,0.00066
+tools,5,11,3.08781
+bread,6,0,0.00327
+potatoes,6,0,5.99406
+meat,6,0,0.08151
+clothes,6,0,0.01670
+wood,6,0,4.17318
+furniture,6,0,0.02216
+ironware,6,0,0.00198
+beer,6,0,0.00399
+tea,6,0,2.07747
+sugar,6,0,0.18527
+wine,6,0,0.05249
+fine clothes,6,0,0.03099
+porcelain,6,0,0.02068
+grain,6,0,2.29712
+iron,6,0,0.00197
+wool,6,0,0.00066
+cotton,6,0,0.03312
+cloth,6,0,0.00265
+sugar cane,6,0,0.12537
+grapes,6,0,1.50922
+silk,6,0,0.19110
+clay,6,0,0.55872
+tools,6,0,0.00405
+potatoes,6,1,0.08160
+meat,6,1,0.09034
+tea,6,1,2.03935
+sugar,6,1,0.04619
+wine,6,1,0.03063
+fine clothes,6,1,0.02437
+porcelain,6,1,0.01389
+grain,6,1,2.26490
+cotton,6,1,0.00676
+sugar cane,6,1,0.13141
+grapes,6,1,0.46337
+silk,6,1,0.14974
+clay,6,1,0.04023
+tools,6,1,0.00066
+wood,6,7,0.00814
+tea,6,7,0.03278
+sugar,6,7,0.00749
+cotton,6,7,0.00587
+sugar cane,6,7,0.03922
+silk,6,7,0.01369
+potatoes,6,12,0.57646
+clothes,6,12,0.03462
+coal,6,12,7.01895
+ironware,6,12,0.09250
+wine,6,12,3.83361
+fine clothes,6,12,0.08798
+porcelain,6,12,0.87816
+iron ore,6,12,1.27679
+iron,6,12,6.02425
+wool,6,12,2.73188
+cotton,6,12,0.00191
+cloth,6,12,0.77126
+grapes,6,12,5.80355
+silk,6,12,0.00726
+clay,6,12,1.24726
+tools,6,12,0.06808
+fish,6,13,3.95714
+coal,6,13,0.26250
+sugar,6,13,0.00196
+fine clothes,6,13,0.00395
+porcelain,6,13,0.01124
+iron ore,6,13,0.67838
+iron,6,13,0.00131
+wool,6,13,0.14865
+cotton,6,13,0.00139
+cloth,6,13,0.00066
+sugar cane,6,13,0.00398
+grapes,6,13,0.75873
+silk,6,13,0.00742
+clay,6,13,0.20568
+tools,6,13,0.00132
+meat,7,1,0.00331
+clothes,7,1,0.00067
+sugar,7,1,0.02048
+wine,7,1,0.09923
+fine clothes,7,1,0.02447
+porcelain,7,1,0.02136
+cotton,7,1,0.00557
+cloth,7,1,0.00131
+sugar cane,7,1,0.00228
+grapes,7,1,0.01082
+silk,7,1,0.01391
+clay,7,1,0.00268
+tools,7,1,0.00132
+sugar,7,2,0.00917
+wine,7,2,0.03301
+fine clothes,7,2,0.01137
+porcelain,7,2,0.02170
+cotton,7,2,0.00081
+cloth,7,2,0.02264
+sugar cane,7,2,0.00186
+silk,7,2,0.00435
+tools,7,2,0.00795
+clothes,7,6,0.00133
+sugar,7,6,0.00326
+wine,7,6,0.02040
+fine clothes,7,6,0.04056
+porcelain,7,6,0.10729
+iron,7,6,0.00188
+cloth,7,6,0.31039
+sugar cane,7,6,0.00032
+silk,7,6,0.01119
+tools,7,6,0.03122
+sugar,7,8,0.00354
+wine,7,8,1.63590
+fine clothes,7,8,0.00573
+porcelain,7,8,0.11708
+wool,7,8,0.18645
+cotton,7,8,0.00097
+sugar cane,7,8,0.00147
+silk,7,8,0.00445
+sugar,7,13,0.00189
+wine,7,13,0.99275
+fine clothes,7,13,0.01014
+porcelain,7,13,0.34564
+iron,7,13,0.00187
+wool,7,13,0.64516
+cloth,7,13,0.36105
+sugar cane,7,13,0.00033
+silk,7,13,0.00575
+clay,7,13,0.00402
+tools,7,13,0.00586
+fish,7,14,0.00672
+coal,7,14,1.67170
+sugar,7,14,0.00214
+wine,7,14,0.95283
+fine clothes,7,14,0.00440
+porcelain,7,14,0.00987
+iron,7,14,0.11987
+cotton,7,14,0.00049
+sugar cane,7,14,0.00186
+grapes,7,14,0.37445
+silk,7,14,0.00448
+tools,7,14,0.00063
+tea,8,2,4.02835
+sugar,8,2,0.03919
+fine clothes,8,2,0.36456
+cotton,8,2,0.00232
+silk,8,2,0.27226
+tools,8,2,0.53206
+sugar,8,3,0.00928
+wine,8,3,0.00066
+fine clothes,8,3,0.04138
+cotton,8,3,0.00495
+silk,8,3,0.11434
+tools,8,3,0.03682
+wood,8,7,1.05874
+furniture,8,7,0.22388
+ironware,8,7,0.00133
+tea,8,7,0.18545
+sugar,8,7,0.00684
+fine clothes,8,7,0.00201
+cotton,8,7,0.00561
+sugar cane,8,7,0.00361
+silk,8,7,0.01463
+tools,8,7,0.05282
+wine,8,9,0.00266
+fine clothes,8,9,0.00128
+cotton,8,9,0.00493
+silk,8,9,0.00311
+tools,8,9,0.00331
+wood,8,14,3.90835
+furniture,8,14,0.10342
+ironware,8,14,0.00067
+sugar,8,14,0.00067
+fine clothes,8,14,0.00132
+iron,8,14,0.04424
+cotton,8,14,0.00567
+sugar cane,8,14,0.00082
+silk,8,14,0.00134
+tools,8,14,0.18716
+fish,8,15,0.00732
+wood,8,15,7.54799
+furniture,8,15,0.44059
+ironware,8,15,0.43496
+fine clothes,8,15,0.02258
+iron,8,15,0.03284
+silk,8,15,0.00262
+tools,8,15,0.32505
+meat,9,3,1.45793
+sugar,9,3,0.01025
+fine clothes,9,3,0.02881
+porcelain,9,3,0.00198
+grain,9,3,14.10673
+cotton,9,3,0.00105
+cloth,9,3,0.07410
+silk,9,3,0.07809
+clothes,9,4,0.00200
+sugar,9,4,0.00376
+fine clothes,9,4,0.04850
+porcelain,9,4,0.06102
+wool,9,4,0.00132
+cotton,9,4,0.00223
+cloth,9,4,0.19911
+silk,9,4,0.01170
+tools,9,4,0.00336
+fine clothes,9,8,0.00260
+porcelain,9,8,0.00526
+wool,9,8,0.00065
+cotton,9,8,0.00106
+silk,9,8,0.00265
+sugar,9,10,0.00595
+wine,9,10,0.00400
+fine clothes,9,10,0.03113
+iron,9,10,0.00391
+cotton,9,10,0.00210
+sugar cane,9,10,0.00352
+grapes,9,10,0.00396
+silk,9,10,0.00810
+tools,9,10,0.00066
+fish,9,15,0.00768
+sugar,9,15,0.00063
+fine clothes,9,15,0.03166
+porcelain,9,15,0.09463
+cotton,9,15,0.00066
+silk,9,15,0.00063
+wood,9,16,0.00067
+fine clothes,9,16,0.26614
+porcelain,9,16,0.03163
+cotton,9,16,0.00219
+silk,9,16,0.00443
+tools,9,16,0.17835
+bread,10,4,0.00065
+meat,10,4,0.00066
+clothes,10,4,0.00197
+sugar,10,4,0.02074
+wine,10,4,0.00813
+fine clothes,10,4,0.01911
+porcelain,10,4,0.01253
+wool,10,4,0.77914
+cotton,10,4,0.00178
+cloth,10,4,1.00283
+sugar cane,10,4,0.00325
+silk,10,4,0.01180
+tools,10,4,0.00132
+sugar,10,5,0.00154
+wine,10,5,0.01399
+fine clothes,10,5,0.01771
+iron ore,10,5,0.00173
+cotton,10,5,0.00035
+silk,10,5,0.00617
 tools,10,5,0.00132
-ironware,10,9,0.00065
-sugar,10,9,0.00574
-wine,10,9,0.00064
-fine clothes,10,9,0.00067
-porcelain,10,9,0.00130
-iron ore,10,9,0.00068
-iron,10,9,0.00194
-cotton,10,9,0.00033
-sugar cane,10,9,0.00513
-silk,10,9,0.00702
-tools,10,9,0.00415
-clothes,10,11,0.00066
-ironware,10,11,0.00197
-tea,10,11,0.00064
-wine,10,11,0.00133
-fine clothes,10,11,0.01508
-porcelain,10,11,0.00067
-iron ore,10,11,0.00246
-cotton,10,11,0.00223
-cloth,10,11,0.00066
-silk,10,11,0.00321
-tools,10,11,0.00791
-meat,10,16,0.12776
-wood,10,16,0.00335
-furniture,10,16,0.01143
-sugar,10,16,0.00813
-fine clothes,10,16,0.00851
-grain,10,16,2.07460
-cotton,10,16,0.00097
-sugar cane,10,16,0.00272
-silk,10,16,0.00651
-bread,10,17,0.00131
-meat,10,17,0.00067
-clothes,10,17,0.70711
-ironware,10,17,0.36080
-beer,10,17,0.00066
-fine clothes,10,17,0.91067
-porcelain,10,17,1.10909
-iron ore,10,17,0.00056
-iron,10,17,0.00065
-cotton,10,17,0.00281
-cloth,10,17,0.00202
-silk,10,17,0.00254
-tools,10,17,0.95589
-clothes,11,5,0.00067
-coal,11,5,0.00063
-tea,11,5,14.30165
-sugar,11,5,1.01922
-wine,11,5,0.00681
-fine clothes,11,5,0.00660
-porcelain,11,5,0.00268
-iron,11,5,0.00194
-wool,11,5,0.00067
-cotton,11,5,0.56263
-cloth,11,5,0.07279
-sugar cane,11,5,1.90168
-grapes,11,5,0.00803
-silk,11,5,1.27831
+sugar,10,9,0.02162
+wine,10,9,0.00492
+fine clothes,10,9,0.00441
+iron,10,9,0.00062
+cotton,10,9,0.00371
+sugar cane,10,9,0.00354
+silk,10,9,0.00568
+ironware,10,11,0.00261
+sugar,10,11,0.00153
+wine,10,11,0.02561
+fine clothes,10,11,0.02557
+porcelain,10,11,0.00394
+iron ore,10,11,0.00296
+cloth,10,11,0.00593
+silk,10,11,0.00381
+tools,10,11,0.00067
+meat,10,16,0.28255
+wood,10,16,0.02874
+furniture,10,16,0.09250
+sugar,10,16,0.00465
+fine clothes,10,16,0.00632
+grain,10,16,2.25571
+cotton,10,16,0.00162
+sugar cane,10,16,0.00277
+silk,10,16,0.00586
+tools,10,16,0.00199
+clothes,10,17,0.85845
+ironware,10,17,0.27035
+sugar,10,17,0.00933
+fine clothes,10,17,0.81271
+porcelain,10,17,0.68989
+cloth,10,17,0.36895
+silk,10,17,0.00247
+tools,10,17,0.67818
+tea,11,5,15.09161
+sugar,11,5,1.15295
+fine clothes,11,5,0.00526
+wool,11,5,0.00527
+cotton,11,5,0.59901
+sugar cane,11,5,2.07097
+silk,11,5,1.61784
 tools,11,5,0.00067
-fish,11,10,0.42591
-tea,11,10,0.00402
-sugar,11,10,0.00971
-wine,11,10,0.00133
-fine clothes,11,10,0.00394
-iron,11,10,0.00265
-cotton,11,10,0.00938
-sugar cane,11,10,0.00822
-grapes,11,10,0.00266
-silk,11,10,0.02068
-tools,11,10,0.00131
-bread,11,17,0.35910
-meat,11,17,1.56246
-fish,11,17,0.00001
-clothes,11,17,4.07592
-wood,11,17,12.28258
-furniture,11,17,1.61608
-ironware,11,17,0.92604
-beer,11,17,0.04778
-sugar,11,17,0.00067
-fine clothes,11,17,1.24049
-porcelain,11,17,1.57932
-iron,11,17,0.51125
-wool,11,17,0.02370
-cotton,11,17,0.00066
-cloth,11,17,0.02563
-silk,11,17,0.00327
-tools,11,17,4.60136
-meat,12,6,0.67326
-clothes,12,6,0.00474
-wood,12,6,16.43472
-furniture,12,6,0.21078
-ironware,12,6,0.00134
-beer,12,6,0.00134
-tea,12,6,8.40036
-sugar,12,6,1.07684
-fine clothes,12,6,0.02530
-grain,12,6,9.28488
-iron ore,12,6,0.00068
-iron,12,6,0.00204
-cotton,12,6,0.10489
-cloth,12,6,0.00067
-sugar cane,12,6,0.44857
-silk,12,6,0.80847
-tools,12,6,0.03579
-fish,12,13,0.00472
-coal,12,13,0.00131
-iron ore,12,13,0.00197
-iron,12,13,0.02734
-wool,12,13,0.00134
-cotton,12,13,0.00781
-cloth,12,13,0.00067
-sugar cane,12,13,0.00330
-silk,12,13,0.00587
-clay,12,13,0.00066
-tools,12,13,0.03339
-clothes,12,18,0.00406
-wood,12,18,49.37684
-coal,12,18,3.11862
-furniture,12,18,0.15416
-ironware,12,18,0.02077
-wine,12,18,1.21301
-fine clothes,12,18,0.02826
-porcelain,12,18,0.01807
-iron ore,12,18,0.03665
-iron,12,18,4.27952
-grapes,12,18,2.07092
-silk,12,18,0.00256
-tools,12,18,0.05646
-clothes,13,6,0.00267
-wood,13,6,0.00137
-furniture,13,6,0.01144
-ironware,13,6,0.00337
-tea,13,6,0.00067
-sugar,13,6,0.02969
-wine,13,6,0.00066
-fine clothes,13,6,0.02596
-porcelain,13,6,0.00129
-iron,13,6,0.00205
-cotton,13,6,0.00417
-cloth,13,6,0.00066
-silk,13,6,0.02125
-tools,13,6,0.00478
-wood,13,7,0.04527
-furniture,13,7,0.00344
-ironware,13,7,0.00133
-tea,13,7,0.02132
-sugar,13,7,0.02544
-fine clothes,13,7,0.01672
-iron,13,7,0.00265
-cotton,13,7,0.00489
-sugar cane,13,7,0.00121
-silk,13,7,0.01825
-tools,13,7,0.00137
-clothes,13,12,0.00267
-ironware,13,12,0.00403
-tea,13,12,0.00066
-sugar,13,12,0.02184
-wine,13,12,0.00599
-fine clothes,13,12,0.25068
-porcelain,13,12,0.00458
-iron ore,13,12,0.00061
-iron,13,12,0.00067
-cotton,13,12,0.00354
-cloth,13,12,0.00131
-silk,13,12,0.01437
-tools,13,12,0.09346
-fish,13,14,0.00609
-wood,13,14,0.98916
-furniture,13,14,0.01485
-ironware,13,14,0.00201
-wine,13,14,0.00267
-fine clothes,13,14,0.00327
-porcelain,13,14,0.00320
-iron,13,14,0.01006
-silk,13,14,0.00321
-tools,13,14,0.00892
-clothes,13,18,0.00067
-furniture,13,18,0.02607
-ironware,13,18,0.02047
-tea,13,18,0.00066
-sugar,13,18,0.00330
-wine,13,18,0.02136
-fine clothes,13,18,0.02898
-porcelain,13,18,0.00454
-iron ore,13,18,0.00257
-iron,13,18,0.00134
-cotton,13,18,0.00353
-cloth,13,18,0.00066
-silk,13,18,0.00460
-tools,13,18,0.71833
-wood,13,19,7.88429
-coal,13,19,0.00061
-furniture,13,19,0.00411
-ironware,13,19,0.00335
-sugar,13,19,0.00134
-wine,13,19,0.02379
-fine clothes,13,19,0.00257
-porcelain,13,19,0.00130
-iron,13,19,0.00478
-cotton,13,19,0.00045
-grapes,13,19,0.00262
-silk,13,19,0.00118
-tools,13,19,1.13198
-meat,14,7,0.84595
-tea,14,7,1.14820
-sugar,14,7,0.02268
-fine clothes,14,7,0.03026
-grain,14,7,1.43880
-cotton,14,7,0.00369
-silk,14,7,0.05377
-tools,14,7,0.00274
-meat,14,8,0.00067
-clothes,14,8,0.00200
-ironware,14,8,0.00125
-tea,14,8,0.00065
-sugar,14,8,0.03484
-wine,14,8,0.01888
-fine clothes,14,8,0.02385
-porcelain,14,8,0.00199
-grain,14,8,3.44868
-iron ore,14,8,0.00240
-iron,14,8,0.00236
-wool,14,8,0.00066
-cotton,14,8,0.00182
-cloth,14,8,0.10538
-sugar cane,14,8,0.00236
-silk,14,8,0.00373
-tools,14,8,0.00544
-fine clothes,14,13,0.11861
-grain,14,13,0.71722
-iron ore,14,13,0.00057
-iron,14,13,0.00061
-wool,14,13,0.00263
-cotton,14,13,0.00017
-cloth,14,13,0.23416
-silk,14,13,0.00339
-clay,14,13,0.00256
-tools,14,13,0.00608
-clothes,14,15,0.00331
-wood,14,15,0.00066
-furniture,14,15,0.00065
-ironware,14,15,0.00255
-sugar,14,15,0.00374
-fine clothes,14,15,0.09700
-porcelain,14,15,0.00201
-iron ore,14,15,0.00112
-iron,14,15,0.00234
-cotton,14,15,0.00102
-cloth,14,15,0.00265
-silk,14,15,0.00375
-tools,14,15,0.00468
-sugar,14,19,0.00062
-wine,14,19,0.02128
-fine clothes,14,19,0.03773
-iron,14,19,0.00189
-cotton,14,19,0.00150
-cloth,14,19,0.00064
-silk,14,19,0.00282
-tools,14,19,0.10731
-wood,14,20,1.31522
-coal,14,20,0.60506
-furniture,14,20,0.00066
-ironware,14,20,0.06958
-sugar,14,20,0.00554
-wine,14,20,0.42411
-fine clothes,14,20,0.21004
-porcelain,14,20,0.38010
-iron ore,14,20,0.00056
-iron,14,20,0.01598
-cotton,14,20,0.00181
-cloth,14,20,0.00332
-grapes,14,20,0.09621
-silk,14,20,0.00314
-tools,14,20,0.63969
-ironware,15,8,0.00064
-tea,15,8,7.43513
-sugar,15,8,0.18166
-fine clothes,15,8,0.00323
-iron ore,15,8,0.00062
-iron,15,8,0.00131
-cotton,15,8,0.12213
-sugar cane,15,8,0.28978
-silk,15,8,0.84172
-tools,15,8,0.00345
-tea,15,9,1.41846
-sugar,15,9,0.01723
-porcelain,15,9,0.00068
-iron,15,9,0.00277
-cotton,15,9,0.01380
-sugar cane,15,9,0.00633
-silk,15,9,0.26136
-tools,15,9,0.01107
-tea,15,14,0.47386
-sugar,15,14,0.01023
-wine,15,14,0.00068
-cotton,15,14,0.00960
-sugar cane,15,14,0.00873
-silk,15,14,0.07019
-tools,15,14,0.00396
-wood,15,16,0.00068
-furniture,15,16,0.00066
-sugar,15,16,0.00605
-fine clothes,15,16,0.00860
-grain,15,16,0.00066
-cotton,15,16,0.00517
-sugar cane,15,16,0.00129
-silk,15,16,0.00268
-tools,15,16,0.01883
-wood,15,20,0.02709
-ironware,15,20,0.00065
-sugar,15,20,0.00336
-wine,15,20,0.01310
-fine clothes,15,20,0.00065
-porcelain,15,20,0.02187
-iron,15,20,0.01029
-sugar cane,15,20,0.00128
-grapes,15,20,0.01597
-silk,15,20,0.00129
-tools,15,20,0.05141
-bread,15,21,0.29625
-potatoes,15,21,0.57200
-meat,15,21,1.57207
-clothes,15,21,1.47806
-wood,15,21,1.89325
-furniture,15,21,0.53964
-ironware,15,21,0.35459
-beer,15,21,0.23425
-wine,15,21,0.00136
-fine clothes,15,21,0.71056
-porcelain,15,21,0.71078
-grain,15,21,0.59426
-iron,15,21,0.00207
-wool,15,21,0.00800
-grapes,15,21,0.00067
-clay,15,21,0.00462
-tools,15,21,1.10719
-coal,16,9,0.00269
-ironware,16,9,0.00066
-tea,16,9,0.01335
-sugar,16,9,0.00765
-wine,16,9,0.00271
-porcelain,16,9,0.00133
-iron ore,16,9,0.00066
-iron,16,9,0.00619
-cotton,16,9,0.00598
-cloth,16,9,0.00065
-sugar cane,16,9,0.00818
-grapes,16,9,0.01477
-silk,16,9,0.01355
-tools,16,9,0.00415
-clothes,16,10,0.00067
-coal,16,10,0.40687
-ironware,16,10,0.00067
-tea,16,10,0.02988
-sugar,16,10,0.00669
-wine,16,10,0.02551
-fine clothes,16,10,0.00121
-porcelain,16,10,0.00068
-iron,16,10,0.00665
-cotton,16,10,0.00679
-cloth,16,10,0.00066
-sugar cane,16,10,0.00483
-grapes,16,10,0.30556
-silk,16,10,0.02338
-tools,16,10,0.00262
-fish,16,15,0.00401
-clothes,16,15,0.00134
-coal,16,15,1.04242
-ironware,16,15,0.00131
-wine,16,15,0.06945
-porcelain,16,15,0.00133
-iron ore,16,15,0.00066
-iron,16,15,0.00195
-cotton,16,15,0.00146
-cloth,16,15,0.00199
-grapes,16,15,0.83723
-silk,16,15,0.00575
-bread,16,17,0.00062
-clothes,16,17,0.00133
-coal,16,17,0.00203
-ironware,16,17,0.00267
-tea,16,17,0.00067
-wine,16,17,0.12023
-fine clothes,16,17,0.00627
-iron ore,16,17,0.00857
-iron,16,17,0.33336
-wool,16,17,0.02243
-cotton,16,17,0.00097
-cloth,16,17,0.29870
-grapes,16,17,0.00067
-silk,16,17,0.00459
-tools,16,17,0.02268
-potatoes,16,21,0.00067
-fish,16,21,0.18634
-clothes,16,21,0.01266
-wood,16,21,0.00194
-coal,16,21,2.55407
-furniture,16,21,0.00193
-ironware,16,21,0.13727
-wine,16,21,0.76836
-fine clothes,16,21,0.00970
-porcelain,16,21,0.44730
-iron ore,16,21,0.00204
-iron,16,21,0.00470
-wool,16,21,0.08556
-cloth,16,21,0.00465
-grapes,16,21,0.18872
-silk,16,21,0.00126
-clay,16,21,0.00686
-bread,16,22,0.00061
-potatoes,16,22,0.00203
-clothes,16,22,0.01937
-coal,16,22,0.00536
-ironware,16,22,0.16841
-wine,16,22,1.27068
-fine clothes,16,22,0.10500
-porcelain,16,22,0.76191
-iron ore,16,22,0.00470
-iron,16,22,0.02350
-wool,16,22,0.11494
-cloth,16,22,0.02002
-grapes,16,22,0.00134
-silk,16,22,0.00151
-clay,16,22,0.00635
-tools,16,22,0.05239
-fish,17,10,0.00134
-wood,17,10,0.00066
-coal,17,10,0.00199
-tea,17,10,1.17934
-sugar,17,10,0.03768
-wine,17,10,0.02340
-fine clothes,17,10,0.00265
-iron,17,10,0.00201
-cotton,17,10,0.03426
-sugar cane,17,10,0.07155
-grapes,17,10,0.00469
-silk,17,10,0.33075
-tools,17,10,0.00342
-clothes,17,11,0.00133
-wood,17,11,0.00068
-coal,17,11,1.20510
-furniture,17,11,0.00066
-ironware,17,11,0.00132
-tea,17,11,16.92526
-sugar,17,11,1.19938
-wine,17,11,0.13584
-fine clothes,17,11,0.01461
-porcelain,17,11,0.00000
-iron ore,17,11,0.00295
-iron,17,11,0.00324
-wool,17,11,0.00063
-cotton,17,11,0.80867
-cloth,17,11,0.00200
-sugar cane,17,11,2.43688
-grapes,17,11,1.19474
-silk,17,11,1.76002
-tools,17,11,0.00611
-meat,17,16,1.48090
-fish,17,16,3.20223
-wood,17,16,1.18225
-furniture,17,16,0.04214
-sugar,17,16,0.02432
-wine,17,16,0.00001
-fine clothes,17,16,0.00741
-grain,17,16,0.02778
-cotton,17,16,0.00416
-sugar cane,17,16,0.00542
-silk,17,16,0.01204
-tools,17,16,0.00203
-bread,17,22,0.51161
-potatoes,17,22,3.44637
-meat,17,22,2.13239
-fish,17,22,3.96487
-clothes,17,22,2.18688
-wood,17,22,0.00336
-coal,17,22,0.00067
-furniture,17,22,0.59247
-ironware,17,22,0.65807
-beer,17,22,0.99185
-sugar,17,22,0.00067
-wine,17,22,0.20261
-fine clothes,17,22,0.73966
-porcelain,17,22,0.70916
-grain,17,22,1.81451
-iron ore,17,22,0.00312
-iron,17,22,0.00666
-grapes,17,22,0.00135
-silk,17,22,0.00068
-clay,17,22,0.00861
-tools,17,22,2.22778
-bread,17,23,0.00133
-meat,17,23,1.85179
-clothes,17,23,1.17251
-wood,17,23,0.00134
-furniture,17,23,0.09288
-ironware,17,23,0.47833
-beer,17,23,0.16312
-sugar,17,23,0.03732
-wine,17,23,0.26161
-fine clothes,17,23,1.91282
-porcelain,17,23,2.03317
-grain,17,23,7.42056
-iron,17,23,0.32447
-cloth,17,23,0.02721
-sugar cane,17,23,0.00065
-silk,17,23,0.00594
-tools,17,23,2.32208
-bread,18,12,0.00066
-potatoes,18,12,9.79810
-meat,18,12,3.21419
-ironware,18,12,0.00134
-tea,18,12,15.65031
-sugar,18,12,1.46312
-wine,18,12,0.00398
-fine clothes,18,12,0.10685
-porcelain,18,12,0.01789
-grain,18,12,22.81965
-iron ore,18,12,0.00347
-iron,18,12,0.00401
-cotton,18,12,0.27238
-cloth,18,12,0.00200
-sugar cane,18,12,1.09044
-silk,18,12,1.18967
-clay,18,12,0.02109
-tools,18,12,0.10544
-fish,18,13,0.04169
-grain,18,13,1.77796
-iron ore,18,13,0.00104
-iron,18,13,0.00747
-cotton,18,13,0.00909
-sugar cane,18,13,0.18068
-silk,18,13,0.01389
-clay,18,13,0.00398
-tools,18,13,0.00534
-fish,18,19,0.35278
-wood,18,19,0.00135
-coal,18,19,0.57457
-ironware,18,19,0.00067
-sugar,18,19,0.00067
-wine,18,19,0.02221
-fine clothes,18,19,0.00132
-porcelain,18,19,0.00133
-iron,18,19,0.43127
-cotton,18,19,0.00186
-grapes,18,19,0.26082
-silk,18,19,0.00199
-tools,18,19,0.06340
-wood,18,24,22.87319
-furniture,18,24,0.16301
-ironware,18,24,0.01265
-wine,18,24,0.02146
-fine clothes,18,24,0.02781
-porcelain,18,24,0.12099
-iron,18,24,2.13179
-cotton,18,24,0.00132
-silk,18,24,0.00461
-tools,18,24,0.89641
-fish,18,25,0.00134
-wood,18,25,2.78979
-coal,18,25,0.00203
-furniture,18,25,0.00067
-ironware,18,25,0.00202
-wine,18,25,0.00132
-fine clothes,18,25,0.00132
-iron ore,18,25,0.00133
-iron,18,25,0.31967
-cotton,18,25,0.00260
-grapes,18,25,0.00202
-tools,18,25,0.02748
-clothes,19,13,0.01024
-tea,19,13,3.25672
-sugar,19,13,0.22942
-fine clothes,19,13,0.00782
-porcelain,19,13,0.00130
-grain,19,13,0.92178
-wool,19,13,0.00266
-cotton,19,13,0.08340
-cloth,19,13,0.00728
-sugar cane,19,13,0.00120
-silk,19,13,0.31439
-clay,19,13,0.00398
-tools,19,13,0.00267
-fish,19,14,0.00582
-clothes,19,14,0.00065
-tea,19,14,0.02033
-sugar,19,14,0.16193
-fine clothes,19,14,0.00259
-porcelain,19,14,0.00131
-iron ore,19,14,0.00065
-iron,19,14,0.00587
-cotton,19,14,0.01231
-sugar cane,19,14,0.03509
-silk,19,14,0.01181
-tools,19,14,0.00746
-clothes,19,18,0.02415
-ironware,19,18,0.00063
-beer,19,18,0.00067
-tea,19,18,0.52588
-sugar,19,18,0.04797
-fine clothes,19,18,0.06519
-porcelain,19,18,0.02197
-iron ore,19,18,0.00368
-iron,19,18,0.00189
-wool,19,18,0.01538
-cotton,19,18,0.00239
-cloth,19,18,0.55586
-silk,19,18,0.03265
-tools,19,18,0.00815
-fish,19,20,0.01158
-clothes,19,20,0.00897
-wood,19,20,0.23823
-coal,19,20,0.00201
-furniture,19,20,0.00133
-ironware,19,20,0.01216
-sugar,19,20,0.00730
-wine,19,20,0.00189
-fine clothes,19,20,0.01386
-porcelain,19,20,0.02772
-iron,19,20,0.02529
-cotton,19,20,0.00373
-sugar cane,19,20,0.00257
-grapes,19,20,0.00125
-silk,19,20,0.00506
-tools,19,20,0.01711
-clothes,19,25,0.00545
-wood,19,25,0.00068
-ironware,19,25,0.00132
-fine clothes,19,25,0.02149
-porcelain,19,25,0.00066
-iron ore,19,25,0.00118
-iron,19,25,0.00335
-cotton,19,25,0.00269
-cloth,19,25,0.00067
-silk,19,25,0.00322
-tools,19,25,0.00323
-bread,19,26,0.00195
-meat,19,26,0.00067
-clothes,19,26,0.85909
-wood,19,26,2.56166
-furniture,19,26,0.54301
-ironware,19,26,0.28116
-beer,19,26,0.00067
-fine clothes,19,26,0.61041
-porcelain,19,26,0.77055
-grain,19,26,0.00066
-iron ore,19,26,0.00208
-iron,19,26,0.00599
-wool,19,26,0.00946
-cloth,19,26,0.00461
-silk,19,26,0.00056
-clay,19,26,0.00620
-tools,19,26,2.41119
-clothes,20,14,0.00198
-ironware,20,14,0.00067
-tea,20,14,2.21138
-sugar,20,14,0.06779
-iron ore,20,14,0.00267
-iron,20,14,0.00208
-cotton,20,14,0.00494
-cloth,20,14,0.00131
-sugar cane,20,14,0.00678
-silk,20,14,0.24208
-tools,20,14,0.00446
-clothes,20,15,0.00838
-furniture,20,15,0.00059
-ironware,20,15,0.00193
-sugar,20,15,0.00257
-fine clothes,20,15,0.00923
-porcelain,20,15,0.00133
-iron ore,20,15,0.00182
-iron,20,15,0.00177
-wool,20,15,0.00061
-cloth,20,15,0.00200
-silk,20,15,0.00067
-tools,20,15,0.01429
-clothes,20,19,0.00201
+fish,11,10,0.46390
+sugar,11,10,0.00825
+wine,11,10,0.00480
+fine clothes,11,10,0.00602
+iron,11,10,0.00534
+cotton,11,10,0.00671
+sugar cane,11,10,0.00832
+grapes,11,10,0.00639
+silk,11,10,0.02595
+bread,11,17,0.23692
+meat,11,17,0.28145
+clothes,11,17,4.15616
+wood,11,17,11.63040
+furniture,11,17,2.13580
+ironware,11,17,1.73509
+beer,11,17,0.01084
+fine clothes,11,17,2.18691
+porcelain,11,17,1.89561
+iron,11,17,1.01840
+wool,11,17,0.02602
+cloth,11,17,0.03160
+silk,11,17,0.00332
+tools,11,17,4.88681
+meat,12,6,0.76636
+wood,12,6,17.61739
+furniture,12,6,0.86268
+ironware,12,6,0.00132
+tea,12,6,8.14042
+sugar,12,6,0.97332
+fine clothes,12,6,0.00198
+grain,12,6,9.51758
+cotton,12,6,0.11195
+sugar cane,12,6,0.45231
+silk,12,6,0.63895
+tools,12,6,0.00000
+coal,12,13,0.00066
+iron ore,12,13,0.00066
+iron,12,13,0.00134
+cotton,12,13,0.00596
+sugar cane,12,13,0.01509
+silk,12,13,0.00471
+clay,12,13,0.00067
+tools,12,13,0.00134
+wood,12,18,52.12461
+coal,12,18,3.41037
+furniture,12,18,0.11487
+ironware,12,18,0.03723
+wine,12,18,1.61144
+fine clothes,12,18,0.02301
+porcelain,12,18,0.00198
+iron ore,12,18,0.05841
+iron,12,18,4.32027
+wool,12,18,0.00461
+grapes,12,18,1.98917
+silk,12,18,0.00266
+tools,12,18,0.01287
+tea,13,6,0.00066
+sugar,13,6,0.01109
+fine clothes,13,6,0.11186
+cotton,13,6,0.00135
+silk,13,6,0.01577
+tools,13,6,0.02327
+wood,13,7,0.39062
+furniture,13,7,0.08395
+sugar,13,7,0.00592
+fine clothes,13,7,0.00769
+cotton,13,7,0.00044
+sugar cane,13,7,0.00130
+silk,13,7,0.00775
+fine clothes,13,12,0.22059
+cotton,13,12,0.00220
+silk,13,12,0.00493
+tools,13,12,0.10049
+fish,13,14,0.00602
+wood,13,14,2.37125
+furniture,13,14,0.02100
+fine clothes,13,14,0.00710
+cotton,13,14,0.00040
+sugar cane,13,14,0.00262
+silk,13,14,0.00643
+furniture,13,18,0.00066
+ironware,13,18,0.20869
+fine clothes,13,18,0.16368
+iron,13,18,0.00065
+cotton,13,18,0.00220
+silk,13,18,0.00439
+tools,13,18,2.07957
+wood,13,19,7.49767
+furniture,13,19,0.29586
+ironware,13,19,0.03210
+wine,13,19,0.04503
+fine clothes,13,19,0.03169
+silk,13,19,0.00331
+meat,14,7,0.92903
+tea,14,7,1.08950
+sugar,14,7,0.01021
+fine clothes,14,7,0.00709
+grain,14,7,1.53747
+sugar cane,14,7,0.00240
+silk,14,7,0.08029
+sugar,14,8,0.01988
+fine clothes,14,8,0.00456
+porcelain,14,8,0.00247
+grain,14,8,3.65934
+cotton,14,8,0.00169
+sugar cane,14,8,0.00113
+silk,14,8,0.00639
+clay,14,8,0.00452
+clothes,14,13,0.00067
+tea,14,13,0.00067
+sugar,14,13,0.01209
+fine clothes,14,13,0.00918
+porcelain,14,13,0.00437
+grain,14,13,0.25117
+wool,14,13,0.00064
+cloth,14,13,0.21919
+sugar cane,14,13,0.00182
+silk,14,13,0.00645
+clay,14,13,0.00796
+tools,14,13,0.00399
+ironware,14,15,0.00064
+sugar,14,15,0.00399
+wine,14,15,0.00591
+fine clothes,14,15,0.03128
+porcelain,14,15,0.00246
+iron,14,15,0.00062
+silk,14,15,0.00246
+sugar,14,19,0.00471
+wine,14,19,0.03061
+fine clothes,14,19,0.04792
+porcelain,14,19,0.00573
+silk,14,19,0.00535
+tools,14,19,0.00066
+wood,14,20,1.69665
+coal,14,20,0.61430
+ironware,14,20,0.21246
+sugar,14,20,0.00066
+wine,14,20,0.57303
+fine clothes,14,20,0.52394
+porcelain,14,20,0.45964
+iron ore,14,20,0.00061
+iron,14,20,0.00854
+cotton,14,20,0.00175
+grapes,14,20,0.07921
+tools,14,20,0.34699
+tea,15,8,7.65056
+sugar,15,8,0.75053
+fine clothes,15,8,0.00064
+cotton,15,8,0.13491
+sugar cane,15,8,0.10293
+silk,15,8,0.84603
+tea,15,9,1.58533
+sugar,15,9,0.15600
+cotton,15,9,0.01185
+sugar cane,15,9,0.04601
+silk,15,9,0.35046
+tea,15,14,0.67184
+sugar,15,14,0.00067
+fine clothes,15,14,0.00066
+cotton,15,14,0.00790
+sugar cane,15,14,0.00963
+silk,15,14,0.05557
+fine clothes,15,16,0.00066
+cotton,15,16,0.00125
+silk,15,16,0.00605
+tools,15,16,0.00331
+ironware,15,20,0.00397
+wine,15,20,0.00197
+fine clothes,15,20,0.00528
+porcelain,15,20,0.00330
+iron,15,20,0.00923
+grapes,15,20,0.00591
+silk,15,20,0.00267
+tools,15,20,0.04535
+bread,15,21,0.25264
+potatoes,15,21,0.36809
+meat,15,21,1.37208
+clothes,15,21,1.71911
+wood,15,21,1.66730
+furniture,15,21,0.71835
+ironware,15,21,0.54614
+beer,15,21,0.38973
+fine clothes,15,21,0.80135
+porcelain,15,21,0.60199
+grain,15,21,0.54751
+wool,15,21,0.00633
+cloth,15,21,0.00399
+silk,15,21,0.00134
+clay,15,21,0.01236
+tools,15,21,0.74346
+tea,16,9,0.01532
+sugar,16,9,0.07610
+wine,16,9,0.02403
+cotton,16,9,0.00896
+sugar cane,16,9,0.01049
+grapes,16,9,0.00532
+silk,16,9,0.02634
+coal,16,10,0.33341
+tea,16,10,0.00332
+sugar,16,10,0.00794
+wine,16,10,0.00679
+fine clothes,16,10,0.00585
+iron,16,10,0.00389
+cotton,16,10,0.00207
+sugar cane,16,10,0.00518
+grapes,16,10,0.20870
+silk,16,10,0.08747
+fish,16,15,0.00066
+coal,16,15,0.93429
+sugar,16,15,0.00067
+wine,16,15,0.33521
+iron,16,15,0.00066
+sugar cane,16,15,0.00054
+grapes,16,15,0.31662
+silk,16,15,0.00375
+sugar,16,17,0.00929
+wine,16,17,0.54079
+fine clothes,16,17,0.02390
+iron,16,17,0.30685
+wool,16,17,0.05966
+cotton,16,17,0.00072
+cloth,16,17,0.23369
+silk,16,17,0.01441
+fish,16,21,0.20432
+coal,16,21,2.67345
+ironware,16,21,0.11258
+wine,16,21,1.25398
+fine clothes,16,21,0.02216
+porcelain,16,21,0.47209
+iron,16,21,0.00681
+wool,16,21,0.07767
+grapes,16,21,0.19303
+silk,16,21,0.00242
+clay,16,21,0.00542
+ironware,16,22,0.05793
+wine,16,22,1.49043
+fine clothes,16,22,0.16206
+porcelain,16,22,0.26127
+iron ore,16,22,0.00626
+iron,16,22,0.00739
+wool,16,22,0.12851
+cloth,16,22,0.00996
+grapes,16,22,0.00605
+silk,16,22,0.00451
+clay,16,22,0.00628
+tools,16,22,0.05434
+tea,17,10,1.21960
+sugar,17,10,0.00067
+wine,17,10,0.00536
+iron,17,10,0.00066
+cotton,17,10,0.04313
+sugar cane,17,10,0.06033
+grapes,17,10,0.00066
+silk,17,10,0.20890
+coal,17,11,1.15736
+tea,17,11,17.87898
+sugar,17,11,1.59279
+wine,17,11,0.03343
+fine clothes,17,11,0.00396
+iron ore,17,11,0.00176
+cotton,17,11,0.83653
+sugar cane,17,11,2.44427
+grapes,17,11,1.18002
+silk,17,11,2.31496
+meat,17,16,1.46148
+fish,17,16,3.33061
+wood,17,16,1.83010
+furniture,17,16,0.21099
+sugar,17,16,0.00067
+fine clothes,17,16,0.00338
+cotton,17,16,0.00481
+sugar cane,17,16,0.00480
+silk,17,16,0.00894
+tools,17,16,0.00067
+bread,17,22,0.53057
+potatoes,17,22,4.15535
+meat,17,22,2.43193
+fish,17,22,4.38657
+clothes,17,22,2.64375
+furniture,17,22,0.75788
+ironware,17,22,0.94979
+beer,17,22,1.54819
+fine clothes,17,22,0.75157
+porcelain,17,22,1.08920
+grain,17,22,1.92210
+iron ore,17,22,0.00388
+iron,17,22,0.00623
+wool,17,22,0.00626
+grapes,17,22,0.00409
+clay,17,22,0.02941
+tools,17,22,1.37297
+meat,17,23,2.28401
+clothes,17,23,1.59482
+furniture,17,23,0.04133
+ironware,17,23,0.67519
+beer,17,23,0.36942
+wine,17,23,0.03004
+fine clothes,17,23,2.33287
+porcelain,17,23,1.23170
+grain,17,23,8.03151
+iron,17,23,0.63399
+cotton,17,23,0.00190
+sugar cane,17,23,0.00067
+silk,17,23,0.00466
+tools,17,23,4.15413
+potatoes,18,12,9.88884
+meat,18,12,3.45257
+tea,18,12,15.20907
+sugar,18,12,1.73567
+wine,18,12,0.00201
+fine clothes,18,12,0.02372
+porcelain,18,12,0.00266
+grain,18,12,23.65481
+iron,18,12,0.00066
+cotton,18,12,0.30104
+sugar cane,18,12,1.13282
+silk,18,12,1.21866
+clay,18,12,0.00395
+tools,18,12,0.03701
+fish,18,13,0.40759
+sugar,18,13,0.01076
+wine,18,13,0.00067
+fine clothes,18,13,0.00199
+porcelain,18,13,0.00132
+grain,18,13,2.47623
+iron,18,13,0.00135
+cotton,18,13,0.00713
+sugar cane,18,13,0.08166
+silk,18,13,0.00482
+clay,18,13,0.00877
+tools,18,13,0.00067
+fish,18,19,0.43343
+coal,18,19,0.73974
+sugar,18,19,0.00475
+wine,18,19,0.13552
+fine clothes,18,19,0.01914
+porcelain,18,19,0.00199
+iron,18,19,0.36484
+sugar cane,18,19,0.00204
+grapes,18,19,0.23109
+silk,18,19,0.00671
+wood,18,24,24.40370
+furniture,18,24,0.14497
+ironware,18,24,0.06168
+wine,18,24,0.00067
+fine clothes,18,24,0.34915
+porcelain,18,24,0.34740
+iron,18,24,2.38631
+cotton,18,24,0.00001
+silk,18,24,0.00333
+tools,18,24,2.10769
+wood,18,25,3.17068
+sugar,18,25,0.00135
+wine,18,25,0.01069
+fine clothes,18,25,0.04224
+porcelain,18,25,0.00264
+iron,18,25,0.24460
+cotton,18,25,0.00547
+silk,18,25,0.00133
+tea,19,13,3.09836
+sugar,19,13,0.45953
+fine clothes,19,13,0.00327
+grain,19,13,0.75693
+wool,19,13,0.00200
+cotton,19,13,0.06538
+sugar cane,19,13,0.00526
+silk,19,13,0.38831
+clay,19,13,0.00691
+tools,19,13,0.00133
+fish,19,14,0.00571
+sugar,19,14,0.00904
+cotton,19,14,0.00057
+sugar cane,19,14,0.00704
+silk,19,14,0.01066
+clothes,19,18,0.00133
+tea,19,18,0.53829
+sugar,19,18,0.02522
+fine clothes,19,18,0.00131
+wool,19,18,0.02021
+cotton,19,18,0.00869
+cloth,19,18,0.13986
+silk,19,18,0.02342
+tools,19,18,0.02166
+fish,19,20,0.01212
+wood,19,20,0.14665
+ironware,19,20,0.00258
+sugar,19,20,0.00439
+wine,19,20,0.00065
+fine clothes,19,20,0.00726
+iron ore,19,20,0.00054
+iron,19,20,0.01382
+cotton,19,20,0.00258
+sugar cane,19,20,0.00290
+silk,19,20,0.00777
+tools,19,20,0.00929
+sugar,19,25,0.00065
+fine clothes,19,25,0.00395
+cotton,19,25,0.00440
+silk,19,25,0.00391
+clothes,19,26,1.58770
+wood,19,26,2.14761
+furniture,19,26,0.90005
+ironware,19,26,0.41819
+beer,19,26,0.05775
+fine clothes,19,26,0.86266
+porcelain,19,26,0.66303
+iron ore,19,26,0.00318
+iron,19,26,0.00655
+wool,19,26,0.01028
+cloth,19,26,0.00399
+silk,19,26,0.00134
+clay,19,26,0.01445
+tools,19,26,0.83799
+tea,20,14,1.92837
+sugar,20,14,0.19739
+iron,20,14,0.00059
+cotton,20,14,0.00605
+sugar cane,20,14,0.02634
+silk,20,14,0.29848
+tools,20,14,0.00067
+clothes,20,15,0.00067
+sugar,20,15,0.00329
+porcelain,20,15,0.00064
+iron,20,15,0.00065
+cotton,20,15,0.00065
+sugar cane,20,15,0.00055
+silk,20,15,0.00522
+clothes,20,19,0.00067
+coal,20,19,0.00067
+furniture,20,19,0.00062
 tea,20,19,0.00067
-wine,20,19,0.00130
-fine clothes,20,19,0.00324
-porcelain,20,19,0.00064
-iron,20,19,0.00285
-cotton,20,19,0.00276
-cloth,20,19,0.00063
-silk,20,19,0.00444
-tools,20,19,0.00897
-bread,20,21,0.02600
-potatoes,20,21,1.97202
-meat,20,21,2.22605
-clothes,20,21,0.01698
-wood,20,21,0.00192
-furniture,20,21,0.00316
-ironware,20,21,0.01263
-beer,20,21,0.05132
-fine clothes,20,21,0.03895
-porcelain,20,21,0.00133
-grain,20,21,0.37998
-iron ore,20,21,0.00111
-iron,20,21,0.00298
-wool,20,21,0.01112
-cloth,20,21,0.00263
-clay,20,21,0.00757
-tools,20,21,0.01482
-bread,20,26,0.00067
-meat,20,26,0.00067
-clothes,20,26,0.01454
+sugar,20,19,0.00581
+iron,20,19,0.00059
+cotton,20,19,0.00146
+cloth,20,19,0.00064
+sugar cane,20,19,0.00150
+silk,20,19,0.00718
+tools,20,19,0.00067
+bread,20,21,0.03605
+potatoes,20,21,2.18197
+meat,20,21,2.65155
+clothes,20,21,0.00601
+wood,20,21,0.00131
+furniture,20,21,0.00127
+beer,20,21,0.06114
+fine clothes,20,21,0.01317
+porcelain,20,21,0.00585
+grain,20,21,0.51673
+wool,20,21,0.00629
+clay,20,21,0.00998
+tools,20,21,0.00067
+bread,20,26,0.00201
+potatoes,20,26,0.00067
+meat,20,26,0.00134
+clothes,20,26,0.00400
 wood,20,26,0.00136
-furniture,20,26,0.00067
-ironware,20,26,0.00465
-beer,20,26,0.00135
-fine clothes,20,26,0.00999
-porcelain,20,26,0.00065
-iron,20,26,0.00473
-wool,20,26,0.00437
-cloth,20,26,0.00193
-silk,20,26,0.00190
-tools,20,26,0.19353
-bread,20,27,0.03237
-potatoes,20,27,0.00470
-meat,20,27,0.00532
-clothes,20,27,1.33866
-wood,20,27,0.00064
-furniture,20,27,0.00248
-ironware,20,27,0.40827
-beer,20,27,0.06620
-fine clothes,20,27,0.77407
-porcelain,20,27,0.77208
-grain,20,27,0.12537
-iron ore,20,27,0.00161
-iron,20,27,0.00368
-wool,20,27,0.07635
-clay,20,27,0.00807
-tools,20,27,0.47042
-tea,21,15,11.84036
-sugar,21,15,0.55586
-fine clothes,21,15,0.00063
-cotton,21,15,0.28633
-sugar cane,21,15,0.57396
-silk,21,15,1.57920
-tools,21,15,0.00067
-tea,21,16,2.99226
-sugar,21,16,0.22438
-fine clothes,21,16,0.00067
-cotton,21,16,0.04442
-sugar cane,21,16,0.19373
-silk,21,16,0.18850
-tools,21,16,0.00329
-tea,21,20,0.67781
-sugar,21,20,0.01410
-wine,21,20,0.00659
-iron,21,20,0.00635
-cotton,21,20,0.03218
-sugar cane,21,20,0.03271
-grapes,21,20,0.00612
-silk,21,20,0.10876
-tools,21,20,0.01143
-ironware,21,22,0.00063
-iron ore,21,22,0.00243
-iron,21,22,0.00548
-silk,21,22,0.00197
-tools,21,22,0.04421
-wine,21,27,0.00064
-iron,21,27,0.00256
-wool,21,27,0.00294
-tools,21,27,0.02573
-ironware,21,28,0.00063
-tea,21,28,0.00067
-fine clothes,21,28,0.06612
-iron,21,28,0.00524
-tools,21,28,0.06721
-wood,22,16,0.00061
-sugar,22,16,0.02427
-fine clothes,22,16,0.00587
-iron,22,16,0.00051
-cotton,22,16,0.00901
-sugar cane,22,16,0.01028
-silk,22,16,0.01352
-tools,22,16,0.00233
-tea,22,17,21.40316
-sugar,22,17,0.97883
-iron,22,17,0.00281
-cotton,22,17,1.07349
-cloth,22,17,0.00066
-sugar cane,22,17,3.38330
-silk,22,17,1.57849
-tools,22,17,0.00100
-fish,22,21,0.00133
-sugar,22,21,0.00066
-wine,22,21,0.00065
-fine clothes,22,21,0.00187
-porcelain,22,21,0.00134
-iron,22,21,0.00225
-tools,22,21,0.00038
-sugar,22,23,0.08597
-fine clothes,22,23,0.00062
-porcelain,22,23,0.00060
-iron,22,23,0.00625
-cotton,22,23,0.24341
-sugar cane,22,23,0.10075
-silk,22,23,0.00991
-tools,22,23,0.00100
-ironware,22,28,0.00130
-wine,22,28,0.00129
-fine clothes,22,28,0.00583
-porcelain,22,28,0.00398
-iron,22,28,0.00448
-wool,22,28,0.00252
-tools,22,28,0.00456
-ironware,22,29,0.00063
-tea,22,29,0.00268
-sugar,22,29,0.04583
-wine,22,29,0.00994
-fine clothes,22,29,0.00456
-porcelain,22,29,0.00061
-iron ore,22,29,0.00239
-iron,22,29,0.00761
-cotton,22,29,0.00196
-silk,22,29,0.00332
-tools,22,29,0.00408
-clothes,23,17,0.00067
-wood,23,17,0.00206
-coal,23,17,6.37487
-ironware,23,17,0.00067
-tea,23,17,1.39486
-sugar,23,17,0.00197
-fine clothes,23,17,0.00065
-wool,23,17,0.00537
-grapes,23,17,2.41422
-silk,23,17,0.86864
-tools,23,17,0.02006
-potatoes,23,22,0.00269
-wood,23,22,0.00269
-coal,23,22,2.63355
-furniture,23,22,0.00133
-ironware,23,22,0.00132
-fine clothes,23,22,0.01264
-porcelain,23,22,0.00470
-iron ore,23,22,0.00354
-iron,23,22,0.00190
-wool,23,22,0.04717
-grapes,23,22,0.21744
-clay,23,22,0.00885
-tools,23,22,0.05915
-clothes,23,29,0.02579
-coal,23,29,7.68602
-ironware,23,29,0.06829
-tea,23,29,0.00067
-sugar,23,29,0.00200
-wine,23,29,2.87451
-fine clothes,23,29,0.99610
-porcelain,23,29,2.20569
-iron ore,23,29,0.58844
-iron,23,29,0.44050
-wool,23,29,2.37506
-cloth,23,29,0.00401
-grapes,23,29,7.53070
-silk,23,29,0.00660
-tools,23,29,1.48192
+furniture,20,26,0.00127
+beer,20,26,0.00202
+fine clothes,20,26,0.01314
+porcelain,20,26,0.00331
+iron,20,26,0.00060
+wool,20,26,0.00067
+cloth,20,26,0.00132
+silk,20,26,0.00185
+clay,20,26,0.00433
+tools,20,26,0.00132
+bread,20,27,0.02398
+meat,20,27,0.00133
+clothes,20,27,1.44186
+wood,20,27,0.00065
+furniture,20,27,0.00127
+ironware,20,27,0.15784
+beer,20,27,0.21514
+wine,20,27,0.00524
+fine clothes,20,27,0.56898
+porcelain,20,27,0.72625
+grain,20,27,0.03317
+wool,20,27,0.06559
+clay,20,27,0.00062
+tools,20,27,0.82936
+tea,21,15,12.30612
+sugar,21,15,1.03130
+cotton,21,15,0.30466
+sugar cane,21,15,0.37595
+silk,21,15,1.63844
+tea,21,16,2.88214
+sugar,21,16,0.30859
+cotton,21,16,0.04537
+sugar cane,21,16,0.17439
+silk,21,16,0.25129
+tea,21,20,0.82327
+sugar,21,20,0.00268
+wine,21,20,0.00133
+iron,21,20,0.00062
+cotton,21,20,0.01215
+sugar cane,21,20,0.00605
+grapes,21,20,0.00558
+silk,21,20,0.10624
+tools,21,20,0.00133
+fine clothes,21,22,0.00462
+iron,21,22,0.00337
+silk,21,22,0.00530
+fine clothes,21,27,0.00062
+porcelain,21,27,0.00384
+tools,21,27,0.02326
+fine clothes,21,28,0.08705
+porcelain,21,28,0.00122
+iron,21,28,0.00203
+tools,21,28,0.01394
+sugar,22,16,0.00199
+iron,22,16,0.00172
+cotton,22,16,0.00493
+sugar cane,22,16,0.00480
+silk,22,16,0.00889
+tea,22,17,21.69782
+sugar,22,17,1.68114
+cotton,22,17,1.12008
+sugar cane,22,17,3.55781
+silk,22,17,1.71009
+fish,22,21,0.00334
+fine clothes,22,21,0.00066
+iron,22,21,0.00270
+silk,22,21,0.00065
+sugar,22,23,0.00133
+iron,22,23,0.00052
+cotton,22,23,0.26667
+sugar cane,22,23,0.00336
+silk,22,23,0.00398
+fine clothes,22,28,0.00522
+iron,22,28,0.00324
+wool,22,28,0.00287
+fine clothes,22,29,0.00133
+iron ore,22,29,0.00044
+iron,22,29,0.00120
+silk,22,29,0.00067
+coal,23,17,5.85096
+tea,23,17,2.32051
+sugar,23,17,0.05668
+fine clothes,23,17,0.00066
+cotton,23,17,0.00063
+grapes,23,17,3.08432
+silk,23,17,1.20234
+coal,23,22,2.56846
+ironware,23,22,0.00398
+fine clothes,23,22,0.01194
+porcelain,23,22,0.00066
+iron ore,23,22,0.00556
+iron,23,22,0.00625
+wool,23,22,0.00824
+grapes,23,22,0.20246
+clay,23,22,0.00822
+coal,23,29,8.10917
+ironware,23,29,0.02356
+wine,23,29,4.17486
+fine clothes,23,29,1.53925
+porcelain,23,29,1.85951
+iron ore,23,29,0.70500
+iron,23,29,1.26261
+wool,23,29,2.12357
+cloth,23,29,0.63206
+grapes,23,29,7.16988
+silk,23,29,0.00592
+tools,23,29,1.96491
+bread,24,18,0.00066
 meat,24,18,0.00067
-wood,24,18,0.00067
-coal,24,18,0.00068
-furniture,24,18,0.00067
-ironware,24,18,0.00064
-tea,24,18,13.52078
-sugar,24,18,1.97356
-wine,24,18,0.00266
-fine clothes,24,18,0.02676
-porcelain,24,18,0.00133
-iron ore,24,18,0.00514
-iron,24,18,0.00265
-wool,24,18,0.02245
-cotton,24,18,0.43795
+clothes,24,18,0.00067
+tea,24,18,12.55529
+sugar,24,18,2.84506
+wine,24,18,0.19081
+fine clothes,24,18,0.00193
+wool,24,18,0.15609
+cotton,24,18,0.50614
 cloth,24,18,0.00066
-sugar cane,24,18,1.71866
-grapes,24,18,0.01073
-silk,24,18,1.29814
-tools,24,18,0.01701
-fish,24,25,0.29321
-clothes,24,25,0.00067
-wood,24,25,0.00757
-coal,24,25,0.00401
-ironware,24,25,0.00136
-wine,24,25,0.00067
-fine clothes,24,25,0.00265
-porcelain,24,25,0.00067
-iron,24,25,0.02142
-sugar cane,24,25,0.00408
-grapes,24,25,0.01242
-silk,24,25,0.00332
-tools,24,25,0.02437
-bread,24,30,0.26296
-meat,24,30,3.85118
-clothes,24,30,0.78080
-wood,24,30,12.97758
-furniture,24,30,1.09375
-ironware,24,30,0.53297
-beer,24,30,2.64142
-tea,24,30,0.00067
-sugar,24,30,0.00330
-wine,24,30,0.00333
-fine clothes,24,30,0.42700
-porcelain,24,30,0.94715
-grain,24,30,8.06102
-iron,24,30,1.25654
-cotton,24,30,0.00062
-silk,24,30,0.00396
-tools,24,30,1.87751
-clothes,25,18,0.00740
-ironware,25,18,0.00253
-tea,25,18,6.67023
-sugar,25,18,0.17090
-wine,25,18,0.02130
-fine clothes,25,18,0.02575
-porcelain,25,18,0.00590
-iron ore,25,18,0.00356
-iron,25,18,0.00180
-wool,25,18,0.02875
-cotton,25,18,0.00120
-cloth,25,18,0.67373
-sugar cane,25,18,0.00219
-grapes,25,18,0.00064
-silk,25,18,0.30974
-tools,25,18,0.00838
-sugar,25,19,0.00261
-wine,25,19,0.02284
-iron ore,25,19,0.00057
-iron,25,19,0.00064
-cotton,25,19,0.00108
-grapes,25,19,0.00064
-silk,25,19,0.00450
-tools,25,19,0.02033
-clothes,25,24,0.01691
-ironware,25,24,0.00318
-sugar,25,24,0.01711
-wine,25,24,0.02170
-fine clothes,25,24,0.03272
-porcelain,25,24,0.00656
-iron ore,25,24,0.00291
-iron,25,24,0.00384
-wool,25,24,0.00063
-cotton,25,24,0.00050
-cloth,25,24,0.01207
-silk,25,24,0.01106
-tools,25,24,0.00334
-bread,25,26,0.10890
-clothes,25,26,1.11039
-wood,25,26,0.00335
-coal,25,26,0.00063
-furniture,25,26,0.03474
-ironware,25,26,0.25943
-beer,25,26,0.22205
-wine,25,26,0.01283
-fine clothes,25,26,0.03891
-porcelain,25,26,0.30909
-grain,25,26,0.02803
-iron ore,25,26,0.00323
-iron,25,26,0.00512
-wool,25,26,0.11569
-clay,25,26,0.00944
-tools,25,26,0.78634
-bread,25,30,0.00808
-clothes,25,30,0.05001
-wood,25,30,0.00067
-ironware,25,30,0.01528
-sugar,25,30,0.01130
-wine,25,30,0.01950
-fine clothes,25,30,0.18966
-porcelain,25,30,0.02200
-iron ore,25,30,0.00154
-iron,25,30,0.00441
-cotton,25,30,0.00050
-cloth,25,30,0.02685
-silk,25,30,0.00522
-tools,25,30,0.00276
-clothes,25,31,0.16233
-wood,25,31,0.00000
-furniture,25,31,0.00000
-ironware,25,31,0.18078
-wine,25,31,0.02065
-fine clothes,25,31,0.74232
-porcelain,25,31,0.10223
-iron ore,25,31,0.00048
-iron,25,31,0.01216
-cotton,25,31,0.00274
-cloth,25,31,0.17377
-silk,25,31,0.00184
-tools,25,31,0.17418
-tea,26,19,5.57136
-sugar,26,19,0.62665
-wine,26,19,0.00320
-cotton,26,19,0.18791
-sugar cane,26,19,0.20961
-silk,26,19,0.70665
-tools,26,19,0.00127
-wood,26,20,0.00067
-coal,26,20,0.00133
-tea,26,20,0.00200
-sugar,26,20,0.05883
-wine,26,20,0.00540
-iron,26,20,0.00993
-cotton,26,20,0.00619
-sugar cane,26,20,0.05666
-grapes,26,20,0.00117
-silk,26,20,0.01684
-tools,26,20,0.00884
-tea,26,25,8.18859
-sugar,26,25,0.29855
-wine,26,25,0.00059
-fine clothes,26,25,0.00064
-iron,26,25,0.00102
-cotton,26,25,0.07061
-sugar cane,26,25,0.10570
-silk,26,25,0.73733
-clothes,26,27,0.00066
-wine,26,27,0.02851
-fine clothes,26,27,0.00653
-porcelain,26,27,0.02027
-iron ore,26,27,0.00045
-iron,26,27,0.00051
-tools,26,27,0.01079
-tea,26,31,8.39086
-sugar,26,31,0.43355
-fine clothes,26,31,0.03115
-porcelain,26,31,0.00457
-iron,26,31,0.00413
-cotton,26,31,1.16611
-cloth,26,31,0.00126
-sugar cane,26,31,0.00066
-silk,26,31,0.40272
-tools,26,31,0.00197
-sugar,26,32,0.02967
-wine,26,32,0.01609
-fine clothes,26,32,0.03362
-porcelain,26,32,0.01116
-iron,26,32,0.01099
-silk,26,32,0.00396
-tools,26,32,0.00127
-tea,27,20,3.39980
-sugar,27,20,0.27526
-wine,27,20,0.00131
-iron,27,20,0.00457
-cotton,27,20,0.05791
-cloth,27,20,0.00068
-sugar cane,27,20,0.03792
-grapes,27,20,0.00482
-silk,27,20,0.47728
-tools,27,20,0.00749
-fish,27,21,0.00133
-wood,27,21,0.00067
-furniture,27,21,0.00066
-fine clothes,27,21,0.00134
-wool,27,21,0.00100
-cloth,27,21,0.00062
-tools,27,21,0.00065
-fine clothes,27,26,0.00262
-iron,27,26,0.00065
-silk,27,26,0.00133
-tools,27,26,0.00530
-clothes,27,28,0.00067
-ironware,27,28,0.00060
-tea,27,28,0.00067
-fine clothes,27,28,0.09117
-iron,27,28,0.00351
-wool,27,28,0.00061
-cloth,27,28,0.00062
-tools,27,28,0.00394
-clothes,27,32,0.00067
-tea,27,32,13.45894
-sugar,27,32,0.02139
-fine clothes,27,32,0.02014
-cotton,27,32,0.00333
-silk,27,32,1.56478
-tools,27,32,0.00336
-clothes,27,33,0.00067
-ironware,27,33,0.00191
-tea,27,33,0.00067
-sugar,27,33,0.00066
-fine clothes,27,33,0.04789
-porcelain,27,33,0.00066
-iron ore,27,33,0.00355
-iron,27,33,0.00555
-wool,27,33,0.00094
-cotton,27,33,0.00131
-cloth,27,33,0.00126
-silk,27,33,0.00132
-tools,27,33,0.01096
-silk,28,21,0.00132
-tools,28,21,0.00000
-porcelain,28,22,0.00128
-iron,28,22,0.00140
-silk,28,22,0.00133
-tools,28,22,0.02978
-wine,28,27,0.00000
-iron,28,27,0.00040
-wool,28,27,0.00080
-tools,28,27,0.00195
-tea,28,29,15.30104
-sugar,28,29,0.65724
-wine,28,29,0.00067
-iron ore,28,29,0.00157
-iron,28,29,0.00360
-cotton,28,29,0.72509
-silk,28,29,1.60234
-tools,28,29,0.00404
-tea,28,33,0.00201
-sugar,28,33,0.00133
-wine,28,33,0.00066
-fine clothes,28,33,0.00200
-iron ore,28,33,0.00135
-iron,28,33,0.00240
-silk,28,33,0.00199
-tools,28,33,0.00465
-tea,28,34,0.93698
-sugar,28,34,0.00067
-iron ore,28,34,0.00478
-iron,28,34,0.01011
-silk,28,34,0.31190
-tools,28,34,0.00685
-bread,29,22,0.00131
-potatoes,29,22,0.02461
-meat,29,22,0.02342
-fish,29,22,0.02571
-wood,29,22,3.87271
-furniture,29,22,0.23362
-beer,29,22,0.02204
-fine clothes,29,22,0.00398
-grain,29,22,0.00265
-iron,29,22,0.00066
-clay,29,22,0.00066
-tools,29,22,0.03935
-meat,29,23,0.02334
-wood,29,23,9.41598
-furniture,29,23,0.04736
-beer,29,23,0.02297
-tea,29,23,8.15869
-sugar,29,23,0.97012
-fine clothes,29,23,0.00067
-grain,29,23,0.00066
-cotton,29,23,0.03091
-sugar cane,29,23,0.21326
-silk,29,23,1.05541
-tools,29,23,0.02157
-bread,29,28,0.03033
-potatoes,29,28,0.86990
-meat,29,28,0.80744
-fish,29,28,1.81624
-clothes,29,28,0.59080
-wood,29,28,2.13642
-coal,29,28,1.28478
-furniture,29,28,0.45586
-ironware,29,28,0.51109
-beer,29,28,0.09063
-wine,29,28,0.54108
-fine clothes,29,28,0.12261
-porcelain,29,28,0.70313
-grain,29,28,0.55794
-iron ore,29,28,0.00270
-iron,29,28,0.00468
-wool,29,28,0.06855
-grapes,29,28,0.21349
-clay,29,28,0.02151
-tools,29,28,0.54518
-coal,29,34,1.56280
-ironware,29,34,0.00463
-wine,29,34,0.04510
-fine clothes,29,34,0.00133
-iron ore,29,34,0.01265
-iron,29,34,0.08264
-grapes,29,34,1.59126
-silk,29,34,0.00332
-tools,29,34,0.13817
-bread,29,35,0.23107
-potatoes,29,35,9.68480
-meat,29,35,2.01300
-clothes,29,35,1.32720
-coal,29,35,0.82614
-ironware,29,35,0.09333
-beer,29,35,0.46318
-tea,29,35,0.81040
-sugar,29,35,0.00133
-wine,29,35,2.69609
-fine clothes,29,35,0.90039
-porcelain,29,35,1.98883
-grain,29,35,6.22132
-iron ore,29,35,0.35460
-iron,29,35,0.08141
-wool,29,35,1.40498
-cloth,29,35,0.13022
-grapes,29,35,2.18614
-silk,29,35,0.07840
-clay,29,35,0.15254
-tools,29,35,1.08352
-clothes,30,24,0.00134
-wood,30,24,0.00067
-coal,30,24,3.36349
-ironware,30,24,0.00134
-tea,30,24,16.81163
-sugar,30,24,2.08066
-wine,30,24,0.02090
-fine clothes,30,24,0.01332
-porcelain,30,24,0.00134
-iron ore,30,24,0.00340
-iron,30,24,0.00272
-wool,30,24,0.00532
-cotton,30,24,0.60105
-cloth,30,24,0.00135
-sugar cane,30,24,2.27065
-grapes,30,24,1.78456
-silk,30,24,1.70722
-tools,30,24,0.01634
-fish,30,25,0.00202
-clothes,30,25,0.00135
-wood,30,25,0.00203
-coal,30,25,1.00664
-ironware,30,25,0.00068
-tea,30,25,0.00067
-wine,30,25,0.00132
-porcelain,30,25,0.00068
-iron,30,25,0.00685
-wool,30,25,0.00067
-cloth,30,25,0.00066
-sugar cane,30,25,0.00480
-grapes,30,25,0.46027
-silk,30,25,0.00795
-tools,30,25,0.01319
-clothes,30,31,0.00203
-wood,30,31,3.59678
-coal,30,31,16.34712
-furniture,30,31,0.00268
-ironware,30,31,0.08833
-wine,30,31,4.87213
-fine clothes,30,31,0.03554
-porcelain,30,31,1.71394
-iron ore,30,31,0.01214
-iron,30,31,1.37071
-wool,30,31,0.14812
-cotton,30,31,0.00063
-cloth,30,31,0.00472
-grapes,30,31,5.86705
-silk,30,31,0.00131
-tools,30,31,0.79413
-fish,31,25,0.01334
-wood,31,25,0.00138
-coal,31,25,0.00336
-ironware,31,25,0.00133
-sugar,31,25,0.00666
-wine,31,25,0.00067
-fine clothes,31,25,0.00067
-iron ore,31,25,0.00071
-iron,31,25,0.00548
-cotton,31,25,0.01014
-sugar cane,31,25,0.03131
-grapes,31,25,0.01221
-silk,31,25,0.01664
-tools,31,25,0.00868
-bread,31,26,0.56612
-potatoes,31,26,4.26558
-meat,31,26,2.70491
-fish,31,26,3.99144
-clothes,31,26,0.00200
-wood,31,26,0.03322
-coal,31,26,2.29333
-furniture,31,26,0.00928
-ironware,31,26,0.00198
-beer,31,26,0.08598
-wine,31,26,0.12773
-fine clothes,31,26,0.00133
-porcelain,31,26,0.00401
-grain,31,26,2.58234
-iron,31,26,0.00408
-wool,31,26,0.00824
-grapes,31,26,0.14213
-clay,31,26,0.00805
-tools,31,26,0.38052
-bread,31,30,0.02673
-meat,31,30,0.02875
-clothes,31,30,0.03401
-wood,31,30,0.00068
-ironware,31,30,0.00200
-beer,31,30,0.02879
-tea,31,30,23.21412
-sugar,31,30,1.85782
-fine clothes,31,30,0.00066
-grain,31,30,0.03674
-iron ore,31,30,0.00213
-iron,31,30,0.00333
-cotton,31,30,0.81398
-sugar cane,31,30,3.11942
-silk,31,30,1.89129
-tools,31,30,0.01026
-bread,31,32,0.02172
-meat,31,32,0.01697
-clothes,31,32,1.67496
-wood,31,32,0.00198
-coal,31,32,7.62020
-furniture,31,32,0.02655
-ironware,31,32,1.01966
-beer,31,32,0.02171
-wine,31,32,5.27490
-fine clothes,31,32,1.23328
-porcelain,31,32,1.80778
-iron ore,31,32,0.00316
-iron,31,32,0.67942
-wool,31,32,0.02530
-cloth,31,32,0.13132
-grapes,31,32,2.32633
-silk,31,32,0.00200
-tools,31,32,1.39360
-wood,32,26,0.03892
-sugar,32,26,0.00067
-wine,32,26,0.00067
-fine clothes,32,26,0.00067
-iron,32,26,0.00065
-grapes,32,26,0.00066
-silk,32,26,0.00065
-tools,32,26,0.20982
-potatoes,32,27,2.89170
-meat,32,27,1.66448
-fish,32,27,3.34035
-clothes,32,27,0.00067
-coal,32,27,1.12101
-ironware,32,27,0.00864
-beer,32,27,0.04746
-wine,32,27,0.50123
-fine clothes,32,27,0.00067
-porcelain,32,27,0.01879
-grain,32,27,1.05045
-iron ore,32,27,0.00058
-iron,32,27,0.00860
-grapes,32,27,0.17502
-clay,32,27,0.03277
-tools,32,27,0.05043
+sugar cane,24,18,1.49523
+silk,24,18,1.44924
+tools,24,18,0.00670
+fish,24,25,0.37530
+sugar,24,25,0.00542
+wine,24,25,0.10760
+fine clothes,24,25,0.00593
+iron,24,25,0.00401
+cotton,24,25,0.00070
+sugar cane,24,25,0.00552
+silk,24,25,0.00200
+bread,24,30,0.41552
+meat,24,30,3.73942
+clothes,24,30,0.29954
+wood,24,30,13.21373
+furniture,24,30,0.98003
+ironware,24,30,0.71103
+beer,24,30,3.62092
+wine,24,30,0.54224
+fine clothes,24,30,0.94090
+porcelain,24,30,0.74657
+grain,24,30,8.00452
+iron,24,30,1.45144
+silk,24,30,0.00332
+tools,24,30,2.65091
+clothes,25,18,0.00133
+tea,25,18,7.04248
+sugar,25,18,0.08171
+wool,25,18,0.05640
+cotton,25,18,0.00558
+cloth,25,18,0.37553
+sugar cane,25,18,0.00193
+silk,25,18,0.30739
+tools,25,18,0.02115
+sugar,25,19,0.00124
+cotton,25,19,0.00126
+silk,25,19,0.00199
+sugar,25,24,0.00630
+fine clothes,25,24,0.00528
+cotton,25,24,0.00122
+cloth,25,24,0.01123
+silk,25,24,0.00978
+tools,25,24,0.02343
+bread,25,26,0.11355
+clothes,25,26,1.06365
+wood,25,26,0.00066
+furniture,25,26,0.02656
+ironware,25,26,0.42077
+beer,25,26,1.26276
+sugar,25,26,0.00058
+wine,25,26,0.10107
+fine clothes,25,26,0.02172
+porcelain,25,26,0.53632
+grain,25,26,0.37428
+iron ore,25,26,0.00318
+iron,25,26,0.00450
+wool,25,26,0.11482
+cloth,25,26,0.00528
+clay,25,26,0.01491
+tools,25,26,0.04691
+bread,25,30,0.00065
+clothes,25,30,0.00199
+sugar,25,30,0.00377
+fine clothes,25,30,0.08888
+cloth,25,30,0.00065
+silk,25,30,0.00978
+tools,25,30,0.03464
+clothes,25,31,0.01070
+ironware,25,31,0.05579
+sugar,25,31,0.00124
+fine clothes,25,31,0.76489
+porcelain,25,31,0.16515
+iron,25,31,0.00061
+cotton,25,31,0.00054
+cloth,25,31,0.00261
+silk,25,31,0.00263
+tools,25,31,0.56580
+tea,26,19,5.43297
+sugar,26,19,0.59597
+iron,26,19,0.00105
+cotton,26,19,0.16815
+sugar cane,26,19,0.16607
+silk,26,19,0.78038
+sugar,26,20,0.00603
+wine,26,20,0.00066
+fine clothes,26,20,0.00254
+iron,26,20,0.00232
+cotton,26,20,0.00610
+sugar cane,26,20,0.00824
+grapes,26,20,0.00122
+silk,26,20,0.01427
+tea,26,25,8.67082
+sugar,26,25,0.15536
+cotton,26,25,0.05056
+sugar cane,26,25,0.03723
+silk,26,25,0.69508
+fine clothes,26,27,0.00253
+iron,26,27,0.00306
+tools,26,27,0.00471
+tea,26,31,10.18422
+sugar,26,31,0.34155
+fine clothes,26,31,0.00123
+iron,26,31,0.00248
+cotton,26,31,1.26961
+sugar cane,26,31,0.00134
+silk,26,31,0.32053
+sugar,26,32,0.00066
+fine clothes,26,32,0.01063
+iron ore,26,32,0.00062
+iron,26,32,0.00168
+silk,26,32,0.02066
+tea,27,20,3.10520
+sugar,27,20,0.52236
+wine,27,20,0.00065
+fine clothes,27,20,0.00060
+iron,27,20,0.00267
+cotton,27,20,0.12284
+sugar cane,27,20,0.13955
+grapes,27,20,0.00423
+silk,27,20,0.36469
+tools,27,20,0.00171
+fish,27,21,0.00933
+wool,27,21,0.00340
+silk,27,21,0.00066
+tools,27,21,0.00231
+fine clothes,27,26,0.00060
+iron,27,26,0.00093
+tools,27,26,0.00156
+fine clothes,27,28,0.02050
+porcelain,27,28,0.00387
+iron,27,28,0.00223
+tools,27,28,0.00397
+tea,27,32,13.62550
+sugar,27,32,0.03277
+fine clothes,27,32,0.00321
+iron,27,32,0.00123
+cotton,27,32,0.06896
+silk,27,32,1.70908
+tools,27,32,0.00100
+sugar,27,33,0.01253
+wine,27,33,0.00067
+fine clothes,27,33,0.03288
+porcelain,27,33,0.00123
+iron ore,27,33,0.00115
+iron,27,33,0.00105
+silk,27,33,0.00331
+tools,27,33,0.00342
+fish,28,21,0.00399
+iron,28,21,0.00047
+silk,28,21,0.00066
+iron,28,22,0.00332
+wool,28,22,0.00135
+silk,28,22,0.00134
+iron,28,27,0.00047
+silk,28,27,0.00000
+tools,28,27,0.00129
+tea,28,29,16.34688
+sugar,28,29,0.60331
+iron ore,28,29,0.00093
+iron,28,29,0.00140
+cotton,28,29,0.76008
+silk,28,29,1.92253
+wine,28,33,0.00133
+fine clothes,28,33,0.00065
+porcelain,28,33,0.00063
+iron,28,33,0.00047
+silk,28,33,0.00333
+tools,28,33,0.00065
+tea,28,34,0.47156
+fine clothes,28,34,0.00062
+iron ore,28,34,0.00442
+iron,28,34,0.00433
+silk,28,34,0.27855
+wood,29,22,4.29723
+furniture,29,22,0.35534
+ironware,29,22,0.00684
+sugar,29,22,0.00067
+fine clothes,29,22,0.00333
+silk,29,22,0.00066
+tools,29,22,0.00134
+wood,29,23,9.33067
+furniture,29,23,0.07884
+ironware,29,23,0.00610
+tea,29,23,9.14291
+sugar,29,23,1.11973
+fine clothes,29,23,0.00066
+cotton,29,23,0.03385
+sugar cane,29,23,0.28038
+silk,29,23,1.38581
+tools,29,23,0.00066
+bread,29,28,0.02490
+potatoes,29,28,1.64062
+meat,29,28,0.90692
+fish,29,28,1.59917
+clothes,29,28,0.67424
+wood,29,28,2.31075
+coal,29,28,1.26619
+furniture,29,28,0.57778
+ironware,29,28,0.51953
+beer,29,28,0.39860
+wine,29,28,0.88282
+fine clothes,29,28,0.15546
+porcelain,29,28,0.62772
+grain,29,28,0.67895
+iron ore,29,28,0.00213
+iron,29,28,0.00607
+wool,29,28,0.06388
+grapes,29,28,0.22601
+clay,29,28,0.01108
+tools,29,28,0.55664
+coal,29,34,1.68522
+ironware,29,34,0.00824
+wine,29,34,0.25863
+fine clothes,29,34,0.02209
+porcelain,29,34,0.02249
+iron ore,29,34,0.00662
+iron,29,34,0.65259
+grapes,29,34,1.61731
+silk,29,34,0.00794
+tools,29,34,0.33153
+bread,29,35,0.26648
+potatoes,29,35,9.61460
+meat,29,35,2.07964
+clothes,29,35,1.59686
+coal,29,35,1.02082
+ironware,29,35,0.01326
+beer,29,35,0.13308
+tea,29,35,0.44819
+wine,29,35,3.14068
+fine clothes,29,35,1.09429
+porcelain,29,35,1.78182
+grain,29,35,7.43825
+iron ore,29,35,0.48285
+iron,29,35,0.08009
+wool,29,35,1.30067
+cloth,29,35,0.37159
+grapes,29,35,1.62768
+silk,29,35,0.05772
+clay,29,35,0.04630
+tools,29,35,1.71549
+coal,30,24,3.19647
+tea,30,24,15.74718
+sugar,30,24,3.11813
+fine clothes,30,24,0.00597
+porcelain,30,24,0.00066
+iron,30,24,0.00065
+cotton,30,24,0.65647
+sugar cane,30,24,1.82201
+grapes,30,24,1.85547
+silk,30,24,1.84021
+tools,30,24,0.00134
+coal,30,25,1.12318
+sugar,30,25,0.01088
+wine,30,25,0.00200
+fine clothes,30,25,0.00334
+iron,30,25,0.00133
+cotton,30,25,0.00134
+sugar cane,30,25,0.00675
+grapes,30,25,0.39954
+silk,30,25,0.00864
+tools,30,25,0.00067
+wood,30,31,5.30779
+coal,30,31,18.08486
+furniture,30,31,0.07854
+ironware,30,31,0.13165
+wine,30,31,5.55825
+fine clothes,30,31,0.01735
+porcelain,30,31,1.20735
+iron ore,30,31,0.00130
+iron,30,31,1.78876
+wool,30,31,0.43132
+grapes,30,31,4.92068
+silk,30,31,0.00265
+tools,30,31,0.97769
+sugar,31,25,0.00962
+iron,31,25,0.00132
+cotton,31,25,0.00821
+sugar cane,31,25,0.09504
+silk,31,25,0.01064
+tools,31,25,0.00067
+bread,31,26,0.56391
+potatoes,31,26,4.32921
+meat,31,26,2.71368
+fish,31,26,4.46450
+wood,31,26,0.00264
+coal,31,26,2.77057
+ironware,31,26,0.00267
+beer,31,26,0.22924
+sugar,31,26,0.00066
+wine,31,26,1.37337
+fine clothes,31,26,0.00999
+porcelain,31,26,0.00798
+grain,31,26,1.67067
+iron ore,31,26,0.00253
+iron,31,26,0.00669
+wool,31,26,0.00839
+cloth,31,26,0.00401
+grapes,31,26,0.24445
+clay,31,26,0.01727
+tools,31,26,0.00334
+bread,31,30,0.00066
+meat,31,30,0.00067
+clothes,31,30,0.00134
+ironware,31,30,0.00133
+tea,31,30,22.52300
+sugar,31,30,4.54168
+fine clothes,31,30,0.00396
+iron ore,31,30,0.00061
+iron,31,30,0.00066
+cotton,31,30,0.92000
+cloth,31,30,0.00067
+sugar cane,31,30,2.28392
+silk,31,30,2.03936
+tools,31,30,0.02087
+clothes,31,32,1.13404
+coal,31,32,8.21443
+ironware,31,32,1.27080
+sugar,31,32,0.00134
+wine,31,32,6.19438
+fine clothes,31,32,1.10961
+porcelain,31,32,1.53590
+iron ore,31,32,0.00244
+iron,31,32,0.92888
+wool,31,32,0.10111
+cloth,31,32,0.08623
+grapes,31,32,1.14562
+silk,31,32,0.00133
+tools,31,32,1.44671
+wood,32,26,0.02021
+furniture,32,26,0.00067
+ironware,32,26,0.00065
+beer,32,26,0.00067
+sugar,32,26,0.00335
+fine clothes,32,26,0.00735
+grain,32,26,0.00067
+iron,32,26,0.00264
+clay,32,26,0.00610
+tools,32,26,0.01627
+bread,32,27,0.01734
+potatoes,32,27,2.92508
+meat,32,27,1.62860
+fish,32,27,3.32634
+clothes,32,27,0.00133
+coal,32,27,1.22800
+furniture,32,27,0.08629
+ironware,32,27,0.24210
+beer,32,27,0.05903
+sugar,32,27,0.00130
+wine,32,27,0.62011
+fine clothes,32,27,0.01700
+porcelain,32,27,0.01131
+grain,32,27,1.37949
+iron,32,27,0.00796
+wool,32,27,0.01045
+grapes,32,27,0.15745
+clay,32,27,0.03269
+tools,32,27,0.04283
 wood,32,31,0.00067
-tea,32,31,19.18712
-sugar,32,31,1.68213
-cotton,32,31,0.06127
-cloth,32,31,0.00067
-sugar cane,32,31,4.36457
-silk,32,31,2.10278
-tools,32,31,0.00670
-bread,32,33,0.52216
-potatoes,32,33,13.27888
-meat,32,33,1.81176
-clothes,32,33,1.77872
-coal,32,33,1.76337
-ironware,32,33,1.09112
-beer,32,33,1.55461
-sugar,32,33,0.00066
-wine,32,33,3.05437
-fine clothes,32,33,1.24650
-porcelain,32,33,1.10791
-grain,32,33,5.88000
-iron ore,32,33,0.00912
-iron,32,33,0.20091
-wool,32,33,0.33460
-cloth,32,33,0.00134
-grapes,32,33,0.85346
-silk,32,33,0.00131
-clay,32,33,0.37049
-tools,32,33,1.16396
-wood,33,27,3.09380
-furniture,33,27,0.25541
-wine,33,27,0.00067
-iron ore,33,27,0.00237
-iron,33,27,0.00253
-wool,33,27,0.00421
-clay,33,27,0.00066
-tools,33,27,0.02885
-clothes,33,28,0.00066
-ironware,33,28,0.00128
-tea,33,28,0.00135
-fine clothes,33,28,0.06419
+tea,32,31,17.15233
+sugar,32,31,4.16325
+fine clothes,32,31,0.00945
+iron,32,31,0.00064
+cotton,32,31,0.09382
+sugar cane,32,31,3.42413
+silk,32,31,2.15684
+tools,32,31,0.01979
+bread,32,33,0.47586
+potatoes,32,33,13.26757
+meat,32,33,1.77994
+clothes,32,33,2.55375
+coal,32,33,2.18048
+ironware,32,33,1.04219
+beer,32,33,2.07632
+sugar,32,33,0.00198
+wine,32,33,3.09524
+fine clothes,32,33,0.94253
+porcelain,32,33,1.17647
+grain,32,33,5.35054
+iron ore,32,33,0.00451
+iron,32,33,0.32663
+wool,32,33,0.29529
+grapes,32,33,0.35233
+silk,32,33,0.00134
+clay,32,33,0.38186
+tools,32,33,1.42716
+clothes,33,27,0.00067
+wood,33,27,2.92223
+furniture,33,27,0.26898
+ironware,33,27,0.00465
+sugar,33,27,0.00133
+porcelain,33,27,0.00400
+iron ore,33,27,0.00130
+iron,33,27,0.00199
+silk,33,27,0.00064
+clay,33,27,0.00597
+tools,33,27,0.04088
+fish,33,28,0.00067
+clothes,33,28,0.00134
+wood,33,28,0.00067
+furniture,33,28,0.00066
+tea,33,28,0.00067
+sugar,33,28,0.00332
+fine clothes,33,28,0.02053
+porcelain,33,28,0.00532
 iron ore,33,28,0.00062
-iron,33,28,0.00516
-wool,33,28,0.00197
-cloth,33,28,0.00067
-silk,33,28,0.00066
-tools,33,28,0.03668
-wood,33,32,6.55998
-tea,33,32,12.11600
-sugar,33,32,1.91587
-fine clothes,33,32,0.00066
-iron ore,33,32,0.00054
-iron,33,32,0.00056
-cotton,33,32,0.77314
-sugar cane,33,32,6.19959
-silk,33,32,1.02782
-tools,33,32,0.01455
-ironware,33,34,0.00193
-tea,33,34,15.15600
-sugar,33,34,1.48322
-iron ore,33,34,0.02942
-iron,33,34,0.02316
-cotton,33,34,1.63753
-sugar cane,33,34,4.67980
-silk,33,34,0.57195
-tools,33,34,0.02113
-bread,34,28,0.02163
-potatoes,34,28,2.06638
-meat,34,28,0.90790
-fish,34,28,1.47405
-clothes,34,28,0.42807
-wood,34,28,1.69767
-furniture,34,28,0.11418
-beer,34,28,0.08034
+iron,33,28,0.00778
+silk,33,28,0.00065
+clay,33,28,0.00476
+tools,33,28,0.03723
+clothes,33,32,0.00067
+wood,33,32,6.84708
+tea,33,32,9.69990
+sugar,33,32,3.76390
+fine clothes,33,32,0.00199
+porcelain,33,32,0.00066
+cotton,33,32,0.86450
+sugar cane,33,32,5.71213
+silk,33,32,0.87434
+tools,33,32,0.00975
+ironware,33,34,0.00132
+tea,33,34,16.82298
+sugar,33,34,1.57828
+fine clothes,33,34,0.01465
+porcelain,33,34,0.00132
+iron ore,33,34,0.00783
+iron,33,34,0.03282
+cotton,33,34,1.67405
+cloth,33,34,0.00066
+sugar cane,33,34,5.20963
+silk,33,34,0.61981
+tools,33,34,0.03237
+potatoes,34,28,1.38612
+meat,34,28,0.75526
+fish,34,28,1.81981
+clothes,34,28,0.46302
+wood,34,28,1.01786
+furniture,34,28,0.07680
+ironware,34,28,0.04654
+beer,34,28,0.09366
 sugar,34,28,0.00067
-wine,34,28,0.07091
-fine clothes,34,28,0.12147
-porcelain,34,28,0.15415
-grain,34,28,0.57393
-iron,34,28,0.00395
-wool,34,28,0.01026
-clay,34,28,0.00877
-tools,34,28,0.02798
-tea,34,29,0.00735
-sugar,34,29,0.61116
-wine,34,29,0.00736
-fine clothes,34,29,0.02848
-iron,34,29,0.00064
-cotton,34,29,0.00663
-sugar cane,34,29,1.33859
-silk,34,29,0.01117
-tools,34,29,0.01286
-bread,34,33,0.35908
-potatoes,34,33,0.09177
-meat,34,33,0.31615
-clothes,34,33,0.04102
-wood,34,33,21.54840
-coal,34,33,0.02659
-furniture,34,33,1.33872
-ironware,34,33,0.14181
-beer,34,33,0.62446
-tea,34,33,0.00066
-sugar,34,33,0.00202
-wine,34,33,0.13439
-fine clothes,34,33,0.04364
-porcelain,34,33,0.58911
-grain,34,33,0.16201
-iron ore,34,33,0.00059
-iron,34,33,0.00466
-wool,34,33,0.20457
-cloth,34,33,0.02736
-grapes,34,33,0.00597
-silk,34,33,0.00065
-tools,34,33,0.03000
-bread,34,35,0.08077
-potatoes,34,35,5.87229
-meat,34,35,1.59939
-clothes,34,35,0.23858
-ironware,34,35,0.00265
-beer,34,35,0.09705
-tea,34,35,10.07267
-sugar,34,35,1.53645
-wine,34,35,0.14103
-fine clothes,34,35,0.14740
-porcelain,34,35,0.05869
-grain,34,35,6.14306
-iron ore,34,35,0.00061
-iron,34,35,0.00658
-wool,34,35,0.00067
-cotton,34,35,0.82953
-cloth,34,35,0.04444
-sugar cane,34,35,1.28435
-silk,34,35,0.42981
-clay,34,35,0.37214
-tools,34,35,0.01569
-wood,35,29,34.02663
-furniture,35,29,0.08740
-ironware,35,29,0.00000
-tea,35,29,0.00067
-iron ore,35,29,0.00063
-iron,35,29,0.00134
-silk,35,29,0.00778
-tools,35,29,0.01310
-wood,35,34,44.36986
-furniture,35,34,0.35815
-ironware,35,34,0.00199
-porcelain,35,34,0.00000
-iron ore,35,34,0.00326
-iron,35,34,0.00800
-silk,35,34,0.00322
-tools,35,34,0.10532
+wine,34,28,0.02092
+fine clothes,34,28,0.06645
+porcelain,34,28,0.05286
+grain,34,28,0.66688
+iron ore,34,28,0.00223
+iron,34,28,0.00533
+wool,34,28,0.00823
+clay,34,28,0.03843
+tools,34,28,0.01469
+clothes,34,29,0.00067
+furniture,34,29,0.00067
+ironware,34,29,0.00066
+tea,34,29,0.00267
+sugar,34,29,1.97092
+iron ore,34,29,0.00268
+iron,34,29,0.00133
+cotton,34,29,0.00400
+sugar cane,34,29,0.81347
+silk,34,29,0.01515
+tools,34,29,0.00067
+bread,34,33,0.53942
+potatoes,34,33,0.30229
+meat,34,33,0.43475
+clothes,34,33,0.12376
+wood,34,33,23.35649
+coal,34,33,0.00401
+furniture,34,33,1.62909
+ironware,34,33,0.28673
+beer,34,33,1.21630
+sugar,34,33,0.00067
+wine,34,33,0.01142
+fine clothes,34,33,0.13609
+porcelain,34,33,0.02184
+grain,34,33,0.46794
+iron ore,34,33,0.00220
+iron,34,33,0.00126
+wool,34,33,0.18215
+grapes,34,33,0.00470
+silk,34,33,0.00591
+clay,34,33,0.00734
+tools,34,33,0.03475
+bread,34,35,0.07575
+potatoes,34,35,9.62595
+meat,34,35,1.71615
+clothes,34,35,0.49491
+ironware,34,35,0.00067
+tea,34,35,11.02526
+sugar,34,35,0.75002
+fine clothes,34,35,0.05846
+grain,34,35,6.62545
+iron ore,34,35,0.06565
+iron,34,35,0.00064
+cotton,34,35,0.77379
+cloth,34,35,0.20838
+sugar cane,34,35,1.64065
+silk,34,35,0.40035
+clay,34,35,0.56554
+tools,34,35,0.03131
+wood,35,29,33.53467
+furniture,35,29,0.04923
+ironware,35,29,0.00134
+tea,35,29,0.00134
+sugar,35,29,0.02332
+silk,35,29,0.00586
+tools,35,29,0.00067
+wood,35,34,44.49299
+furniture,35,34,1.12018
+wine,35,34,0.00067
+iron,35,34,0.00671
+silk,35,34,0.00773
