@@ -124,8 +124,12 @@ const (
 	// asked of new works
 	investPayback = 3650.0
 	investMinAge  = 100 // ticks before a firm's profit record counts
-	buildTicks    = 90  // a private level (or a refit) takes this long to build, at the quickest
-	disinvestAt   = 100 // ticks of losses before a firm closes a level
+	// a private level (or a refit) takes this long to build, at the
+	// quickest: nine months, as a mill or a terrace of houses took most of
+	// a year to put up. Its buying is spread over that time, so a boom's
+	// building raises the demand for builders steadily rather than in bursts.
+	buildTicks  = 270
+	disinvestAt = 100 // ticks of losses before a firm closes a level
 )
 
 // investDecideTicks is how long owners take to start a project that pays
@@ -187,7 +191,7 @@ func (r *Region) planInvestment() {
 		if best >= 0 && worst >= 0 && best != worst {
 			refitGain = bestProfit - worstProfit
 		}
-		if f.Expansion == nil && f.Enabled && !f.NoBuilding && f.Age > investMinAge && best >= 0 {
+		if f.Enabled && !f.NoBuilding && f.Age > investMinAge && best >= 0 {
 			full := f.AtCap()
 			// how many times over each project repays its cost within the payback
 			var refit, build float64
@@ -206,8 +210,13 @@ func (r *Region) planInvestment() {
 			}
 			f.Urge += refitUrge + buildUrge
 			// the urge built up over the ticks a project paid; it is acted on
-			// only on a tick one still does, for the one that pays better then
-			if refitUrge+buildUrge > 0 && f.Urge >= 1 {
+			// only on a tick one still does, for the one that pays better then.
+			// Owners weigh the next project while one is being built, as a
+			// booming trade's many builders work side by side: when a
+			// project ends the next can start at once, and the trade's
+			// building goes on steadily instead of stopping between projects.
+			f.Urge = math.Min(f.Urge, 1)
+			if f.Expansion == nil && refitUrge+buildUrge > 0 && f.Urge >= 1 {
 				f.Urge = 0
 				if refitUrge >= buildUrge {
 					f.Expansion = NewRefit(f, worst, best, false)

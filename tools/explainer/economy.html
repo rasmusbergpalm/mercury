@@ -297,19 +297,7 @@ __STYLE__</style>
 </div>
 
 <div class="col">
-<p>Newcomers need somewhere to live, and a town's land is fixed. Ricardo's theory of rent says what follows: when more people want the same land, its price rises, and the rent goes to whoever owns it. Manchester's population nearly doubled between 1821 and 1841 as its mills boomed, and its rents and land values rose with it. To watch it, one inland tile's trades, its industry and services but not its farms, mines or houses, were made half again as productive, against a twin without the boom, with people free to move. The boom ran twice: once with landlords free to build, and once with no new houses allowed, as under a building restriction or in a town hemmed in by its walls. Vienna kept its walls until 1857. Manchester was fed by canal and, from 1830, by railway, so here carriage costs a tenth of the usual: the town's food can come from afar. <span class="ref" data-fig="boomtown"></span> follows the tile for ten years.</p>
-</div>
-
-<div class="figure" id="fig-boomtown">
-  <div class="head"><span class="plate"></span><h3>A boomtown's land and rents</h3></div>
-  <div class="grid2">
-    <svg class="chart" id="chart-boom-prices" role="img" aria-label="The boomtown's land price and rent against the twin without the boom"></svg>
-    <svg class="chart" id="chart-boom-people" role="img" aria-label="The boomtown's people, with and without new houses"></svg>
-    <svg class="chart" id="chart-boom-houses" role="img" aria-label="The boomtown's houses, with and without new building"></svg>
-    <svg class="chart" id="chart-boom-living" role="img" aria-label="The boomtown's workers' and owners' living standards against the twin"></svg>
-  </div>
-  <div class="legend" id="legend-boomtown"></div>
-  <p class="cap" id="cap-boomtown"></p>
+<p>Newcomers need somewhere to live, and a town's land is fixed. Ricardo's theory of rent says what follows: when more people want the same land, its price rises, and the rent goes to whoever owns it. Manchester's population nearly doubled between 1821 and 1841 as its mills boomed, and its rents and land values rose with it. To watch it, one inland tile's trades, its industry and services but not its farms, mines or houses, were made half again as productive, against a twin without the boom, with people free to move. The boom ran twice: once with landlords free to build, and once with no new houses allowed, as under a building restriction or in a town hemmed in by its walls. Vienna kept its walls until 1857. Manchester was fed by canal and, from 1830, by railway, so here carriage costs a tenth of the usual: the town's food can come from afar. <span class="ref" data-fig="boomland"></span> follows the tile for ten years.</p>
 </div>
 
 <div class="figure" id="fig-boomland">
@@ -896,44 +884,22 @@ function drawEngel() {
 // ---- the boom plate: a coal boom, dose and response ------------------------------------------------------
 function drawBoomtown() {
   const B = D.boomtown, t = byId[B.tile], n = B.control.Months.length, x = (i) => B.control.Months[i] / 12;
-  // a year's moving average (owners are few, and their dividends lumpy)
-  const smooth = (xs) => xs.map((_, i) => { const a = xs.slice(Math.max(0, i - 11), i + 1); return a.reduce((u, v) => u + v, 0) / a.length; });
-  const vs = (run, k, base = B.control, sm = false) => { const a = sm ? smooth(run[k]) : run[k], b = sm ? smooth(base[k]) : base[k]; return a.map((v, i) => [x(i), v / b[i]]); };
   const avg = (xs) => xs.slice(-12).reduce((a, b) => a + b, 0) / 12;
   const end = (run, k, base = B.control) => avg(run[k]) / avg(base[k]); // the tenth year, against the twin
-  const ticks = [0, 2, 4, 6, 8, 10], times = (v) => "×" + (+v.toFixed(2));
-  lineChart(document.getElementById("chart-boom-prices"), { title: "Land and rent, against the twin",
-    series: [{ pts: vs(B.built, "Land"), color: "--s1", end: "land" }, { pts: vs(B.built, "Rent"), color: "--s2", end: "rent", below: true },
-      { pts: vs(B.walled, "Rent", B.walledControl), color: "--s2", dash: "5 4", end: "rent, walled" }],
-    xTicks: ticks, xLabel: "years", yFmt: times, w: 480, h: 300 });
-  lineChart(document.getElementById("chart-boom-people"), { title: `${t.name}'s people`,
-    series: [{ pts: B.built.People.map((v, i) => [x(i), v]), color: "--s1", end: "built" },
-      { pts: B.walled.People.map((v, i) => [x(i), v]), color: "--s1", dash: "5 4", end: "walled", below: true },
-      { pts: B.control.People.map((v, i) => [x(i), v]), color: "--muted", end: "no boom" }],
-    xTicks: ticks, xLabel: "years", yFmt: (v) => v.toFixed(0), w: 480, h: 300 });
-  lineChart(document.getElementById("chart-boom-houses"), { title: "Its houses (levels)",
-    series: [{ pts: B.built.Houses.map((v, i) => [x(i), v]), color: "--s3", end: "built" },
-      { pts: B.walled.Houses.map((v, i) => [x(i), v]), color: "--s3", dash: "5 4", end: "walled" },
-      { pts: B.control.Houses.map((v, i) => [x(i), v]), color: "--muted", end: "no boom", below: true }],
-    xTicks: ticks, xLabel: "years", yFmt: (v) => v.toFixed(0), w: 480, h: 300 });
-  lineChart(document.getElementById("chart-boom-living"), { title: "Living standards, against the twin",
-    series: [{ pts: vs(B.built, "Workers", B.control, true), color: "--s1", end: "workers" }, { pts: vs(B.walled, "Workers", B.walledControl, true), color: "--s1", dash: "5 4", end: "workers, walled", below: true },
-      { pts: vs(B.built, "Owners", B.control, true), color: "--s4", end: "owners" }, { pts: vs(B.walled, "Owners", B.walledControl, true), color: "--s4", dash: "5 4", end: "owners, walled" }],
-    xTicks: ticks, xLabel: "years", yFmt: times, w: 480, h: 300 });
+  const ticks = [0, 2, 4, 6, 8, 10];
   // the boom in pounds, and the land it takes from the farms
-  const abs = (run, k) => run[k].map((v, i) => [x(i), v]), since = (run, k) => run[k].map((v, i) => [x(i), v - run[k][0]]);
+  const abs = (run, k) => run[k].map((v, i) => [x(i), v]);
   lineChart(document.getElementById("chart-boomland-prices"), { title: "Prices, £ a unit", yMin: 0,
     series: [{ pts: abs(B.built, "Land"), color: "--s1", end: "land" }, { pts: abs(B.built, "Rent"), color: "--s2", end: "housing", below: true },
       { pts: abs(B.control, "Land"), color: "--s1", dash: "5 4", end: "land, no boom" }, { pts: abs(B.control, "Rent"), color: "--s2", dash: "5 4", end: "housing, no boom", below: true }],
     xTicks: ticks, xLabel: "years", yFmt: (v) => "£" + v.toFixed(0), w: 480, h: 300 });
-  lineChart(document.getElementById("chart-boomland-held"), { title: "Land held, units gained since year 0",
-    series: [{ pts: since(B.built, "LandHouses"), color: "--s3", end: "houses" }, { pts: since(B.built, "LandFarms"), color: "--s4", end: "farms" },
-      { pts: since(B.control, "LandHouses"), color: "--s3", dash: "5 4" }, { pts: since(B.control, "LandFarms"), color: "--s4", dash: "5 4", end: "no boom", below: true }],
-    xTicks: ticks, xLabel: "years", yFmt: (v) => (v > 0 ? "+" : "") + +v.toFixed(2), w: 480, h: 300 });
+  const share = (run, k) => run[k].map((v, i) => [x(i), (100 * v) / (run.LandHouses[i] + run.LandFarms[i])]);
+  lineChart(document.getElementById("chart-boomland-held"), { title: "Share of the town's land held", yMin: 0, yMax: 100,
+    series: [{ pts: share(B.built, "LandHouses"), color: "--s3", end: "houses" }, { pts: share(B.built, "LandFarms"), color: "--s4", end: "farms", below: true },
+      { pts: share(B.control, "LandHouses"), color: "--s3", dash: "5 4", end: "houses, no boom", below: true }, { pts: share(B.control, "LandFarms"), color: "--s4", dash: "5 4", end: "farms, no boom" }],
+    xTicks: ticks, xLabel: "years", yFmt: (v) => v.toFixed(0) + "%", w: 480, h: 300 });
   legend(document.getElementById("legend-boomland"), [["--s1", "land"], ["--s2", "housing"], ["--s3", "land held by houses"], ["--s4", "land held by farms and forests"], ["--muted", "no boom (dashed)", true]]);
   const last = (run, k) => run[k][n - 1], first = (run, k) => run[k][0];
-  legend(document.getElementById("legend-boomtown"), [["--s1", "landlords build as usual (solid)"], ["--muted", "no boom"]]);
-  document.getElementById("cap-boomtown").textContent = `${t.name}, its trades half again as productive from year 0. Solid: its landlords build as usual; dashed: no new houses. Prices and living standards are against the twin without the boom, month by month; living standards are averaged over the year before.`;
   const pB = B.built.People[n - 1], pW = B.walled.People[n - 1], p0 = B.built.People[0], hB = B.built.Houses[n - 1], hC = B.control.Houses[n - 1], h0 = B.built.Houses[0];
   const lh0 = B.built.LandHouses[0], lh1 = B.built.LandHouses[n - 1], la = B.built.LandHouses[n - 1] + B.built.LandFarms[n - 1];
   document.getElementById("cap-boomland").textContent = `${t.name}, solid with the boom, dashed without, landlords building as usual. A unit of land lets for £${first(B.built, "Land").toFixed(1)} a day at the start, and after ten years for £${last(B.built, "Land").toFixed(1)} with the boom and £${last(B.control, "Land").toFixed(1)} without (the twin loses people, ${fmt(B.control.People[0], 0)} to ${fmt(B.control.People[n - 1], 0)}); a unit of housing goes from £${first(B.built, "Rent").toFixed(1)} to £${last(B.built, "Rent").toFixed(1)}, against £${last(B.control, "Rent").toFixed(1)}. The tile has ${fmt(la, 0)} units of land: its houses start with ${fmt(lh0, 1)} and its farms and forests with ${fmt(first(B.built, "LandFarms"), 1)}, and after ten years they hold ${fmt(lh1, 1)} and ${fmt(last(B.built, "LandFarms"), 1)} with the boom, against ${fmt(last(B.control, "LandHouses"), 1)} and ${fmt(last(B.control, "LandFarms"), 1)} without. Each spends a share of what it earns on land. Grain from afar caps what the town's farms earn, at £${last(B.built, "Grain").toFixed(1)} a unit against £${last(B.control, "Grain").toFixed(1)} in the twin, while the town's houses earn ever more, so the houses outbid the farms for the town's land.`;
