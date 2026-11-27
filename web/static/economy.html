@@ -1117,12 +1117,12 @@ function drawBoomtown() {
   // the boom in pounds, and the land it takes from the farms
   const abs = (run, k) => run[k].map((v, i) => [x(i), v]);
   lineChart(document.getElementById("chart-boomland-prices"), { title: "Prices, £ a unit", yMin: 0,
-    series: [{ pts: abs(B.built, "Land"), color: "--s1", end: "land" }, { pts: abs(B.built, "Rent"), color: "--s2", end: "housing", below: true },
-      { pts: abs(B.control, "Land"), color: "--s1", dash: "5 4", end: "land, no boom" }, { pts: abs(B.control, "Rent"), color: "--s2", dash: "5 4", end: "housing, no boom", below: true }],
+    series: [{ pts: abs(B.built, "Land"), color: "--s1", end: "land" }, { pts: abs(B.built, "Rent"), color: "--s2", end: "housing" },
+      { pts: abs(B.control, "Land"), color: "--s1", dash: "5 4", end: "land, no boom", below: true }, { pts: abs(B.control, "Rent"), color: "--s2", dash: "5 4", end: "housing, no boom", below: true }],
     xTicks: ticks, xLabel: "years", yFmt: (v) => "£" + v.toFixed(0), w: 480, h: 300 });
   const share = (run, k) => run[k].map((v, i) => [x(i), (100 * v) / (run.LandHouses[i] + run.LandFarms[i])]);
   lineChart(document.getElementById("chart-boomland-held"), { title: "Share of the town's land held", yMin: 0, yMax: 100,
-    series: [{ pts: share(B.built, "LandHouses"), color: "--s3", end: "houses" }, { pts: share(B.built, "LandFarms"), color: "--s4", end: "farms", below: true },
+    series: [{ pts: share(B.built, "LandHouses"), color: "--s3", end: "houses", below: true }, { pts: share(B.built, "LandFarms"), color: "--s4", end: "farms" },
       { pts: share(B.control, "LandHouses"), color: "--s3", dash: "5 4", end: "houses, no boom", below: true }, { pts: share(B.control, "LandFarms"), color: "--s4", dash: "5 4", end: "farms, no boom" }],
     xTicks: ticks, xLabel: "years", yFmt: (v) => v.toFixed(0) + "%", w: 480, h: 300 });
   legend(document.getElementById("legend-boomland"), [["--s1", "land"], ["--s2", "housing"], ["--s3", "land held by houses"], ["--s4", "land held by farms and forests"], ["--muted", "no boom (dashed)", true]]);
