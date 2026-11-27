@@ -135,7 +135,10 @@ const (
 // pays, the owners' urge grows in proportion to how far it beats their
 // hurdle, and the project starts when the urge reaches one. The clear
 // winners are taken up soon and the marginal ones slowly, each firm by its
-// own profits and prices, rather than every owner on the map at once.
+// own profits and prices, rather than every owner on the map at once. A
+// project that pays three times what they ask starts in half the time:
+// when rents in a boomtown doubled, builders crowded in, as Manchester's
+// jerry-builders did in the 1830s.
 const investDecideTicks = 180.0
 
 // refitDecideTicks is the same for refitting a working level to another
@@ -199,7 +202,7 @@ func (r *Region) planInvestment() {
 				refitUrge = math.Min(1, refit-1) / refitDecideTicks
 			}
 			if !full && build > 1 {
-				buildUrge = math.Min(1, build-1) / investDecideTicks
+				buildUrge = (build - 1) / investDecideTicks
 			}
 			f.Urge += refitUrge + buildUrge
 			// the urge built up over the ticks a project paid; it is acted on
