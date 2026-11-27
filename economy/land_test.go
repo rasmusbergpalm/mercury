@@ -105,3 +105,29 @@ func TestOnlyLandIsFull(t *testing.T) {
 		t.Error("the tile's land could be built")
 	}
 }
+
+// A tenant pays for the land it holds and works, not for what it rented
+// that day: while land changes hands, a farm that is giving land up works
+// acres it would otherwise not pay for, and a growing user pays for acres it
+// has yet to take up. Over a day of a sudden boom in demand, what the
+// land's owner earns is the land's price times the land its tenants held.
+func TestTenantsPayForWhatTheyHold(t *testing.T) {
+	w, r, owner := landTile(t)
+	for _, p := range r.Pops {
+		p.Size *= 2
+		p.Cash *= 2
+	}
+	land := G("land")
+	for range 30 {
+		w.Step()
+	}
+	h := held(r)
+	w.Step()
+	price := r.prices[land]
+	if got, want := owner.TickRevenue, price*h; math.Abs(got-want) > 1e-6*want {
+		t.Errorf("the owner earned £%.4f for the day, the land held is worth £%.4f", got, want)
+	}
+	if rented := r.Markets[land].Demand; math.Abs(h-rented) < 0.01 {
+		t.Errorf("held %.3f, rented %.3f: the test needs land to be changing hands", h, rented)
+	}
+}

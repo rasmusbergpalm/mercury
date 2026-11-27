@@ -869,15 +869,16 @@ func (f *Firm) Produce() float64 {
 		q += x
 	}
 	f.Inventory += q
-	for g, x := range f.Held { // what it works moves towards what it rented
-		if l := Goods[g].Lease; l > 0 && x > 0 {
-			f.Held[g] += (f.Inputs[g] - x) / l
-		}
-	}
 	if f.Used == nil {
 		f.Used = make([]float64, len(f.Inputs))
 	}
 	copy(f.Used, f.Inputs)
+	for g, x := range f.Held { // it used what it holds, which moves towards what it rented
+		if l := Goods[g].Lease; l > 0 && x > 0 {
+			f.Used[g] = x
+			f.Held[g] += (f.Inputs[g] - x) / l
+		}
+	}
 	for i := range f.Inputs {
 		f.Inputs[i] = 0
 	}

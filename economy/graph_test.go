@@ -140,7 +140,7 @@ func TestLandIsRented(t *testing.T) {
 		}
 		return
 	}
-	used(400)
+	used(4 * 365) // what firms hold takes a lease or so to reach what they rent
 	p0, h0, l0 := used(100)
 	if owner.LastOutput <= 0 || p0 <= 0 || math.Abs(l0-owner.LastOutput) > 0.05*owner.LastOutput {
 		t.Fatalf("the landowner made %v land, at £%v, and %v was let", owner.LastOutput, p0, l0)
@@ -149,7 +149,7 @@ func TestLandIsRented(t *testing.T) {
 		p.Size *= 2
 		p.Cash *= 2
 	}
-	used(400)
+	used(4 * 365) // what firms hold takes a lease or so to reach what they rent
 	p1, h1, l1 := used(100)
 	if p1 <= p0 || math.Abs(l1-owner.LastOutput) > 0.05*owner.LastOutput {
 		t.Errorf("land at £%.2f -> £%.2f (the houses renting %.2f -> %.2f a day), %v let of %v", p0, p1, h0, h1, l1, owner.LastOutput)

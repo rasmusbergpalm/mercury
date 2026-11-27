@@ -621,12 +621,44 @@ func (r *Region) capUnsuppliedPrices() {
 	}
 }
 
-// Produce decays unsold stock, then lets every firm produce.
+// Produce decays unsold stock, then lets every firm produce. A tenant
+// pays for the land it holds and works, not for what it rented today: it
+// rents at the market what it wants, which sets the land's price, while
+// what it holds moves towards that over its lease; the difference is
+// settled with the land's owner at the day's price.
 func (r *Region) Produce() {
 	for _, f := range r.Firms {
 		f.Inventory *= 1 - Goods[f.Output].Spoilage
+		var held, rented []float64
+		if f.Held != nil {
+			held, rented = append(held, f.Held...), append(rented, f.Inputs...)
+		}
 		f.Produce()
+		for g, x := range held {
+			if x <= 0 || Goods[g].Lease <= 0 {
+				continue
+			}
+			owner := r.landowner(GoodID(g))
+			if owner == nil {
+				continue
+			}
+			due := r.prices[g] * (x - rented[g])
+			f.Cash -= due
+			f.TickCost += due
+			owner.Cash += due
+			owner.TickRevenue += due
+		}
 	}
+}
+
+// landowner is the tile's firm that lets a leased good.
+func (r *Region) landowner(g GoodID) *Firm {
+	for _, f := range r.Firms {
+		if f.Fixed && f.Output == g {
+			return f
+		}
+	}
+	return nil
 }
 
 // ClassPops lists the tile's pops of a class.
