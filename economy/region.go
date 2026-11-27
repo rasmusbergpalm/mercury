@@ -59,7 +59,11 @@ func NewRegion(id int, name string, firms []*Firm, nPops int, popSize, popCash f
 		r.popDemand = append(r.popDemand, make([]float64, NumGoods))
 	}
 	for g := range Goods {
-		r.Markets = append(r.Markets, &Market{Good: GoodID(g), Price: 1, Speed: 0.1, MinVolume: 0.1})
+		speed := priceSpeed
+		if Goods[g].PriceSpeed > 0 {
+			speed = Goods[g].PriceSpeed
+		}
+		r.Markets = append(r.Markets, &Market{Good: GoodID(g), Price: 1, Speed: speed, MinVolume: 0.1})
 	}
 	r.House = &TradingHouse{Region: r}
 	return r
@@ -115,6 +119,10 @@ func (r *Region) Plan() {
 		f.Plan(prices, r.Wage)
 	}
 }
+
+// priceSpeed is how fast a market's price moves against excess demand in a
+// tick, unless its good says otherwise (Good.PriceSpeed).
+const priceSpeed = 0.1
 
 // Investment rules (when World.Investment is on). The engine counts ticks;
 // these are calibrated for a tick of a day, as in the example economy.
@@ -248,8 +256,8 @@ func (r *Region) planInvestment() {
 			}
 		}
 		if e := f.Expansion; e != nil && !e.External {
-			gain := perLevel * float64(max(1, e.Levels))
-			if e.Refit { // what it still adds at today's prices
+			gain := perLevel * float64(max(1, e.Levels)-e.Opened) // what its unfinished levels add
+			if e.Refit {                                          // what it still adds at today's prices
 				gain = f.LevelProfit(e.Method, r.prices, r.Wage) - f.LevelProfit(e.From, r.prices, r.Wage)
 			}
 			if gain*payback >= e.Value(r.prices) {
@@ -298,12 +306,20 @@ func (r *Region) settleFirms() {
 				f.Wear--
 			}
 		}
+		// a project of several levels opens each as it is finished, as a
+		// street of houses is let house by house, not on the day the last
+		// is roofed
+		if e := f.Expansion; e != nil && !e.Refit && e.Levels > 1 {
+			for done := int(e.ready()*float64(e.Levels) + 1e-9); e.Opened < min(done, e.Levels-1); e.Opened++ {
+				f.addLevel(e.Method)
+			}
+		}
 		if e := f.Expansion; e != nil && e.Done() {
 			f.Expansion = nil
 			if e.Refit {
 				f.refit(e.From, e.Method)
 			} else {
-				for range max(1, e.Levels) {
+				for range max(1, e.Levels) - e.Opened {
 					f.addLevel(e.Method)
 				}
 			}

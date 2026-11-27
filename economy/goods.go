@@ -27,6 +27,12 @@ type Good struct {
 	// works moves 1/Lease of the way a tick to what it rents, and it plans
 	// its other inputs around what it works.
 	Lease float64
+	// PriceSpeed is how fast its price moves against excess demand in a
+	// tick (0: priceSpeed). Rents are let for a quarter or a year and move
+	// slowly: even today about a third of flats' rents are unchanged from
+	// one year to the next (Genesove 2003). A rent that moved by the day
+	// with each firm's and family's wants would hunt about its level.
+	PriceSpeed float64
 }
 
 // Goods lists every good (data/goods.json). The order is part of the
@@ -36,7 +42,7 @@ var Goods []Good
 func makeGoods() []Good {
 	out := make([]Good, len(goodsData.Goods))
 	for i, g := range goodsData.Goods {
-		out[i] = Good{g.Name, g.Bulk, g.Spoilage, g.Service, g.Wear, g.Lease}
+		out[i] = Good{g.Name, g.Bulk, g.Spoilage, g.Service, g.Wear, g.Lease, g.PriceSpeed}
 	}
 	return out
 }

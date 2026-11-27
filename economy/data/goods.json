@@ -40,7 +40,7 @@
     {"name": "explosives", "bulk": 1, "spoilage": 0},
     {"name": "fertilizer", "bulk": 1.5, "spoilage": 0.02},
     {"name": "electricity", "bulk": 0, "spoilage": 1, "service": true},
-    {"name": "housing", "bulk": 0, "spoilage": 1, "service": true},
+    {"name": "housing", "bulk": 0, "spoilage": 1, "service": true, "pricespeed": 0.01},
     {"name": "land", "bulk": 0, "spoilage": 1, "service": true, "lease": 365}
   ],
   "composites": [

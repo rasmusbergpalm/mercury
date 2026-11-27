@@ -211,6 +211,7 @@ type Expansion struct {
 	Got      []float64
 	External bool // paid for from outside (else by the firm's owners)
 	Levels   int  `json:",omitempty"` // the levels it builds (0: one)
+	Opened   int  `json:",omitempty"` // of those, the levels already finished and working
 	Method   int  `json:",omitempty"`
 	Refit    bool `json:",omitempty"`
 	From     int  `json:",omitempty"`
@@ -313,6 +314,18 @@ func (e *Expansion) Done() bool {
 		}
 	}
 	return true
+}
+
+// ready is the share of the expansion that could stand: the least share
+// delivered of any good it needs.
+func (e *Expansion) ready() float64 {
+	r := 1.0
+	for i, s := range e.Need {
+		if s.Qty > 0 {
+			r = math.Min(r, e.Got[i]/s.Qty)
+		}
+	}
+	return r
 }
 
 // Progress is the share of what it needs delivered, each good alike.

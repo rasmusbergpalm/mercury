@@ -88,9 +88,9 @@ func useData(fsys fs.FS) (err error) {
 
 type goodsFile struct {
 	Goods []struct {
-		Name                        string
-		Bulk, Spoilage, Wear, Lease float64
-		Service                     bool
+		Name                                    string
+		Bulk, Spoilage, Wear, Lease, PriceSpeed float64
+		Service                                 bool
 	}
 	Composites []struct {
 		Name  string
