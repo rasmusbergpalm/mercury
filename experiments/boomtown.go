@@ -15,20 +15,27 @@ func init() {
 // month for ten years: the tile's people, the price of its land and its
 // housing, its houses, how its land is shared out, and the living
 // standard of its workers and its owners.
+//
+// Carriage costs a tenth of the usual, as it did for a town on canals and
+// railways (Manchester had the Bridgewater Canal from 1761 and the railway
+// to Liverpool from 1830): the town's food comes in from afar, and its
+// fields are worth what their crops fetch on the wider market, so the
+// town's houses can outbid them for the land.
 func runBoomtown(o *Out) {
 	const tile = 14 // the strike experiment's tile
+	const carriage = 0.1
 	years := 10
 	type series struct {
 		Months                      []int
 		People, Land, Rent, Houses  []float64
 		LandHouses, LandFarms       []float64 // the tile's land held by houses and by farms, forests and the rest
 		Workers, Owners, Neighbours []float64 // living standards
-		Wage                        []float64
+		Wage, Grain                 []float64
 	}
 	housing, land := G("housing"), G("land")
 	run := func(boom, build bool, out *series) func() {
 		return func() {
-			w := settled()
+			w := settledAt(carriage)
 			r := w.Regions[tile]
 			near := map[int]bool{}
 			for _, x := range w.Adjacent(tile) {
@@ -54,6 +61,7 @@ func runBoomtown(o *Out) {
 				out.Land = append(out.Land, r.Markets[land].Price)
 				out.Rent = append(out.Rent, r.Markets[housing].Price)
 				out.Wage = append(out.Wage, r.Wage)
+				out.Grain = append(out.Grain, r.Markets[G("grain")].Price)
 				var houses, lh, lf float64
 				for _, f := range r.Firms {
 					if f.Output == housing {
